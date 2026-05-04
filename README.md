@@ -12,10 +12,6 @@ Discovery -> Spec Package -> Technical Design -> Initial Grill Review
 -> Implementation Outputs -> AI Implementation
 ```
 
-<p align="center">
-  <img src="assets/specguard_user_flow.png" alt="SpecGuard user workflow" width="900">
-</p>
-
 ## Core Value
 
 AI coding works best when the implementation input is explicit. SpecGuard focuses on the parts that often fail before code is written:
