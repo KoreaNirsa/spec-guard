@@ -4,7 +4,8 @@ on:
   pull_request:
 
 jobs:
-  validate:
+  tests:
+    name: Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -18,18 +19,48 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt
 
-      - name: Run Tests
+      - name: Run pytest
         run: pytest
 
-      - name: Run User Auth Example
+  passing-example:
+    name: Passing Example
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Run user-auth
         run: python tools/runner.py examples/user-auth
 
-      - name: Run Todo API Risk Example
+  risk-example:
+    name: Risk Example
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Confirm todo-api is blocked
         run: |
           set +e
           python tools/runner.py examples/risk/todo-api
           code=$?
           if [ "$code" -ne 1 ]; then
-            echo "todo-api should be blocked by Grill Me findings"
+            echo "risk example should be blocked by Grill Me findings"
             exit 1
           fi
