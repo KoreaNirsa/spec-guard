@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from tools.ux import bold, cyan, green, red, yellow
+
 
 @dataclass
 class CheckResult:
@@ -23,11 +25,22 @@ class CheckResult:
 
     def print(self) -> None:
         status = "PASS" if self.ok else "FAIL"
-        print(f"[{status}] {self.name}")
+        status_line = f"[{status}] {self.name}"
+        print(green(bold(status_line)) if self.ok else red(bold(status_line)))
         for message in self.messages:
-            print(f"- {message}")
+            line = f"- {message}"
+            if "[READY]" in message:
+                print(green(line))
+            elif "[NOT READY]" in message or "Blocked by" in message:
+                print(red(line))
+            elif message.startswith("Generated") or message.startswith("Reused") or message.startswith("Prepared"):
+                print(cyan(line))
+            elif message.startswith("Kept"):
+                print(yellow(line))
+            else:
+                print(line)
         if self.next_steps:
             print("")
-            print("Next steps:")
+            print(bold("Next steps:"))
             for step in self.next_steps:
-                print(f"- {step}")
+                print(yellow(f"- {step}"))

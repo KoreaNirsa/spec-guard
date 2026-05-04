@@ -1,153 +1,148 @@
 # SpecGuard
 
-SpecGuard is a validation-first framework for **Spec-Driven Development (SDD)** in AI-assisted software projects.
+SpecGuard is a validation-first workflow for AI-assisted software development.
 
-SpecGuard is not a prompt-to-code generator. It does not try to replace developers or create complete applications from a single instruction. Instead, it provides the structure required to turn human-written specs into reviewed, testable, implementation-ready outputs.
+It is not a prompt-to-code generator. SpecGuard helps you turn an idea into a reviewed, testable, implementation-ready spec package before Codex, Claude Code, or another coding agent starts writing application code.
 
 ```text
-Discovery -> Spec Refinement -> Technical Design -> Grill -> Test -> Contract -> Implementation Outputs -> AI Implementation
+Discovery -> Spec Package -> Technical Design -> Initial Grill Review
+-> Spec Regeneration -> Verification Review -> Test -> Contract
+-> Implementation Outputs -> AI Implementation
 ```
 
-## What Is SpecGuard?
+## Core Value
 
-SpecGuard helps teams validate specs before they become code.
-
-In AI-assisted development, the quality of the final implementation depends heavily on the quality of the input artifacts: the spec, technical design, test expectations, contracts, and known failure modes. SpecGuard makes those artifacts explicit and checks them before implementation work begins.
-
-The core principle is simple:
-
-> The user owns the spec. SpecGuard generates and validates the supporting implementation basis around it.
-
-SpecGuard is for teams that want AI-assisted development without skipping engineering discipline.
-
-## Why Spec-Driven Development?
-
-Spec-Driven Development, or SDD, is the practice of treating the spec as the source of implementation control.
-
-In SpecGuard, the spec is not a loose prompt. It is a structured artifact that must be supported by discovery, technical design, risk review, tests, and contracts. The goal is to produce implementation outputs that are grounded in validated intent rather than improvised from an underspecified request.
-
-SpecGuard focuses on the steps that often fail in AI-assisted development:
+AI coding works best when the implementation input is explicit. SpecGuard focuses on the parts that often fail before code is written:
 
 - unclear requirements
-- implicit assumptions
-- missing technical design decisions
-- weak authorization boundaries
-- untested edge cases
-- undefined failure behavior
-- contracts that do not match intended behavior
+- hidden assumptions
+- missing authorization or ownership rules
+- weak acceptance criteria
+- undefined errors, retries, timeouts, and state transitions
+- contracts that do not match the intended behavior
 
-## Core Principles
+The user owns the spec. SpecGuard drafts, challenges, and validates the implementation basis around it.
 
-### 1. The User Owns The Spec
+## Recommended User Flow
 
-SpecGuard starts with Discovery and creates a draft spec, but the user is responsible for reviewing, correcting, and strengthening that spec. The framework does not hide product intent behind generated prose.
+Use a real feature name. Running `init` without a name creates a default sample feature and is mostly useful for trying the CLI.
 
-### 2. Discovery Comes Before Technical Design
+### 1. Initialize A Spec
 
-Discovery helps expose goals, constraints, assumptions, mechanisms, stress points, feasibility risks, and stop conditions before the technical design is written.
-
-### 3. The Implementation Basis Must Be Challenged
-
-Grill Me is an adversarial validation step for the implementation basis produced from discovery, spec, and technical design. It does not approve artifacts; it looks for reasons the implementation basis can fail.
-
-### 4. Tests And Contracts Are Implementation Inputs
-
-TDD scenarios and contracts are not afterthoughts. They are part of the implementation boundary.
-
-### 5. Implementation Outputs Come Last
-
-Implementation outputs should be generated only after the SDD pipeline has produced validated artifacts. Application code is written later by the user, Codex, Claude Code, or another coding agent.
-
-## Workflow
-
-```text
-1. Discovery
-   Run `specguard init`, answer discovery questions, and generate draft specs under `specs/`.
-
-2. Spec Refinement
-   Review and strengthen the generated `spec.md` files.
-
-3. Technical Design
-   Run `specguard run`; SpecGuard generates or reuses `technical-design.md`.
-
-4. Grill
-   SpecGuard runs adversarial validation against discovery, spec, and technical design.
-
-5. Test
-   SpecGuard generates or preserves TDD scenarios from the spec.
-
-6. Contract
-   SpecGuard generates or reuses API contract scaffolds and validates contract basics.
-
-7. Implementation Outputs
-   SpecGuard generates `implementation-output.md` for downstream coding agents.
-
-8. AI Implementation
-   Use Codex, Claude Code, or another coding agent to implement under `develop/<stack>/`.
+```bash
+python -m cli.specguard init your-feature-name
 ```
 
-## Feature Folder
+After running this command, participate in the 8-step Discovery process. Answer with the actual goal, users, flows, data, dependencies, risks, and acceptance evidence for the feature.
 
-A SpecGuard feature is represented as a folder of development artifacts:
+SpecGuard creates a draft spec package under:
 
 ```text
-feature/
+specs/your-feature-name/
 |-- discovery.md
 |-- spec.md
-|-- technical-design.md
-|-- grill.md
-|-- grill.json
-|-- implementation-output.md
-|-- tests/
-`-- contracts/
+|-- plan.md
+|-- tasks.md
+|-- constitution.md
+`-- checklists/spec-readiness.md
 ```
 
-These files define whether a feature is ready to produce implementation outputs.
+Review and edit these files before continuing. The generated text is a draft, not a final product decision.
 
-## Discovery
+This is where the real development spec is written. Add the actual product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria before running validation.
 
-Discovery is the init-time exploration step that produces draft specs. It is adapted from a sequential self-interrogation technique, but SpecGuard uses a focused question set for practical project work.
+If the default Discovery answers are mostly unchanged, `run` stops early and asks you to edit the spec package first. This prevents a generic sample draft from being treated as an implementation-ready feature.
 
-Discovery asks:
+### Try SpecGuard With Authored Example Specs
 
-- What problem are we actually solving?
-- Which assumptions are we making too early?
-- What components and data flows are involved?
-- What breaks first under stress?
-- What should we intentionally not build?
-- What would make us stop or redesign?
+The `example/` directory contains a realistic authored spec package. It represents the point after a user has run `init`, reviewed the generated draft, and written the real development intent before running `run`.
 
-See [docs/deep-discovery.md](docs/deep-discovery.md).
+Use it only to test SpecGuard behavior. It is not product guidance for this repository, but the files are intentionally structured like production specs so the review workflow exercises a real package shape.
 
-Naming note: SpecGuard uses `Discovery` as the product workflow term. `Deep Discovery` can remain the name of the underlying technique, but the public artifact should stay simple: `discovery.md`.
+PowerShell:
 
-See [docs/workflow.md](docs/workflow.md) for the end-to-end user workflow.
+```powershell
+python -m cli.specguard init your-feature-name
+Copy-Item -Recurse -Force example\* specs\your-feature-name\
+python -m cli.specguard run specs\your-feature-name --no-llm
+```
 
-## Grill Me
+Bash:
 
-Grill Me is the pre-implementation adversarial validation step.
+```bash
+python -m cli.specguard init your-feature-name
+cp -R example/. specs/your-feature-name/
+python -m cli.specguard run specs/your-feature-name --no-llm
+```
 
-It reviews Discovery, `spec.md`, and `technical-design.md`, then looks for weaknesses such as:
+This replaces the initial draft with the authored example package and lets you verify the full pipeline before writing your own feature specs.
 
-- missing token lifecycle rules
-- weak ownership or authorization boundaries
-- unsafe delete semantics
-- placeholder or contradictory artifact content
-- undefined retry, timeout, or rollback behavior
-- incomplete state transitions
-- acceptance criteria that are too weak to test
-- contract behavior that is implied but not specified
+### 2. Run SpecGuard
 
-Outputs:
+```bash
+python -m cli.specguard run specs/your-feature-name
+```
 
-- `grill.md`: human-readable risk report
-- `grill.json`: machine-readable report for CI and automation
+This starts the implementation-readiness pipeline:
 
-Critical or Major Grill Me findings block the pipeline.
+```text
+Technical Design -> Initial Grill Review -> READY or NOT READY
+```
 
-## Quick Start
+Grill Review inspects the full spec package and generated technical design. It looks for blockers before implementation begins.
 
-Clone and install:
+Run is a validator, not the place where product intent is invented. Use it after the spec package has enough real detail to review.
+
+### 3. Iterate Until Ready
+
+If Grill Review returns NOT READY, use the continuation menu:
+
+```text
+[1] View Grill Me review
+[2] Regenerate spec from Grill Me review (auto-runs Grill Me review after)
+[q] Exit
+```
+
+The loop is:
+
+```text
+Initial Grill Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
+```
+
+The initial review is broad and adversarial. After spec regeneration, Verification Review checks whether previous blockers were resolved and only adds new Critical or Major findings when there is direct implementation-blocking evidence.
+
+Repeat until SpecGuard reports READY.
+
+### 4. Start Implementation
+
+When the spec package is ready, SpecGuard continues through:
+
+```text
+Test -> Contract -> Implementation Outputs
+```
+
+Then use:
+
+```text
+specs/your-feature-name/implementation-output.md
+develop/<stack>/
+```
+
+Give the implementation output guide to Codex, Claude Code, or another coding agent, and place application code under `develop/<stack>/`.
+
+## Grill Review Readiness
+
+SpecGuard uses this readiness threshold:
+
+- Critical: 0
+- Major: 0
+- Minor: 5 or fewer
+
+Critical and Major findings block implementation. Minor findings are allowed only when they do not hide missing requirements or implementation ambiguity.
+
+CLI output highlights READY states in green and NOT READY states in red.
+
+## Installation
 
 ```bash
 git clone https://github.com/KoreaNirsa/spec-guard.git
@@ -155,105 +150,67 @@ cd spec-guard
 pip install -r requirements.txt
 ```
 
-Start discovery and generate draft specs:
+## LLM Provider Setup
+
+Local Codex mode:
 
 ```bash
-python -m cli.specguard init my-feature
+python -m cli.specguard auth setup --mode codex --model gpt-5.4
 ```
 
-If you run `init` without answers, each Discovery question shows a default. Press Enter to accept it:
+Codex mode defaults to `gpt-5.4` during setup. Pass `--model` again to change it later, or use `--llm-model` on `init` / `run` for a one-off override.
+
+OpenAI Platform mode:
 
 ```bash
-python -m cli.specguard init
+python -m cli.specguard auth setup --mode openai
 ```
 
-To inspect the defaults from the CLI:
+Useful auth commands:
 
 ```bash
-python -m cli.specguard init --help
+python -m cli.specguard auth status
+python -m cli.specguard auth logout
 ```
 
-Review and strengthen the generated spec:
-
-```text
-specs/my-feature/spec.md
-```
-
-Run the validation and artifact workflow:
+If local Codex requests time out, increase the timeout:
 
 ```bash
-python -m cli.specguard run specs/my-feature
+python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
 ```
 
-Use the generated implementation guide with a coding agent:
-
-```text
-specs/my-feature/implementation-output.md
-develop/<stack>/
-```
-
-## CLI
-
-SpecGuard intentionally keeps the public CLI small:
+If `codex login` is already complete but setup cannot launch the login command, use:
 
 ```bash
-python -m cli.specguard init [feature-name]
-python -m cli.specguard run <feature-folder>
+python -m cli.specguard auth setup --mode codex --model gpt-5.4 --skip-login
 ```
 
-Interactive `init` accepts Enter for every default answer.
-
-For scripted or CI setup:
+You can also point SpecGuard at a full Codex executable path:
 
 ```bash
-python -m cli.specguard init billing-export --non-interactive
+python -m cli.specguard auth setup --mode codex --model gpt-5.4 --codex-command "C:\path\to\codex.cmd"
 ```
 
-Run all initialized specs:
+## CLI Reference
 
 ```bash
-python -m cli.specguard run specs
+python -m cli.specguard init <spec-name>
+python -m cli.specguard run specs/<spec-name>
 ```
 
-## Example Output
+Useful options:
 
-```text
-[FAIL] SpecGuard pipeline
-- Discovery and spec checks passed.
-- Reused technical design: examples/risk/todo-api/technical-design.md
-- Technical design checks passed.
-- Generated concrete grill report: examples/risk/todo-api/grill.md
-- Generated machine-readable grill report: examples/risk/todo-api/grill.json
-- Blocked by Grill Me findings: 1 critical, 1 major
+- `--force`: regenerate derived artifacts such as technical design.
+- `--follow-up`: force the interactive continuation menu.
+- `--no-follow-up`: exit immediately after the pipeline.
+- `--no-llm`: use local deterministic checks and heuristic Grill Review.
 
-Next steps:
-- Open the human report: examples/risk/todo-api/grill.md
-- Use the machine-readable report for automation: examples/risk/todo-api/grill.json
-- Fix discovery.md, spec.md, or technical-design.md so Critical and Major issues become explicit requirements or verified constraints.
-- Run again: specguard run examples/risk/todo-api
+CI or scripted example:
+
+```bash
+python -m cli.specguard init billing-export --non-interactive --no-llm
+python -m cli.specguard run specs/billing-export --no-llm --no-follow-up
 ```
-
-## Examples
-
-```text
-examples/
-|-- example/
-`-- risk/
-    `-- todo-api/
-```
-
-- `examples/example` is a passing SDD example.
-- `examples/risk/todo-api` is intentionally incomplete and should be blocked by Grill Me.
-
-## CI
-
-The GitHub Actions workflow is split into explicit jobs:
-
-- `Tests`: runs the pytest suite
-- `Passing Example`: confirms `examples/example` passes
-- `Risk Example`: confirms `examples/risk/todo-api` is blocked
-
-This makes both expected outcomes visible: a validated SDD flow should pass, and a risky implementation basis should fail.
 
 ## Development
 
@@ -263,75 +220,28 @@ Run tests:
 pytest
 ```
 
-Run local pipeline checks:
+Run local example checks:
 
 ```bash
-python -m cli.specguard run examples/example
-python -m cli.specguard run examples/risk/todo-api
-```
-
-The test suite covers:
-
-- passing example behavior
-- blocked risk example behavior
-- Discovery-based init behavior
-- supporting artifact generation from spec basis
-- `grill.json` generation
-- non-destructive TDD generation
-- placeholder validation
-- invalid OpenAPI contract detection
-- required Discovery artifacts
-
-## Current Capabilities
-
-- Discovery artifacts
-- draft spec generation from Discovery
-- Spec and Technical Design validation
-- local heuristic Grill Me engine
-- human and JSON Grill reports
-- TDD scenario generation
-- basic OpenAPI contract checks
-- implementation output guide generation
-- CI coverage for passing and blocked flows
-
-## Future Scope
-
-SpecGuard may support implementation outputs after validation, but only as downstream products of the SDD pipeline.
-
-Potential future areas:
-
-- richer agent handoff templates
-- implementation output conventions for `develop/<stack>/`
-- implementation-plan generation
-- model-backed Grill Me review
-- richer OpenAPI and JSON Schema validation
-- package publishing
-- editor integrations
-
-The intent is not prompt-to-code automation. The intent is validated implementation readiness.
-
-Generated application code should live outside the specs package, typically under:
-
-```text
-develop/spring/
-develop/react/
-develop/fastapi/
+python -m cli.specguard run examples/example --no-llm
+python -m cli.specguard run examples/risk/todo-api --no-llm
 ```
 
 ## Contributing
 
-Contributions should preserve the SDD workflow:
+Contributions should preserve the SpecGuard workflow:
 
 ```text
-Discovery -> Spec Refinement -> Technical Design -> Grill -> Test -> Contract -> Implementation Outputs
+Discovery -> Spec Package -> Technical Design -> Grill Review
+-> Test -> Contract -> Implementation Outputs
 ```
 
-Before opening a pull request, make sure:
+Before opening a pull request:
 
-- discovery, spec, and technical design artifacts are included for feature work
-- Critical and Major Grill Me findings are resolved or intentionally documented
-- tests are included or updated
-- `pytest` passes
+- keep generated application code outside `specs/`
+- resolve or intentionally document Critical and Major Grill Review findings
+- include or update tests
+- run `pytest`
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 

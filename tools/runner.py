@@ -6,12 +6,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.artifact_generator import ensure_contract, generate_implementation_output, generate_technical_design
+from tools.artifact_generator import ensure_contract, generate_implementation_output, generate_llm_technical_design, generate_technical_design
 from tools.contract_checker import check_contracts
 from tools.grill_engine import run_grill
+from tools.llm_client import LLMConfigError, build_llm_client
 from tools.result import CheckResult
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
+from tools.ux import green
 
 
 def _feature_dirs(path: Path) -> list[Path]:
@@ -22,7 +24,14 @@ def _feature_dirs(path: Path) -> list[Path]:
     return [path]
 
 
-def run_pipeline(path: Path) -> CheckResult:
+def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
+    if force or not output.exists():
+        return True
+    output_mtime = output.stat().st_mtime
+    return any(source.exists() and source.stat().st_mtime > output_mtime for source in sources)
+
+
+def run_pipeline(path: Path, llm_client: object | None = None, force: bool = False, grill_mode: str = "initial") -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
@@ -39,9 +48,22 @@ def run_pipeline(path: Path) -> CheckResult:
             result.add_next_step("Fix discovery.md or spec.md before running the pipeline again.")
             continue
 
-        technical_design = generate_technical_design(feature_dir)
+        discovery_path = feature_dir / "discovery.md"
+        spec_path = feature_dir / "spec.md"
+        technical_design_path = feature_dir / "technical-design.md"
+        test_path = feature_dir / "tests" / f"{feature_dir.name}.test.md"
+        contract_path = feature_dir / "contracts" / "openapi.yaml"
+
+        refresh_design = force or not technical_design_path.exists()
+        if llm_client is None:
+            technical_design = generate_technical_design(feature_dir, force=refresh_design)
+        else:
+            technical_design = generate_llm_technical_design(feature_dir, llm_client, force=refresh_design)
         action = "Generated" if technical_design.created else "Reused"
-        result.add_info(f"{action} technical design: {technical_design.path}")
+        mode = " LLM" if llm_client is not None and technical_design.created else ""
+        result.add_info(f"{action}{mode} technical design: {technical_design.path}")
+        if not force and not technical_design.created and _is_stale(technical_design_path, [discovery_path, spec_path], False):
+            result.add_next_step(f"Review stale technical design or regenerate it with --force: {technical_design_path}")
 
         technical_validation = validate_technical_design(feature_dir)
         result.messages.extend(technical_validation.messages)
@@ -51,17 +73,19 @@ def run_pipeline(path: Path) -> CheckResult:
             result.add_next_step(f"Fix technical design: {technical_design.path}")
             continue
 
-        grill = run_grill(feature_dir)
+        grill = run_grill(feature_dir, llm_client=llm_client, review_mode=grill_mode)
         result.messages.extend(grill.messages)
         result.next_steps.extend(grill.next_steps)
         if not grill.ok:
             result.ok = False
             continue
 
-        test_output = generate_tests(feature_dir)
+        refresh_tests = _is_stale(test_path, [spec_path, technical_design_path], force)
+        test_output = generate_tests(feature_dir, force=refresh_tests)
         result.add_info(f"TDD scenarios ready: {test_output}")
 
-        contract = ensure_contract(feature_dir)
+        refresh_contract = _is_stale(contract_path, [spec_path], force)
+        contract = ensure_contract(feature_dir, force=refresh_contract)
         contract_action = "Generated" if contract.created else "Reused"
         result.add_info(f"{contract_action} contract scaffold: {contract.path}")
 
@@ -76,6 +100,9 @@ def run_pipeline(path: Path) -> CheckResult:
         implementation_output = generate_implementation_output(feature_dir)
         output_action = "Generated" if implementation_output.created else "Reused"
         result.add_info(f"{output_action} implementation output guide: {implementation_output.path}")
+        result.add_info(green("SpecGuard says this spec package is implementation-ready. You can now start implementation with Codex or Claude Code using the generated guide."))
+        result.add_next_step(f"Use this guide with Codex or Claude Code: {implementation_output.path}")
+        result.add_next_step("SpecGuard stops at spec validation. Put application code under develop/<stack>/ when you implement.")
 
     return result
 
@@ -83,8 +110,25 @@ def run_pipeline(path: Path) -> CheckResult:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("path", nargs="?", default="specs")
+    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic Grill Me")
+    parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
+    parser.add_argument("--llm-model", help="Override the configured LLM model")
     args = parser.parse_args()
-    result = run_pipeline(Path(args.path))
+
+    llm_client = None
+    if not args.no_llm:
+        try:
+            llm_client = build_llm_client(Path.cwd(), mode=args.llm_mode, model=args.llm_model)
+        except LLMConfigError as exc:
+            result = CheckResult("SpecGuard pipeline")
+            result.add_error(f"LLM provider is required by default: {exc}")
+            result.add_next_step("Configure a provider: python -m cli.specguard auth setup")
+            result.add_next_step("Use --no-llm only for local heuristic checks or CI examples.")
+            result.print()
+            return 1
+
+    result = run_pipeline(Path(args.path), llm_client=llm_client, force=args.force)
     result.print()
     return 0 if result.ok else 1
 

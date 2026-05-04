@@ -10,6 +10,36 @@ Discovery -> Draft Specs -> User Refinement -> Technical Design -> Grill Me -> T
 
 After that, the user can run Codex, Claude Code, or another coding agent against the generated spec package.
 
+## 0. Configure LLM Provider
+
+SpecGuard supports two LLM provider modes today:
+
+- `codex`: local Codex CLI installed on the machine.
+- `openai`: OpenAI Platform Responses API.
+
+Claude Code provider integration is planned later. For now, Claude Code should be used separately after SpecGuard produces implementation outputs.
+
+Configure local Codex:
+
+```bash
+python -m cli.specguard auth setup --mode codex --model gpt-5.4
+```
+
+Codex mode defaults to `gpt-5.4` when setup asks for a model. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in.
+
+Configure OpenAI Platform:
+
+```bash
+python -m cli.specguard auth setup --mode openai
+```
+
+Inspect or reset configuration:
+
+```bash
+python -m cli.specguard auth status
+python -m cli.specguard auth logout
+```
+
 ## 1. Init Runs Discovery
 
 Run:
@@ -18,27 +48,37 @@ Run:
 python -m cli.specguard init my-feature
 ```
 
-You can also run `init` with no arguments. Every Discovery prompt displays a default value, and pressing Enter accepts that default:
+If no provider is configured, interactive `init` offers to run provider setup first.
+
+In LLM mode, Discovery is a short guided conversation. SpecGuard shows each question immediately, includes a visible default, and waits for user input without blocking on an LLM response. The user answers naturally, presses Enter to accept a default, or types `done` / `complete` when the conversation is ready to become a draft spec. The configured LLM then synthesizes the draft `spec.md` from the guided answers.
+
+For OpenAI Platform mode, set an API key or store it in the local ignored config:
 
 ```bash
-python -m cli.specguard init
+export OPENAI_API_KEY=...
+export SPECGUARD_LLM_MODEL=gpt-5.1
+python -m cli.specguard auth setup --mode openai
 ```
 
-The same defaults are visible in CLI help:
+You can also run deterministic local Discovery without an LLM:
 
 ```bash
-python -m cli.specguard init --help
+python -m cli.specguard init my-feature --no-llm
 ```
 
-SpecGuard asks Discovery questions and creates draft specs under `specs/`:
+SpecGuard creates draft specs under `specs/`:
 
 ```text
 specs/my-feature/
 |-- discovery.md
-`-- spec.md
+|-- spec.md
+|-- plan.md
+|-- tasks.md
+|-- constitution.md
+`-- checklists/
 ```
 
-The generated `spec.md` follows a Spec Kit-inspired shape:
+The generated spec package follows a Spec Kit-inspired shape:
 
 - user scenarios and testing
 - functional requirements
@@ -46,7 +86,9 @@ The generated `spec.md` follows a Spec Kit-inspired shape:
 - error cases
 - key entities
 - out-of-scope boundaries
-- review checklist
+- implementation plan
+- task breakdown
+- constitution and readiness checklist
 
 ## 2. User Refines The Spec
 
@@ -54,9 +96,49 @@ The user reviews and edits:
 
 ```text
 specs/my-feature/spec.md
+specs/my-feature/plan.md
+specs/my-feature/tasks.md
+specs/my-feature/constitution.md
+specs/my-feature/checklists/spec-readiness.md
 ```
 
-This is the main human-owned artifact. SpecGuard can draft it, but it should not replace product or engineering judgment.
+These are human-owned artifacts. SpecGuard can draft them, but it should not replace product or engineering judgment.
+
+The CLI intentionally reminds the user to review and strengthen the generated spec before continuing. The next command should be run only after the spec has been checked and edited.
+
+### Optional: Try The Authored Example Package
+
+The repository includes `example/`, a pre-run authored spec package. Treat it as the state after `init` has created draft files and a user has replaced those drafts with real development requirements.
+
+The package is for testing SpecGuard behavior, not for implementing SpecGuard itself. It uses the same Spec Kit-inspired structure expected from real feature planning:
+
+```text
+example/
+|-- discovery.md
+|-- spec.md
+|-- plan.md
+|-- tasks.md
+|-- constitution.md
+`-- checklists/spec-readiness.md
+```
+
+PowerShell:
+
+```powershell
+python -m cli.specguard init your-feature-name
+Copy-Item -Recurse -Force example\* specs\your-feature-name\
+python -m cli.specguard run specs\your-feature-name --no-llm
+```
+
+Bash:
+
+```bash
+python -m cli.specguard init your-feature-name
+cp -R example/. specs/your-feature-name/
+python -m cli.specguard run specs/your-feature-name --no-llm
+```
+
+After this test, replace the copied files with your own feature's product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria.
 
 ## 3. Run Builds The Implementation Basis
 
@@ -66,11 +148,27 @@ Run:
 python -m cli.specguard run specs/my-feature
 ```
 
+`run` uses the configured LLM provider for Technical Design and Grill Me. Use `--force` when regenerated derived artifacts are needed:
+
+```bash
+python -m cli.specguard run specs/my-feature --force
+```
+
 SpecGuard then performs:
 
 ```text
 Technical Design -> Grill Me -> Test -> Contract -> Implementation Outputs
 ```
+
+Grill Me reviews every authored spec document in the feature folder, excluding generated Grill Me reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Outputs.
+
+Interactive refinement uses this loop:
+
+```text
+Initial Grill Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
+```
+
+The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
 
 Generated or reused artifacts:
 
@@ -84,7 +182,21 @@ specs/my-feature/
 `-- implementation-output.md
 ```
 
-SpecGuard does not overwrite existing technical design, tests, or contracts by default.
+SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
+
+In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Grill Me review or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so Grill Me checks whether the regenerated spec is ready. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+
+If a local Codex follow-up request times out, check `python -m cli.specguard auth status` and increase the timeout:
+
+```bash
+python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
+```
+
+Use `--no-llm` only for deterministic local checks or CI examples:
+
+```bash
+python -m cli.specguard run specs/my-feature --no-llm
+```
 
 ## 4. User Refines And Repeats
 
@@ -93,6 +205,10 @@ If Grill Me blocks the workflow, update:
 ```text
 discovery.md
 spec.md
+plan.md
+tasks.md
+constitution.md
+checklists/spec-readiness.md
 technical-design.md
 ```
 
@@ -102,7 +218,7 @@ Then run:
 python -m cli.specguard run specs/my-feature
 ```
 
-Repeat until Critical and Major findings are resolved.
+Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the Grill Me readiness threshold is met.
 
 ## 5. Coding Agents Implement Later
 
@@ -112,6 +228,10 @@ Coding agents should focus on:
 
 ```text
 spec.md
+plan.md
+tasks.md
+constitution.md
+checklists/spec-readiness.md
 technical-design.md
 tests/
 contracts/
