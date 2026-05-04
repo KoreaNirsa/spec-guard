@@ -1,12 +1,5 @@
 openapi: 3.1.0
 info:
-  title: Simple Auth API
+  title: simple-auth API
   version: 0.1.0
-paths:
-  /login:
-    post:
-      responses:
-        "200":
-          description: Authenticated
-        "401":
-          description: Invalid credentials
+paths: {}

@@ -13,27 +13,27 @@ def feature_dirs(path: Path) -> list[Path]:
     return []
 
 
-def load_grill_report(feature_dir: Path) -> dict[str, Any] | None:
-    report_path = feature_dir / "grill.json"
+def load_readiness_report(feature_dir: Path) -> dict[str, Any] | None:
+    report_path = feature_dir / "readiness-review.json"
     if not report_path.exists():
         return None
     return json.loads(report_path.read_text(encoding="utf-8"))
 
 
-def feature_grill_reports(path: Path) -> list[tuple[Path, dict[str, Any]]]:
+def feature_readiness_reports(path: Path) -> list[tuple[Path, dict[str, Any]]]:
     reports: list[tuple[Path, dict[str, Any]]] = []
     for feature_dir in feature_dirs(path):
-        report = load_grill_report(feature_dir)
+        report = load_readiness_report(feature_dir)
         if report is not None:
             reports.append((feature_dir, report))
     return reports
 
 
 def blocked_feature_reports(path: Path) -> list[tuple[Path, dict[str, Any]]]:
-    return [(feature_dir, report) for feature_dir, report in feature_grill_reports(path) if report.get("blocked")]
+    return [(feature_dir, report) for feature_dir, report in feature_readiness_reports(path) if report.get("blocked")]
 
 
-def render_grill_summary(feature_dir: Path, report: dict[str, Any], *, limit: int = 5) -> str:
+def render_readiness_summary(feature_dir: Path, report: dict[str, Any], *, limit: int = 5) -> str:
     summary = report.get("summary", {})
     issues = report.get("issues", [])
     lines = [
@@ -52,8 +52,8 @@ def render_grill_summary(feature_dir: Path, report: dict[str, Any], *, limit: in
     return "\n".join(lines)
 
 
-def grill_report_stale_reason(feature_dir: Path) -> str | None:
-    report_path = feature_dir / "grill.json"
+def readiness_report_stale_reason(feature_dir: Path) -> str | None:
+    report_path = feature_dir / "readiness-review.json"
     if not report_path.exists():
         return None
 
@@ -70,7 +70,7 @@ def grill_report_stale_reason(feature_dir: Path) -> str | None:
     newer_sources = [source.name for source in sources if source.exists() and source.stat().st_mtime > report_mtime]
     if not newer_sources:
         return None
-    return f"Grill Me report may be stale; newer source file(s): {', '.join(newer_sources)}"
+    return f"SpecGuard Review report may be stale; newer source file(s): {', '.join(newer_sources)}"
 
 
 def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
@@ -81,10 +81,10 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
     constitution = _compact_text(_read_optional(feature_dir / "constitution.md"), 2500)
     checklist = _compact_text(_read_optional(feature_dir / "checklists" / "spec-readiness.md"), 2500)
     technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
-    grill_findings = _compact_grill_findings(feature_dir)
+    readiness_findings = _compact_readiness_findings(feature_dir)
     instructions = "\n".join([
         "You are SpecGuard's spec refinement assistant and implementation-readiness editor.",
-        "Revise spec.md so the Grill Me findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
+        "Revise spec.md so the Readiness Findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
         "Maintain consistency with plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, and technical-design.md.",
         "SpecGuard is not prompt-to-code. Do not write application code.",
         "Return ONLY the full replacement Markdown for spec.md.",
@@ -92,7 +92,7 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
         "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
         "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
         "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
-        "Prioritize Critical and Major Grill Me findings.",
+        "Prioritize Critical and Major Readiness Findings.",
         "Do not include commentary, patch markers, or code fences.",
     ])
     input_text = "\n\n".join([
@@ -110,8 +110,8 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
         checklist,
         "# technical-design.md excerpt",
         technical_design,
-        "# Grill Me findings",
-        grill_findings,
+        "# Readiness Findings",
+        readiness_findings,
     ])
     return _strip_markdown_fence(llm_client.generate_text(instructions, input_text, max_output_tokens=3000))
 
@@ -128,10 +128,10 @@ def _read_optional(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _compact_grill_findings(feature_dir: Path) -> str:
-    report = load_grill_report(feature_dir)
+def _compact_readiness_findings(feature_dir: Path) -> str:
+    report = load_readiness_report(feature_dir)
     if not report:
-        return _compact_text(_read_optional(feature_dir / "grill.md"), 3000)
+        return _compact_text(_read_optional(feature_dir / "readiness-review.md"), 3000)
 
     issues = report.get("issues", [])
     if not isinstance(issues, list):
@@ -143,7 +143,7 @@ def _compact_grill_findings(feature_dir: Path) -> str:
         key=lambda issue: severity_rank.get(str(issue.get("severity")), 9),
     )
     lines = [
-        "Use these Grill Me findings as the required revision backlog.",
+        "Use these Readiness Findings as the required revision backlog.",
         f"Summary: {json.dumps(report.get('summary', {}), ensure_ascii=False)}",
         "",
     ]

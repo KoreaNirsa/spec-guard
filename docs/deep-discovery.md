@@ -14,7 +14,7 @@ Why:
 
 - It is simple enough for contributors to understand without learning a new branded method first.
 - It leaves room for multiple discovery techniques later.
-- It keeps the workflow readable: `Discovery -> Draft Spec -> User Refinement -> Technical Design -> Grill Me`.
+- It keeps the workflow readable: `Discovery -> Draft Spec -> User Refinement -> Technical Design -> SpecGuard Review`.
 
 Other terms considered:
 
@@ -30,12 +30,12 @@ Discovery
   -> Draft Spec
   -> User Refinement
   -> Technical Design
-  -> Grill Me
+  -> SpecGuard Review
   -> TDD
   -> Contract Check
 ```
 
-Discovery asks what should be understood before a spec and technical design harden. `specguard init` uses the answers to generate draft specs under `specs/`. Grill Me later challenges the spec and technical design before tests, contracts, and implementation outputs are produced.
+Discovery asks what should be understood before a spec and technical design harden. `specguard init` uses the answers to generate draft specs under `specs/`. SpecGuard Review later challenges the spec and technical design before tests, contracts, and implementation outputs are produced.
 
 ## Question Phases
 
@@ -51,4 +51,4 @@ Discovery asks what should be understood before a spec and technical design hard
 
 ## Rule Of Thumb
 
-Use Discovery to expose hidden assumptions. Use Grill Me to challenge weak implementation bases across discovery, spec, technical design, tests, and contracts.
+Use Discovery to expose hidden assumptions. Use SpecGuard Review to challenge weak implementation bases across discovery, spec, technical design, tests, and contracts.

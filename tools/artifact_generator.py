@@ -113,8 +113,8 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
         "- Source spec: `spec.md`.",
         f"- Requirement focus: {requirement_summary}",
         f"- Entity focus: {entity_summary}",
-        "- Test scenarios: Generated under `tests/` after Grill Me passes.",
-        "- Contract: Generated under `contracts/` after Grill Me passes.",
+        "- Test scenarios: Generated under `tests/` after SpecGuard Review passes.",
+        "- Contract: Generated under `contracts/` after SpecGuard Review passes.",
         "",
         "## Failure Handling",
         "",
@@ -122,7 +122,7 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
         "- Invalid input returns a clear error.",
         "- Unauthorized access is rejected before state change.",
         "- Ambiguous behavior becomes a spec update instead of implementation guesswork.",
-        "- Critical or Major Grill Me findings block implementation outputs.",
+        "- Critical or Major Readiness Findings block implementation outputs.",
         "",
     ])
     output.write_text(content, encoding="utf-8")
@@ -216,7 +216,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "## SpecGuard-Only Artifacts",
         "",
         "- `discovery.md` is for SpecGuard discovery and user refinement.",
-        "- `grill.md` and `grill.json` are for SpecGuard adversarial validation.",
+        "- `readiness-review.md` and `readiness-review.json` are for SpecGuard adversarial validation.",
         "- Coding agents should treat the agent input artifacts as the implementation basis after SpecGuard reports implementation-ready status.",
         "",
         "## Output Location",

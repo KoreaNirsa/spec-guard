@@ -7,7 +7,7 @@ SpecGuard is a validation-first workflow for AI-assisted software development.
 It is not a prompt-to-code generator. SpecGuard helps you turn an idea into a reviewed, testable, implementation-ready spec package before Codex, Claude Code, or another coding agent starts writing application code.
 
 ```text
-Discovery -> Spec Package -> Technical Design -> Initial Grill Review
+Discovery -> Spec Package -> Technical Design -> Initial SpecGuard Review
 -> Spec Regeneration -> Verification Review -> Test -> Contract
 -> Implementation Outputs -> AI Implementation
 ```
@@ -135,27 +135,27 @@ python -m cli.specguard run specs/your-feature-name
 This starts the implementation-readiness pipeline:
 
 ```text
-Technical Design -> Initial Grill Review -> READY or NOT READY
+Technical Design -> Initial SpecGuard Review -> READY or NOT READY
 ```
 
-Grill Review inspects the full spec package and generated technical design. It looks for blockers before implementation begins.
+SpecGuard Review inspects the full spec package and generated technical design. It looks for blockers before implementation begins.
 
 Run is a validator, not the place where product intent is invented. Use it after the spec package has enough real detail to review.
 
 ### 3. Iterate Until Ready
 
-If Grill Review returns NOT READY, use the continuation menu:
+If SpecGuard Review returns NOT READY, use the continuation menu:
 
 ```text
-[1] View Grill Me review
-[2] Regenerate spec from Grill Me review (auto-runs Grill Me review after)
+[1] View Readiness Findings
+[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)
 [q] Exit
 ```
 
 The loop is:
 
 ```text
-Initial Grill Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
+Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
 ```
 
 The initial review is broad and adversarial. After spec regeneration, Verification Review checks whether previous blockers were resolved and only adds new Critical or Major findings when there is direct implementation-blocking evidence.
@@ -179,7 +179,7 @@ develop/<stack>/
 
 Give the implementation output guide to Codex, Claude Code, or another coding agent, and place application code under `develop/<stack>/`.
 
-## Grill Review Readiness
+## SpecGuard Readiness Gate
 
 SpecGuard uses this readiness threshold:
 
@@ -203,7 +203,7 @@ Useful options:
 - `--force`: regenerate derived artifacts such as technical design.
 - `--follow-up`: force the interactive continuation menu.
 - `--no-follow-up`: exit immediately after the pipeline.
-- `--no-llm`: use local deterministic checks and heuristic Grill Review.
+- `--no-llm`: use local deterministic checks and heuristic SpecGuard Review.
 
 CI or scripted example:
 
@@ -232,14 +232,14 @@ python -m cli.specguard run examples/risk/todo-api --no-llm
 Contributions should preserve the SpecGuard workflow:
 
 ```text
-Discovery -> Spec Package -> Technical Design -> Grill Review
+Discovery -> Spec Package -> Technical Design -> SpecGuard Review
 -> Test -> Contract -> Implementation Outputs
 ```
 
 Before opening a pull request:
 
 - keep generated application code outside `specs/`
-- resolve or intentionally document Critical and Major Grill Review findings
+- resolve or intentionally document Critical and Major Readiness Findings
 - include or update tests
 - run `pytest`
 

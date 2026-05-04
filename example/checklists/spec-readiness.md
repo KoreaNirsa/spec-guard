@@ -16,7 +16,7 @@
 - [x] Email timeout behavior is defined.
 - [x] Token schema version, expiration, and invalidation behavior are defined.
 
-## Grill Me Gate
+## SpecGuard Readiness Gate
 
 - [ ] Critical findings: 0.
 - [ ] Major findings: 0.
