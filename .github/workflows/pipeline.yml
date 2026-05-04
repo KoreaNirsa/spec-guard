@@ -37,8 +37,8 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt
 
-      - name: Run user-auth
-        run: python tools/runner.py examples/user-auth
+      - name: Run example
+        run: python tools/runner.py examples/example
 
   risk-example:
     name: Risk Example

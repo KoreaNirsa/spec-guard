@@ -1,4 +1,4 @@
-# Spec: user-auth
+# Spec: example
 
 ## Problem
 

@@ -1,4 +1,4 @@
-# TDD Scenarios: user-auth
+# TDD Scenarios: example
 
 ## Source
 

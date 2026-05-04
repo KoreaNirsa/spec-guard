@@ -15,13 +15,13 @@ After that, the user can run Codex, Claude Code, or another coding agent against
 Run:
 
 ```bash
-python -m cli.specguard init user-auth
+python -m cli.specguard init example
 ```
 
 SpecGuard asks Discovery questions and creates draft specs under `specs/`:
 
 ```text
-specs/user-auth/
+specs/example/
 |-- discovery.md
 `-- spec.md
 ```
@@ -41,7 +41,7 @@ The generated `spec.md` follows a Spec Kit-inspired shape:
 The user reviews and edits:
 
 ```text
-specs/user-auth/spec.md
+specs/example/spec.md
 ```
 
 This is the main human-owned artifact. SpecGuard can draft it, but it should not replace product or engineering judgment.
@@ -51,7 +51,7 @@ This is the main human-owned artifact. SpecGuard can draft it, but it should not
 Run:
 
 ```bash
-python -m cli.specguard run specs/user-auth
+python -m cli.specguard run specs/example
 ```
 
 SpecGuard then performs:
@@ -63,7 +63,7 @@ Technical Design -> Grill Me -> Test -> Contract -> Implementation Outputs
 Generated or reused artifacts:
 
 ```text
-specs/user-auth/
+specs/example/
 |-- technical-design.md
 |-- grill.md
 |-- grill.json
@@ -72,7 +72,7 @@ specs/user-auth/
 `-- implementation-output.md
 ```
 
-SpecGuard does not overwrite user-authored technical design, tests, or contracts by default.
+SpecGuard does not overwrite existing technical design, tests, or contracts by default.
 
 ## 4. User Refines And Repeats
 
@@ -87,7 +87,7 @@ technical-design.md
 Then run:
 
 ```bash
-python -m cli.specguard run specs/user-auth
+python -m cli.specguard run specs/example
 ```
 
 Repeat until Critical and Major findings are resolved.

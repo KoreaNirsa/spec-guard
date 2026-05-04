@@ -1,4 +1,4 @@
-# Discovery: user-auth
+# Discovery: example
 
 ## Foundation
 

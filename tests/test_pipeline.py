@@ -112,8 +112,8 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
     return feature
 
 
-def test_user_auth_example_passes_and_emits_grill_json(tmp_path: Path) -> None:
-    feature = copy_example(tmp_path, "user-auth")
+def test_example_passes_and_emits_grill_json(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "example")
 
     result = run_pipeline(feature)
 

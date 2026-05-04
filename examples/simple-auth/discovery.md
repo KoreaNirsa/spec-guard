@@ -37,7 +37,7 @@
 
 - Simplify: Keep the example focused on authentication basics.
 - Automate later: Convert this into a risk example if simple-auth remains intentionally incomplete.
-- Open question: Whether to keep this example after user-auth fully replaces it.
+- Open question: Whether to keep this example alongside the primary passing example.
 
 ## Synthesis
 

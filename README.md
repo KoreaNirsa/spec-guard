@@ -158,25 +158,25 @@ pip install -r requirements.txt
 Start discovery and generate draft specs:
 
 ```bash
-python -m cli.specguard init user-auth
+python -m cli.specguard init example
 ```
 
 Review and strengthen the generated spec:
 
 ```text
-specs/user-auth/spec.md
+specs/example/spec.md
 ```
 
 Run the validation and artifact workflow:
 
 ```bash
-python -m cli.specguard run specs/user-auth
+python -m cli.specguard run specs/example
 ```
 
 Use the generated implementation guide with a coding agent:
 
 ```text
-specs/user-auth/implementation-output.md
+specs/example/implementation-output.md
 develop/<stack>/
 ```
 
@@ -223,12 +223,12 @@ Next steps:
 
 ```text
 examples/
-|-- user-auth/
+|-- example/
 `-- risk/
     `-- todo-api/
 ```
 
-- `examples/user-auth` is a passing SDD example.
+- `examples/example` is a passing SDD example.
 - `examples/risk/todo-api` is intentionally incomplete and should be blocked by Grill Me.
 
 ## CI
@@ -236,7 +236,7 @@ examples/
 The GitHub Actions workflow is split into explicit jobs:
 
 - `Tests`: runs the pytest suite
-- `Passing Example`: confirms `examples/user-auth` passes
+- `Passing Example`: confirms `examples/example` passes
 - `Risk Example`: confirms `examples/risk/todo-api` is blocked
 
 This makes both expected outcomes visible: a validated SDD flow should pass, and a risky implementation basis should fail.
@@ -252,7 +252,7 @@ pytest
 Run local pipeline checks:
 
 ```bash
-python -m cli.specguard run examples/user-auth
+python -m cli.specguard run examples/example
 python -m cli.specguard run examples/risk/todo-api
 ```
 

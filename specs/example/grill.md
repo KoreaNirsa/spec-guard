@@ -38,6 +38,6 @@ Identify logic flaws, edge cases, security issues, performance risks, and failur
 
 ## Input Summary
 
-- Discovery characters: 2395
-- Spec characters: 856
-- Technical design characters: 1324
+- Discovery characters: 2093
+- Spec characters: 854
+- Technical design characters: 1322

@@ -1,4 +1,4 @@
-# Technical Design: user-auth
+# Technical Design: example
 
 ## Architecture
 
