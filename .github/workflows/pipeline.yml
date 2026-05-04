@@ -18,6 +18,9 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt
 
+      - name: Run Tests
+        run: pytest
+
       - name: Run User Auth Example
         run: python tools/runner.py examples/user-auth
 

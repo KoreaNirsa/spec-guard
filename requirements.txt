@@ -1,1 +1,1 @@
-# Runtime dependencies are intentionally empty for the MVP.
+pytest>=8.0

@@ -43,6 +43,14 @@ python -m cli.specguard run examples/user-auth
 
 Advanced commands exist for development, but the product should feel like one command: `run`.
 
+## Tests
+
+```bash
+pytest
+```
+
+The test suite checks the passing example, the blocked risk example, non-destructive TDD generation, placeholder validation, and invalid contract detection.
+
 ## What Run Does
 
 ```text
