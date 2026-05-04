@@ -633,6 +633,31 @@ def test_post_run_spec_revision_timeout_keeps_menu_available(tmp_path: Path, cap
     assert "follow-up menu is still open" in rendered
 
 
+def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monkeypatch) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    result = run_pipeline(feature)
+    rerun_result = CheckResult("SpecGuard pipeline")
+    captured = {"force": False}
+
+    def fake_rerun_pipeline(args, llm_client, *, force: bool):
+        captured["force"] = force
+        return rerun_result
+
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
+
+    returned = specguard_cli._revise_spec_from_grill(
+        feature,
+        Namespace(force=False),
+        FakeRevisionLLM(),
+        result,
+    )
+
+    spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
+    assert returned is rerun_result
+    assert captured["force"]
+    assert "scope every todo read and write by owner" in spec
+
+
 def test_progress_line_shows_elapsed_time_and_phase() -> None:
     line = _progress_line("Revising spec.md", elapsed_seconds=25, tick=3)
 
@@ -688,6 +713,25 @@ def test_follow_up_empty_input_keeps_menu_open(monkeypatch, capsys) -> None:
     rendered = capsys.readouterr().out
     assert returned is result
     assert "No action selected" in rendered
+
+
+def test_follow_up_menu_uses_grill_review_actions(monkeypatch, capsys) -> None:
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr("builtins.input", lambda _prompt: "q")
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "[1] Grill Me 리뷰 진행" in rendered
+    assert "[2] Grill Me 리뷰 확인" in rendered
+    assert "[3] Grill Me 리뷰 기반 Spec 재생성 (실행 후 Grill Me 리뷰 자동 실행)" in rendered
+    assert "[q] 종료" in rendered
 
 
 def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:

@@ -274,10 +274,10 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
     path = Path(args.path)
     while True:
         print_section("Continue")
-        print("[1] Review Grill Me findings")
-        print("[2] Ask LLM to revise spec.md from Grill Me")
-        print("[3] Rerun pipeline")
-        print("[q] Exit")
+        print("[1] Grill Me 리뷰 진행")
+        print("[2] Grill Me 리뷰 확인")
+        print("[3] Grill Me 리뷰 기반 Spec 재생성 (실행 후 Grill Me 리뷰 자동 실행)")
+        print("[q] 종료")
         try:
             choice = input("Choose action: ").strip().lower()
         except EOFError:
@@ -290,18 +290,18 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             continue
         if choice in {"q", "quit", "exit"}:
             return result
-        if choice in {"1", "r", "review"}:
-            _print_grill_review(path)
-            continue
-        if choice in {"2", "f", "fix", "revise"}:
-            result = _revise_spec_from_grill(path, args, llm_client, result)
-            continue
-        if choice in {"3", "run", "rerun"}:
+        if choice in {"1", "run", "rerun", "grill"}:
             try:
-                result = _rerun_pipeline(args, llm_client, force=args.force)
+                result = _rerun_pipeline(args, llm_client, force=True)
             except LLMRequestError as exc:
                 _print_llm_failure(exc)
                 print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
+            continue
+        if choice in {"2", "r", "review"}:
+            _print_grill_review(path)
+            continue
+        if choice in {"3", "f", "fix", "revise"}:
+            result = _revise_spec_from_grill(path, args, llm_client, result)
             continue
 
         print("[WARN] Choose 1, 2, 3, or q to exit.")
@@ -352,20 +352,15 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
         print_hint("The follow-up menu is still open. Review findings or retry after adjusting timeout/model.")
         return result
     _print_markdown_preview(revised_spec)
-    if not _prompt_yes_no("Apply this revision to spec.md?", default=False):
-        print("[WARN] Revision was not applied.")
-        return result
-
     spec_path = apply_spec_revision(feature_dir, revised_spec)
     print(f"[PASS] Updated spec: {spec_path}")
-    if _prompt_yes_no("Rerun the pipeline now with --force?", default=True):
-        try:
-            return _rerun_pipeline(args, llm_client, force=True)
-        except LLMRequestError as exc:
-            _print_llm_failure(exc)
-            print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
-            return result
-    print_hint("Run again when ready: python -m cli.specguard run specs --force")
+    print_hint("Automatically re-running the pipeline so Grill Me is refreshed from the regenerated spec.")
+    try:
+        return _rerun_pipeline(args, llm_client, force=True)
+    except LLMRequestError as exc:
+        _print_llm_failure(exc)
+        print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
+        return result
     return result
 
 
