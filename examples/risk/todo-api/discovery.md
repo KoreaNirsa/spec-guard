@@ -42,5 +42,5 @@
 ## Synthesis
 
 - Decision: Do not implement until ownership boundary and delete semantics are fixed.
-- Required artifacts: spec.md, design.md, grill.md, grill.json, tests, and OpenAPI contract.
+- Required artifacts: spec.md, technical-design.md, grill.md, grill.json, tests, and OpenAPI contract.
 - Stop condition: Any design that reads or writes todos by id without owner scope should be blocked.

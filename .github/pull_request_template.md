@@ -2,7 +2,7 @@
 
 - [ ] Written
 
-## Design
+## Technical Design
 
 - [ ] Written
 

@@ -22,7 +22,7 @@ DISCOVERY_REQUIRED_SECTIONS = {
     "synthesis": "Synthesis",
 }
 
-DESIGN_REQUIRED_SECTIONS = {
+TECHNICAL_DESIGN_REQUIRED_SECTIONS = {
     "architecture": "Architecture",
     "data flow": "Data Flow",
     "state": "State",
@@ -114,7 +114,7 @@ def validate_feature(path: Path) -> CheckResult:
     for feature_dir in feature_dirs:
         _validate_doc(feature_dir / "discovery.md", DISCOVERY_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "spec.md", SPEC_REQUIRED_SECTIONS, result)
-        _validate_doc(feature_dir / "design.md", DESIGN_REQUIRED_SECTIONS, result)
+        _validate_doc(feature_dir / "technical-design.md", TECHNICAL_DESIGN_REQUIRED_SECTIONS, result)
 
         spec_path = feature_dir / "spec.md"
         if spec_path.exists():
@@ -131,7 +131,7 @@ def validate_feature(path: Path) -> CheckResult:
             result.add_error(f"Missing test scenarios in: {tests_dir}")
 
     if result.ok:
-        result.add_info("Discovery, spec, design, and test scenario checks passed.")
+        result.add_info("Discovery, spec, technical design, and test scenario checks passed.")
     return result
 
 

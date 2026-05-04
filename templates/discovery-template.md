@@ -1,6 +1,6 @@
 # Discovery: {{ feature_name }}
 
-Use this before writing `spec.md` or `design.md`. Keep answers short, concrete, and honest.
+Use this before writing `spec.md` or `technical-design.md`. Keep answers short, concrete, and honest.
 
 ## Foundation
 

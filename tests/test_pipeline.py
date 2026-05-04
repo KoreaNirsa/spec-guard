@@ -27,7 +27,7 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
 
     feature.joinpath("discovery.md").write_text(
         "\n".join([
-            "# Deep Discovery: feature",
+            "# Discovery: feature",
             "",
             "## Foundation",
             "",
@@ -47,7 +47,7 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
             "## Synthesis",
             "",
             "- Decision: Build only after validation passes.",
-            "- Output: Spec, design, tests, and contract.",
+            "- Output: Spec, technical design, tests, and contract.",
             "",
         ]),
         encoding="utf-8",
@@ -73,9 +73,9 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
         ]),
         encoding="utf-8",
     )
-    feature.joinpath("design.md").write_text(
+    feature.joinpath("technical-design.md").write_text(
         "\n".join([
-            "# Design: feature",
+            "# Technical Design: feature",
             "",
             "## Architecture",
             "",

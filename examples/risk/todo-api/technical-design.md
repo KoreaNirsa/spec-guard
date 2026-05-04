@@ -1,4 +1,4 @@
-# Design: todo-api
+# Technical Design: todo-api
 
 ## Architecture
 

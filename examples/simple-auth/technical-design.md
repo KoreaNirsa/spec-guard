@@ -1,4 +1,4 @@
-# Design: simple-auth
+# Technical Design: simple-auth
 
 ## Architecture
 

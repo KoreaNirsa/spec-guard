@@ -22,21 +22,21 @@ Fix: Run the strict Grill Me prompt with a model and add human review before imp
 
 - Convert every Critical and Major item into acceptance criteria before implementation.
 - Add tests for authorization, invalid state, retry, timeout, and duplicate request behavior.
-- Re-run `specguard run` after updating `spec.md` and `design.md`.
+- Re-run `specguard run` after updating `spec.md` and `technical-design.md`.
 
 ## Prompt Mode
 
 ```text
 You are a senior software architect, security expert, and reliability engineer.
 
-Your task is NOT to approve the design.
-Your task is to BREAK the design.
+Your task is NOT to approve the implementation basis.
+Your task is to BREAK the implementation basis.
 
-Analyze the design aggressively and identify logic flaws, edge cases,
-security issues, performance risks, and failure scenarios.
+Analyze the Discovery, Spec, Technical Design, tests, and contracts aggressively.
+Identify logic flaws, edge cases, security issues, performance risks, and failure scenarios.
 ```
 
 ## Input Summary
 
 - Spec characters: 856
-- Design characters: 1314
+- Technical design characters: 1324

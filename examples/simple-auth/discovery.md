@@ -42,5 +42,5 @@
 ## Synthesis
 
 - Decision: Keep as a simple demonstration, not the primary passing example.
-- Required artifacts: spec.md, design.md, grill.md, tests, and OpenAPI contract.
+- Required artifacts: spec.md, technical-design.md, grill.md, tests, and OpenAPI contract.
 - Stop condition: Do not present this as production-ready authentication.

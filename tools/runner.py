@@ -26,7 +26,7 @@ def run_pipeline(path: Path) -> CheckResult:
     result.next_steps.extend(validation.next_steps)
     if not validation.ok:
         result.ok = False
-        result.add_next_step("Fix discovery.md, spec.md, design.md, or tests before running the pipeline again.")
+        result.add_next_step("Fix discovery.md, spec.md, technical-design.md, or tests before running the pipeline again.")
         return result
 
     for feature_dir in _feature_dirs(path):

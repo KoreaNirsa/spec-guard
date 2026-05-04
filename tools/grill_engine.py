@@ -14,11 +14,11 @@ from tools.result import CheckResult
 
 GRILL_PROMPT = """You are a senior software architect, security expert, and reliability engineer.
 
-Your task is NOT to approve the design.
-Your task is to BREAK the design.
+Your task is NOT to approve the implementation basis.
+Your task is to BREAK the implementation basis.
 
-Analyze the design aggressively and identify logic flaws, edge cases,
-security issues, performance risks, and failure scenarios.
+Analyze the Discovery, Spec, Technical Design, tests, and contracts aggressively.
+Identify logic flaws, edge cases, security issues, performance risks, and failure scenarios.
 """
 
 
@@ -46,21 +46,21 @@ def _is_placeholder(text: str) -> bool:
     return not text.strip() or _contains(lowered, "describe ", "list ", "pending", "tbd")
 
 
-def _analyze(spec: str, design: str) -> list[GrillIssue]:
-    text = f"{spec}\n{design}".lower()
-    design_text = design.lower()
+def _analyze(spec: str, technical_design: str) -> list[GrillIssue]:
+    text = f"{spec}\n{technical_design}".lower()
+    technical_design_text = technical_design.lower()
     issues: list[GrillIssue] = []
 
-    architecture = _section(design, "Architecture")
-    data_flow = _section(design, "Data Flow")
-    state = _section(design, "State")
-    failure = _section(design, "Failure Handling")
+    architecture = _section(technical_design, "Architecture")
+    data_flow = _section(technical_design, "Data Flow")
+    state = _section(technical_design, "State")
+    failure = _section(technical_design, "Failure Handling")
 
     if _is_placeholder(architecture):
         issues.append(GrillIssue(
             "Critical",
             "Architecture is still a placeholder",
-            "The design does not name concrete components, ownership boundaries, or persistence responsibilities.",
+            "The technical design does not name concrete components, ownership boundaries, or persistence responsibilities.",
             "AI implementation can invent architecture that conflicts with the intended workflow.",
             "Define the API layer, service layer, data store, external dependencies, and ownership for each decision.",
         ))
@@ -102,15 +102,15 @@ def _analyze(spec: str, design: str) -> list[GrillIssue]:
             ))
 
     if _contains(text, "todo", "task"):
-        if not _contains(design_text, "owner_user_id", "owner id", "authorization", "tenant"):
+        if not _contains(technical_design_text, "owner_user_id", "owner id", "authorization", "tenant"):
             issues.append(GrillIssue(
                 "Critical",
                 "Todo ownership boundary is unclear",
-                "The design does not prove that users can only read or mutate their own todos.",
+                "The technical design does not prove that users can only read or mutate their own todos.",
                 "A generated API may expose cross-user data through list, update, or delete operations.",
                 "Require owner-scoped queries and authorization checks for every todo read/write path.",
             ))
-        if _contains(text, "delete") and not _contains(design_text, "soft delete", "restore", "audit"):
+        if _contains(text, "delete") and not _contains(technical_design_text, "soft delete", "restore", "audit"):
             issues.append(GrillIssue(
                 "Major",
                 "Delete semantics are unsafe",
@@ -176,7 +176,7 @@ def _build_summary(issues: list[GrillIssue]) -> dict[str, int]:
     }
 
 
-def _build_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
+def _build_report(spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
     critical = [issue for issue in issues if issue.severity == "Critical"]
     major = [issue for issue in issues if issue.severity == "Major"]
     minor = [issue for issue in issues if issue.severity == "Minor"]
@@ -191,7 +191,7 @@ def _build_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
         "",
         "- Convert every Critical and Major item into acceptance criteria before implementation.",
         "- Add tests for authorization, invalid state, retry, timeout, and duplicate request behavior.",
-        "- Re-run `specguard run` after updating `spec.md` and `design.md`.",
+        "- Re-run `specguard run` after updating `spec.md` and `technical-design.md`.",
         "",
         "## Prompt Mode",
         "",
@@ -202,12 +202,12 @@ def _build_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
         "## Input Summary",
         "",
         f"- Spec characters: {len(spec)}",
-        f"- Design characters: {len(design)}",
+        f"- Technical design characters: {len(technical_design)}",
         "",
     ])
 
 
-def _build_json_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
+def _build_json_report(spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
     summary = _build_summary(issues)
     payload = {
         "schema_version": "0.1",
@@ -216,7 +216,7 @@ def _build_json_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
         "issues": [asdict(issue) for issue in issues],
         "input": {
             "spec_characters": len(spec),
-            "design_characters": len(design),
+            "technical_design_characters": len(technical_design),
         },
         "prompt_mode": GRILL_PROMPT.strip(),
     }
@@ -226,26 +226,26 @@ def _build_json_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
 def run_grill(path: Path) -> CheckResult:
     result = CheckResult("Grill Me")
     spec_path = path / "spec.md"
-    design_path = path / "design.md"
+    technical_design_path = path / "technical-design.md"
     grill_path = path / "grill.md"
     grill_json_path = path / "grill.json"
 
     if not spec_path.exists():
         result.add_error(f"Missing spec file: {spec_path}")
         return result
-    if not design_path.exists():
-        result.add_error(f"Missing design file: {design_path}")
+    if not technical_design_path.exists():
+        result.add_error(f"Missing technical design file: {technical_design_path}")
         return result
 
     spec = spec_path.read_text(encoding="utf-8")
-    design = design_path.read_text(encoding="utf-8")
-    issues = _analyze(spec, design)
+    technical_design = technical_design_path.read_text(encoding="utf-8")
+    issues = _analyze(spec, technical_design)
     summary = _build_summary(issues)
     critical_count = summary["critical"]
     major_count = summary["major"]
 
-    grill_path.write_text(_build_report(spec, design, issues), encoding="utf-8")
-    grill_json_path.write_text(_build_json_report(spec, design, issues), encoding="utf-8")
+    grill_path.write_text(_build_report(spec, technical_design, issues), encoding="utf-8")
+    grill_json_path.write_text(_build_json_report(spec, technical_design, issues), encoding="utf-8")
     result.details.update(summary)
     result.add_info(f"Generated concrete grill report: {grill_path}")
     result.add_info(f"Generated machine-readable grill report: {grill_json_path}")
@@ -254,7 +254,7 @@ def run_grill(path: Path) -> CheckResult:
         result.add_next_step(f"Open the human report: {grill_path}")
         result.add_next_step(f"Use the machine-readable report for automation: {grill_json_path}")
         result.add_next_step(
-            "Fix discovery.md, spec.md, design.md, tests, or contracts so Critical and Major issues become explicit requirements or verified constraints."
+            "Fix discovery.md, spec.md, technical-design.md, tests, or contracts so Critical and Major issues become explicit requirements or verified constraints."
         )
         result.add_next_step(f"Run again: specguard run {path}")
     return result

@@ -14,7 +14,7 @@ Why:
 
 - It is simple enough for contributors to understand without learning a new branded method first.
 - It leaves room for multiple discovery techniques later.
-- It keeps the workflow readable: `Discovery -> Spec -> Design -> Grill Me`.
+- It keeps the workflow readable: `Discovery -> Spec -> Technical Design -> Grill Me`.
 
 Other terms considered:
 
@@ -28,13 +28,13 @@ Other terms considered:
 ```text
 Discovery
   -> Spec
-  -> Design
+  -> Technical Design
   -> Grill Me
   -> TDD
   -> Contract Check
 ```
 
-Discovery asks what should be understood before a spec and design harden. Grill Me challenges the full SDD artifact set before implementation outputs are produced. They do not compete when used in that order.
+Discovery asks what should be understood before a spec and technical design harden. Grill Me challenges the full SDD artifact set before implementation outputs are produced. They do not compete when used in that order.
 
 ## Question Phases
 
@@ -50,4 +50,4 @@ Discovery asks what should be understood before a spec and design harden. Grill 
 
 ## Rule Of Thumb
 
-Use Discovery to expose hidden assumptions. Use Grill Me to challenge weak implementation bases across discovery, spec, design, tests, and contracts.
+Use Discovery to expose hidden assumptions. Use Grill Me to challenge weak implementation bases across discovery, spec, technical design, tests, and contracts.

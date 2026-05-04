@@ -42,5 +42,5 @@
 ## Synthesis
 
 - Decision: Proceed only with explicit token lifecycle and replay controls.
-- Required artifacts: spec.md, design.md, grill.md, grill.json, tests, and OpenAPI contract.
+- Required artifacts: spec.md, technical-design.md, grill.md, grill.json, tests, and OpenAPI contract.
 - Stop condition: Missing refresh token rotation or lockout behavior should block implementation.

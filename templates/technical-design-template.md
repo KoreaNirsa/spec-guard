@@ -1,4 +1,4 @@
-# Design: {{ feature_name }}
+# Technical Design: {{ feature_name }}
 
 ## Architecture
 

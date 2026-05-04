@@ -4,7 +4,7 @@
 
 ### Todo ownership boundary is unclear
 
-Description: The design does not prove that users can only read or mutate their own todos.
+Description: The technical design does not prove that users can only read or mutate their own todos.
 
 Impact: A generated API may expose cross-user data through list, update, or delete operations.
 
@@ -28,21 +28,21 @@ Fix: Choose hard or soft delete explicitly and define audit records, restore beh
 
 - Convert every Critical and Major item into acceptance criteria before implementation.
 - Add tests for authorization, invalid state, retry, timeout, and duplicate request behavior.
-- Re-run `specguard run` after updating `spec.md` and `design.md`.
+- Re-run `specguard run` after updating `spec.md` and `technical-design.md`.
 
 ## Prompt Mode
 
 ```text
 You are a senior software architect, security expert, and reliability engineer.
 
-Your task is NOT to approve the design.
-Your task is to BREAK the design.
+Your task is NOT to approve the implementation basis.
+Your task is to BREAK the implementation basis.
 
-Analyze the design aggressively and identify logic flaws, edge cases,
-security issues, performance risks, and failure scenarios.
+Analyze the Discovery, Spec, Technical Design, tests, and contracts aggressively.
+Identify logic flaws, edge cases, security issues, performance risks, and failure scenarios.
 ```
 
 ## Input Summary
 
 - Spec characters: 865
-- Design characters: 802
+- Technical design characters: 812

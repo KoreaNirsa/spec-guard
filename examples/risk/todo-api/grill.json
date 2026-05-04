@@ -10,7 +10,7 @@
     {
       "severity": "Critical",
       "title": "Todo ownership boundary is unclear",
-      "description": "The design does not prove that users can only read or mutate their own todos.",
+      "description": "The technical design does not prove that users can only read or mutate their own todos.",
       "impact": "A generated API may expose cross-user data through list, update, or delete operations.",
       "fix": "Require owner-scoped queries and authorization checks for every todo read/write path."
     },
@@ -24,7 +24,7 @@
   ],
   "input": {
     "spec_characters": 865,
-    "design_characters": 802
+    "technical_design_characters": 812
   },
-  "prompt_mode": "You are a senior software architect, security expert, and reliability engineer.\n\nYour task is NOT to approve the design.\nYour task is to BREAK the design.\n\nAnalyze the design aggressively and identify logic flaws, edge cases,\nsecurity issues, performance risks, and failure scenarios."
+  "prompt_mode": "You are a senior software architect, security expert, and reliability engineer.\n\nYour task is NOT to approve the implementation basis.\nYour task is to BREAK the implementation basis.\n\nAnalyze the Discovery, Spec, Technical Design, tests, and contracts aggressively.\nIdentify logic flaws, edge cases, security issues, performance risks, and failure scenarios."
 }
