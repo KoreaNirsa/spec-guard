@@ -246,6 +246,12 @@ Use local Codex:
 python -m cli.specguard auth setup --mode codex
 ```
 
+If a local Codex request times out during a larger Grill Me follow-up, increase the provider timeout:
+
+```bash
+python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
+```
+
 Use OpenAI Platform with an environment variable:
 
 Set an API key:
@@ -288,6 +294,7 @@ Notes:
 - `--follow-up` forces the interactive post-run action menu.
 - `--no-follow-up` disables the interactive post-run action menu.
 - `run` generates missing artifacts and refreshes stale tests and contracts when `spec.md` changes.
+- `auth status` shows the configured provider timeout.
 - `--force` is useful when you want to regenerate derived artifacts even if SpecGuard does not detect them as stale.
 - `SPECGUARD_LLM_MODEL` can be overridden per command with `--llm-model`.
 - `--llm-mode codex` and `--llm-mode openai` can override the configured mode for one command.

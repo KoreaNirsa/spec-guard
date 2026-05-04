@@ -34,7 +34,7 @@ class LLMSettings:
     mode: str
     model: str | None = None
     endpoint: str = "https://api.openai.com/v1/responses"
-    timeout: int = 60
+    timeout: int = 180
     api_key: str | None = None
     api_key_env: str = "OPENAI_API_KEY"
     codex_command: str = "codex"
@@ -53,7 +53,7 @@ class OpenAIResponsesClient:
 
         resolved_model = model or os.getenv("SPECGUARD_LLM_MODEL") or "gpt-5.1"
         endpoint = os.getenv("SPECGUARD_LLM_ENDPOINT") or "https://api.openai.com/v1/responses"
-        timeout = int(os.getenv("SPECGUARD_LLM_TIMEOUT", "60"))
+        timeout = int(os.getenv("SPECGUARD_LLM_TIMEOUT", "180"))
         return cls(LLMConfig(api_key=api_key, model=resolved_model, endpoint=endpoint, timeout=timeout))
 
     @classmethod
@@ -260,11 +260,15 @@ def load_llm_settings(root: Path) -> LLMSettings | None:
         else:
             return None
 
+    timeout = int(os.getenv("SPECGUARD_LLM_TIMEOUT") or data.get("timeout") or 180)
+    if mode == "codex" and not os.getenv("SPECGUARD_LLM_TIMEOUT"):
+        timeout = max(timeout, 180)
+
     return LLMSettings(
         mode=mode,
         model=_optional_string(os.getenv("SPECGUARD_LLM_MODEL") or data.get("model")),
         endpoint=str(os.getenv("SPECGUARD_LLM_ENDPOINT") or data.get("endpoint") or "https://api.openai.com/v1/responses"),
-        timeout=int(os.getenv("SPECGUARD_LLM_TIMEOUT") or data.get("timeout") or 60),
+        timeout=timeout,
         api_key=_optional_string(data.get("api_key")),
         api_key_env=str(data.get("api_key_env") or "OPENAI_API_KEY"),
         codex_command=str(os.getenv("SPECGUARD_CODEX_COMMAND") or data.get("codex_command") or "codex"),

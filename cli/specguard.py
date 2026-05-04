@@ -107,6 +107,7 @@ def auth(args: argparse.Namespace) -> int:
         print("[PASS] SpecGuard LLM configuration")
         print(f"- Mode: {settings.mode}")
         print(f"- Model: {settings.model or '(provider default)'}")
+        print(f"- Timeout: {settings.timeout}s")
         if settings.mode == "openai":
             print(f"- API key source: {settings.api_key_env if not settings.api_key else 'local config'}")
             print(f"- Endpoint: {settings.endpoint}")
@@ -154,6 +155,7 @@ def _build_llm_client(args: argparse.Namespace, *, purpose: str, allow_setup: bo
                 api_key=None,
                 api_key_env="OPENAI_API_KEY",
                 endpoint="https://api.openai.com/v1/responses",
+                timeout=180,
                 codex_command="codex",
                 codex_profile=None,
                 skip_login=False,
@@ -183,12 +185,19 @@ def _setup_llm(args: argparse.Namespace) -> int:
     if mode == "codex":
         model = args.model or _prompt("Model (blank keeps Codex default)", "")
         model = model or None
+        timeout = args.timeout or 180
         codex_command = args.codex_command or "codex"
         if not codex_available(codex_command):
             print("[FAIL] Local Codex CLI was not found.")
             print("- Install Codex, or choose OpenAI Platform mode: python -m cli.specguard auth setup --mode openai")
             return 1
-        settings = LLMSettings(mode="codex", model=model, codex_command=codex_command, codex_profile=args.codex_profile)
+        settings = LLMSettings(
+            mode="codex",
+            model=model,
+            timeout=timeout,
+            codex_command=codex_command,
+            codex_profile=args.codex_profile,
+        )
         path = save_llm_settings(ROOT, settings)
         print(f"[PASS] Saved local Codex provider config: {path}")
         if not args.skip_login and _prompt_yes_no("Run `codex login` now?", default=False):
@@ -196,6 +205,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         return 0
 
     model = args.model or _prompt("Model", "gpt-5.1")
+    timeout = args.timeout or 180
     api_key = args.api_key
     if api_key is None and not os.getenv(args.api_key_env):
         entered = getpass.getpass("OpenAI API key (leave empty to use environment variable): ").strip()
@@ -203,6 +213,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
     settings = LLMSettings(
         mode="openai",
         model=model,
+        timeout=timeout,
         endpoint=args.endpoint,
         api_key=api_key,
         api_key_env=args.api_key_env,
@@ -314,7 +325,12 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
 
     print_section("Spec Revision")
     print_hint(f"Generating a revised spec.md from Grill Me findings: {feature_dir}")
-    revised_spec = generate_spec_revision(feature_dir, llm_client)
+    try:
+        revised_spec = generate_spec_revision(feature_dir, llm_client)
+    except LLMRequestError as exc:
+        _print_llm_failure(exc)
+        print_hint("The follow-up menu is still open. Review findings or retry after adjusting timeout/model.")
+        return result
     _print_markdown_preview(revised_spec)
     if not _prompt_yes_no("Apply this revision to spec.md?", default=False):
         print("[WARN] Revision was not applied.")
@@ -375,6 +391,9 @@ def _print_llm_failure(exc: Exception) -> None:
     if "newer version of Codex" in str(exc):
         print("- Update the Codex CLI/app, or reconfigure SpecGuard with a Codex-supported model.")
         print("- Example: python -m cli.specguard auth setup --mode codex --model gpt-5.1 --skip-login")
+    if "timed out" in str(exc).lower():
+        print("- The provider is reachable, but the request exceeded the configured timeout.")
+        print("- Retry the action, or increase timeout: python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login")
     print("- Check provider status: python -m cli.specguard auth status")
     print("- Reconfigure provider: python -m cli.specguard auth setup")
 
@@ -447,6 +466,7 @@ def build_parser() -> argparse.ArgumentParser:
     auth_setup = auth_subparsers.add_parser("setup", formatter_class=SpecGuardHelpFormatter)
     auth_setup.add_argument("--mode", choices=["codex", "openai"], help="LLM provider mode")
     auth_setup.add_argument("--model", help="Model name for the selected provider")
+    auth_setup.add_argument("--timeout", type=int, help="Provider request timeout in seconds")
     auth_setup.add_argument("--api-key", help="Store an OpenAI API key in local ignored config")
     auth_setup.add_argument("--api-key-env", default="OPENAI_API_KEY", help="Environment variable for the OpenAI API key")
     auth_setup.add_argument("--endpoint", default="https://api.openai.com/v1/responses", help="OpenAI Responses API endpoint")

@@ -130,6 +130,12 @@ SpecGuard generates missing artifacts and refreshes stale tests and contracts wh
 
 In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can review Grill Me findings, ask the configured LLM to revise `spec.md` from the findings, apply the revision, and rerun the pipeline from the same CLI session. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
+If a local Codex follow-up request times out, check `python -m cli.specguard auth status` and increase the timeout:
+
+```bash
+python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
+```
+
 Use `--no-llm` only for deterministic local checks or CI examples:
 
 ```bash

@@ -53,29 +53,30 @@ def render_grill_summary(feature_dir: Path, report: dict[str, Any], *, limit: in
 
 
 def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
-    discovery = _read_optional(feature_dir / "discovery.md")
-    spec = _read_optional(feature_dir / "spec.md")
-    technical_design = _read_optional(feature_dir / "technical-design.md")
-    grill = _read_optional(feature_dir / "grill.md")
+    discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
+    spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
+    technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
+    grill_findings = _compact_grill_findings(feature_dir)
     instructions = "\n".join([
         "You are SpecGuard's spec refinement assistant.",
         "Revise spec.md so the Grill Me findings become explicit requirements, acceptance criteria, error cases, and constraints.",
         "SpecGuard is not prompt-to-code. Do not write application code.",
         "Return ONLY the full replacement Markdown for spec.md.",
         "Preserve the feature intent and the existing spec structure when possible.",
+        "Prioritize Critical and Major Grill Me findings.",
         "Do not include commentary, patch markers, or code fences.",
     ])
     input_text = "\n\n".join([
-        "# Discovery",
+        "# Discovery excerpt",
         discovery,
         "# Current spec.md",
         spec,
-        "# technical-design.md",
+        "# technical-design.md excerpt",
         technical_design,
-        "# Grill Me report",
-        grill,
+        "# Grill Me findings",
+        grill_findings,
     ])
-    return _strip_markdown_fence(llm_client.generate_text(instructions, input_text, max_output_tokens=4000))
+    return _strip_markdown_fence(llm_client.generate_text(instructions, input_text, max_output_tokens=3000))
 
 
 def apply_spec_revision(feature_dir: Path, revised_spec: str) -> Path:
@@ -88,6 +89,50 @@ def _read_optional(path: Path) -> str:
     if not path.exists():
         return f"{path.name} is missing."
     return path.read_text(encoding="utf-8")
+
+
+def _compact_grill_findings(feature_dir: Path) -> str:
+    report = load_grill_report(feature_dir)
+    if not report:
+        return _compact_text(_read_optional(feature_dir / "grill.md"), 3000)
+
+    issues = report.get("issues", [])
+    if not isinstance(issues, list):
+        return json.dumps(report, indent=2)
+
+    severity_rank = {"Critical": 0, "Major": 1, "Minor": 2}
+    sorted_issues = sorted(
+        [issue for issue in issues if isinstance(issue, dict)],
+        key=lambda issue: severity_rank.get(str(issue.get("severity")), 9),
+    )
+    lines = [
+        "Use these Grill Me findings as the required revision backlog.",
+        f"Summary: {json.dumps(report.get('summary', {}), ensure_ascii=False)}",
+        "",
+    ]
+    for index, issue in enumerate(sorted_issues[:12], start=1):
+        lines.extend([
+            f"{index}. [{issue.get('severity', 'Unknown')}] {issue.get('title', 'Untitled issue')}",
+            f"   Impact: {issue.get('impact', 'Not specified.')}",
+            f"   Required spec change: {issue.get('fix', 'Not specified.')}",
+        ])
+    if len(sorted_issues) > 12:
+        lines.append(f"... {len(sorted_issues) - 12} additional minor/detail findings omitted from the prompt.")
+    return "\n".join(lines)
+
+
+def _compact_text(text: str, max_characters: int) -> str:
+    if len(text) <= max_characters:
+        return text
+    head = max_characters // 2
+    tail = max_characters - head
+    return "\n".join([
+        text[:head].rstrip(),
+        "",
+        f"... omitted {len(text) - max_characters} characters ...",
+        "",
+        text[-tail:].lstrip(),
+    ])
 
 
 def _strip_markdown_fence(text: str) -> str:

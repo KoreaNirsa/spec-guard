@@ -121,7 +121,8 @@ class FakeLLM:
 class FakeRevisionLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         assert "spec refinement assistant" in instructions
-        assert "Grill Me report" in input_text
+        assert "Grill Me findings" in input_text
+        assert max_output_tokens == 3000
         return "\n".join([
             "# Feature Specification: Todo API",
             "",
@@ -143,6 +144,13 @@ class FakeRevisionLLM:
 class FencedRevisionLLM(FakeRevisionLLM):
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         return "```markdown\n" + super().generate_text(instructions, input_text, max_output_tokens) + "\n```"
+
+
+class TimeoutRevisionLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        from tools.llm_client import LLMRequestError
+
+        raise LLMRequestError("Codex request timed out.")
 
 
 def copy_example(tmp_path: Path, example: str) -> Path:
@@ -378,6 +386,16 @@ def test_llm_settings_round_trip_openai_mode(tmp_path: Path) -> None:
     assert settings.api_key == "local-test-key"
 
 
+def test_codex_settings_raise_legacy_timeout_floor(tmp_path: Path) -> None:
+    save_llm_settings(tmp_path, LLMSettings(mode="codex", model="gpt-5.4", timeout=60))
+
+    settings = load_llm_settings(tmp_path)
+
+    assert settings is not None
+    assert settings.mode == "codex"
+    assert settings.timeout == 180
+
+
 def test_codex_json_event_parser_reads_deltas_only() -> None:
     delta = '{"type":"agent_message_delta","delta":"Question?"}'
     final = '{"type":"agent_message","message":"Question?"}'
@@ -574,6 +592,23 @@ def test_post_run_strips_markdown_fences_from_spec_revision(tmp_path: Path) -> N
 
     assert revised.startswith("# Feature Specification")
     assert "```" not in revised
+
+
+def test_post_run_spec_revision_timeout_keeps_menu_available(tmp_path: Path, capsys) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    result = run_pipeline(feature)
+
+    returned = specguard_cli._revise_spec_from_grill(
+        feature,
+        Namespace(force=False),
+        TimeoutRevisionLLM(),
+        result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "Codex request timed out" in rendered
+    assert "follow-up menu is still open" in rendered
 
 
 def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:
