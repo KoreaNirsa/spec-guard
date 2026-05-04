@@ -10,6 +10,34 @@ Discovery -> Draft Specs -> User Refinement -> Technical Design -> Grill Me -> T
 
 After that, the user can run Codex, Claude Code, or another coding agent against the generated spec package.
 
+## 0. Configure LLM Provider
+
+SpecGuard supports two LLM provider modes today:
+
+- `codex`: local Codex CLI installed on the machine.
+- `openai`: OpenAI Platform Responses API.
+
+Claude Code provider integration is planned later. For now, Claude Code should be used separately after SpecGuard produces implementation outputs.
+
+Configure local Codex:
+
+```bash
+python -m cli.specguard auth setup --mode codex
+```
+
+Configure OpenAI Platform:
+
+```bash
+python -m cli.specguard auth setup --mode openai
+```
+
+Inspect or reset configuration:
+
+```bash
+python -m cli.specguard auth status
+python -m cli.specguard auth logout
+```
+
 ## 1. Init Runs Discovery
 
 Run:
@@ -18,29 +46,25 @@ Run:
 python -m cli.specguard init my-feature
 ```
 
-You can also run `init` with no arguments. Every Discovery prompt displays a default value, and pressing Enter accepts that default:
+If no provider is configured, interactive `init` offers to run provider setup first.
 
-```bash
-python -m cli.specguard init
-```
+In LLM mode, Discovery becomes a short streaming conversation. SpecGuard asks one focused question at a time. The user answers naturally, then types `done` or `complete` when the conversation is ready to become a draft spec.
 
-The same defaults are visible in CLI help:
-
-```bash
-python -m cli.specguard init --help
-```
-
-To use LLM-backed spec drafting, set an API key and add `--llm`:
+For OpenAI Platform mode, set an API key or store it in the local ignored config:
 
 ```bash
 export OPENAI_API_KEY=...
 export SPECGUARD_LLM_MODEL=gpt-5.1
-python -m cli.specguard init my-feature --llm
+python -m cli.specguard auth setup --mode openai
 ```
 
-In LLM mode, Discovery becomes a short streaming conversation. SpecGuard asks one focused question at a time. The user answers naturally, then types `done` or `완료` when the conversation is ready to become a draft spec.
+You can also run deterministic local Discovery without an LLM:
 
-SpecGuard asks Discovery questions and creates draft specs under `specs/`:
+```bash
+python -m cli.specguard init my-feature --no-llm
+```
+
+SpecGuard creates draft specs under `specs/`:
 
 ```text
 specs/my-feature/
@@ -78,10 +102,10 @@ Run:
 python -m cli.specguard run specs/my-feature
 ```
 
-To use the LLM for `technical-design.md` and Grill Me:
+`run` uses the configured LLM provider for Technical Design and Grill Me. Use `--force` when regenerated derived artifacts are needed:
 
 ```bash
-python -m cli.specguard run specs/my-feature --llm --force
+python -m cli.specguard run specs/my-feature --force
 ```
 
 SpecGuard then performs:
@@ -102,8 +126,13 @@ specs/my-feature/
 `-- implementation-output.md
 ```
 
-SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed.
-Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
+SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
+
+Use `--no-llm` only for deterministic local checks or CI examples:
+
+```bash
+python -m cli.specguard run specs/my-feature --no-llm
+```
 
 ## 4. User Refines And Repeats
 

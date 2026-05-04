@@ -9,7 +9,7 @@ from pathlib import Path
 
 from tools.contract_checker import check_contracts
 from tools.discovery_engine import collect_llm_answers, initialize_specs
-from tools.llm_client import _iter_response_text_deltas
+from tools.llm_client import LLMSettings, _extract_codex_event_text, _iter_response_text_deltas, load_llm_settings, save_llm_settings
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
 from tools.tdd_generator import generate_tests
@@ -298,6 +298,31 @@ def test_response_stream_parser_reads_output_text_delta() -> None:
     ]
 
     assert "".join(_iter_response_text_deltas(lines)) == "Hello world"
+
+
+def test_llm_settings_round_trip_openai_mode(tmp_path: Path) -> None:
+    save_llm_settings(tmp_path, LLMSettings(
+        mode="openai",
+        model="gpt-5.1",
+        api_key="local-test-key",
+        api_key_env="OPENAI_API_KEY",
+    ))
+
+    settings = load_llm_settings(tmp_path)
+
+    assert settings is not None
+    assert settings.mode == "openai"
+    assert settings.model == "gpt-5.1"
+    assert settings.api_key == "local-test-key"
+
+
+def test_codex_json_event_parser_reads_deltas_only() -> None:
+    delta = '{"type":"agent_message_delta","delta":"Question?"}'
+    final = '{"type":"agent_message","message":"Question?"}'
+
+    assert _extract_codex_event_text(delta, delta_only=True) == "Question?"
+    assert _extract_codex_event_text(final, delta_only=True) == ""
+    assert _extract_codex_event_text(final) == "Question?"
 
 
 def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> None:

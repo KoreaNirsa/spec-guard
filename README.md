@@ -155,6 +155,18 @@ cd spec-guard
 pip install -r requirements.txt
 ```
 
+Configure an LLM provider. Local Codex is the recommended first mode when Codex is already installed and logged in:
+
+```bash
+python -m cli.specguard auth setup --mode codex
+```
+
+OpenAI Platform mode is also supported:
+
+```bash
+python -m cli.specguard auth setup --mode openai
+```
+
 Start discovery and generate draft specs:
 
 ```bash
@@ -203,9 +215,32 @@ python -m cli.specguard run <feature-folder>
 
 Interactive `init` accepts Enter for every default answer.
 
-## LLM Mode
+## LLM Provider Modes
 
-SpecGuard can optionally use an LLM for draft spec generation, technical design generation, and Grill Me.
+SpecGuard uses an LLM for interactive Discovery, technical design generation, and Grill Me during the normal CLI workflow.
+
+Supported modes:
+
+- `codex`: uses the local Codex CLI installed on the machine.
+- `openai`: uses the OpenAI Platform Responses API.
+
+Claude Code support is planned for a future provider mode.
+
+Configure or reconfigure the provider:
+
+```bash
+python -m cli.specguard auth setup
+python -m cli.specguard auth status
+python -m cli.specguard auth logout
+```
+
+Use local Codex:
+
+```bash
+python -m cli.specguard auth setup --mode codex
+```
+
+Use OpenAI Platform with an environment variable:
 
 Set an API key:
 
@@ -219,38 +254,45 @@ Optionally choose a model:
 export SPECGUARD_LLM_MODEL=gpt-5.1
 ```
 
-Generate an LLM-backed draft spec from Discovery answers:
+Or store an API key in the local ignored `.specguard/config.json` file:
 
 ```bash
-python -m cli.specguard init my-feature --llm
+python -m cli.specguard auth setup --mode openai --api-key sk-...
 ```
 
-In interactive LLM mode, SpecGuard streams Discovery questions in real time. Answer naturally, then type `done` or `완료` when the conversation is ready to become a draft spec.
+Generate a draft spec from streaming Discovery:
+
+```bash
+python -m cli.specguard init my-feature
+```
+
+SpecGuard streams Discovery questions in real time. Answer naturally, then type `done` when the conversation is ready to become a draft spec.
 
 Generate or regenerate LLM-backed technical design and Grill Me output:
 
 ```bash
-python -m cli.specguard run specs/my-feature --llm --force
+python -m cli.specguard run specs/my-feature --force
 ```
 
 Notes:
 
-- `--llm` is opt-in. Without it, SpecGuard uses local deterministic generation and heuristic validation.
+- `--no-llm` is available for local deterministic checks and CI examples.
 - `run` generates missing artifacts and refreshes stale tests and contracts when `spec.md` changes.
 - `--force` is useful when you want to regenerate derived artifacts even if SpecGuard does not detect them as stale.
 - `SPECGUARD_LLM_MODEL` can be overridden per command with `--llm-model`.
-- The current LLM adapter uses the OpenAI Responses API through standard HTTP and supports streaming Discovery; no SDK dependency is required.
+- `--llm-mode codex` and `--llm-mode openai` can override the configured mode for one command.
+- The OpenAI adapter uses the Responses API through standard HTTP and supports streaming Discovery; no SDK dependency is required.
 
 For scripted or CI setup:
 
 ```bash
-python -m cli.specguard init billing-export --non-interactive
+python -m cli.specguard init billing-export --non-interactive --no-llm
 ```
 
 Run all initialized specs:
 
 ```bash
-python -m cli.specguard run specs
+python -m cli.specguard run specs --no-llm
 ```
 
 ## Example Output
@@ -267,8 +309,8 @@ python -m cli.specguard run specs
 - Discovery and spec checks passed.
 - Reused technical design: examples/risk/todo-api/technical-design.md
 - Technical design checks passed.
-- Generated concrete grill report: examples/risk/todo-api/grill.md
-- Generated machine-readable grill report: examples/risk/todo-api/grill.json
+- Generated heuristic grill report: examples/risk/todo-api/grill.md
+- Generated heuristic machine-readable grill report: examples/risk/todo-api/grill.json
 - Blocked by Grill Me findings: 1 critical, 1 major
 
 Next steps:
@@ -311,8 +353,8 @@ pytest
 Run local pipeline checks:
 
 ```bash
-python -m cli.specguard run examples/example
-python -m cli.specguard run examples/risk/todo-api
+python -m cli.specguard run examples/example --no-llm
+python -m cli.specguard run examples/risk/todo-api --no-llm
 ```
 
 The test suite covers:

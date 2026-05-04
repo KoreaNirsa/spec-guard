@@ -319,8 +319,9 @@ def run_grill(path: Path, llm_client: object | None = None) -> CheckResult:
     grill_path.write_text(_build_report(discovery, spec, technical_design, issues), encoding="utf-8")
     grill_json_path.write_text(_build_json_report(discovery, spec, technical_design, issues), encoding="utf-8")
     result.details.update(summary)
-    result.add_info(f"Generated concrete grill report: {grill_path}")
-    result.add_info(f"Generated machine-readable grill report: {grill_json_path}")
+    mode = "LLM" if llm_client else "heuristic"
+    result.add_info(f"Generated {mode} grill report: {grill_path}")
+    result.add_info(f"Generated {mode} machine-readable grill report: {grill_json_path}")
     if critical_count or major_count:
         result.add_error(f"Blocked by Grill Me findings: {critical_count} critical, {major_count} major")
         result.add_next_step(f"Open the human report: {grill_path}")
