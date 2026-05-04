@@ -762,6 +762,13 @@ def test_progress_line_shows_elapsed_time_and_phase() -> None:
     assert "[" in line and "]" in line
 
 
+def test_spec_draft_progress_line_uses_init_phase() -> None:
+    line = _progress_line("Generating spec draft", elapsed_seconds=25, tick=4)
+
+    assert "Generating spec draft" in line
+    assert "generating spec package" in line
+
+
 def test_pipeline_progress_line_uses_pipeline_phase() -> None:
     line = _progress_line("Running pipeline", elapsed_seconds=45, tick=5)
 
@@ -894,6 +901,32 @@ def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:
 
     assert exit_code == 0
     assert captured["label"] == "Running pipeline"
+
+
+def test_init_uses_activity_progress_for_spec_draft(monkeypatch) -> None:
+    captured = {"label": ""}
+
+    def fake_initialize_specs(root: Path, answers: dict[str, str], force: bool = False, llm_client=None) -> CheckResult:
+        assert force
+        assert answers["feature_names"] == "billing-export"
+        return CheckResult("SpecGuard Discovery")
+
+    def fake_run_with_progress(label, operation):
+        captured["label"] = label
+        return operation()
+
+    monkeypatch.setattr(specguard_cli, "initialize_specs", fake_initialize_specs)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", fake_run_with_progress)
+
+    exit_code = specguard_cli.init_project(Namespace(
+        feature="billing-export",
+        force=True,
+        no_llm=True,
+        non_interactive=True,
+    ))
+
+    assert exit_code == 0
+    assert captured["label"] == "Generating spec draft"
 
 
 def test_tdd_generator_does_not_overwrite_existing_tests(tmp_path: Path) -> None:

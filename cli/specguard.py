@@ -62,7 +62,10 @@ def init_project(args: argparse.Namespace) -> int:
 
     print_section("Spec Draft")
     try:
-        result = initialize_specs(ROOT, answers, force=args.force, llm_client=llm_client)
+        result = _run_with_progress(
+            "Generating spec draft",
+            lambda: initialize_specs(ROOT, answers, force=args.force, llm_client=llm_client),
+        )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         return 1
@@ -435,12 +438,20 @@ def _progress_line(label: str, elapsed_seconds: int, tick: int) -> str:
 
 
 def _progress_phases(label: str) -> tuple[str, ...]:
-    if "pipeline" in label.lower():
+    lowered = label.lower()
+    if "pipeline" in lowered:
         return (
             "validating spec artifacts",
             "generating technical design",
             "running Grill Me",
             "building tests, contracts, and outputs",
+        )
+    if "spec draft" in lowered or "draft" in lowered:
+        return (
+            "preparing discovery answers",
+            "generating spec package",
+            "writing draft artifacts",
+            "finalizing spec draft",
         )
     return (
         "preparing compact Grill Me context",
