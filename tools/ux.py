@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 
 LOGO = r"""
   ____                  ____                     _
@@ -11,26 +13,68 @@ LOGO = r"""
 """
 
 
+def _color(code: str, text: str) -> str:
+    if os.getenv("NO_COLOR"):
+        return text
+    return f"\033[{code}m{text}\033[0m"
+
+
+def bold(text: str) -> str:
+    return _color("1", text)
+
+
+def dim(text: str) -> str:
+    return _color("2", text)
+
+
+def cyan(text: str) -> str:
+    return _color("36", text)
+
+
+def blue(text: str) -> str:
+    return _color("34", text)
+
+
+def yellow(text: str) -> str:
+    return _color("33", text)
+
+
+def green(text: str) -> str:
+    return _color("32", text)
+
+
+def red(text: str) -> str:
+    return _color("31", text)
+
+
 def print_banner(subtitle: str | None = None) -> None:
-    print(LOGO.strip("\n"))
-    print("Spec-first validation for AI-assisted implementation.")
+    print(cyan(LOGO.strip("\n")))
+    print(dim("Spec-first validation for AI-assisted implementation."))
     if subtitle:
-        print(subtitle)
+        print(bold(subtitle))
     print("")
 
 
 def print_section(title: str) -> None:
     print("")
-    print(f"== {title} ==")
+    print(cyan(bold(f"== {title} ==")))
 
 
 def print_hint(message: str) -> None:
-    print(f"> {message}")
+    print(blue(f"> {message}"))
 
 
-def green(text: str) -> str:
-    return f"\033[32m{text}\033[0m"
+def print_success(message: str) -> None:
+    print(green(message))
 
 
-def red(text: str) -> str:
-    return f"\033[31m{text}\033[0m"
+def print_warning(message: str) -> None:
+    print(yellow(message))
+
+
+def print_error(message: str) -> None:
+    print(red(message))
+
+
+def menu_item(text: str) -> str:
+    return cyan(text)

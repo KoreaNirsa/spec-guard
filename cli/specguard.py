@@ -30,7 +30,7 @@ from tools.post_run import (
     render_grill_summary,
 )
 from tools.runner import run_pipeline
-from tools.ux import print_banner, print_hint, print_section
+from tools.ux import bold, green, menu_item, print_banner, print_error, print_hint, print_section, print_success, print_warning, yellow
 
 
 ROOT = Path.cwd()
@@ -106,11 +106,11 @@ def auth(args: argparse.Namespace) -> int:
         print_banner("LLM provider status.")
         settings = load_llm_settings(ROOT)
         if settings is None:
-            print("[WARN] No LLM provider configured.")
+            print_warning("[WARN] No LLM provider configured.")
             print(f"- Config path: {config_path(ROOT)}")
             print("- Run: python -m cli.specguard auth setup")
             return 1
-        print("[PASS] SpecGuard LLM configuration")
+        print_success("[PASS] SpecGuard LLM configuration")
         print(f"- Mode: {settings.mode}")
         print(f"- Model: {settings.model or '(provider default)'}")
         print(f"- Timeout: {settings.timeout}s")
@@ -126,7 +126,10 @@ def auth(args: argparse.Namespace) -> int:
         print_banner("Reset SpecGuard LLM provider configuration.")
         settings = load_llm_settings(ROOT)
         removed = clear_llm_settings(ROOT)
-        print("[PASS] Removed local SpecGuard LLM configuration." if removed else "[WARN] No local SpecGuard LLM configuration was found.")
+        if removed:
+            print_success("[PASS] Removed local SpecGuard LLM configuration.")
+        else:
+            print_warning("[WARN] No local SpecGuard LLM configuration was found.")
         if args.codex:
             command = "codex"
             if settings and settings.mode == "codex":
@@ -138,7 +141,7 @@ def auth(args: argparse.Namespace) -> int:
         print_banner("Configure SpecGuard LLM provider.")
         return _setup_llm(args)
 
-    print("[FAIL] Unknown auth command.")
+    print_error("[FAIL] Unknown auth command.")
     return 1
 
 
@@ -171,7 +174,7 @@ def _build_llm_client(args: argparse.Namespace, *, purpose: str, allow_setup: bo
                     return build_llm_client(ROOT, mode=mode, model=getattr(args, "llm_model", None))
                 except LLMConfigError as retry_exc:
                     exc = retry_exc
-        print("[FAIL] SpecGuard LLM configuration")
+        print_error("[FAIL] SpecGuard LLM configuration")
         print(f"- {exc}")
         print("- Run: python -m cli.specguard auth setup")
         if purpose == "run":
@@ -185,7 +188,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         default_mode = "codex" if codex_available(args.codex_command) else "openai"
         mode = _prompt("Provider mode (codex/openai)", default_mode).lower()
     if mode not in {"codex", "openai"}:
-        print("[FAIL] Unsupported provider mode. Use codex or openai.")
+        print_error("[FAIL] Unsupported provider mode. Use codex or openai.")
         return 1
 
     if mode == "codex":
@@ -194,7 +197,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         timeout = args.timeout or 180
         codex_command = args.codex_command or "codex"
         if not codex_available(codex_command):
-            print("[FAIL] Local Codex CLI was not found.")
+            print_error("[FAIL] Local Codex CLI was not found.")
             print("- Install Codex, or choose OpenAI Platform mode: python -m cli.specguard auth setup --mode openai")
             return 1
         settings = LLMSettings(
@@ -205,7 +208,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
             codex_profile=args.codex_profile,
         )
         path = save_llm_settings(ROOT, settings)
-        print(f"[PASS] Saved local Codex provider config: {path}")
+        print_success(f"[PASS] Saved local Codex provider config: {path}")
         if not args.skip_login and _prompt_yes_no("Run `codex login` now?", default=False):
             subprocess.run([codex_command, "login"], cwd=ROOT, check=False)
         return 0
@@ -225,7 +228,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         api_key_env=args.api_key_env,
     )
     path = save_llm_settings(ROOT, settings)
-    print(f"[PASS] Saved OpenAI Platform provider config: {path}")
+    print_success(f"[PASS] Saved OpenAI Platform provider config: {path}")
     if not api_key:
         print(f"- Set {args.api_key_env} before running LLM workflows.")
     return 0
@@ -277,15 +280,15 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
     path = Path(args.path)
     while True:
         print_section("Continue")
-        print("[1] Run Grill Me review")
-        print("[2] View Grill Me review")
-        print("[3] Regenerate spec from Grill Me review (auto-runs Grill Me review after)")
-        print("[q] Exit")
+        print(menu_item("[1] Run Grill Me review"))
+        print(menu_item("[2] View Grill Me review"))
+        print(menu_item("[3] Regenerate spec from Grill Me review (auto-runs Grill Me review after)"))
+        print(menu_item("[q] Exit"))
         try:
             choice = input("Choose action: ").strip().lower()
         except EOFError:
             print("")
-            print("[WARN] Input stream closed. Leaving the follow-up menu.")
+            print_warning("[WARN] Input stream closed. Leaving the follow-up menu.")
             return result
 
         if choice == "":
@@ -307,13 +310,13 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             result = _revise_spec_from_grill(path, args, llm_client, result)
             continue
 
-        print("[WARN] Choose 1, 2, 3, or q to exit.")
+        print_warning("[WARN] Choose 1, 2, 3, or q to exit.")
 
 
 def _print_grill_review(path: Path) -> None:
     reports = feature_grill_reports(path)
     if not reports:
-        print("[WARN] No Grill Me report found. Run the pipeline first.")
+        print_warning("[WARN] No Grill Me report found. Run the pipeline first.")
         return
     print_section("Grill Me Review")
     for index, (feature_dir, report) in enumerate(reports, start=1):
@@ -322,19 +325,19 @@ def _print_grill_review(path: Path) -> None:
         print(render_grill_summary(feature_dir, report))
         stale_reason = grill_report_stale_reason(feature_dir)
         if stale_reason:
-            print(f"- warning: {stale_reason}")
-            print("- rerun did not update Grill Me if validation failed before the Grill Me step.")
+            print(yellow(f"- warning: {stale_reason}"))
+            print(yellow("- rerun did not update Grill Me if validation failed before the Grill Me step."))
 
 
 def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:
     if llm_client is None:
-        print("[WARN] LLM spec revision requires a configured provider.")
+        print_warning("[WARN] LLM spec revision requires a configured provider.")
         print("- Re-run without --no-llm, or configure one: python -m cli.specguard auth setup")
         return result
 
     reports = blocked_feature_reports(path) or feature_grill_reports(path)
     if not reports:
-        print("[WARN] No Grill Me report found. Run the pipeline first.")
+        print_warning("[WARN] No Grill Me report found. Run the pipeline first.")
         return result
 
     selected = _select_feature_report(reports)
@@ -356,7 +359,7 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
         return result
     _print_markdown_preview(revised_spec)
     spec_path = apply_spec_revision(feature_dir, revised_spec)
-    print(f"[PASS] Updated spec: {spec_path}")
+    print_success(f"[PASS] Updated spec: {spec_path}")
     print_hint("Automatically re-running the pipeline so Grill Me is refreshed from the regenerated spec.")
     try:
         return _rerun_pipeline(args, llm_client, force=True)
@@ -384,7 +387,7 @@ def _select_feature_report(reports: list[tuple[Path, dict]]) -> tuple[Path, dict
         return None
     selected = 1 if not value else int(value) if value.isdigit() else 0
     if selected < 1 or selected > len(reports):
-        print("[WARN] Invalid feature selection.")
+        print_warning("[WARN] Invalid feature selection.")
         return None
     return reports[selected - 1]
 
@@ -436,7 +439,7 @@ def _progress_line(label: str, elapsed_seconds: int, tick: int) -> str:
     bar = "".join("#" if index <= active else "-" for index in range(width))
     phases = _progress_phases(label)
     phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
-    return f"> {label} [{bar}] {elapsed_seconds:>3}s - {phase}"
+    return f"> {bold(label)} {green('[' + bar + ']')} {elapsed_seconds:>3}s - {phase}"
 
 
 def _progress_phases(label: str) -> tuple[str, ...]:
@@ -467,7 +470,7 @@ def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, forc
 
 
 def _print_llm_failure(exc: Exception) -> None:
-    print("[FAIL] LLM workflow failed")
+    print_error("[FAIL] LLM workflow failed")
     print(f"- {exc}")
     if "newer version of Codex" in str(exc):
         print("- Update the Codex CLI/app, or reconfigure SpecGuard with a Codex-supported model.")

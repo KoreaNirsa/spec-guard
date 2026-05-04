@@ -8,6 +8,7 @@ from datetime import date
 from pathlib import Path
 
 from tools.result import CheckResult
+from tools.ux import bold, cyan, dim, yellow
 
 
 DISCOVERY_PROMPTS = (
@@ -75,14 +76,14 @@ def answers_from_args(args: argparse.Namespace) -> dict[str, str]:
 def collect_answers(args: argparse.Namespace) -> dict[str, str]:
     answers: dict[str, str] = {}
     defaults = answers_from_args(args)
-    print("SpecGuard Discovery")
-    print("Answer the questions below. Press Enter to accept the default.")
+    print(cyan(bold("SpecGuard Discovery")))
+    print(dim("Answer the questions below. Press Enter to accept the default."))
     print("")
 
     for key, prompt, _default in DISCOVERY_PROMPTS:
         default = defaults[key]
         try:
-            value = input(f"{prompt} [{default}]: ").strip()
+            value = input(f"{bold(prompt)} {yellow('[' + default + ']')}: ").strip()
         except EOFError:
             value = ""
         answers[key] = value or default
@@ -124,18 +125,18 @@ def collect_llm_answers(
     transcript: list[tuple[str, str]] = []
     turns = GUIDED_DISCOVERY_TURNS[:max_turns]
 
-    _write_line(write_func, "SpecGuard LLM Discovery")
-    _write_line(write_func, "Answer naturally. Press Enter to accept the default.")
-    _write_line(write_func, "Questions are shown instantly; the configured LLM generates the draft spec after your answers.")
+    _write_line(write_func, cyan(bold("SpecGuard LLM Discovery")))
+    _write_line(write_func, dim("Answer naturally. Press Enter to accept the default."))
+    _write_line(write_func, dim("Questions are shown instantly; the configured LLM generates the draft spec after your answers."))
     _write_line(write_func, "Type 'done' or '완료' to finish early and generate the draft spec.")
     _write_line(write_func, "")
 
     for index, (key, label, question) in enumerate(turns, start=1):
         default = answers[key]
         assistant_message = f"{label}: {question}"
-        _write_line(write_func, f"SpecGuard ({index}/{len(turns)}) {label}")
+        _write_line(write_func, cyan(bold(f"SpecGuard ({index}/{len(turns)}) {label}")))
         _write_line(write_func, question)
-        _write_line(write_func, f"Default: {default}")
+        _write_line(write_func, yellow(f"Default: {default}"))
         transcript.append(("assistant", assistant_message))
 
         try:
@@ -152,7 +153,7 @@ def collect_llm_answers(
             transcript.append(("user", user_message))
         else:
             transcript.append(("user", f"(accepted default: {default})"))
-            _write_line(write_func, f"> Using default: {default}")
+            _write_line(write_func, cyan(f"> Using default: {default}"))
         _write_line(write_func, "")
     else:
         _write_line(write_func, "")
