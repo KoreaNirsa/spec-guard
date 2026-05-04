@@ -9,6 +9,7 @@ from pathlib import Path
 
 from tools.contract_checker import check_contracts
 from tools.discovery_engine import collect_llm_answers, initialize_specs
+from tools.grill_engine import run_grill
 from tools.llm_client import (
     LLMSettings,
     _extract_codex_error_text,
@@ -161,6 +162,21 @@ class TimeoutRevisionLLM:
         raise LLMRequestError("Codex request timed out.")
 
 
+class SixMinorGrillLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        issues = [
+            {
+                "severity": "Minor",
+                "title": f"Minor cleanup {index}",
+                "description": "Non-blocking cleanup.",
+                "impact": "Small clarity gap.",
+                "fix": "Clarify the wording.",
+            }
+            for index in range(6)
+        ]
+        return json.dumps({"issues": issues})
+
+
 def copy_example(tmp_path: Path, example: str) -> Path:
     source = ROOT / "examples" / example
     target = tmp_path / example.replace("/", "-")
@@ -267,6 +283,7 @@ def test_example_passes_and_emits_grill_json(tmp_path: Path) -> None:
     assert result.ok
     payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is False
+    assert payload["readiness"]["implementation_ready"] is True
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
 
@@ -559,6 +576,7 @@ def test_run_can_use_llm_for_design_and_grill(tmp_path: Path) -> None:
     payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is False
     assert any("technical design generator" in call.lower() for call in llm.calls)
+    assert any("full SpecGuard spec package" in call for call in llm.calls)
 
 
 def test_risk_todo_example_is_blocked_by_grill(tmp_path: Path) -> None:
@@ -569,11 +587,50 @@ def test_risk_todo_example_is_blocked_by_grill(tmp_path: Path) -> None:
     assert not result.ok
     payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is True
+    assert payload["readiness"]["implementation_ready"] is False
     assert payload["summary"]["critical"] == 1
     assert payload["summary"]["major"] == 1
     assert "Todo ownership boundary is unclear" in {issue["title"] for issue in payload["issues"]}
     assert any("Open the human report" in step for step in result.next_steps)
     assert any("specguard run" in step for step in result.next_steps)
+
+
+def test_grill_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
+    result = initialize_specs(tmp_path, {
+        "feature_names": "billing-export",
+        "problem": "Export billing records safely.",
+        "users": "Finance users",
+        "outcomes": "Exports are scoped and auditable",
+        "constraints": "CSV only for the first pass",
+        "flows": "Request export, validate ownership, create file",
+        "data": "Billing record, owner, export file",
+        "dependencies": "Billing database",
+        "risks": "Cross-tenant export",
+        "out_of_scope": "Scheduled exports",
+        "acceptance": "An authorized user can export only owned records",
+    })
+    assert result.ok
+    feature = tmp_path / "specs" / "billing-export"
+
+    pipeline = run_pipeline(feature)
+
+    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
+    assert pipeline.ok
+    assert {"discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md", "technical-design.md"} <= reviewed_paths
+
+
+def test_grill_blocks_when_minor_findings_exceed_readiness_threshold(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_grill(feature, llm_client=SixMinorGrillLLM())
+
+    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["blocked"] is True
+    assert payload["readiness"]["implementation_ready"] is False
+    assert payload["summary"]["minor"] == 6
+    assert any("[NOT READY]" in message for message in result.messages)
 
 
 def test_post_run_grill_summary_supports_review_menu(tmp_path: Path) -> None:

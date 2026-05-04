@@ -61,6 +61,10 @@ def grill_report_stale_reason(feature_dir: Path) -> str | None:
     sources = [
         feature_dir / "discovery.md",
         feature_dir / "spec.md",
+        feature_dir / "plan.md",
+        feature_dir / "tasks.md",
+        feature_dir / "constitution.md",
+        feature_dir / "checklists" / "spec-readiness.md",
         feature_dir / "technical-design.md",
     ]
     newer_sources = [source.name for source in sources if source.exists() and source.stat().st_mtime > report_mtime]
@@ -72,11 +76,16 @@ def grill_report_stale_reason(feature_dir: Path) -> str | None:
 def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
     discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
     spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
+    plan = _compact_text(_read_optional(feature_dir / "plan.md"), 2500)
+    tasks = _compact_text(_read_optional(feature_dir / "tasks.md"), 2500)
+    constitution = _compact_text(_read_optional(feature_dir / "constitution.md"), 2500)
+    checklist = _compact_text(_read_optional(feature_dir / "checklists" / "spec-readiness.md"), 2500)
     technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
     grill_findings = _compact_grill_findings(feature_dir)
     instructions = "\n".join([
-        "You are SpecGuard's spec refinement assistant.",
-        "Revise spec.md so the Grill Me findings become explicit requirements, acceptance criteria, error cases, and constraints.",
+        "You are SpecGuard's spec refinement assistant and implementation-readiness editor.",
+        "Revise spec.md so the Grill Me findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
+        "Maintain consistency with plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, and technical-design.md.",
         "SpecGuard is not prompt-to-code. Do not write application code.",
         "Return ONLY the full replacement Markdown for spec.md.",
         "Preserve the feature intent and the existing spec structure when possible.",
@@ -91,6 +100,14 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
         discovery,
         "# Current spec.md",
         spec,
+        "# plan.md excerpt",
+        plan,
+        "# tasks.md excerpt",
+        tasks,
+        "# constitution.md excerpt",
+        constitution,
+        "# checklists/spec-readiness.md excerpt",
+        checklist,
         "# technical-design.md excerpt",
         technical_design,
         "# Grill Me findings",

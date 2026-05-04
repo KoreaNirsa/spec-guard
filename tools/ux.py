@@ -26,3 +26,11 @@ def print_section(title: str) -> None:
 
 def print_hint(message: str) -> None:
     print(f"> {message}")
+
+
+def green(text: str) -> str:
+    return f"\033[32m{text}\033[0m"
+
+
+def red(text: str) -> str:
+    return f"\033[31m{text}\033[0m"

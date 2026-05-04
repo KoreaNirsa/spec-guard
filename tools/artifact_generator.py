@@ -47,6 +47,22 @@ def _title(path: Path, spec: str) -> str:
     return " ".join(part.capitalize() for part in path.name.split("-"))
 
 
+def _supporting_spec_artifacts(path: Path) -> str:
+    candidates = [
+        path / "plan.md",
+        path / "tasks.md",
+        path / "constitution.md",
+        path / "checklists" / "spec-readiness.md",
+    ]
+    sections: list[str] = []
+    for candidate in candidates:
+        if candidate.exists():
+            relative = candidate.relative_to(path)
+            relative_path = str(relative).replace("\\", "/")
+            sections.append(f"# {relative_path}\n\n{candidate.read_text(encoding='utf-8')}")
+    return "\n\n".join(sections) if sections else "No supporting spec package artifacts were provided."
+
+
 def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
     output = path / "technical-design.md"
     if output.exists() and not force:
@@ -120,11 +136,13 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
 
     discovery = (path / "discovery.md").read_text(encoding="utf-8")
     spec = (path / "spec.md").read_text(encoding="utf-8")
+    supporting_artifacts = _supporting_spec_artifacts(path)
     instructions = "\n".join([
         "You are SpecGuard's technical design generator.",
-        "Generate a technical design from Discovery and spec artifacts.",
+        "Generate a technical design from the full SpecGuard spec package.",
         "SpecGuard is not a code generator. Do not write application code.",
         "Return ONLY Markdown.",
+        "Resolve contradictions between discovery.md, spec.md, plan.md, tasks.md, constitution.md, and checklists by making the safest explicit design assumption and naming any remaining blocker.",
         "Use this exact section structure:",
         f"# Technical Design: {path.name}",
         "## Architecture",
@@ -139,6 +157,8 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
         discovery,
         "# Spec",
         spec,
+        "# Supporting Spec Package Artifacts",
+        supporting_artifacts,
     ])
     output.write_text(llm_client.generate_text(instructions, input_text, max_output_tokens=3000), encoding="utf-8")
     return ArtifactWrite(output, created=True)
@@ -179,9 +199,16 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "",
         "## Agent Input Artifacts",
         "",
-        "- `spec.md`",
-        "- `technical-design.md`",
     ]
+    agent_artifacts = [
+        "spec.md",
+        "plan.md",
+        "tasks.md",
+        "constitution.md",
+        "checklists/spec-readiness.md",
+        "technical-design.md",
+    ]
+    lines.extend(f"- `{artifact}`" for artifact in agent_artifacts if (path / artifact).exists())
     lines.extend(f"- `tests/{test.name}`" for test in test_files)
     lines.extend(f"- `contracts/{contract.name}`" for contract in contract_files if contract.is_file())
     lines.extend([
@@ -190,7 +217,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "",
         "- `discovery.md` is for SpecGuard discovery and user refinement.",
         "- `grill.md` and `grill.json` are for SpecGuard adversarial validation.",
-        "- Coding agents should treat the agent input artifacts as the implementation basis.",
+        "- Coding agents should treat the agent input artifacts as the implementation basis after SpecGuard reports implementation-ready status.",
         "",
         "## Output Location",
         "",

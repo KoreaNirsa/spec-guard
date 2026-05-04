@@ -10,15 +10,29 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.result import CheckResult
+from tools.ux import green, red
 
 
-GRILL_PROMPT = """You are a senior software architect, security expert, and reliability engineer.
+GRILL_MINOR_READY_LIMIT = 5
+
+
+GRILL_PROMPT = """You are SpecGuard's Grill Review board: a principal software architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.
 
 Your task is NOT to approve the implementation basis.
-Your task is to BREAK the implementation basis.
+Your task is to BREAK the implementation basis before a coding agent sees it.
 
-Analyze the Discovery, Spec, and Technical Design aggressively.
-Identify logic flaws, edge cases, security issues, performance risks, and failure scenarios.
+Review every spec package artifact together: Discovery, spec, plan, tasks, constitution, checklists, technical design, and any other authored spec document.
+
+Use the Grill Review technique:
+- Find contradictions between artifacts.
+- Attack missing requirements, undefined state, ambiguous ownership, weak contracts, unsafe retries, auth gaps, versioning gaps, and untestable acceptance criteria.
+- Convert implementation guesses into Critical or Major findings.
+- Treat style-only improvements as Minor.
+
+Implementation-ready threshold:
+- Critical: 0
+- Major: 0
+- Minor: 5 or fewer, and none may hide a requirement ambiguity.
 """
 
 
@@ -29,6 +43,12 @@ class GrillIssue:
     description: str
     impact: str
     fix: str
+
+
+@dataclass(frozen=True)
+class ReviewArtifact:
+    path: str
+    content: str
 
 
 def _contains(text: str, *needles: str) -> bool:
@@ -42,12 +62,61 @@ def _section(content: str, heading: str) -> str:
 
 
 def _is_placeholder(text: str) -> bool:
-    lowered = text.lower()
-    return not text.strip() or _contains(lowered, "describe ", "list ", "pending", "tbd")
+    if not text.strip():
+        return True
+    for line in text.splitlines():
+        stripped = line.strip().lower()
+        if not stripped:
+            continue
+        bullet_text = stripped.lstrip("-*0123456789.[] x")
+        if "{{ " in stripped or stripped.startswith("describe ") or stripped.startswith("- list "):
+            return True
+        if bullet_text in {"pending", "tbd"}:
+            return True
+    return False
 
 
-def _analyze(discovery: str, spec: str, technical_design: str) -> list[GrillIssue]:
-    text = f"{discovery}\n{spec}\n{technical_design}".lower()
+def _review_artifacts(path: Path) -> list[ReviewArtifact]:
+    preferred = [
+        path / "discovery.md",
+        path / "spec.md",
+        path / "plan.md",
+        path / "tasks.md",
+        path / "constitution.md",
+        path / "technical-design.md",
+    ]
+    preferred.extend(sorted((path / "checklists").glob("*.md")) if (path / "checklists").exists() else [])
+
+    excluded_names = {"grill.md", "implementation-output.md"}
+    seen: set[Path] = set()
+    artifacts: list[ReviewArtifact] = []
+    for candidate in preferred + sorted(path.rglob("*.md")):
+        if candidate in seen or not candidate.exists() or not candidate.is_file():
+            continue
+        seen.add(candidate)
+        relative = candidate.relative_to(path)
+        if candidate.name in excluded_names:
+            continue
+        if relative.parts and relative.parts[0] == "tests":
+            continue
+        artifacts.append(ReviewArtifact(str(relative).replace("\\", "/"), candidate.read_text(encoding="utf-8")))
+    return artifacts
+
+
+def _artifact_content(artifacts: list[ReviewArtifact], name: str) -> str:
+    for artifact in artifacts:
+        if artifact.path == name:
+            return artifact.content
+    return ""
+
+
+def _render_artifact_input(artifacts: list[ReviewArtifact]) -> str:
+    return "\n\n".join([f"# Artifact: {artifact.path}\n\n{artifact.content}" for artifact in artifacts])
+
+
+def _analyze(artifacts: list[ReviewArtifact]) -> list[GrillIssue]:
+    text = _render_artifact_input(artifacts).lower()
+    technical_design = _artifact_content(artifacts, "technical-design.md")
     technical_design_text = technical_design.lower()
     issues: list[GrillIssue] = []
 
@@ -101,7 +170,7 @@ def _analyze(discovery: str, spec: str, technical_design: str) -> list[GrillIssu
                 "Add rate limits by account and IP, progressive delay, audit logging, and lockout rules.",
             ))
 
-    if _contains(text, "todo", "task"):
+    if _contains(text, "todo", "todos"):
         if not _contains(technical_design_text, "owner_user_id", "owner id", "authorization", "tenant"):
             issues.append(GrillIssue(
                 "Critical",
@@ -189,23 +258,19 @@ def _parse_llm_issues(text: str) -> list[GrillIssue]:
     return issues
 
 
-def _analyze_with_llm(discovery: str, spec: str, technical_design: str, llm_client: object) -> list[GrillIssue]:
+def _analyze_with_llm(artifacts: list[ReviewArtifact], llm_client: object) -> list[GrillIssue]:
     instructions = "\n".join([
-        "You are SpecGuard's Grill Me engine: a senior software architect, security expert, and reliability engineer.",
-        "Your task is NOT to approve the implementation basis. Your task is to break it.",
-        "Analyze Discovery, spec.md, and technical-design.md aggressively.",
+        "You are SpecGuard's Grill Review board: principal architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.",
+        "Your task is NOT to approve the implementation basis. Your task is to break it before Codex or Claude Code implements from it.",
+        "Analyze every provided spec artifact together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
+        "Use Grill Review: find contradictions, missing requirements, undefined state, security gaps, data ownership gaps, versioning gaps, weak contracts, untestable acceptance criteria, unsafe failure handling, and implementation assumptions.",
+        f"Readiness policy: implementation is allowed only when Critical=0, Major=0, and Minor<={GRILL_MINOR_READY_LIMIT}.",
+        "Severity calibration: Critical means unsafe, contradictory, or impossible to implement deterministically; Major means implementation would require guessing or would miss an important test/contract; Minor means useful cleanup that does not block implementation.",
         "Return ONLY JSON with this shape:",
         '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
-        "Do not include positive feedback. Focus on missing requirements, invalid assumptions, edge cases, security, performance, contracts, tests, and failure scenarios.",
+        "Do not include positive feedback. Every finding must be actionable and mapped to a spec, plan, task, checklist, technical design, test, or contract update.",
     ])
-    input_text = "\n\n".join([
-        "# Discovery",
-        discovery,
-        "# Spec",
-        spec,
-        "# Technical Design",
-        technical_design,
-    ])
+    input_text = _render_artifact_input(artifacts)
     text = llm_client.generate_text(instructions, input_text, max_output_tokens=2500)
     return _parse_llm_issues(text)
 
@@ -237,13 +302,30 @@ def _build_summary(issues: list[GrillIssue]) -> dict[str, int]:
     }
 
 
-def _build_report(discovery: str, spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
+def _is_implementation_ready(summary: dict[str, int]) -> bool:
+    return summary["critical"] == 0 and summary["major"] == 0 and summary["minor"] <= GRILL_MINOR_READY_LIMIT
+
+
+def _readiness_text(summary: dict[str, int]) -> str:
+    if _is_implementation_ready(summary):
+        return f"Implementation-ready: Critical=0, Major=0, Minor<={GRILL_MINOR_READY_LIMIT}."
+    return f"Not implementation-ready: requires Critical=0, Major=0, Minor<={GRILL_MINOR_READY_LIMIT}."
+
+
+def _build_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue]) -> str:
+    summary = _build_summary(issues)
     critical = [issue for issue in issues if issue.severity == "Critical"]
     major = [issue for issue in issues if issue.severity == "Major"]
     minor = [issue for issue in issues if issue.severity == "Minor"]
 
     return "\n".join([
         "# Grill Result",
+        "",
+        "## Readiness",
+        "",
+        f"- Status: {'READY' if _is_implementation_ready(summary) else 'NOT READY'}",
+        f"- Criteria: Critical=0, Major=0, Minor<={GRILL_MINOR_READY_LIMIT}",
+        f"- Current: Critical={summary['critical']}, Major={summary['major']}, Minor={summary['minor']}",
         "",
         _render_group("Critical Issues", critical),
         _render_group("Major Issues", major),
@@ -262,24 +344,33 @@ def _build_report(discovery: str, spec: str, technical_design: str, issues: list
         "",
         "## Input Summary",
         "",
-        f"- Discovery characters: {len(discovery)}",
-        f"- Spec characters: {len(spec)}",
-        f"- Technical design characters: {len(technical_design)}",
+        *[f"- {artifact.path}: {len(artifact.content)} characters" for artifact in artifacts],
         "",
     ])
 
 
-def _build_json_report(discovery: str, spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
+def _build_json_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue]) -> str:
     summary = _build_summary(issues)
+    artifact_lengths = {artifact.path: len(artifact.content) for artifact in artifacts}
     payload = {
         "schema_version": "0.1",
-        "blocked": bool(summary["critical"] or summary["major"]),
+        "blocked": not _is_implementation_ready(summary),
+        "readiness": {
+            "implementation_ready": _is_implementation_ready(summary),
+            "criteria": {
+                "critical": 0,
+                "major": 0,
+                "minor_max": GRILL_MINOR_READY_LIMIT,
+            },
+            "status": "ready" if _is_implementation_ready(summary) else "not_ready",
+        },
         "summary": summary,
         "issues": [asdict(issue) for issue in issues],
         "input": {
-            "discovery_characters": len(discovery),
-            "spec_characters": len(spec),
-            "technical_design_characters": len(technical_design),
+            "discovery_characters": artifact_lengths.get("discovery.md", 0),
+            "spec_characters": artifact_lengths.get("spec.md", 0),
+            "technical_design_characters": artifact_lengths.get("technical-design.md", 0),
+            "artifacts": [{"path": artifact.path, "characters": len(artifact.content)} for artifact in artifacts],
         },
         "prompt_mode": GRILL_PROMPT.strip(),
     }
@@ -304,30 +395,33 @@ def run_grill(path: Path, llm_client: object | None = None) -> CheckResult:
         result.add_error(f"Missing technical design file: {technical_design_path}")
         return result
 
-    discovery = discovery_path.read_text(encoding="utf-8")
-    spec = spec_path.read_text(encoding="utf-8")
-    technical_design = technical_design_path.read_text(encoding="utf-8")
+    artifacts = _review_artifacts(path)
     try:
-        issues = _analyze_with_llm(discovery, spec, technical_design, llm_client) if llm_client else _analyze(discovery, spec, technical_design)
+        issues = _analyze_with_llm(artifacts, llm_client) if llm_client else _analyze(artifacts)
     except (json.JSONDecodeError, ValueError) as exc:
         result.add_error(f"LLM Grill Me response could not be parsed as JSON: {exc}")
         return result
     summary = _build_summary(issues)
     critical_count = summary["critical"]
     major_count = summary["major"]
+    minor_count = summary["minor"]
+    implementation_ready = _is_implementation_ready(summary)
 
-    grill_path.write_text(_build_report(discovery, spec, technical_design, issues), encoding="utf-8")
-    grill_json_path.write_text(_build_json_report(discovery, spec, technical_design, issues), encoding="utf-8")
+    grill_path.write_text(_build_report(artifacts, issues), encoding="utf-8")
+    grill_json_path.write_text(_build_json_report(artifacts, issues), encoding="utf-8")
     result.details.update(summary)
     mode = "LLM" if llm_client else "heuristic"
     result.add_info(f"Generated {mode} grill report: {grill_path}")
     result.add_info(f"Generated {mode} machine-readable grill report: {grill_json_path}")
-    if critical_count or major_count:
-        result.add_error(f"Blocked by Grill Me findings: {critical_count} critical, {major_count} major")
+    result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
+    if implementation_ready:
+        result.add_info(green(f"[READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
+    else:
+        result.add_error(red(f"[NOT READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
         result.add_next_step(f"Open the human report: {grill_path}")
         result.add_next_step(f"Use the machine-readable report for automation: {grill_json_path}")
         result.add_next_step(
-            "Fix discovery.md, spec.md, or technical-design.md so Critical and Major issues become explicit requirements or verified constraints."
+            "Fix spec package artifacts so Critical and Major issues become explicit requirements or verified constraints, and Minor findings stay within the readiness threshold."
         )
         result.add_next_step(f"Run again: specguard run {path}")
     return result
