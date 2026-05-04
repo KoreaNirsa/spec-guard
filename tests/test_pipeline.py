@@ -4,6 +4,8 @@ from argparse import Namespace
 import json
 import os
 import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -195,6 +197,22 @@ def copy_example(tmp_path: Path, example: str) -> Path:
     return target
 
 
+def run_cli_smoke(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = str(ROOT) if not existing_pythonpath else f"{ROOT}{os.pathsep}{existing_pythonpath}"
+    env["CI"] = "true"
+    return subprocess.run(
+        [sys.executable, "-m", "cli.specguard", *args],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+
+
 def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool = False) -> Path:
     feature = base / "feature"
     (feature / "tests").mkdir(parents=True)
@@ -315,6 +333,72 @@ def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
     assert payload["readiness"]["implementation_ready"] is True
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
+
+
+def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
+    completed = run_cli_smoke(
+        tmp_path,
+        "init",
+        "billing-export",
+        "--non-interactive",
+        "--no-llm",
+        "--problem",
+        "Finance users need scoped billing exports.",
+        "--users",
+        "Finance operators",
+        "--outcomes",
+        "Auditable scoped CSV exports",
+        "--constraints",
+        "CSV only; tenant isolation required",
+        "--flows",
+        "Request export, authorize tenant, create CSV, audit result",
+        "--data",
+        "Billing records, tenant, user, export file",
+        "--dependencies",
+        "Billing database and object storage",
+        "--risks",
+        "Cross-tenant data exposure",
+        "--out-of-scope",
+        "Scheduled exports",
+        "--acceptance",
+        "Authorized users can export only owned tenant records",
+    )
+
+    feature = tmp_path / "specs" / "billing-export"
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "[PASS] SpecGuard Discovery" in completed.stdout
+    assert "Generating spec draft completed" in completed.stdout
+    assert feature.joinpath("discovery.md").exists()
+    assert feature.joinpath("spec.md").exists()
+    assert feature.joinpath("plan.md").exists()
+    assert feature.joinpath("tasks.md").exists()
+    assert feature.joinpath("constitution.md").exists()
+    assert feature.joinpath("checklists", "spec-readiness.md").exists()
+
+
+def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "team-invite"
+    shutil.copytree(ROOT / "example", feature)
+
+    completed = run_cli_smoke(
+        tmp_path,
+        "run",
+        "specs/team-invite",
+        "--no-llm",
+        "--no-follow-up",
+        "--force",
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "[PASS] SpecGuard pipeline" in completed.stdout
+    assert "Running pipeline completed" in completed.stdout
+    assert "implementation-ready" in completed.stdout
+    assert feature.joinpath("technical-design.md").exists()
+    assert feature.joinpath("tests", "team-invite.test.md").exists()
+    assert feature.joinpath("contracts", "openapi.yaml").exists()
+    assert feature.joinpath("implementation-output.md").exists()
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert payload["readiness"]["implementation_ready"] is True
 
 
 def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
