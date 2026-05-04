@@ -1,0 +1,1 @@
+"""SpecGuard CLI package."""

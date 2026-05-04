@@ -1,0 +1,1 @@
+"""SpecGuard tool package."""

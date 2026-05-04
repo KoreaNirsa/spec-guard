@@ -1,0 +1,35 @@
+openapi: 3.1.0
+info:
+  title: Todo API
+  version: 0.1.0
+paths:
+  /todos:
+    get:
+      responses:
+        "200":
+          description: Current user's todos
+        "401":
+          description: Unauthorized
+    post:
+      responses:
+        "201":
+          description: Todo created
+        "400":
+          description: Invalid request
+  /todos/{todoId}:
+    patch:
+      responses:
+        "200":
+          description: Todo updated
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
+    delete:
+      responses:
+        "204":
+          description: Todo deleted
+        "403":
+          description: Forbidden
+        "404":
+          description: Not found
