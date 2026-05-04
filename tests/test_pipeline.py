@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from argparse import Namespace
+import builtins
 import json
 import os
 import shutil
@@ -1140,3 +1141,19 @@ def test_contract_checker_rejects_invalid_openapi(tmp_path: Path) -> None:
 
     assert not result.ok
     assert any("info.title" in message for message in result.messages)
+
+
+def test_contract_checker_fallback_accepts_generated_empty_paths(tmp_path: Path, monkeypatch) -> None:
+    feature = write_feature(tmp_path)
+    original_import = builtins.__import__
+
+    def block_yaml(name, *args, **kwargs):
+        if name == "yaml":
+            raise ImportError("yaml unavailable")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", block_yaml)
+
+    result = check_contracts(feature)
+
+    assert result.ok
