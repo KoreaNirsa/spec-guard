@@ -1,4 +1,4 @@
-# Deep Discovery: {{ feature_name }}
+# Discovery: {{ feature_name }}
 
 Use this before writing `spec.md` or `design.md`. Keep answers short, concrete, and honest.
 
@@ -31,7 +31,7 @@ Use this before writing `spec.md` or `design.md`. Keep answers short, concrete, 
 
 ## Feasibility
 
-16. What can be built in one MVP pass?
+16. What can be built in the first practical pass?
 17. What dependency, policy, or workflow can block delivery?
 18. What can be validated without full implementation?
 

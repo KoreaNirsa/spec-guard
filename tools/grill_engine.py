@@ -253,7 +253,9 @@ def run_grill(path: Path) -> CheckResult:
         result.add_error(f"Blocked by Grill Me findings: {critical_count} critical, {major_count} major")
         result.add_next_step(f"Open the human report: {grill_path}")
         result.add_next_step(f"Use the machine-readable report for automation: {grill_json_path}")
-        result.add_next_step("Fix spec.md or design.md so Critical and Major issues become explicit requirements.")
+        result.add_next_step(
+            "Fix discovery.md, spec.md, design.md, tests, or contracts so Critical and Major issues become explicit requirements or verified constraints."
+        )
         result.add_next_step(f"Run again: specguard run {path}")
     return result
 

@@ -44,11 +44,11 @@ SpecGuard assumes that the user, team, or product owner writes the initial spec.
 
 ### 2. Discovery Comes Before Design
 
-Deep Discovery helps expose goals, constraints, assumptions, mechanisms, stress points, feasibility risks, and stop conditions before the design is written.
+Discovery helps expose goals, constraints, assumptions, mechanisms, stress points, feasibility risks, and stop conditions before the design is written.
 
-### 3. Designs Must Be Attacked
+### 3. The Full Artifact Set Must Be Challenged
 
-Grill Me is an adversarial review step. It does not approve a design; it looks for reasons the design can fail.
+Grill Me is an adversarial validation step for the full SDD artifact set: discovery, spec, design, tests, and contracts. It does not approve artifacts; it looks for reasons the implementation basis can fail.
 
 ### 4. Tests And Contracts Are Implementation Inputs
 
@@ -71,7 +71,7 @@ Implementation outputs should be generated or written only after the SDD pipelin
    Define architecture, data flow, state, dependencies, and failure handling.
 
 4. Grill
-   Run adversarial validation against the design.
+   Run adversarial validation against the full SDD artifact set.
 
 5. Test
    Generate or preserve TDD scenarios from the spec.
@@ -100,11 +100,11 @@ feature/
 
 These files define whether a feature is ready to produce implementation outputs.
 
-## Deep Discovery
+## Discovery
 
-Deep Discovery is the pre-spec exploration step. It is adapted from a 100-question sequential self-interrogation technique, but SpecGuard uses a focused 24-question version for practical project work.
+Discovery is the pre-spec exploration step. It is adapted from a sequential self-interrogation technique, but SpecGuard uses a focused 24-question version for practical project work.
 
-Deep Discovery asks:
+Discovery asks:
 
 - What problem are we actually solving?
 - Which assumptions are we making too early?
@@ -115,18 +115,22 @@ Deep Discovery asks:
 
 See [docs/deep-discovery.md](docs/deep-discovery.md).
 
+Naming note: SpecGuard uses `Discovery` as the product workflow term. `Deep Discovery` can remain the name of the underlying technique, but the public artifact should stay simple: `discovery.md`.
+
 ## Grill Me
 
-Grill Me is the post-design risk review step.
+Grill Me is the pre-implementation adversarial validation step.
 
-It looks for design weaknesses such as:
+It reviews the full SDD artifact set and looks for weaknesses such as:
 
 - missing token lifecycle rules
 - weak ownership or authorization boundaries
 - unsafe delete semantics
-- placeholder design content
+- placeholder or contradictory artifact content
 - undefined retry, timeout, or rollback behavior
 - incomplete state transitions
+- tests that do not cover stated acceptance criteria
+- contracts that do not match the intended behavior
 
 Outputs:
 
@@ -157,7 +161,7 @@ Run a risk example:
 python -m cli.specguard run examples/risk/todo-api
 ```
 
-The risk example is expected to fail because SpecGuard detects Critical and Major design issues.
+The risk example is expected to fail because SpecGuard detects Critical and Major implementation-basis issues.
 
 ## CLI
 
@@ -186,7 +190,7 @@ python -m cli.specguard run specs
 Next steps:
 - Open the human report: examples/risk/todo-api/grill.md
 - Use the machine-readable report for automation: examples/risk/todo-api/grill.json
-- Fix spec.md or design.md so Critical and Major issues become explicit requirements.
+- Fix discovery.md, spec.md, design.md, tests, or contracts so Critical and Major issues become explicit requirements or verified constraints.
 - Run again: specguard run examples/risk/todo-api
 ```
 
@@ -235,11 +239,11 @@ The test suite covers:
 - non-destructive TDD generation
 - placeholder validation
 - invalid OpenAPI contract detection
-- required Deep Discovery artifacts
+- required Discovery artifacts
 
 ## Current Capabilities
 
-- Deep Discovery artifacts
+- Discovery artifacts
 - Spec and Design validation
 - local heuristic Grill Me engine
 - human and JSON Grill reports

@@ -1,4 +1,4 @@
-# Deep Discovery: user-auth
+# Discovery: user-auth
 
 ## Foundation
 
@@ -29,7 +29,7 @@
 
 ## Feasibility
 
-- MVP build: Validate the feature folder structure.
+- Initial scope: Validate the feature folder structure.
 - Blocker: Placeholder sections must be replaced before real use.
 - Validation: SpecGuard validation and Grill Me should catch incomplete artifacts.
 

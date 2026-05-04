@@ -1,10 +1,10 @@
-# Deep Discovery: todo-api
+# Discovery: todo-api
 
 ## Foundation
 
 - Goal: Let authenticated users manage todo items.
 - User impact: Users need reliable personal task storage.
-- Constraints: Keep CRUD API small for MVP.
+- Constraints: Keep the initial CRUD API small.
 - Assumption to test: Authentication alone may be treated as enough authorization.
 
 ## Mechanisms
@@ -25,11 +25,11 @@
 
 - Existing option: A generic CRUD scaffold can create endpoints quickly.
 - Difference: SpecGuard should catch owner scoping and delete policy gaps before code generation.
-- Non-goal: Collaboration or sharing is outside the MVP.
+- Non-goal: Collaboration or sharing is outside the initial scope.
 
 ## Feasibility
 
-- MVP build: Create, list, update, delete.
+- Initial scope: Create, list, update, delete.
 - Blocker: Owner scoping and delete semantics are not clear enough yet.
 - Validation: Grill Me should block this design until ownership and deletion are explicit.
 

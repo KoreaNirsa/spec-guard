@@ -1,4 +1,4 @@
-# Deep Discovery: simple-auth
+# Discovery: simple-auth
 
 ## Foundation
 
@@ -29,7 +29,7 @@
 
 ## Feasibility
 
-- MVP build: Basic login behavior and contract.
+- Initial scope: Basic login behavior and contract.
 - Blocker: Security hardening is incomplete by design.
 - Validation: Grill Me should surface token expiry and brute-force gaps.
 

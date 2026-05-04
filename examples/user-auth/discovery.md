@@ -1,10 +1,10 @@
-# Deep Discovery: user-auth
+# Discovery: user-auth
 
 ## Foundation
 
 - Goal: Build a secure token-based login flow before protected APIs exist.
 - User impact: Users cannot safely access private resources without authentication.
-- Constraints: Keep the MVP API small, avoid leaking credential details, and preserve auditability.
+- Constraints: Keep the initial API small, avoid leaking credential details, and preserve auditability.
 - Assumption to test: Token issuance is not enough unless token expiry, refresh, replay, and lockout behavior are explicit.
 
 ## Mechanisms
@@ -25,11 +25,11 @@
 
 - Existing option: A simple login endpoint can issue tokens quickly.
 - Difference: SpecGuard forces token lifecycle, replay, lockout, and failure behavior into the design before implementation.
-- Non-goal: Full OAuth provider support is outside the MVP.
+- Non-goal: Full OAuth provider support is outside the initial scope.
 
 ## Feasibility
 
-- MVP build: Login, refresh, token rotation, lockout, audit events, and contract examples.
+- Initial scope: Login, refresh, token rotation, lockout, audit events, and contract examples.
 - Blocker: Token storage and replay detection must be designed before code generation.
 - Validation: Grill Me can verify lifecycle and brute-force controls before implementation.
 
