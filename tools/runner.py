@@ -54,7 +54,7 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
         test_path = feature_dir / "tests" / f"{feature_dir.name}.test.md"
         contract_path = feature_dir / "contracts" / "openapi.yaml"
 
-        refresh_design = force or not technical_design_path.exists()
+        refresh_design = _is_stale(technical_design_path, [discovery_path, spec_path], force)
         if llm_client is None:
             technical_design = generate_technical_design(feature_dir, force=refresh_design)
         else:
@@ -62,8 +62,6 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
         action = "Generated" if technical_design.created else "Reused"
         mode = " LLM" if llm_client is not None and technical_design.created else ""
         result.add_info(f"{action}{mode} technical design: {technical_design.path}")
-        if not force and not technical_design.created and _is_stale(technical_design_path, [discovery_path, spec_path], False):
-            result.add_next_step(f"Review stale technical design or regenerate it with --force: {technical_design_path}")
 
         technical_validation = validate_technical_design(feature_dir)
         result.messages.extend(technical_validation.messages)
