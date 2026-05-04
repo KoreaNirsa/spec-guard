@@ -15,6 +15,13 @@ SPEC_REQUIRED_SECTIONS = {
     "error": "Error Cases",
 }
 
+DISCOVERY_REQUIRED_SECTIONS = {
+    "foundation": "Foundation",
+    "mechanisms": "Mechanisms",
+    "stress": "Stress Test",
+    "synthesis": "Synthesis",
+}
+
 DESIGN_REQUIRED_SECTIONS = {
     "architecture": "Architecture",
     "data flow": "Data Flow",
@@ -105,6 +112,7 @@ def validate_feature(path: Path) -> CheckResult:
         return result
 
     for feature_dir in feature_dirs:
+        _validate_doc(feature_dir / "discovery.md", DISCOVERY_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "spec.md", SPEC_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "design.md", DESIGN_REQUIRED_SECTIONS, result)
 
@@ -123,7 +131,7 @@ def validate_feature(path: Path) -> CheckResult:
             result.add_error(f"Missing test scenarios in: {tests_dir}")
 
     if result.ok:
-        result.add_info("Spec, design, and test scenario checks passed.")
+        result.add_info("Discovery, spec, design, and test scenario checks passed.")
     return result
 
 

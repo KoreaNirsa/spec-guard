@@ -1,6 +1,30 @@
 # Grill Result
 
-## Prompt
+## Critical Issues
+
+- None detected by the local heuristic engine.
+
+## Major Issues
+
+- None detected by the local heuristic engine.
+
+## Minor Issues
+
+### No obvious grill triggers found
+
+Description: The documents passed the built-in heuristic checks, but this is not a security review.
+
+Impact: Subtle domain-specific bugs may still exist.
+
+Fix: Run the strict Grill Me prompt with a model and add human review before implementation.
+
+## Improvement Suggestions
+
+- Convert every Critical and Major item into acceptance criteria before implementation.
+- Add tests for authorization, invalid state, retry, timeout, and duplicate request behavior.
+- Re-run `specguard run` after updating `spec.md` and `design.md`.
+
+## Prompt Mode
 
 ```text
 You are a senior software architect, security expert, and reliability engineer.
@@ -8,46 +32,11 @@ You are a senior software architect, security expert, and reliability engineer.
 Your task is NOT to approve the design.
 Your task is to BREAK the design.
 
-Analyze the design aggressively and identify:
-
-1. Logic flaws
-2. Edge cases
-3. Security issues
-4. Performance risks
-5. Failure scenarios
-
-Return ONLY in the following format:
-
-Critical Issues
-[Issue]
-Description:
-Impact:
-Fix:
-
-Major Issues
-
-Minor Issues
-
-Improvement Suggestions
+Analyze the design aggressively and identify logic flaws, edge cases,
+security issues, performance risks, and failure scenarios.
 ```
-
-## Critical Issues
-
-- TBD: Run the Grill Me prompt with the feature spec and design document.
-
-## Major Issues
-
-- TBD: Identify missing flows, invalid states, security risks, and failure handling gaps.
-
-## Minor Issues
-
-- TBD: Identify naming, clarity, and maintainability concerns.
-
-## Improvement Suggestions
-
-- TBD: Add concrete mitigation steps before implementation.
 
 ## Input Summary
 
-- Spec characters: 546
-- Design characters: 484
+- Spec characters: 856
+- Design characters: 1314

@@ -1,8 +1,8 @@
 # SpecGuard
 
-Spec -> Design -> Grill -> Test -> Code
+Discovery -> Spec -> Design -> Grill -> Test -> Code
 
-SpecGuard is not a code generator. It is a small control system for AI-driven development: write the spec, force the design, grill the weak points, generate test scenarios, then implement.
+SpecGuard is not a code generator. It is a small control system for AI-driven development: discover the problem, write the spec, force the design, grill the weak points, generate test scenarios, then implement.
 
 ## Quick Start
 
@@ -23,35 +23,42 @@ The risk example should fail. That failure is the product: SpecGuard blocks desi
 ## MVP Workflow
 
 ```text
-1. Write spec.md
+1. Run Deep Discovery in discovery.md
+   - Foundation
+   - Mechanisms
+   - Stress Test
+   - Synthesis
+
+2. Write spec.md
    - Requirements
    - Acceptance Criteria
    - Error Cases
 
-2. Write design.md
+3. Write design.md
    - Architecture
    - Data Flow
    - State
    - Failure Handling
 
-3. Run SpecGuard
+4. Run SpecGuard
    python -m cli.specguard run <feature-folder>
 
-4. Review Grill results
+5. Review Grill results
    - grill.md for humans
    - grill.json for CI and automation
 
-5. Fix Critical and Major findings
+6. Fix Critical and Major findings
 
-6. Generate or preserve TDD scenarios
+7. Generate or preserve TDD scenarios
 
-7. Validate contracts
+8. Validate contracts
 ```
 
 ## What Run Checks
 
 ```text
-Spec Validation
+Discovery Validation
+  -> Spec Validation
   -> Design Validation
   -> Grill Me
   -> TDD Scenario Generation
@@ -75,6 +82,7 @@ Next steps:
 ```text
 examples/
 |-- user-auth/
+|   |-- discovery.md
 |   |-- spec.md
 |   |-- design.md
 |   |-- grill.md
@@ -85,6 +93,7 @@ examples/
 |       `-- openapi.yaml
 `-- risk/
     `-- todo-api/
+        |-- discovery.md
         |-- spec.md
         |-- design.md
         |-- grill.md
@@ -111,6 +120,24 @@ python -m cli.specguard run examples/user-auth
 ```
 
 Advanced internals exist for development, but the product should feel like one command: `run`.
+
+## Deep Discovery
+
+Deep Discovery is the pre-spec exploration step. It is adapted from a 100-question sequential self-interrogation technique, but SpecGuard MVP uses 24 focused questions so the workflow stays usable.
+
+The phases are:
+
+- Foundation: goal, users, constraints, assumptions
+- Mechanisms: components, data flow, dependencies, state
+- Stress Test: edge cases, concurrency, security, recovery
+- Differentiation: existing options, unique value, non-goals
+- Feasibility: MVP buildability, blockers, validation
+- Improvement: simplification, automation, unknowns
+- Synthesis: decision, required artifacts, stop conditions
+
+Use Deep Discovery to discover hidden assumptions. Use Grill Me to attack the design after those assumptions become concrete.
+
+See [docs/deep-discovery.md](docs/deep-discovery.md) for the 24-question MVP framework.
 
 ## Tests And CI
 
@@ -173,6 +200,7 @@ spec-guard/
 ## MVP Scope
 
 - Examples first
+- Deep Discovery before Spec
 - Minimal CLI: `init`, `run`
 - Grill results that expose real implementation risk
 - TDD scenarios generated from spec folders

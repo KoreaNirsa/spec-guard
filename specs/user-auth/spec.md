@@ -2,24 +2,29 @@
 
 ## Problem
 
-Describe the user or system problem this feature solves.
+Users need a secure login flow that issues tokens for protected API access.
 
 ## Requirements
 
-- The system must define the required behavior.
-- The system must reject invalid behavior.
+- The system must authenticate users with email and password.
+- The system must issue an access token after successful login.
+- The system must reject invalid credentials with a generic error.
+- The system must protect authenticated endpoints from anonymous access.
 
 ## Acceptance Criteria
 
-- [ ] Given valid input, when the feature runs, then the expected result is produced.
-- [ ] Given invalid input, when the feature runs, then a clear error is returned.
+- [ ] Valid credentials return an access token and refresh token.
+- [ ] Invalid credentials return `401 Unauthorized`.
+- [ ] Missing email or password returns `400 Bad Request`.
+- [ ] Expired access tokens are rejected.
+- [ ] Refresh token replay is detected and rejected.
 
 ## Error Cases
 
-- Missing required input
-- Invalid state
-- Unauthorized access
-
-## Out of Scope
-
-- List anything intentionally excluded from this feature.
+- Missing email
+- Missing password
+- Invalid password
+- Unknown user
+- Expired access token
+- Replayed refresh token
+- Too many failed login attempts

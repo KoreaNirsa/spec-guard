@@ -1,22 +1,17 @@
 # TDD Scenarios: user-auth
 
-## Source
-
-- Spec: `spec.md`
-
 ## Success Cases
 
-- [ ] Primary happy path satisfies all acceptance criteria.
+- [ ] Valid credentials return access and refresh tokens.
+- [ ] A valid refresh token rotates and returns a new token pair.
 
 ## Failure Cases
 
-- [ ] Invalid input is rejected with a clear error.
-- [ ] Unauthorized or forbidden access is blocked when applicable.
+- [ ] Invalid credentials return a generic `401`.
+- [ ] Replayed refresh token revokes the token family.
+- [ ] Locked accounts cannot login until the lock expires.
 
 ## Boundary Cases
 
-- [ ] Empty values, maximum values, and duplicate requests are handled.
-
-## Notes
-
-Generated from a spec with 546 characters. Replace these scenarios with executable tests before implementation.
+- [ ] Failed login attempts are rate-limited by account and IP.
+- [ ] Expired access tokens are rejected.

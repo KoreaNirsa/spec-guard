@@ -25,6 +25,34 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
     (feature / "tests").mkdir(parents=True)
     (feature / "contracts").mkdir()
 
+    feature.joinpath("discovery.md").write_text(
+        "\n".join([
+            "# Deep Discovery: feature",
+            "",
+            "## Foundation",
+            "",
+            "- Goal: Validate a small feature safely.",
+            "- Constraints: Keep the API simple.",
+            "",
+            "## Mechanisms",
+            "",
+            "- Components: API, service, contract.",
+            "- Data flow: Request to validation to response.",
+            "",
+            "## Stress Test",
+            "",
+            "- First break: Invalid input.",
+            "- Edge cases: Missing fields.",
+            "",
+            "## Synthesis",
+            "",
+            "- Decision: Build only after validation passes.",
+            "- Output: Spec, design, tests, and contract.",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
     requirement = "Describe the required behavior." if placeholder else "The system must accept valid input."
     feature.joinpath("spec.md").write_text(
         "\n".join([
@@ -129,6 +157,16 @@ def test_validator_rejects_placeholder_content(tmp_path: Path) -> None:
 
     assert not result.ok
     assert any("placeholder" in message for message in result.messages)
+
+
+def test_validator_requires_discovery(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("discovery.md").unlink()
+
+    result = validate_feature(feature)
+
+    assert not result.ok
+    assert any("discovery.md" in message for message in result.messages)
 
 
 def test_contract_checker_rejects_invalid_openapi(tmp_path: Path) -> None:
