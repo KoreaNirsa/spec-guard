@@ -69,10 +69,14 @@ SpecGuard creates draft specs under `specs/`:
 ```text
 specs/my-feature/
 |-- discovery.md
-`-- spec.md
+|-- spec.md
+|-- plan.md
+|-- tasks.md
+|-- constitution.md
+`-- checklists/
 ```
 
-The generated `spec.md` follows a Spec Kit-inspired shape:
+The generated spec package follows a Spec Kit-inspired shape:
 
 - user scenarios and testing
 - functional requirements
@@ -80,7 +84,9 @@ The generated `spec.md` follows a Spec Kit-inspired shape:
 - error cases
 - key entities
 - out-of-scope boundaries
-- review checklist
+- implementation plan
+- task breakdown
+- constitution and readiness checklist
 
 ## 2. User Refines The Spec
 
@@ -88,9 +94,13 @@ The user reviews and edits:
 
 ```text
 specs/my-feature/spec.md
+specs/my-feature/plan.md
+specs/my-feature/tasks.md
+specs/my-feature/constitution.md
+specs/my-feature/checklists/spec-readiness.md
 ```
 
-This is the main human-owned artifact. SpecGuard can draft it, but it should not replace product or engineering judgment.
+These are human-owned artifacts. SpecGuard can draft them, but it should not replace product or engineering judgment.
 
 The CLI intentionally reminds the user to review and strengthen the generated spec before continuing. The next command should be run only after the spec has been checked and edited.
 
@@ -113,6 +123,8 @@ SpecGuard then performs:
 ```text
 Technical Design -> Grill Me -> Test -> Contract -> Implementation Outputs
 ```
+
+Grill Me reviews every authored spec document in the feature folder, excluding generated Grill Me reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Outputs.
 
 Generated or reused artifacts:
 
@@ -149,6 +161,10 @@ If Grill Me blocks the workflow, update:
 ```text
 discovery.md
 spec.md
+plan.md
+tasks.md
+constitution.md
+checklists/spec-readiness.md
 technical-design.md
 ```
 
@@ -158,7 +174,7 @@ Then run:
 python -m cli.specguard run specs/my-feature
 ```
 
-Or stay in the post-run menu and choose the LLM spec revision action. Repeat until Critical and Major findings are resolved.
+Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the Grill Me readiness threshold is met.
 
 ## 5. Coding Agents Implement Later
 
@@ -168,6 +184,10 @@ Coding agents should focus on:
 
 ```text
 spec.md
+plan.md
+tasks.md
+constitution.md
+checklists/spec-readiness.md
 technical-design.md
 tests/
 contracts/

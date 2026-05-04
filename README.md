@@ -94,6 +94,10 @@ A SpecGuard feature is represented as a folder of development artifacts:
 feature/
 |-- discovery.md
 |-- spec.md
+|-- plan.md
+|-- tasks.md
+|-- constitution.md
+|-- checklists/
 |-- technical-design.md
 |-- grill.md
 |-- grill.json
@@ -127,7 +131,7 @@ See [docs/workflow.md](docs/workflow.md) for the end-to-end user workflow.
 
 Grill Me is the pre-implementation adversarial validation step.
 
-It reviews Discovery, `spec.md`, and `technical-design.md`, then looks for weaknesses such as:
+It reviews the full spec package, including Discovery, `spec.md`, `plan.md`, `tasks.md`, `constitution.md`, checklists, and `technical-design.md`, then looks for weaknesses such as:
 
 - missing token lifecycle rules
 - weak ownership or authorization boundaries
@@ -143,7 +147,13 @@ Outputs:
 - `grill.md`: human-readable risk report
 - `grill.json`: machine-readable report for CI and automation
 
-Critical or Major Grill Me findings block the pipeline.
+The implementation-ready threshold is:
+
+- Critical: 0
+- Major: 0
+- Minor: 5 or fewer
+
+Anything worse is reported as not ready in red in the CLI. Ready specs are reported in green and continue through Test, Contract, and Implementation Outputs.
 
 ## Quick Start
 
