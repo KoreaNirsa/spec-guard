@@ -5,6 +5,8 @@ import getpass
 import os
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
@@ -325,8 +327,12 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
 
     print_section("Spec Revision")
     print_hint(f"Generating a revised spec.md from Grill Me findings: {feature_dir}")
+    print_hint("Local Codex can take a minute or two here. Keep this terminal open.")
     try:
-        revised_spec = generate_spec_revision(feature_dir, llm_client)
+        revised_spec = _run_with_progress(
+            "Revising spec.md",
+            lambda: generate_spec_revision(feature_dir, llm_client),
+        )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         print_hint("The follow-up menu is still open. Review findings or retry after adjusting timeout/model.")
@@ -375,6 +381,50 @@ def _print_markdown_preview(markdown: str, *, max_lines: int = 22) -> None:
     if len(lines) > max_lines:
         print(f"... {len(lines) - max_lines} more line(s)")
     print("")
+
+
+def _run_with_progress(label: str, operation):
+    stop = threading.Event()
+    started_at = time.monotonic()
+    failed = False
+
+    def render() -> None:
+        tick = 0
+        while not stop.wait(0.25):
+            elapsed = int(time.monotonic() - started_at)
+            sys.stdout.write("\r" + _progress_line(label, elapsed, tick))
+            sys.stdout.flush()
+            tick += 1
+
+    thread = threading.Thread(target=render, daemon=True)
+    thread.start()
+    try:
+        return operation()
+    except Exception:
+        failed = True
+        raise
+    finally:
+        stop.set()
+        thread.join(timeout=1)
+        elapsed = int(time.monotonic() - started_at)
+        sys.stdout.write("\r" + (" " * 100) + "\r")
+        sys.stdout.flush()
+        status = "stopped" if failed else "completed"
+        print_hint(f"{label} {status} after {elapsed}s.")
+
+
+def _progress_line(label: str, elapsed_seconds: int, tick: int) -> str:
+    width = 18
+    active = tick % width
+    bar = "".join("#" if index <= active else "-" for index in range(width))
+    phases = (
+        "preparing compact Grill Me context",
+        "waiting for LLM provider response",
+        "reading model output",
+        "finalizing spec draft",
+    )
+    phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
+    return f"> {label} [{bar}] {elapsed_seconds:>3}s - {phase}"
 
 
 def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool) -> object:

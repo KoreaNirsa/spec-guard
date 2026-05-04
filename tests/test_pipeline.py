@@ -23,7 +23,7 @@ from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
 from tools.tdd_generator import generate_tests
 import cli.specguard as specguard_cli
-from cli.specguard import _should_offer_follow_up
+from cli.specguard import _progress_line, _should_offer_follow_up
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -609,6 +609,15 @@ def test_post_run_spec_revision_timeout_keeps_menu_available(tmp_path: Path, cap
     assert returned is result
     assert "Codex request timed out" in rendered
     assert "follow-up menu is still open" in rendered
+
+
+def test_progress_line_shows_elapsed_time_and_phase() -> None:
+    line = _progress_line("Revising spec.md", elapsed_seconds=25, tick=3)
+
+    assert "Revising spec.md" in line
+    assert "25s" in line
+    assert "waiting for LLM provider response" in line
+    assert "[" in line and "]" in line
 
 
 def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:

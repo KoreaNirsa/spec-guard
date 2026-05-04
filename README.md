@@ -286,7 +286,7 @@ Generate or regenerate LLM-backed technical design and Grill Me output:
 python -m cli.specguard run specs/my-feature --force
 ```
 
-After `run`, SpecGuard shows a continuation menu in interactive terminals. Use it to review Grill Me output, request an LLM-backed `spec.md` revision, apply the revision, and rerun the pipeline without leaving the CLI. Use `--follow-up` to force the menu in terminals such as Git Bash if auto-detection fails. Use `--no-follow-up` when a script should exit immediately after the pipeline.
+After `run`, SpecGuard shows a continuation menu in interactive terminals. Use it to review Grill Me output, request an LLM-backed `spec.md` revision, apply the revision, and rerun the pipeline without leaving the CLI. Long LLM follow-up requests show an activity bar with elapsed time so the CLI does not appear frozen. Use `--follow-up` to force the menu in terminals such as Git Bash if auto-detection fails. Use `--no-follow-up` when a script should exit immediately after the pipeline.
 
 Notes:
 
