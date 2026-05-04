@@ -5,7 +5,7 @@ SpecGuard is not a code generator. It is a spec refinement and validation workfl
 The intended user experience is:
 
 ```text
-Discovery -> Draft Specs -> User Refinement -> Technical Design -> Grill Me -> Test -> Contract -> Implementation Outputs
+Discovery -> Draft Specs -> User Refinement -> Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Outputs
 ```
 
 After that, the user can run Codex, Claude Code, or another coding agent against the generated spec package.
@@ -148,7 +148,7 @@ Run:
 python -m cli.specguard run specs/my-feature
 ```
 
-`run` uses the configured LLM provider for Technical Design and Grill Me. Use `--force` when regenerated derived artifacts are needed:
+`run` uses the configured LLM provider for Technical Design and SpecGuard Review. Use `--force` when regenerated derived artifacts are needed:
 
 ```bash
 python -m cli.specguard run specs/my-feature --force
@@ -157,15 +157,15 @@ python -m cli.specguard run specs/my-feature --force
 SpecGuard then performs:
 
 ```text
-Technical Design -> Grill Me -> Test -> Contract -> Implementation Outputs
+Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Outputs
 ```
 
-Grill Me reviews every authored spec document in the feature folder, excluding generated Grill Me reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Outputs.
+SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Outputs.
 
 Interactive refinement uses this loop:
 
 ```text
-Initial Grill Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
+Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
 ```
 
 The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
@@ -175,8 +175,8 @@ Generated or reused artifacts:
 ```text
 specs/my-feature/
 |-- technical-design.md
-|-- grill.md
-|-- grill.json
+|-- readiness-review.md
+|-- readiness-review.json
 |-- tests/
 |-- contracts/
 `-- implementation-output.md
@@ -184,7 +184,7 @@ specs/my-feature/
 
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 
-In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Grill Me review or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so Grill Me checks whether the regenerated spec is ready. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
 If a local Codex follow-up request times out, check `python -m cli.specguard auth status` and increase the timeout:
 
@@ -200,7 +200,7 @@ python -m cli.specguard run specs/my-feature --no-llm
 
 ## 4. User Refines And Repeats
 
-If Grill Me blocks the workflow, update:
+If SpecGuard Review blocks the workflow, update:
 
 ```text
 discovery.md
@@ -218,7 +218,7 @@ Then run:
 python -m cli.specguard run specs/my-feature
 ```
 
-Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the Grill Me readiness threshold is met.
+Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the SpecGuard Readiness Gate threshold is met.
 
 ## 5. Coding Agents Implement Later
 
@@ -242,8 +242,8 @@ Coding agents should not treat these as implementation input:
 
 ```text
 discovery.md
-grill.md
-grill.json
+readiness-review.md
+readiness-review.json
 ```
 
 Those files are SpecGuard validation artifacts.

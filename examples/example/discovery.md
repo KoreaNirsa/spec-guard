@@ -31,16 +31,16 @@
 
 - Initial scope: Login, refresh, token rotation, lockout, audit events, and contract examples.
 - Blocker: Token storage and replay detection must be designed before code generation.
-- Validation: Grill Me can verify lifecycle and brute-force controls before implementation.
+- Validation: SpecGuard Review can verify lifecycle and brute-force controls before implementation.
 
 ## Improvement
 
 - Simplify: Keep access token payload minimal.
-- Automate later: Model-based Grill Me can expand security review beyond local heuristics.
+- Automate later: Model-based SpecGuard Review can expand security review beyond local heuristics.
 - Open question: Exact lockout thresholds may need product/security policy input.
 
 ## Synthesis
 
 - Decision: Proceed only with explicit token lifecycle and replay controls.
-- Required artifacts: spec.md, technical-design.md, grill.md, grill.json, tests, and OpenAPI contract.
+- Required artifacts: spec.md, technical-design.md, readiness-review.md, readiness-review.json, tests, and OpenAPI contract.
 - Stop condition: Missing refresh token rotation or lockout behavior should block implementation.

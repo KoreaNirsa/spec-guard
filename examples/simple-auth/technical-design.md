@@ -2,29 +2,39 @@
 
 ## Architecture
 
-The API receives login requests, validates credentials through an auth service, and returns an access token.
+- Feature boundary: simple-auth.
+- Intent source: Users need to authenticate with an email and password before accessing protected resources.
+- Application layer: Coordinates validation, state changes, and responses for simple-auth.
+- Validation layer: Converts acceptance criteria and error cases into executable checks.
+- Contract boundary: API or integration shape is captured under `contracts/`.
 
 ## Data Flow
 
-1. Client submits email and password.
-2. API validates request shape.
-3. Auth service verifies credentials.
-4. Token service issues an access token.
-5. API returns token or error response.
+1. Caller sends a request for the feature.
+2. The system validates required input, authorization, and state.
+3. The application layer performs the operation defined by the spec.
+4. The system returns a success response or a documented error.
+5. Acceptance focus: Valid credentials return an access token.; Invalid credentials return an authentication error.; Missing credentials return a validation error.
 
 ## State
 
-- Initial state: unauthenticated
-- Valid states: unauthenticated, authenticated
-- Invalid states: authenticated without issued token
-- Terminal state: authenticated or rejected
+- Initial state: Request received and not yet validated.
+- Valid states: Accepted, rejected, completed, failed.
+- Invalid states: Unauthorized, malformed, conflicting, or unsupported request.
+- Terminal state: Success response, documented error response, or blocked implementation issue.
 
 ## Dependencies
 
-- User store
-- Token signer
+- Source spec: `spec.md`.
+- Requirement focus: The system must authenticate users with valid credentials.; The system must reject invalid credentials.; The system must prevent access to protected resources without authentication.
+- Entity focus: Feature state and request data are explicit implementation inputs.
+- Test scenarios: Generated under `tests/` after SpecGuard Review passes.
+- Contract: Generated under `contracts/` after SpecGuard Review passes.
 
 ## Failure Handling
 
-- Invalid credentials return a generic authentication error.
-- Token signing failures return a server error and do not authenticate the user.
+- Expected failures: Missing email; Missing password; Invalid password
+- Invalid input returns a clear error.
+- Unauthorized access is rejected before state change.
+- Ambiguous behavior becomes a spec update instead of implementation guesswork.
+- Critical or Major Readiness Findings block implementation outputs.

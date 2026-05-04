@@ -3,7 +3,7 @@
 ## Principles
 
 - Spec-first: implementation must follow the approved spec package, not inferred intent.
-- Review-first: Critical and Major Grill Review findings block implementation readiness.
+- Review-first: Critical and Major Readiness Findings block implementation readiness.
 - Authorization-first: invite creation, revocation, and acceptance must enforce workspace boundaries before durable membership changes.
 - Token safety: every invite token is single-purpose, workspace-scoped, versioned, expiring, and invalid after acceptance or revocation.
 - Auditability: every write path and rejected write attempt produces an audit event with a correlation id.

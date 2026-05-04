@@ -11,8 +11,8 @@
 ## Design And Validation
 
 - [ ] Run `python -m cli.specguard run specs/team-invite --force`.
-- [ ] Convert every Critical or Major Grill Review finding into a spec, plan, task, checklist, or design update.
-- [ ] Re-run SpecGuard until Grill Review reports implementation-ready status.
+- [ ] Convert every Critical or Major Readiness Finding into a spec, plan, task, checklist, or design update.
+- [ ] Re-run SpecGuard until SpecGuard Review reports implementation-ready status.
 
 ## Implementation Handoff
 

@@ -1,4 +1,4 @@
-# Implementation Output: example
+# Implementation Output: simple-auth
 
 Use this feature folder as the implementation context for Codex, Claude Code, or another coding agent.
 
@@ -6,7 +6,8 @@ Use this feature folder as the implementation context for Codex, Claude Code, or
 
 - `spec.md`
 - `technical-design.md`
-- `tests/example.test.md`
+- `tests/auth.test.md`
+- `tests/simple-auth.test.md`
 - `contracts/openapi.yaml`
 
 ## SpecGuard-Only Artifacts

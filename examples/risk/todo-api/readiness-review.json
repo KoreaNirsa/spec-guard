@@ -1,0 +1,48 @@
+{
+  "schema_version": "0.1",
+  "review_mode": "initial",
+  "blocked": true,
+  "readiness": {
+    "implementation_ready": false,
+    "criteria": {
+      "critical": 0,
+      "major": 0,
+      "minor_max": 5
+    },
+    "status": "not_ready"
+  },
+  "summary": {
+    "critical": 0,
+    "major": 1,
+    "minor": 0
+  },
+  "issues": [
+    {
+      "severity": "Major",
+      "title": "Delete semantics are unsafe",
+      "description": "The spec allows deletion but does not define hard delete, soft delete, restore, or audit behavior.",
+      "impact": "Data loss and compliance issues can appear after code generation.",
+      "fix": "Choose hard or soft delete explicitly and define audit records, restore behavior, and API response codes."
+    }
+  ],
+  "input": {
+    "discovery_characters": 1930,
+    "spec_characters": 865,
+    "technical_design_characters": 2006,
+    "artifacts": [
+      {
+        "path": "discovery.md",
+        "characters": 1930
+      },
+      {
+        "path": "spec.md",
+        "characters": 865
+      },
+      {
+        "path": "technical-design.md",
+        "characters": 2006
+      }
+    ]
+  },
+  "prompt_mode": "You are SpecGuard's readiness review board: a principal software architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.\n\nYour task is NOT to approve the implementation basis.\nYour task is to BREAK the implementation basis before a coding agent sees it.\n\nReview every spec package artifact together: Discovery, spec, plan, tasks, constitution, checklists, technical design, and any other authored spec document.\n\nUse the SpecGuard Review method:\n- Find contradictions between artifacts.\n- Attack missing requirements, undefined state, ambiguous ownership, weak contracts, unsafe retries, auth gaps, versioning gaps, and untestable acceptance criteria.\n- Convert implementation guesses into Critical or Major findings.\n- Treat style-only improvements as Minor.\n\nImplementation-ready threshold:\n- Critical: 0\n- Major: 0\n- Minor: 5 or fewer, and none may hide a requirement ambiguity."
+}

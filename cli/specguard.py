@@ -25,10 +25,10 @@ from tools.llm_client import (
 from tools.post_run import (
     apply_spec_revision,
     blocked_feature_reports,
-    feature_grill_reports,
+    feature_readiness_reports,
     generate_spec_revision,
-    grill_report_stale_reason,
-    render_grill_summary,
+    readiness_report_stale_reason,
+    render_readiness_summary,
 )
 from tools.runner import run_pipeline
 from tools.ux import bold, green, menu_item, print_banner, print_error, print_hint, print_section, print_success, print_warning, yellow
@@ -75,7 +75,7 @@ def init_project(args: argparse.Namespace) -> int:
 
 
 def run(args: argparse.Namespace) -> int:
-    print_banner("Run Technical Design, Grill Me, Test, Contract, and Implementation Outputs.")
+    print_banner("Run Technical Design, SpecGuard Review, Test, Contract, and Implementation Outputs.")
     llm_client = _build_llm_client(args, purpose="run", allow_setup=False)
     if _requires_llm(args) and llm_client is None:
         return 1
@@ -304,8 +304,8 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
     path = Path(args.path)
     while True:
         print_section("Continue")
-        print(menu_item("[1] View Grill Me review"))
-        print(menu_item("[2] Regenerate spec from Grill Me review (auto-runs Grill Me review after)"))
+        print(menu_item("[1] View Readiness Findings"))
+        print(menu_item("[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)"))
         print(menu_item("[q] Exit"))
         try:
             choice = input("Choose action: ").strip().lower()
@@ -320,40 +320,40 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
         if choice in {"q", "quit", "exit"}:
             return result
         if choice in {"1", "r", "review"}:
-            _print_grill_review(path)
+            _print_readiness_review(path)
             continue
         if choice in {"2", "f", "fix", "revise"}:
-            result = _revise_spec_from_grill(path, args, llm_client, result)
+            result = _revise_spec_from_readiness(path, args, llm_client, result)
             continue
 
         print_warning("[WARN] Choose 1, 2, or q to exit.")
 
 
-def _print_grill_review(path: Path) -> None:
-    reports = feature_grill_reports(path)
+def _print_readiness_review(path: Path) -> None:
+    reports = feature_readiness_reports(path)
     if not reports:
-        print_warning("[WARN] No Grill Me report found. Run the pipeline first.")
+        print_warning("[WARN] No SpecGuard Review report found. Run the pipeline first.")
         return
-    print_section("Grill Me Review")
+    print_section("SpecGuard Review")
     for index, (feature_dir, report) in enumerate(reports, start=1):
         if index > 1:
             print("")
-        print(render_grill_summary(feature_dir, report))
-        stale_reason = grill_report_stale_reason(feature_dir)
+        print(render_readiness_summary(feature_dir, report))
+        stale_reason = readiness_report_stale_reason(feature_dir)
         if stale_reason:
             print(yellow(f"- warning: {stale_reason}"))
-            print(yellow("- rerun did not update Grill Me if validation failed before the Grill Me step."))
+            print(yellow("- rerun did not update SpecGuard Review if validation failed before the SpecGuard Review step."))
 
 
-def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:
+def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:
     if llm_client is None:
         print_warning("[WARN] LLM spec revision requires a configured provider.")
         print("- Re-run without --no-llm, or configure one: python -m cli.specguard auth setup")
         return result
 
-    reports = blocked_feature_reports(path) or feature_grill_reports(path)
+    reports = blocked_feature_reports(path) or feature_readiness_reports(path)
     if not reports:
-        print_warning("[WARN] No Grill Me report found. Run the pipeline first.")
+        print_warning("[WARN] No SpecGuard Review report found. Run the pipeline first.")
         return result
 
     selected = _select_feature_report(reports)
@@ -362,7 +362,7 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
     feature_dir, _report = selected
 
     print_section("Spec Revision")
-    print_hint(f"Generating a revised spec.md from Grill Me findings: {feature_dir}")
+    print_hint(f"Generating a revised spec.md from Readiness Findings: {feature_dir}")
     print_hint("Local Codex can take a minute or two here. Keep this terminal open.")
     try:
         revised_spec = _run_with_progress(
@@ -376,12 +376,12 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
     _print_markdown_preview(revised_spec)
     spec_path = apply_spec_revision(feature_dir, revised_spec)
     print_success(f"[PASS] Updated spec: {spec_path}")
-    print_hint("Automatically running Verification Review so Grill Me checks whether the regenerated spec is ready.")
+    print_hint("Automatically running Verification Review so SpecGuard Review checks whether the regenerated spec is ready.")
     try:
-        return _rerun_pipeline(args, llm_client, force=True, grill_mode="verification")
+        return _rerun_pipeline(args, llm_client, force=True, review_mode="verification")
     except LLMRequestError as exc:
         _print_llm_failure(exc)
-        print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
+        print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Readiness Findings.")
         return result
     return result
 
@@ -464,7 +464,7 @@ def _progress_phases(label: str) -> tuple[str, ...]:
         return (
             "validating spec artifacts",
             "generating technical design",
-            "running Grill Me",
+            "running SpecGuard Review",
             "building tests, contracts, and outputs",
         )
     if "spec draft" in lowered or "draft" in lowered:
@@ -475,22 +475,22 @@ def _progress_phases(label: str) -> tuple[str, ...]:
             "finalizing spec draft",
         )
     return (
-        "preparing compact Grill Me context",
+        "preparing compact SpecGuard Review context",
         "waiting for LLM provider response",
         "reading model output",
         "finalizing spec draft",
     )
 
 
-def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool, grill_mode: str = "initial") -> object:
+def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool, review_mode: str = "initial") -> object:
     print_section("Pipeline")
-    if grill_mode == "verification":
+    if review_mode == "verification":
         print_hint("Re-running SpecGuard in Verification Review mode from the regenerated specs.")
     else:
         print_hint("Re-running SpecGuard from the current specs.")
     result = _run_with_progress(
         "Running pipeline",
-        lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=force, grill_mode=grill_mode),
+        lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=force, review_mode=review_mode),
     )
     result.print()
     return result
@@ -564,7 +564,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("path", nargs="?", default="specs")
     run_parser.add_argument("--force", action="store_true", help="Regenerate derived artifacts instead of reusing existing files")
     run_parser.add_argument("--llm", action="store_true", help="Use configured LLM mode. Kept for compatibility; LLM is the default.")
-    run_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic Grill Me")
+    run_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic SpecGuard Review")
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
     run_parser.add_argument("--llm-model", help="Override SPECGUARD_LLM_MODEL for this run")
     run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu")

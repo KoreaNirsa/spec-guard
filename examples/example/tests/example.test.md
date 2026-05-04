@@ -29,4 +29,4 @@
 
 ## Notes
 
-Generated from a spec with 856 characters. Replace these scenarios with executable tests before implementation.
+Generated from a spec with 854 characters. Replace these scenarios with executable tests before implementation.

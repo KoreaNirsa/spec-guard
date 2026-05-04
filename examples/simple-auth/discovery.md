@@ -24,14 +24,14 @@
 ## Differentiation
 
 - Existing option: A trivial login endpoint can be scaffolded quickly.
-- Difference: The example shows why Grill Me should attack even simple authentication designs.
+- Difference: The example shows why SpecGuard Review should attack even simple authentication designs.
 - Non-goal: Refresh token rotation is not implemented in this minimal example.
 
 ## Feasibility
 
 - Initial scope: Basic login behavior and contract.
 - Blocker: Security hardening is incomplete by design.
-- Validation: Grill Me should surface token expiry and brute-force gaps.
+- Validation: SpecGuard Review should surface token expiry and brute-force gaps.
 
 ## Improvement
 
@@ -42,5 +42,5 @@
 ## Synthesis
 
 - Decision: Keep as a simple demonstration, not the primary passing example.
-- Required artifacts: spec.md, technical-design.md, grill.md, tests, and OpenAPI contract.
+- Required artifacts: spec.md, technical-design.md, readiness-review.md, tests, and OpenAPI contract.
 - Stop condition: Do not present this as production-ready authentication.

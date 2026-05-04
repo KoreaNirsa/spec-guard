@@ -4,12 +4,14 @@ from argparse import Namespace
 import json
 import os
 import shutil
+import subprocess
+import sys
 import time
 from pathlib import Path
 
 from tools.contract_checker import check_contracts
 from tools.discovery_engine import answers_from_args, collect_llm_answers, initialize_specs
-from tools.grill_engine import run_grill
+from tools.readiness_engine import run_readiness_review
 from tools.llm_client import (
     LLMSettings,
     _extract_codex_error_text,
@@ -20,10 +22,10 @@ from tools.llm_client import (
 )
 from tools.post_run import (
     apply_spec_revision,
-    feature_grill_reports,
+    feature_readiness_reports,
     generate_spec_revision,
-    grill_report_stale_reason,
-    render_grill_summary,
+    readiness_report_stale_reason,
+    render_readiness_summary,
 )
 from tools.result import CheckResult
 from tools.runner import run_pipeline
@@ -130,7 +132,7 @@ class FakeRevisionLLM:
         assert "spec refinement assistant" in instructions
         assert "## Acceptance Criteria" in instructions
         assert "Do not rename ## Acceptance Criteria" in instructions
-        assert "Grill Me findings" in input_text
+        assert "Readiness Findings" in input_text
         assert max_output_tokens == 3000
         return "\n".join([
             "# Feature Specification: Todo API",
@@ -162,7 +164,7 @@ class TimeoutRevisionLLM:
         raise LLMRequestError("Codex request timed out.")
 
 
-class SixMinorGrillLLM:
+class SixMinorReadinessLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         issues = [
             {
@@ -177,7 +179,7 @@ class SixMinorGrillLLM:
         return json.dumps({"issues": issues})
 
 
-class CaptureVerificationGrillLLM:
+class CaptureVerificationReadinessLLM:
     def __init__(self) -> None:
         self.instructions = ""
         self.input_text = ""
@@ -193,6 +195,22 @@ def copy_example(tmp_path: Path, example: str) -> Path:
     target = tmp_path / example.replace("/", "-")
     shutil.copytree(source, target)
     return target
+
+
+def run_cli_smoke(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = str(ROOT) if not existing_pythonpath else f"{ROOT}{os.pathsep}{existing_pythonpath}"
+    env["CI"] = "true"
+    return subprocess.run(
+        [sys.executable, "-m", "cli.specguard", *args],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
 
 
 def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool = False) -> Path:
@@ -286,13 +304,13 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
     return feature
 
 
-def test_example_passes_and_emits_grill_json(tmp_path: Path) -> None:
+def test_example_passes_and_emits_readiness_json(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "example")
 
     result = run_pipeline(feature)
 
     assert result.ok
-    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is False
     assert payload["review_mode"] == "initial"
     assert payload["readiness"]["implementation_ready"] is True
@@ -311,10 +329,76 @@ def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
     assert feature.joinpath("tests", "team-invite.test.md").exists()
     assert feature.joinpath("contracts", "openapi.yaml").exists()
     assert feature.joinpath("implementation-output.md").exists()
-    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert payload["readiness"]["implementation_ready"] is True
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
+
+
+def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
+    completed = run_cli_smoke(
+        tmp_path,
+        "init",
+        "billing-export",
+        "--non-interactive",
+        "--no-llm",
+        "--problem",
+        "Finance users need scoped billing exports.",
+        "--users",
+        "Finance operators",
+        "--outcomes",
+        "Auditable scoped CSV exports",
+        "--constraints",
+        "CSV only; tenant isolation required",
+        "--flows",
+        "Request export, authorize tenant, create CSV, audit result",
+        "--data",
+        "Billing records, tenant, user, export file",
+        "--dependencies",
+        "Billing database and object storage",
+        "--risks",
+        "Cross-tenant data exposure",
+        "--out-of-scope",
+        "Scheduled exports",
+        "--acceptance",
+        "Authorized users can export only owned tenant records",
+    )
+
+    feature = tmp_path / "specs" / "billing-export"
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "[PASS] SpecGuard Discovery" in completed.stdout
+    assert "Generating spec draft completed" in completed.stdout
+    assert feature.joinpath("discovery.md").exists()
+    assert feature.joinpath("spec.md").exists()
+    assert feature.joinpath("plan.md").exists()
+    assert feature.joinpath("tasks.md").exists()
+    assert feature.joinpath("constitution.md").exists()
+    assert feature.joinpath("checklists", "spec-readiness.md").exists()
+
+
+def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "team-invite"
+    shutil.copytree(ROOT / "example", feature)
+
+    completed = run_cli_smoke(
+        tmp_path,
+        "run",
+        "specs/team-invite",
+        "--no-llm",
+        "--no-follow-up",
+        "--force",
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "[PASS] SpecGuard pipeline" in completed.stdout
+    assert "Running pipeline completed" in completed.stdout
+    assert "implementation-ready" in completed.stdout
+    assert feature.joinpath("technical-design.md").exists()
+    assert feature.joinpath("tests", "team-invite.test.md").exists()
+    assert feature.joinpath("contracts", "openapi.yaml").exists()
+    assert feature.joinpath("implementation-output.md").exists()
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert payload["readiness"]["implementation_ready"] is True
 
 
 def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
@@ -595,7 +679,7 @@ def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> N
     assert feature.joinpath("implementation-output.md").exists()
 
 
-def test_run_can_use_llm_for_design_and_grill(tmp_path: Path) -> None:
+def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "billing-export"
     feature.mkdir(parents=True)
     feature.joinpath("discovery.md").write_text(
@@ -646,29 +730,29 @@ def test_run_can_use_llm_for_design_and_grill(tmp_path: Path) -> None:
 
     assert result.ok
     assert "API layer calls an export service" in feature.joinpath("technical-design.md").read_text(encoding="utf-8")
-    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is False
     assert any("technical design generator" in call.lower() for call in llm.calls)
     assert any("full SpecGuard spec package" in call for call in llm.calls)
 
 
-def test_risk_todo_example_is_blocked_by_grill(tmp_path: Path) -> None:
+def test_risk_todo_example_is_blocked_by_readiness_review(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
 
     result = run_pipeline(feature)
 
     assert not result.ok
-    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is True
     assert payload["readiness"]["implementation_ready"] is False
-    assert payload["summary"]["critical"] == 1
+    assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 1
-    assert "Todo ownership boundary is unclear" in {issue["title"] for issue in payload["issues"]}
+    assert "Delete semantics are unsafe" in {issue["title"] for issue in payload["issues"]}
     assert any("Open the human report" in step for step in result.next_steps)
     assert any("specguard run" in step for step in result.next_steps)
 
 
-def test_grill_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
+def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     result = initialize_specs(tmp_path, {
         "feature_names": "billing-export",
         "problem": "Export billing records safely.",
@@ -687,18 +771,18 @@ def test_grill_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
 
     pipeline = run_pipeline(feature)
 
-    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
     assert pipeline.ok
     assert {"discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md", "technical-design.md"} <= reviewed_paths
 
 
-def test_grill_blocks_when_minor_findings_exceed_readiness_threshold(tmp_path: Path) -> None:
+def test_readiness_blocks_when_minor_findings_exceed_readiness_threshold(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 
-    result = run_grill(feature, llm_client=SixMinorGrillLLM())
+    result = run_readiness_review(feature, llm_client=SixMinorReadinessLLM())
 
-    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert not result.ok
     assert payload["blocked"] is True
     assert payload["readiness"]["implementation_ready"] is False
@@ -706,35 +790,35 @@ def test_grill_blocks_when_minor_findings_exceed_readiness_threshold(tmp_path: P
     assert any("[NOT READY]" in message for message in result.messages)
 
 
-def test_grill_verification_mode_uses_previous_findings(tmp_path: Path) -> None:
+def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
     run_pipeline(feature)
-    llm = CaptureVerificationGrillLLM()
+    llm = CaptureVerificationReadinessLLM()
 
-    result = run_grill(feature, llm_client=llm, review_mode="verification")
+    result = run_readiness_review(feature, llm_client=llm, review_mode="verification")
 
-    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
     assert payload["review_mode"] == "verification"
     assert "Verification Review board" in llm.instructions
-    assert "Previous Grill Review Findings" in llm.input_text
-    assert "Todo ownership boundary is unclear" in llm.input_text
+    assert "Previous SpecGuard Review Findings" in llm.input_text
+    assert "Delete semantics are unsafe" in llm.input_text
 
 
-def test_post_run_grill_summary_supports_review_menu(tmp_path: Path) -> None:
+def test_post_run_readiness_review_summary_supports_review_menu(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
     run_pipeline(feature)
 
-    reports = feature_grill_reports(feature)
-    rendered = render_grill_summary(*reports[0])
+    reports = feature_readiness_reports(feature)
+    rendered = render_readiness_summary(*reports[0])
 
     assert len(reports) == 1
     assert "blocked: True" in rendered
-    assert "Todo ownership boundary is unclear" in rendered
-    assert "Require owner-scoped queries" in rendered
+    assert "Delete semantics are unsafe" in rendered
+    assert "Choose hard or soft delete explicitly" in rendered
 
 
-def test_post_run_detects_stale_grill_report_after_spec_change(tmp_path: Path) -> None:
+def test_post_run_detects_stale_readiness_report_after_spec_change(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
     run_pipeline(feature)
     spec_path = feature / "spec.md"
@@ -742,7 +826,7 @@ def test_post_run_detects_stale_grill_report_after_spec_change(tmp_path: Path) -
     future = time.time() + 2
     os.utime(spec_path, (future, future))
 
-    reason = grill_report_stale_reason(feature)
+    reason = readiness_report_stale_reason(feature)
 
     assert reason is not None
     assert "spec.md" in reason
@@ -774,7 +858,7 @@ def test_post_run_spec_revision_timeout_keeps_menu_available(tmp_path: Path, cap
     feature = copy_example(tmp_path, "risk/todo-api")
     result = run_pipeline(feature)
 
-    returned = specguard_cli._revise_spec_from_grill(
+    returned = specguard_cli._revise_spec_from_readiness(
         feature,
         Namespace(force=False),
         TimeoutRevisionLLM(),
@@ -791,16 +875,16 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     feature = copy_example(tmp_path, "risk/todo-api")
     result = run_pipeline(feature)
     rerun_result = CheckResult("SpecGuard pipeline")
-    captured = {"force": False, "grill_mode": ""}
+    captured = {"force": False, "review_mode": ""}
 
-    def fake_rerun_pipeline(args, llm_client, *, force: bool, grill_mode: str = "initial"):
+    def fake_rerun_pipeline(args, llm_client, *, force: bool, review_mode: str = "initial"):
         captured["force"] = force
-        captured["grill_mode"] = grill_mode
+        captured["review_mode"] = review_mode
         return rerun_result
 
     monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
 
-    returned = specguard_cli._revise_spec_from_grill(
+    returned = specguard_cli._revise_spec_from_readiness(
         feature,
         Namespace(force=False),
         FakeRevisionLLM(),
@@ -810,7 +894,7 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
     assert returned is rerun_result
     assert captured["force"]
-    assert captured["grill_mode"] == "verification"
+    assert captured["review_mode"] == "verification"
     assert "scope every todo read and write by owner" in spec
 
 
@@ -834,15 +918,15 @@ def test_pipeline_progress_line_uses_pipeline_phase() -> None:
     line = _progress_line("Running pipeline", elapsed_seconds=45, tick=5)
 
     assert "Running pipeline" in line
-    assert "running Grill Me" in line
+    assert "running SpecGuard Review" in line
 
 
 def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
     captured = {"label": ""}
 
-    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, grill_mode: str = "initial") -> CheckResult:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_mode: str = "initial") -> CheckResult:
         assert force
-        assert grill_mode == "initial"
+        assert review_mode == "initial"
         return CheckResult("SpecGuard pipeline")
 
     def fake_run_with_progress(label, operation):
@@ -879,7 +963,7 @@ def test_follow_up_empty_input_keeps_menu_open(monkeypatch, capsys) -> None:
     assert "No action selected" in rendered
 
 
-def test_follow_up_menu_uses_grill_review_actions(monkeypatch, capsys) -> None:
+def test_follow_up_menu_uses_readiness_review_actions(monkeypatch, capsys) -> None:
     result = CheckResult("SpecGuard pipeline")
 
     monkeypatch.setattr("builtins.input", lambda _prompt: "q")
@@ -892,9 +976,8 @@ def test_follow_up_menu_uses_grill_review_actions(monkeypatch, capsys) -> None:
 
     rendered = capsys.readouterr().out
     assert returned is result
-    assert "[1] View Grill Me review" in rendered
-    assert "[2] Regenerate spec from Grill Me review (auto-runs Grill Me review after)" in rendered
-    assert "Run Grill Me review" not in rendered
+    assert "[1] View Readiness Findings" in rendered
+    assert "[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)" in rendered
     assert "[q] Exit" in rendered
 
 

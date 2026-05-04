@@ -31,7 +31,7 @@
 
 - Initial scope: Create, list, update, delete.
 - Blocker: Owner scoping and delete semantics are not clear enough yet.
-- Validation: Grill Me should block this design until ownership and deletion are explicit.
+- Validation: SpecGuard Review should block this design until ownership and deletion are explicit.
 
 ## Improvement
 
@@ -42,5 +42,5 @@
 ## Synthesis
 
 - Decision: Do not implement until ownership boundary and delete semantics are fixed.
-- Required artifacts: spec.md, technical-design.md, grill.md, grill.json, tests, and OpenAPI contract.
+- Required artifacts: spec.md, technical-design.md, readiness-review.md, readiness-review.json, tests, and OpenAPI contract.
 - Stop condition: Any design that reads or writes todos by id without owner scope should be blocked.

@@ -2,35 +2,39 @@
 
 ## Architecture
 
-The API layer accepts login and refresh requests. The auth service validates credentials against the user store. The token service issues short-lived access tokens and rotating refresh tokens. Audit logging records successful and failed authentication events.
+- Feature boundary: example.
+- Intent source: Users need a secure login flow that issues tokens for protected API access.
+- Application layer: Coordinates validation, state changes, and responses for example.
+- Validation layer: Converts acceptance criteria and error cases into executable checks.
+- Contract boundary: API or integration shape is captured under `contracts/`.
 
 ## Data Flow
 
-1. Client submits email and password to `POST /auth/login`.
-2. API validates required fields and basic email format.
-3. Auth service checks credentials using the user store.
-4. Rate limiter records failed attempts by account and IP.
-5. Token service issues a 15 minute access token and rotating refresh token.
-6. API returns token payload or a generic authentication error.
+1. Caller sends a request for the feature.
+2. The system validates required input, authorization, and state.
+3. The application layer performs the operation defined by the spec.
+4. The system returns a success response or a documented error.
+5. Acceptance focus: Valid credentials return an access token and refresh token.; Invalid credentials return `401 Unauthorized`.; Missing email or password returns `400 Bad Request`.
 
 ## State
 
-- Initial state: anonymous
-- Valid states: anonymous, authenticated, refreshable, locked
-- Invalid states: authenticated without issued token, refreshable with reused refresh token
-- Terminal state: authenticated, rejected, or locked
+- Initial state: Request received and not yet validated.
+- Valid states: Accepted, rejected, completed, failed.
+- Invalid states: Unauthorized, malformed, conflicting, or unsupported request.
+- Terminal state: Success response, documented error response, or blocked implementation issue.
 
 ## Dependencies
 
-- User store
-- Token signer
-- Refresh token store
-- Rate limiter
-- Audit logger
+- Source spec: `spec.md`.
+- Requirement focus: The system must authenticate users with email and password.; The system must issue an access token after successful login.; The system must reject invalid credentials with a generic error.
+- Entity focus: Feature state and request data are explicit implementation inputs.
+- Test scenarios: Generated under `tests/` after SpecGuard Review passes.
+- Contract: Generated under `contracts/` after SpecGuard Review passes.
 
 ## Failure Handling
 
-- User store timeout returns `503 Service Unavailable`.
-- Token signing failure returns `500 Internal Server Error` and does not authenticate the user.
-- Refresh token replay revokes the token family.
-- Too many failed attempts locks the account for 15 minutes.
+- Expected failures: Missing email; Missing password; Invalid password
+- Invalid input returns a clear error.
+- Unauthorized access is rejected before state change.
+- Ambiguous behavior becomes a spec update instead of implementation guesswork.
+- Critical or Major Readiness Findings block implementation outputs.

@@ -4,7 +4,7 @@
 
 - Deliverable: Workspace admins can invite a teammate by email, and invited users can accept into the correct workspace.
 - Success outcome: Membership is created only after authorization, token, workspace, and duplicate checks pass.
-- Implementation may start only after Grill Review reports implementation-ready status.
+- Implementation may start only after SpecGuard Review reports implementation-ready status.
 
 ## Scope
 
@@ -37,7 +37,7 @@
 
 - Discovery and spec validation pass.
 - Technical design is regenerated after meaningful spec changes.
-- Grill Review readiness is implementation-ready before tests, contracts, and implementation output are trusted.
+- SpecGuard Review readiness is implementation-ready before tests, contracts, and implementation output are trusted.
 - Coding agents consume only the approved implementation package.
 
 ## Risk Controls

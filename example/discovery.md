@@ -40,6 +40,6 @@
 
 ## Synthesis
 
-- Decision: Build only after invite lifecycle, ownership, authorization, and error semantics pass Grill Review.
+- Decision: Build only after invite lifecycle, ownership, authorization, and error semantics pass SpecGuard Review.
 - Required artifacts: spec.md, plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, technical-design.md, tests, contracts, and implementation-output.md.
-- Stop condition: Do not start code implementation while Critical or Major Grill Review findings remain.
+- Stop condition: Do not start code implementation while Critical or Major Readiness Findings remain.

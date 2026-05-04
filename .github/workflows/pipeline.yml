@@ -61,6 +61,6 @@ jobs:
           python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
           code=$?
           if [ "$code" -ne 1 ]; then
-            echo "risk example should be blocked by Grill Me findings"
+            echo "risk example should be blocked by Readiness Findings"
             exit 1
           fi
