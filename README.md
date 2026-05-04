@@ -1,35 +1,91 @@
 # SpecGuard
 
-SpecGuard is an early-stage framework for **Spec-Driven Development (SDD)** in AI-assisted software projects.
+SpecGuard is a validation-first framework for **Spec-Driven Development (SDD)** in AI-assisted software projects.
 
-It does not generate application code. Instead, it makes the development process harder to misuse:
+SpecGuard is not a prompt-to-code generator. It does not try to replace developers or create complete applications from a single instruction. Instead, it provides the structure required to turn human-written specs into reviewed, testable, implementation-ready outputs.
 
 ```text
-Discovery -> Spec -> Design -> Grill -> Test -> Contract
+Discovery -> Spec -> Design -> Grill -> Test -> Contract -> Implementation Outputs
 ```
 
-SpecGuard helps teams define intent, expose weak assumptions, block risky designs, and produce testable implementation inputs before code generation begins.
+## What Is SpecGuard?
 
-## Why SpecGuard?
+SpecGuard helps teams validate specs before they become code.
 
-AI coding tools can produce useful code quickly, but they also make it easy to skip the steps that keep software reliable:
+In AI-assisted development, the quality of the final implementation depends heavily on the quality of the input artifacts: the spec, design, test expectations, contracts, and known failure modes. SpecGuard makes those artifacts explicit and checks them before implementation work begins.
+
+The core principle is simple:
+
+> Humans write the spec. SpecGuard validates, strengthens, and operationalizes it.
+
+SpecGuard is for teams that want AI-assisted development without skipping engineering discipline.
+
+## Why Spec-Driven Development?
+
+Spec-Driven Development, or SDD, is the practice of treating the spec as the source of implementation control.
+
+In SpecGuard, the spec is not a loose prompt. It is a structured artifact that must be supported by discovery, design, risk review, tests, and contracts. The goal is to produce implementation outputs that are grounded in validated intent rather than improvised from an underspecified request.
+
+SpecGuard focuses on the steps that often fail in AI-assisted development:
 
 - unclear requirements
+- implicit assumptions
 - missing design decisions
-- untested edge cases
 - weak authorization boundaries
-- undocumented failure behavior
+- untested edge cases
+- undefined failure behavior
 - contracts that do not match intended behavior
 
-SpecGuard treats those steps as first-class artifacts. A feature is not ready for implementation until its discovery, spec, design, risk review, test scenarios, and contract checks are in place.
+## Core Principles
 
-## Core Concepts
+### 1. The User Writes The Spec
 
-### Spec-Driven Development
+SpecGuard assumes that the user, team, or product owner writes the initial spec. The framework does not hide product intent behind generated prose. Instead, it gives that spec a validation path.
 
-Spec-Driven Development, or SDD, is the practice of treating the spec as the control surface for implementation.
+### 2. Discovery Comes Before Design
 
-In SpecGuard, a feature folder contains the artifacts that define whether implementation is allowed to proceed:
+Deep Discovery helps expose goals, constraints, assumptions, mechanisms, stress points, feasibility risks, and stop conditions before the design is written.
+
+### 3. Designs Must Be Attacked
+
+Grill Me is an adversarial review step. It does not approve a design; it looks for reasons the design can fail.
+
+### 4. Tests And Contracts Are Implementation Inputs
+
+TDD scenarios and contracts are not afterthoughts. They are part of the implementation boundary.
+
+### 5. Implementation Outputs Come Last
+
+Implementation outputs should be generated or written only after the SDD pipeline has produced validated artifacts.
+
+## Workflow
+
+```text
+1. Discovery
+   Capture goals, assumptions, constraints, mechanisms, risks, and stop conditions.
+
+2. Spec
+   Write requirements, acceptance criteria, and error cases.
+
+3. Design
+   Define architecture, data flow, state, dependencies, and failure handling.
+
+4. Grill
+   Run adversarial validation against the design.
+
+5. Test
+   Generate or preserve TDD scenarios from the spec.
+
+6. Contract
+   Validate API contract basics.
+
+7. Implementation Outputs
+   Use the validated artifacts to guide implementation, scaffolding, or downstream code output.
+```
+
+## Feature Folder
+
+A SpecGuard feature is represented as a folder of development artifacts:
 
 ```text
 feature/
@@ -42,30 +98,46 @@ feature/
 `-- contracts/
 ```
 
-### Deep Discovery
+These files define whether a feature is ready to produce implementation outputs.
 
-Deep Discovery is the pre-spec exploration step. It is adapted from a 100-question sequential self-interrogation technique, but the MVP uses 24 focused questions so the workflow stays practical.
+## Deep Discovery
 
-Use Deep Discovery to uncover goals, constraints, assumptions, mechanisms, failure modes, and stop conditions before writing `spec.md`.
+Deep Discovery is the pre-spec exploration step. It is adapted from a 100-question sequential self-interrogation technique, but SpecGuard uses a focused 24-question version for practical project work.
+
+Deep Discovery asks:
+
+- What problem are we actually solving?
+- Which assumptions are we making too early?
+- What components and data flows are involved?
+- What breaks first under stress?
+- What should we intentionally not build?
+- What would make us stop or redesign?
 
 See [docs/deep-discovery.md](docs/deep-discovery.md).
 
-### Grill Me
+## Grill Me
 
-Grill Me is the post-design risk review step. It does not approve the design. It attacks it.
+Grill Me is the post-design risk review step.
 
-The local MVP engine looks for issues such as missing token lifecycle rules, weak ownership boundaries, unsafe delete semantics, placeholder design content, and undefined failure behavior.
+It looks for design weaknesses such as:
+
+- missing token lifecycle rules
+- weak ownership or authorization boundaries
+- unsafe delete semantics
+- placeholder design content
+- undefined retry, timeout, or rollback behavior
+- incomplete state transitions
 
 Outputs:
 
 - `grill.md`: human-readable risk report
 - `grill.json`: machine-readable report for CI and automation
 
-Critical or Major Grill Me findings fail the pipeline.
+Critical or Major Grill Me findings block the pipeline.
 
 ## Quick Start
 
-Clone the repository and install dependencies:
+Clone and install:
 
 ```bash
 git clone https://github.com/KoreaNirsa/spec-guard.git
@@ -73,19 +145,34 @@ cd spec-guard
 pip install -r requirements.txt
 ```
 
-Run the passing example:
+Run a passing example:
 
 ```bash
 python -m cli.specguard run examples/user-auth
 ```
 
-Run the intentionally risky example:
+Run a risk example:
 
 ```bash
 python -m cli.specguard run examples/risk/todo-api
 ```
 
-The risk example should fail. That failure is expected: it demonstrates that SpecGuard can block a design with Critical or Major findings.
+The risk example is expected to fail because SpecGuard detects Critical and Major design issues.
+
+## CLI
+
+SpecGuard intentionally keeps the public CLI small:
+
+```bash
+python -m cli.specguard init
+python -m cli.specguard run <feature-folder>
+```
+
+Default target:
+
+```bash
+python -m cli.specguard run specs
+```
 
 ## Example Output
 
@@ -101,43 +188,6 @@ Next steps:
 - Use the machine-readable report for automation: examples/risk/todo-api/grill.json
 - Fix spec.md or design.md so Critical and Major issues become explicit requirements.
 - Run again: specguard run examples/risk/todo-api
-```
-
-## Workflow
-
-```text
-1. Discover
-   Write discovery.md using the Deep Discovery phases.
-
-2. Specify
-   Write spec.md with requirements, acceptance criteria, and error cases.
-
-3. Design
-   Write design.md with architecture, data flow, state, dependencies, and failure handling.
-
-4. Grill
-   Run SpecGuard. Critical and Major findings block the pipeline.
-
-5. Test
-   Generate or preserve TDD scenarios under tests/.
-
-6. Contract
-   Validate OpenAPI basics under contracts/.
-```
-
-## CLI
-
-SpecGuard intentionally keeps the public CLI small:
-
-```bash
-python -m cli.specguard init
-python -m cli.specguard run <feature-folder>
-```
-
-Default run target:
-
-```bash
-python -m cli.specguard run specs
 ```
 
 ## Examples
@@ -160,7 +210,7 @@ The GitHub Actions workflow is split into explicit jobs:
 - `Passing Example`: confirms `examples/user-auth` passes
 - `Risk Example`: confirms `examples/risk/todo-api` is blocked
 
-This keeps the two expected outcomes visible in CI: a good spec-driven flow should pass, and a risky design should fail.
+This makes both expected outcomes visible: a validated SDD flow should pass, and a risky design should fail.
 
 ## Development
 
@@ -177,7 +227,7 @@ python -m cli.specguard run examples/user-auth
 python -m cli.specguard run examples/risk/todo-api
 ```
 
-The test suite currently covers:
+The test suite covers:
 
 - passing example behavior
 - blocked risk example behavior
@@ -187,11 +237,7 @@ The test suite currently covers:
 - invalid OpenAPI contract detection
 - required Deep Discovery artifacts
 
-## Project Status
-
-SpecGuard is in MVP development.
-
-Current scope:
+## Current Capabilities
 
 - Deep Discovery artifacts
 - Spec and Design validation
@@ -201,25 +247,33 @@ Current scope:
 - basic OpenAPI contract checks
 - CI coverage for passing and blocked flows
 
-Not in scope yet:
+## Future Scope
 
-- application code generation
-- model-backed Grill Me execution
+SpecGuard may support implementation outputs after validation, but only as downstream products of the SDD pipeline.
+
+Potential future areas:
+
+- guided code output from validated artifacts
+- implementation scaffolding
+- implementation-plan generation
+- model-backed Grill Me review
+- richer OpenAPI and JSON Schema validation
 - package publishing
-- VS Code extension
-- full OpenAPI or JSON Schema validation
+- editor integrations
+
+The intent is not prompt-to-code automation. The intent is validated implementation readiness.
 
 ## Contributing
 
 Contributions should preserve the SDD workflow:
 
 ```text
-Discovery -> Spec -> Design -> Grill -> Test -> Contract
+Discovery -> Spec -> Design -> Grill -> Test -> Contract -> Implementation Outputs
 ```
 
 Before opening a pull request, make sure:
 
-- discovery/spec/design artifacts are included for feature work
+- discovery, spec, and design artifacts are included for feature work
 - Critical and Major Grill Me findings are resolved or intentionally documented
 - tests are included or updated
 - `pytest` passes
