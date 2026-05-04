@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import os
 import subprocess
 from pathlib import Path
 
@@ -176,7 +177,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
 
     model = args.model or _prompt("Model", "gpt-5.1")
     api_key = args.api_key
-    if api_key is None:
+    if api_key is None and not os.getenv(args.api_key_env):
         entered = getpass.getpass("OpenAI API key (leave empty to use environment variable): ").strip()
         api_key = entered or None
     settings = LLMSettings(
