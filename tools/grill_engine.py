@@ -149,6 +149,67 @@ def _analyze(discovery: str, spec: str, technical_design: str) -> list[GrillIssu
     return issues
 
 
+def _parse_llm_issues(text: str) -> list[GrillIssue]:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            raise
+        payload = json.loads(cleaned[start:end + 1])
+
+    raw_issues = payload.get("issues", []) if isinstance(payload, dict) else []
+    issues: list[GrillIssue] = []
+    for raw in raw_issues:
+        if not isinstance(raw, dict):
+            continue
+        severity = str(raw.get("severity", "Minor")).title()
+        if severity not in {"Critical", "Major", "Minor"}:
+            severity = "Minor"
+        issues.append(GrillIssue(
+            severity=severity,
+            title=str(raw.get("title", "Untitled LLM finding")),
+            description=str(raw.get("description", "No description provided.")),
+            impact=str(raw.get("impact", "Impact is not specified.")),
+            fix=str(raw.get("fix", "Update the spec or technical design to make this explicit.")),
+        ))
+    if not issues:
+        issues.append(GrillIssue(
+            "Minor",
+            "No LLM grill findings returned",
+            "The model returned no Critical, Major, or Minor findings.",
+            "The local heuristic checks may still be useful as a backstop.",
+            "Review the artifacts manually and rerun Grill Me when the spec changes.",
+        ))
+    return issues
+
+
+def _analyze_with_llm(discovery: str, spec: str, technical_design: str, llm_client: object) -> list[GrillIssue]:
+    instructions = "\n".join([
+        "You are SpecGuard's Grill Me engine: a senior software architect, security expert, and reliability engineer.",
+        "Your task is NOT to approve the implementation basis. Your task is to break it.",
+        "Analyze Discovery, spec.md, and technical-design.md aggressively.",
+        "Return ONLY JSON with this shape:",
+        '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
+        "Do not include positive feedback. Focus on missing requirements, invalid assumptions, edge cases, security, performance, contracts, tests, and failure scenarios.",
+    ])
+    input_text = "\n\n".join([
+        "# Discovery",
+        discovery,
+        "# Spec",
+        spec,
+        "# Technical Design",
+        technical_design,
+    ])
+    text = llm_client.generate_text(instructions, input_text, max_output_tokens=2500)
+    return _parse_llm_issues(text)
+
+
 def _render_group(title: str, issues: list[GrillIssue]) -> str:
     if not issues:
         return f"## {title}\n\n- None detected by the local heuristic engine.\n"
@@ -225,7 +286,7 @@ def _build_json_report(discovery: str, spec: str, technical_design: str, issues:
     return json.dumps(payload, indent=2) + "\n"
 
 
-def run_grill(path: Path) -> CheckResult:
+def run_grill(path: Path, llm_client: object | None = None) -> CheckResult:
     result = CheckResult("Grill Me")
     discovery_path = path / "discovery.md"
     spec_path = path / "spec.md"
@@ -246,7 +307,11 @@ def run_grill(path: Path) -> CheckResult:
     discovery = discovery_path.read_text(encoding="utf-8")
     spec = spec_path.read_text(encoding="utf-8")
     technical_design = technical_design_path.read_text(encoding="utf-8")
-    issues = _analyze(discovery, spec, technical_design)
+    try:
+        issues = _analyze_with_llm(discovery, spec, technical_design, llm_client) if llm_client else _analyze(discovery, spec, technical_design)
+    except (json.JSONDecodeError, ValueError) as exc:
+        result.add_error(f"LLM Grill Me response could not be parsed as JSON: {exc}")
+        return result
     summary = _build_summary(issues)
     critical_count = summary["critical"]
     major_count = summary["major"]

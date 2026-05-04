@@ -14,6 +14,91 @@ from tools.tdd_generator import generate_tests
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class FakeLLM:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.calls.append(instructions)
+        if "feature specification" in instructions.lower():
+            return "\n".join([
+                "# Feature Specification: Billing Export",
+                "",
+                "**Status**: Draft",
+                "**Source**: `discovery.md`",
+                "",
+                "## User Scenarios & Testing",
+                "",
+                "### Primary User Story",
+                "",
+                "As Finance users, I need exports.",
+                "",
+                "### Acceptance Scenarios",
+                "",
+                "1. Given authorized access, exports succeed.",
+                "",
+                "### Edge Cases",
+                "",
+                "- Unauthorized access",
+                "",
+                "## Requirements",
+                "",
+                "### Functional Requirements",
+                "",
+                "- The system must export owned billing records.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] Authorized users export owned records.",
+                "",
+                "## Error Cases",
+                "",
+                "- Unauthorized access",
+                "",
+                "## Key Entities",
+                "",
+                "- Billing record",
+                "",
+                "## Out of Scope",
+                "",
+                "- Scheduled exports",
+                "",
+                "## Review & Acceptance Checklist",
+                "",
+                "- [ ] Requirements are testable.",
+                "",
+            ])
+        if "technical design generator" in instructions.lower():
+            return "\n".join([
+                "# Technical Design: billing-export",
+                "",
+                "## Architecture",
+                "",
+                "- API layer calls an export service.",
+                "",
+                "## Data Flow",
+                "",
+                "1. User requests an export.",
+                "2. Service checks authorization.",
+                "3. Export file is created.",
+                "",
+                "## State",
+                "",
+                "- Initial state: requested.",
+                "- Terminal state: completed or rejected.",
+                "",
+                "## Dependencies",
+                "",
+                "- Billing database.",
+                "",
+                "## Failure Handling",
+                "",
+                "- Unauthorized access returns 403.",
+                "",
+            ])
+        return '{"issues":[]}'
+
+
 def copy_example(tmp_path: Path, example: str) -> Path:
     source = ROOT / "examples" / example
     target = tmp_path / example.replace("/", "-")
@@ -147,6 +232,29 @@ def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
     assert "User Scenarios & Testing" in feature.joinpath("spec.md").read_text(encoding="utf-8")
 
 
+def test_discovery_init_can_use_llm_for_spec(tmp_path: Path) -> None:
+    llm = FakeLLM()
+    result = initialize_specs(tmp_path, {
+        "feature_names": "billing-export",
+        "problem": "Export billing records safely.",
+        "users": "Finance users",
+        "outcomes": "Exports are scoped and auditable",
+        "constraints": "CSV only for the first pass",
+        "flows": "Request export, validate ownership, create file",
+        "data": "Billing record, owner, export file",
+        "dependencies": "Billing database",
+        "risks": "Cross-tenant export",
+        "out_of_scope": "Scheduled exports",
+        "acceptance": "An authorized user can export only owned records",
+    }, llm_client=llm)
+
+    spec = tmp_path / "specs" / "billing-export" / "spec.md"
+
+    assert result.ok
+    assert "Billing Export" in spec.read_text(encoding="utf-8")
+    assert any("feature specification" in call.lower() for call in llm.calls)
+
+
 def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "profile-update"
     feature.mkdir(parents=True)
@@ -200,6 +308,62 @@ def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> N
     assert feature.joinpath("tests", "profile-update.test.md").exists()
     assert feature.joinpath("contracts", "openapi.yaml").exists()
     assert feature.joinpath("implementation-output.md").exists()
+
+
+def test_run_can_use_llm_for_design_and_grill(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "billing-export"
+    feature.mkdir(parents=True)
+    feature.joinpath("discovery.md").write_text(
+        "\n".join([
+            "# Discovery: billing-export",
+            "",
+            "## Foundation",
+            "",
+            "- Goal: Export billing records.",
+            "",
+            "## Mechanisms",
+            "",
+            "- Components: API, export service.",
+            "",
+            "## Stress Test",
+            "",
+            "- Failure: Unauthorized export.",
+            "",
+            "## Synthesis",
+            "",
+            "- Decision: Validate before implementation.",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            "# Feature Specification: billing-export",
+            "",
+            "## Requirements",
+            "",
+            "- The system must export owned billing records.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Authorized users export owned records.",
+            "",
+            "## Error Cases",
+            "",
+            "- Unauthorized access",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    llm = FakeLLM()
+
+    result = run_pipeline(feature, llm_client=llm)
+
+    assert result.ok
+    assert "API layer calls an export service" in feature.joinpath("technical-design.md").read_text(encoding="utf-8")
+    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    assert payload["blocked"] is False
+    assert any("technical design generator" in call.lower() for call in llm.calls)
 
 
 def test_risk_todo_example_is_blocked_by_grill(tmp_path: Path) -> None:

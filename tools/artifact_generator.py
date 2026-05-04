@@ -113,6 +113,37 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
     return ArtifactWrite(output, created=True)
 
 
+def generate_llm_technical_design(path: Path, llm_client: object, force: bool = False) -> ArtifactWrite:
+    output = path / "technical-design.md"
+    if output.exists() and not force:
+        return ArtifactWrite(output, created=False)
+
+    discovery = (path / "discovery.md").read_text(encoding="utf-8")
+    spec = (path / "spec.md").read_text(encoding="utf-8")
+    instructions = "\n".join([
+        "You are SpecGuard's technical design generator.",
+        "Generate a technical design from Discovery and spec artifacts.",
+        "SpecGuard is not a code generator. Do not write application code.",
+        "Return ONLY Markdown.",
+        "Use this exact section structure:",
+        f"# Technical Design: {path.name}",
+        "## Architecture",
+        "## Data Flow",
+        "## State",
+        "## Dependencies",
+        "## Failure Handling",
+        "Keep the design implementation-ready, testable, and explicit about ownership, state, and failure boundaries.",
+    ])
+    input_text = "\n\n".join([
+        "# Discovery",
+        discovery,
+        "# Spec",
+        spec,
+    ])
+    output.write_text(llm_client.generate_text(instructions, input_text, max_output_tokens=3000), encoding="utf-8")
+    return ArtifactWrite(output, created=True)
+
+
 def ensure_contract(path: Path, force: bool = False) -> ArtifactWrite:
     contracts_dir = path / "contracts"
     contracts_dir.mkdir(parents=True, exist_ok=True)

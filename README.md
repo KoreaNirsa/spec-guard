@@ -203,6 +203,41 @@ python -m cli.specguard run <feature-folder>
 
 Interactive `init` accepts Enter for every default answer.
 
+## LLM Mode
+
+SpecGuard can optionally use an LLM for draft spec generation, technical design generation, and Grill Me.
+
+Set an API key:
+
+```bash
+export OPENAI_API_KEY=...
+```
+
+Optionally choose a model:
+
+```bash
+export SPECGUARD_LLM_MODEL=gpt-5.1
+```
+
+Generate an LLM-backed draft spec from Discovery answers:
+
+```bash
+python -m cli.specguard init my-feature --llm
+```
+
+Generate or regenerate LLM-backed technical design and Grill Me output:
+
+```bash
+python -m cli.specguard run specs/my-feature --llm --force
+```
+
+Notes:
+
+- `--llm` is opt-in. Without it, SpecGuard uses local deterministic generation and heuristic validation.
+- `--force` is useful when you want to regenerate existing derived artifacts.
+- `SPECGUARD_LLM_MODEL` can be overridden per command with `--llm-model`.
+- The current LLM adapter uses the OpenAI Responses API through standard HTTP; no SDK dependency is required.
+
 For scripted or CI setup:
 
 ```bash

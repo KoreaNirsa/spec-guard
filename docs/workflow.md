@@ -30,6 +30,14 @@ The same defaults are visible in CLI help:
 python -m cli.specguard init --help
 ```
 
+To use LLM-backed spec drafting, set an API key and add `--llm`:
+
+```bash
+export OPENAI_API_KEY=...
+export SPECGUARD_LLM_MODEL=gpt-5.1
+python -m cli.specguard init my-feature --llm
+```
+
 SpecGuard asks Discovery questions and creates draft specs under `specs/`:
 
 ```text
@@ -64,6 +72,12 @@ Run:
 
 ```bash
 python -m cli.specguard run specs/my-feature
+```
+
+To use the LLM for `technical-design.md` and Grill Me:
+
+```bash
+python -m cli.specguard run specs/my-feature --llm --force
 ```
 
 SpecGuard then performs:

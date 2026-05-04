@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from tools.artifact_generator import ensure_contract, generate_implementation_output, generate_technical_design
+from tools.artifact_generator import ensure_contract, generate_implementation_output, generate_llm_technical_design, generate_technical_design
 from tools.contract_checker import check_contracts
 from tools.grill_engine import run_grill
 from tools.result import CheckResult
@@ -22,7 +22,7 @@ def _feature_dirs(path: Path) -> list[Path]:
     return [path]
 
 
-def run_pipeline(path: Path) -> CheckResult:
+def run_pipeline(path: Path, llm_client: object | None = None, force: bool = False) -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
@@ -39,9 +39,13 @@ def run_pipeline(path: Path) -> CheckResult:
             result.add_next_step("Fix discovery.md or spec.md before running the pipeline again.")
             continue
 
-        technical_design = generate_technical_design(feature_dir)
+        if llm_client is None:
+            technical_design = generate_technical_design(feature_dir, force=force)
+        else:
+            technical_design = generate_llm_technical_design(feature_dir, llm_client, force=force)
         action = "Generated" if technical_design.created else "Reused"
-        result.add_info(f"{action} technical design: {technical_design.path}")
+        mode = " LLM" if llm_client is not None and technical_design.created else ""
+        result.add_info(f"{action}{mode} technical design: {technical_design.path}")
 
         technical_validation = validate_technical_design(feature_dir)
         result.messages.extend(technical_validation.messages)
@@ -51,17 +55,17 @@ def run_pipeline(path: Path) -> CheckResult:
             result.add_next_step(f"Fix technical design: {technical_design.path}")
             continue
 
-        grill = run_grill(feature_dir)
+        grill = run_grill(feature_dir, llm_client=llm_client)
         result.messages.extend(grill.messages)
         result.next_steps.extend(grill.next_steps)
         if not grill.ok:
             result.ok = False
             continue
 
-        test_output = generate_tests(feature_dir)
+        test_output = generate_tests(feature_dir, force=force)
         result.add_info(f"TDD scenarios ready: {test_output}")
 
-        contract = ensure_contract(feature_dir)
+        contract = ensure_contract(feature_dir, force=force)
         contract_action = "Generated" if contract.created else "Reused"
         result.add_info(f"{contract_action} contract scaffold: {contract.path}")
 

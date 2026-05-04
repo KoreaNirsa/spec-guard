@@ -188,7 +188,39 @@ def _spec_markdown(feature_slug: str, answers: dict[str, str]) -> str:
     ])
 
 
-def initialize_specs(root: Path, answers: dict[str, str], force: bool = False) -> CheckResult:
+def _answers_text(feature_slug: str, answers: dict[str, str]) -> str:
+    lines = [f"Feature: {feature_slug}", ""]
+    for key, value in answers.items():
+        lines.append(f"{key}: {value}")
+    return "\n".join(lines)
+
+
+def _llm_spec_markdown(feature_slug: str, answers: dict[str, str], llm_client: object) -> str:
+    instructions = "\n".join([
+        "You are SpecGuard, a spec refinement assistant.",
+        "Generate a human-reviewable feature specification from Discovery answers.",
+        "SpecGuard is not prompt-to-code. Do not generate application code.",
+        "Return ONLY Markdown.",
+        "Use this exact section structure:",
+        "# Feature Specification: <Feature Title>",
+        "**Status**: Draft",
+        "**Source**: `discovery.md`",
+        "## User Scenarios & Testing",
+        "### Primary User Story",
+        "### Acceptance Scenarios",
+        "### Edge Cases",
+        "## Requirements",
+        "### Functional Requirements",
+        "## Acceptance Criteria",
+        "## Error Cases",
+        "## Key Entities",
+        "## Out of Scope",
+        "## Review & Acceptance Checklist",
+    ])
+    return llm_client.generate_text(instructions, _answers_text(feature_slug, answers), max_output_tokens=3000)
+
+
+def initialize_specs(root: Path, answers: dict[str, str], force: bool = False, llm_client: object | None = None) -> CheckResult:
     result = CheckResult("SpecGuard Discovery")
     specs_root = root / "specs"
     develop_root = root / "develop"
@@ -217,8 +249,13 @@ def initialize_specs(root: Path, answers: dict[str, str], force: bool = False) -
         if spec_path.exists() and not force:
             result.add_info(f"Kept existing draft spec: {spec_path}")
         else:
-            spec_path.write_text(_spec_markdown(feature_slug, answers), encoding="utf-8")
-            result.add_info(f"Generated draft spec: {spec_path}")
+            if llm_client is None:
+                spec = _spec_markdown(feature_slug, answers)
+                result.add_info(f"Generated draft spec: {spec_path}")
+            else:
+                spec = _llm_spec_markdown(feature_slug, answers, llm_client)
+                result.add_info(f"Generated LLM draft spec: {spec_path}")
+            spec_path.write_text(spec, encoding="utf-8")
 
         result.add_next_step(f"Review and strengthen the generated spec: {spec_path}")
         result.add_next_step(f"Run the validation workflow: python -m cli.specguard run {feature_dir}")
