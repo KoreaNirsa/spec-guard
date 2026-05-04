@@ -78,6 +78,8 @@ python -m cli.specguard auth setup --mode codex --model gpt-5.4 --codex-command 
 
 Use a real feature name. Running `init` without a name creates a default sample feature and is mostly useful for trying the CLI.
 
+![SpecGuard user workflow](assets/specguard_user_flow.png)
+
 ### 1. Initialize A Spec
 
 ```bash
