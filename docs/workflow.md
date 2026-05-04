@@ -18,6 +18,18 @@ Run:
 python -m cli.specguard init my-feature
 ```
 
+You can also run `init` with no arguments. Every Discovery prompt displays a default value, and pressing Enter accepts that default:
+
+```bash
+python -m cli.specguard init
+```
+
+The same defaults are visible in CLI help:
+
+```bash
+python -m cli.specguard init --help
+```
+
 SpecGuard asks Discovery questions and creates draft specs under `specs/`:
 
 ```text

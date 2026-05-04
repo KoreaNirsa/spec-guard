@@ -161,6 +161,18 @@ Start discovery and generate draft specs:
 python -m cli.specguard init my-feature
 ```
 
+If you run `init` without answers, each Discovery question shows a default. Press Enter to accept it:
+
+```bash
+python -m cli.specguard init
+```
+
+To inspect the defaults from the CLI:
+
+```bash
+python -m cli.specguard init --help
+```
+
 Review and strengthen the generated spec:
 
 ```text
@@ -188,6 +200,8 @@ SpecGuard intentionally keeps the public CLI small:
 python -m cli.specguard init [feature-name]
 python -m cli.specguard run <feature-folder>
 ```
+
+Interactive `init` accepts Enter for every default answer.
 
 For scripted or CI setup:
 
