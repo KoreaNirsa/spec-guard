@@ -25,6 +25,17 @@ All contributions must include:
 - No test -> reject
 - Failed validation -> reject
 
+## Repository Language
+
+All public repository-facing content must be written in English, including:
+
+- Issues
+- Pull request titles and descriptions
+- Commit messages
+- Release notes
+- Labels and milestones
+- GitHub Discussions and review comments
+
 ## Branch Strategy
 
 ```text
