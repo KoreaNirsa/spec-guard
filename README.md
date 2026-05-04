@@ -47,7 +47,11 @@ specs/your-feature-name/
 `-- checklists/spec-readiness.md
 ```
 
-Review these files before continuing. The generated text is a draft, not a final product decision.
+Review and edit these files before continuing. The generated text is a draft, not a final product decision.
+
+This is where the real development spec is written. Add the actual product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria before running validation.
+
+If the default Discovery answers are mostly unchanged, `run` stops early and asks you to edit the spec package first. This prevents a generic sample draft from being treated as an implementation-ready feature.
 
 ### 2. Run SpecGuard
 
@@ -62,6 +66,8 @@ Technical Design -> Initial Grill Review -> READY or NOT READY
 ```
 
 Grill Review inspects the full spec package and generated technical design. It looks for blockers before implementation begins.
+
+Run is a validator, not the place where product intent is invented. Use it after the spec package has enough real detail to review.
 
 ### 3. Iterate Until Ready
 

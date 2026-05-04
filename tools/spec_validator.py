@@ -36,6 +36,21 @@ PLACEHOLDER_MARKERS = (
     "{{ ",
 )
 
+DEFAULT_DISCOVERY_MARKERS = (
+    "capture the intended behavior before implementation.",
+    "users and developers who rely on the feature.",
+    "the feature behavior is clear, testable, and safe to implement.",
+    "keep the first pass small and implementation-ready.",
+    "request, validation, operation, response.",
+    "input, output, state, and ownership data.",
+    "application services, storage, and api contracts.",
+    "invalid input, authorization gaps, unsafe state, and unclear failures.",
+    "large unrelated features and premature implementation choices.",
+    "acceptance criteria, error cases, tests, and contract expectations are explicit.",
+)
+
+DEFAULT_DRAFT_MARKER_THRESHOLD = 6
+
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8").lower()
@@ -129,6 +144,23 @@ def _validate_spec_file(feature_dir: Path, result: CheckResult) -> None:
             result.add_error(f"{spec_path} must include at least one error case")
 
 
+def _validate_not_default_draft(feature_dir: Path, result: CheckResult) -> None:
+    contents: list[str] = []
+    for relative_path in ("discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md"):
+        path = feature_dir / relative_path
+        if path.exists():
+            contents.append(_read(path))
+    combined = "\n".join(contents)
+    marker_count = sum(1 for marker in DEFAULT_DISCOVERY_MARKERS if marker in combined)
+    if marker_count >= DEFAULT_DRAFT_MARKER_THRESHOLD:
+        result.add_error(
+            f"{feature_dir} appears to be a mostly default init draft. "
+            "Edit the spec package with real feature goals, users, flows, data, risks, and acceptance evidence before running SpecGuard."
+        )
+        result.add_next_step(f"Edit the generated spec package first: {feature_dir / 'spec.md'}")
+        result.add_next_step(f"Then rerun: python -m cli.specguard run {feature_dir}")
+
+
 def validate_spec_basis(path: Path) -> CheckResult:
     result = CheckResult("SpecGuard spec basis validation")
     feature_dirs = _validate_path(path, result)
@@ -139,6 +171,7 @@ def validate_spec_basis(path: Path) -> CheckResult:
         _validate_doc(feature_dir / "discovery.md", DISCOVERY_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "spec.md", SPEC_REQUIRED_SECTIONS, result)
         _validate_spec_file(feature_dir, result)
+        _validate_not_default_draft(feature_dir, result)
 
     if result.ok:
         result.add_info("Discovery and spec checks passed.")
@@ -170,6 +203,7 @@ def validate_feature(path: Path) -> CheckResult:
         _validate_doc(feature_dir / "spec.md", SPEC_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "technical-design.md", TECHNICAL_DESIGN_REQUIRED_SECTIONS, result)
         _validate_spec_file(feature_dir, result)
+        _validate_not_default_draft(feature_dir, result)
         tests_dir = feature_dir / "tests"
         if not tests_dir.exists() or not any(tests_dir.glob("*.md")):
             result.add_error(f"Missing test scenarios in: {tests_dir}")

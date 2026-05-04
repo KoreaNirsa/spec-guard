@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 
 from tools.contract_checker import check_contracts
-from tools.discovery_engine import collect_llm_answers, initialize_specs
+from tools.discovery_engine import answers_from_args, collect_llm_answers, initialize_specs
 from tools.grill_engine import run_grill
 from tools.llm_client import (
     LLMSettings,
@@ -353,6 +353,20 @@ def test_discovery_init_can_use_llm_for_spec(tmp_path: Path) -> None:
     assert "Billing Export" in spec.read_text(encoding="utf-8")
     assert any("feature specification" in call.lower() for call in llm.calls)
     assert any("plan.md" in call and "tasks.md" in call and "constitution.md" in call for call in llm.calls)
+
+
+def test_run_blocks_unedited_default_init_draft(tmp_path: Path) -> None:
+    answers = answers_from_args(Namespace(feature="my-feature"))
+    init_result = initialize_specs(tmp_path, answers)
+    feature = tmp_path / "specs" / "my-feature"
+
+    result = run_pipeline(feature)
+
+    assert init_result.ok
+    assert not result.ok
+    assert not feature.joinpath("technical-design.md").exists()
+    assert any("mostly default init draft" in message for message in result.messages)
+    assert any("Edit the generated spec package" in step for step in result.next_steps)
 
 
 def test_llm_discovery_uses_fast_guided_questions_for_conversation(tmp_path: Path) -> None:
