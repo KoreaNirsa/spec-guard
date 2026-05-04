@@ -65,7 +65,10 @@ def _has_placeholder(content: str) -> bool:
         lowered = stripped.lower()
         if not stripped:
             continue
-        if "{{ " in lowered or "pending" in lowered or "tbd" in lowered:
+        bullet_text = lowered.lstrip("-*0123456789.[] x")
+        if "{{ " in lowered:
+            return True
+        if bullet_text in {"pending", "tbd"}:
             return True
         if lowered.startswith("describe ") or lowered.startswith("- list "):
             return True

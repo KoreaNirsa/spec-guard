@@ -201,7 +201,7 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
         encoding="utf-8",
     )
 
-    requirement = "pending behavior definition." if placeholder else "The system must accept valid input."
+    requirement = "pending" if placeholder else "The system must accept valid input."
     feature.joinpath("spec.md").write_text(
         "\n".join([
             "# Spec: feature",
@@ -834,6 +834,20 @@ def test_validator_rejects_placeholder_content(tmp_path: Path) -> None:
 
     assert not result.ok
     assert any("placeholder" in message for message in result.messages)
+
+
+def test_validator_allows_pending_as_domain_language(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    spec_path = feature / "spec.md"
+    spec = spec_path.read_text(encoding="utf-8")
+    spec_path.write_text(
+        spec.replace("- Invalid input", "- Pending jobs time out with a stable error code."),
+        encoding="utf-8",
+    )
+
+    result = validate_feature(feature)
+
+    assert result.ok
 
 
 def test_validator_requires_discovery(tmp_path: Path) -> None:
