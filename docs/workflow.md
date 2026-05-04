@@ -22,8 +22,10 @@ Claude Code provider integration is planned later. For now, Claude Code should b
 Configure local Codex:
 
 ```bash
-python -m cli.specguard auth setup --mode codex
+python -m cli.specguard auth setup --mode codex --model gpt-5.4
 ```
+
+Codex mode defaults to `gpt-5.4` when setup asks for a model. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in.
 
 Configure OpenAI Platform:
 

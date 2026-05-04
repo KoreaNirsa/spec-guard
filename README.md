@@ -155,8 +155,10 @@ pip install -r requirements.txt
 Local Codex mode:
 
 ```bash
-python -m cli.specguard auth setup --mode codex
+python -m cli.specguard auth setup --mode codex --model gpt-5.4
 ```
+
+Codex mode defaults to `gpt-5.4` during setup. Pass `--model` again to change it later, or use `--llm-model` on `init` / `run` for a one-off override.
 
 OpenAI Platform mode:
 
@@ -175,6 +177,18 @@ If local Codex requests time out, increase the timeout:
 
 ```bash
 python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
+```
+
+If `codex login` is already complete but setup cannot launch the login command, use:
+
+```bash
+python -m cli.specguard auth setup --mode codex --model gpt-5.4 --skip-login
+```
+
+You can also point SpecGuard at a full Codex executable path:
+
+```bash
+python -m cli.specguard auth setup --mode codex --model gpt-5.4 --codex-command "C:\path\to\codex.cmd"
 ```
 
 ## CLI Reference

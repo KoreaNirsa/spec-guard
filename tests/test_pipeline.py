@@ -473,6 +473,36 @@ def test_codex_settings_raise_legacy_timeout_floor(tmp_path: Path) -> None:
     assert settings.timeout == 180
 
 
+def test_codex_setup_defaults_model_and_skips_missing_login(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setattr(specguard_cli, "ROOT", tmp_path)
+    monkeypatch.setattr(specguard_cli, "codex_available", lambda _command="codex": True)
+    monkeypatch.setattr(specguard_cli, "_resolve_local_command", lambda _command: "missing-codex")
+    monkeypatch.setattr("builtins.input", lambda prompt: "y" if "codex login" in prompt else "")
+
+    def missing_command(*_args, **_kwargs):
+        raise FileNotFoundError("missing-codex")
+
+    monkeypatch.setattr(specguard_cli.subprocess, "run", missing_command)
+
+    exit_code = specguard_cli._setup_llm(Namespace(
+        mode="codex",
+        model=None,
+        timeout=180,
+        codex_command="codex",
+        codex_profile=None,
+        skip_login=False,
+    ))
+
+    settings = load_llm_settings(tmp_path)
+    rendered = capsys.readouterr().out
+    assert exit_code == 0
+    assert settings is not None
+    assert settings.mode == "codex"
+    assert settings.model == "gpt-5.4"
+    assert "could not be launched" in rendered
+    assert "provider config is still saved" in rendered
+
+
 def test_codex_json_event_parser_reads_deltas_only() -> None:
     delta = '{"type":"agent_message_delta","delta":"Question?"}'
     final = '{"type":"agent_message","message":"Question?"}'

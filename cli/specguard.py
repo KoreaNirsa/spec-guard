@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import getpass
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -137,7 +138,7 @@ def auth(args: argparse.Namespace) -> int:
             command = "codex"
             if settings and settings.mode == "codex":
                 command = settings.codex_command
-            subprocess.run([command, "logout"], cwd=ROOT, check=False)
+            _run_codex_account_command(command, "logout")
         return 0
 
     if args.auth_command == "setup":
@@ -195,8 +196,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         return 1
 
     if mode == "codex":
-        model = args.model or _prompt("Model (blank keeps Codex default)", "")
-        model = model or None
+        model = args.model or _prompt("Model", "gpt-5.4")
         timeout = args.timeout or 180
         codex_command = args.codex_command or "codex"
         if not codex_available(codex_command):
@@ -213,7 +213,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         path = save_llm_settings(ROOT, settings)
         print_success(f"[PASS] Saved local Codex provider config: {path}")
         if not args.skip_login and _prompt_yes_no("Run `codex login` now?", default=False):
-            subprocess.run([codex_command, "login"], cwd=ROOT, check=False)
+            _run_codex_account_command(codex_command, "login")
         return 0
 
     model = args.model or _prompt("Model", "gpt-5.1")
@@ -254,6 +254,27 @@ def _prompt_yes_no(label: str, default: bool) -> bool:
     if not value:
         return default
     return value in {"y", "yes"}
+
+
+def _run_codex_account_command(codex_command: str, action: str) -> None:
+    resolved = _resolve_local_command(codex_command)
+    if resolved is None:
+        print_warning(f"[WARN] Codex command was not found, so `codex {action}` was skipped.")
+        print("- SpecGuard provider config is still saved. If Codex is already logged in, run/init can continue.")
+        print("- Otherwise run `codex login` manually, or set --codex-command to the full executable path.")
+        return
+    try:
+        subprocess.run([resolved, action], cwd=ROOT, check=False)
+    except FileNotFoundError:
+        print_warning(f"[WARN] Codex command could not be launched, so `codex {action}` was skipped.")
+        print("- SpecGuard provider config is still saved. If Codex is already logged in, run/init can continue.")
+        print("- Otherwise run `codex login` manually, or set --codex-command to the full executable path.")
+
+
+def _resolve_local_command(command: str) -> str | None:
+    if Path(command).exists():
+        return command
+    return shutil.which(command) or shutil.which(f"{command}.cmd")
 
 
 def _should_offer_follow_up(args: argparse.Namespace) -> bool:
@@ -555,7 +576,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     auth_setup = auth_subparsers.add_parser("setup", formatter_class=SpecGuardHelpFormatter)
     auth_setup.add_argument("--mode", choices=["codex", "openai"], help="LLM provider mode")
-    auth_setup.add_argument("--model", help="Model name for the selected provider")
+    auth_setup.add_argument("--model", help="Model name for the selected provider; Codex setup defaults to gpt-5.4")
     auth_setup.add_argument("--timeout", type=int, help="Provider request timeout in seconds")
     auth_setup.add_argument("--api-key", help="Store an OpenAI API key in local ignored config")
     auth_setup.add_argument("--api-key-env", default="OPENAI_API_KEY", help="Environment variable for the OpenAI API key")
