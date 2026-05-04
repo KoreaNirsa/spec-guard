@@ -83,7 +83,10 @@ def run(args: argparse.Namespace) -> int:
         print_hint("Missing artifacts are generated; stale tests and contracts are refreshed from the spec.")
 
     try:
-        result = run_pipeline(Path(args.path), llm_client=llm_client, force=args.force)
+        result = _run_with_progress(
+            "Running pipeline",
+            lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=args.force),
+        )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         return 1
@@ -274,10 +277,10 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
     path = Path(args.path)
     while True:
         print_section("Continue")
-        print("[1] Grill Me 리뷰 진행")
-        print("[2] Grill Me 리뷰 확인")
-        print("[3] Grill Me 리뷰 기반 Spec 재생성 (실행 후 Grill Me 리뷰 자동 실행)")
-        print("[q] 종료")
+        print("[1] Run Grill Me review")
+        print("[2] View Grill Me review")
+        print("[3] Regenerate spec from Grill Me review (auto-runs Grill Me review after)")
+        print("[q] Exit")
         try:
             choice = input("Choose action: ").strip().lower()
         except EOFError:

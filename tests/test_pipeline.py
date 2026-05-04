@@ -728,10 +728,10 @@ def test_follow_up_menu_uses_grill_review_actions(monkeypatch, capsys) -> None:
 
     rendered = capsys.readouterr().out
     assert returned is result
-    assert "[1] Grill Me 리뷰 진행" in rendered
-    assert "[2] Grill Me 리뷰 확인" in rendered
-    assert "[3] Grill Me 리뷰 기반 Spec 재생성 (실행 후 Grill Me 리뷰 자동 실행)" in rendered
-    assert "[q] 종료" in rendered
+    assert "[1] Run Grill Me review" in rendered
+    assert "[2] View Grill Me review" in rendered
+    assert "[3] Regenerate spec from Grill Me review (auto-runs Grill Me review after)" in rendered
+    assert "[q] Exit" in rendered
 
 
 def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:
@@ -773,6 +773,31 @@ def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
 
     assert exit_code == 0
     assert called["value"]
+
+
+def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:
+    captured = {"label": ""}
+
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False) -> CheckResult:
+        return CheckResult("SpecGuard pipeline")
+
+    def fake_run_with_progress(label, operation):
+        captured["label"] = label
+        return operation()
+
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", fake_run_with_progress)
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=True,
+        no_llm=True,
+        no_follow_up=True,
+        follow_up=False,
+    ))
+
+    assert exit_code == 0
+    assert captured["label"] == "Running pipeline"
 
 
 def test_tdd_generator_does_not_overwrite_existing_tests(tmp_path: Path) -> None:

@@ -128,7 +128,7 @@ specs/my-feature/
 
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 
-In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can run Grill Me review from the current files, inspect the latest Grill Me review, or ask the configured LLM to regenerate `spec.md` from the findings and automatically rerun the pipeline so Grill Me is refreshed. Long LLM follow-up and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can run Grill Me review from the current files, inspect the latest Grill Me review, or ask the configured LLM to regenerate `spec.md` from the findings and automatically rerun the pipeline so Grill Me is refreshed. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
 If a local Codex follow-up request times out, check `python -m cli.specguard auth status` and increase the timeout:
 
