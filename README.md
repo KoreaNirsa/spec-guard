@@ -25,6 +25,55 @@ AI coding works best when the implementation input is explicit. SpecGuard focuse
 
 The user owns the spec. SpecGuard drafts, challenges, and validates the implementation basis around it.
 
+## Installation
+
+```bash
+git clone https://github.com/KoreaNirsa/spec-guard.git
+cd spec-guard
+pip install -r requirements.txt
+```
+
+## LLM Provider Setup
+
+Local Codex mode:
+
+```bash
+python -m cli.specguard auth setup --mode codex --model gpt-5.4
+```
+
+Codex mode defaults to `gpt-5.4` during setup. Pass `--model` again to change it later, or use `--llm-model` on `init` / `run` for a one-off override.
+
+OpenAI Platform mode:
+
+```bash
+python -m cli.specguard auth setup --mode openai
+```
+
+Useful auth commands:
+
+```bash
+python -m cli.specguard auth status
+python -m cli.specguard auth logout
+```
+
+If local Codex requests time out, increase the timeout:
+
+```bash
+python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
+```
+
+If `codex login` is already complete but setup cannot launch the login command, use:
+
+```bash
+python -m cli.specguard auth setup --mode codex --model gpt-5.4 --skip-login
+```
+
+You can also point SpecGuard at a full Codex executable path:
+
+```bash
+python -m cli.specguard auth setup --mode codex --model gpt-5.4 --codex-command "C:\path\to\codex.cmd"
+```
+
 ## Recommended User Flow
 
 Use a real feature name. Running `init` without a name creates a default sample feature and is mostly useful for trying the CLI.
@@ -143,55 +192,6 @@ SpecGuard uses this readiness threshold:
 Critical and Major findings block implementation. Minor findings are allowed only when they do not hide missing requirements or implementation ambiguity.
 
 CLI output highlights READY states in green and NOT READY states in red.
-
-## Installation
-
-```bash
-git clone https://github.com/KoreaNirsa/spec-guard.git
-cd spec-guard
-pip install -r requirements.txt
-```
-
-## LLM Provider Setup
-
-Local Codex mode:
-
-```bash
-python -m cli.specguard auth setup --mode codex --model gpt-5.4
-```
-
-Codex mode defaults to `gpt-5.4` during setup. Pass `--model` again to change it later, or use `--llm-model` on `init` / `run` for a one-off override.
-
-OpenAI Platform mode:
-
-```bash
-python -m cli.specguard auth setup --mode openai
-```
-
-Useful auth commands:
-
-```bash
-python -m cli.specguard auth status
-python -m cli.specguard auth logout
-```
-
-If local Codex requests time out, increase the timeout:
-
-```bash
-python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
-```
-
-If `codex login` is already complete but setup cannot launch the login command, use:
-
-```bash
-python -m cli.specguard auth setup --mode codex --model gpt-5.4 --skip-login
-```
-
-You can also point SpecGuard at a full Codex executable path:
-
-```bash
-python -m cli.specguard auth setup --mode codex --model gpt-5.4 --codex-command "C:\path\to\codex.cmd"
-```
 
 ## CLI Reference
 
