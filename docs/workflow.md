@@ -38,6 +38,8 @@ export SPECGUARD_LLM_MODEL=gpt-5.1
 python -m cli.specguard init my-feature --llm
 ```
 
+In LLM mode, Discovery becomes a short streaming conversation. SpecGuard asks one focused question at a time. The user answers naturally, then types `done` or `완료` when the conversation is ready to become a draft spec.
+
 SpecGuard asks Discovery questions and creates draft specs under `specs/`:
 
 ```text
@@ -65,6 +67,8 @@ specs/my-feature/spec.md
 ```
 
 This is the main human-owned artifact. SpecGuard can draft it, but it should not replace product or engineering judgment.
+
+The CLI intentionally reminds the user to review and strengthen the generated spec before continuing. The next command should be run only after the spec has been checked and edited.
 
 ## 3. Run Builds The Implementation Basis
 
@@ -98,7 +102,8 @@ specs/my-feature/
 `-- implementation-output.md
 ```
 
-SpecGuard does not overwrite existing technical design, tests, or contracts by default.
+SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed.
+Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 
 ## 4. User Refines And Repeats
 

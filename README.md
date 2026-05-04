@@ -225,6 +225,8 @@ Generate an LLM-backed draft spec from Discovery answers:
 python -m cli.specguard init my-feature --llm
 ```
 
+In interactive LLM mode, SpecGuard streams Discovery questions in real time. Answer naturally, then type `done` or `완료` when the conversation is ready to become a draft spec.
+
 Generate or regenerate LLM-backed technical design and Grill Me output:
 
 ```bash
@@ -234,9 +236,10 @@ python -m cli.specguard run specs/my-feature --llm --force
 Notes:
 
 - `--llm` is opt-in. Without it, SpecGuard uses local deterministic generation and heuristic validation.
-- `--force` is useful when you want to regenerate existing derived artifacts.
+- `run` generates missing artifacts and refreshes stale tests and contracts when `spec.md` changes.
+- `--force` is useful when you want to regenerate derived artifacts even if SpecGuard does not detect them as stale.
 - `SPECGUARD_LLM_MODEL` can be overridden per command with `--llm-model`.
-- The current LLM adapter uses the OpenAI Responses API through standard HTTP; no SDK dependency is required.
+- The current LLM adapter uses the OpenAI Responses API through standard HTTP and supports streaming Discovery; no SDK dependency is required.
 
 For scripted or CI setup:
 
@@ -253,6 +256,13 @@ python -m cli.specguard run specs
 ## Example Output
 
 ```text
+  ____                  ____                     _
+ / ___| _ __   ___  ___/ ___|_   _  __ _ _ __ __| |
+ \___ \| '_ \ / _ \/ __| |  _| | | |/ _` | '__/ _` |
+  ___) | |_) |  __/ (__| |_| | |_| | (_| | | | (_| |
+ |____/| .__/ \___|\___|\____|\__,_|\__,_|_|  \__,_|
+       |_|
+
 [FAIL] SpecGuard pipeline
 - Discovery and spec checks passed.
 - Reused technical design: examples/risk/todo-api/technical-design.md
@@ -320,6 +330,7 @@ The test suite covers:
 ## Current Capabilities
 
 - Discovery artifacts
+- streaming LLM Discovery conversation
 - draft spec generation from Discovery
 - Spec and Technical Design validation
 - local heuristic Grill Me engine

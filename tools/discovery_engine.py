@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import re
+import sys
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
@@ -67,9 +69,117 @@ def collect_answers(args: argparse.Namespace) -> dict[str, str]:
     return answers
 
 
+def _write_default(text: str) -> None:
+    sys.stdout.write(text)
+    sys.stdout.flush()
+
+
+def _write_line(write_func: Callable[[str], None], text: str = "") -> None:
+    write_func(f"{text}\n")
+
+
+def _finish_requested(value: str) -> bool:
+    return value.strip().lower() in {"done", "end", "finish", "exit", "quit", "complete", "완료", "끝", "종료"}
+
+
+def _discovery_defaults_text(answers: dict[str, str]) -> str:
+    return "\n".join(f"- {key}: {value}" for key, value in answers.items())
+
+
+def _conversation_text(transcript: list[tuple[str, str]]) -> str:
+    if not transcript:
+        return "No additional LLM Discovery conversation was provided."
+    lines: list[str] = []
+    for role, content in transcript:
+        lines.append(f"{role}: {content.strip()}")
+    return "\n\n".join(lines)
+
+
+def _stream_or_generate(
+    llm_client: object,
+    instructions: str,
+    input_text: str,
+    write_func: Callable[[str], None],
+    max_output_tokens: int = 900,
+) -> str:
+    chunks: list[str] = []
+    stream_text = getattr(llm_client, "stream_text", None)
+    if callable(stream_text):
+        for chunk in stream_text(instructions, input_text, max_output_tokens=max_output_tokens):
+            chunks.append(chunk)
+            write_func(chunk)
+        return "".join(chunks).strip()
+
+    text = llm_client.generate_text(instructions, input_text, max_output_tokens=max_output_tokens)
+    write_func(text)
+    return text.strip()
+
+
+def collect_llm_answers(
+    args: argparse.Namespace,
+    llm_client: object,
+    *,
+    max_turns: int = 8,
+    input_func: Callable[[str], str] = input,
+    write_func: Callable[[str], None] = _write_default,
+) -> dict[str, str]:
+    answers = answers_from_args(args)
+    transcript: list[tuple[str, str]] = []
+    instructions = "\n".join([
+        "You are SpecGuard Discovery.",
+        "Your job is to interview the user before a spec is created.",
+        "SpecGuard is not prompt-to-code. Do not generate application code.",
+        "Ask exactly one focused question at a time.",
+        "Prioritize goal, users, constraints, flows, data, risks, acceptance criteria, tests, and contracts.",
+        "Keep each question concise and practical.",
+        "If the user has provided enough detail, ask them to type done when they are ready to generate the draft spec.",
+    ])
+
+    _write_line(write_func, "SpecGuard LLM Discovery")
+    _write_line(write_func, "Answer naturally. Type 'done' or '완료' to generate the draft spec.")
+    _write_line(write_func, "")
+
+    for turn in range(1, max_turns + 1):
+        input_text = "\n\n".join([
+            "# Discovery defaults",
+            _discovery_defaults_text(answers),
+            "# Conversation so far",
+            _conversation_text(transcript),
+            "# Task",
+            f"Ask Discovery question {turn}. Do not summarize. Do not generate the spec yet.",
+        ])
+
+        _write_line(write_func, f"SpecGuard ({turn}/{max_turns}):")
+        assistant_message = _stream_or_generate(llm_client, instructions, input_text, write_func)
+        _write_line(write_func, "")
+        transcript.append(("assistant", assistant_message))
+
+        try:
+            user_message = input_func("You: ").strip()
+        except EOFError:
+            user_message = "done"
+
+        if _finish_requested(user_message):
+            transcript.append(("user", user_message))
+            break
+
+        if user_message:
+            transcript.append(("user", user_message))
+        else:
+            transcript.append(("user", "(accepted default direction)"))
+            _write_line(write_func, "> Empty answer recorded. Continuing with the default Discovery direction.")
+        _write_line(write_func, "")
+    else:
+        _write_line(write_func, "")
+        _write_line(write_func, "> Discovery turn limit reached. Generating the draft spec from the conversation.")
+
+    answers["conversation"] = _conversation_text(transcript)
+    return answers
+
+
 def _discovery_markdown(feature_slug: str, answers: dict[str, str]) -> str:
     title = _feature_title(feature_slug)
-    return "\n".join([
+    lines = [
         f"# Discovery: {title}",
         "",
         "## Foundation",
@@ -116,7 +226,16 @@ def _discovery_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         "- Required artifacts: spec.md, technical-design.md, tests, contracts, and implementation-output.md.",
         "- Stop condition: Do not start code implementation while Critical or Major Grill Me findings remain.",
         "",
-    ])
+    ]
+    conversation = answers.get("conversation", "").strip()
+    if conversation:
+        lines.extend([
+            "## LLM Discovery Conversation",
+            "",
+            conversation,
+            "",
+        ])
+    return "\n".join(lines)
 
 
 def _spec_markdown(feature_slug: str, answers: dict[str, str]) -> str:
@@ -257,8 +376,8 @@ def initialize_specs(root: Path, answers: dict[str, str], force: bool = False, l
                 result.add_info(f"Generated LLM draft spec: {spec_path}")
             spec_path.write_text(spec, encoding="utf-8")
 
-        result.add_next_step(f"Review and strengthen the generated spec: {spec_path}")
-        result.add_next_step(f"Run the validation workflow: python -m cli.specguard run {feature_dir}")
+        result.add_next_step(f"반드시 스펙을 검토하고 보완하라: {spec_path}")
+        result.add_next_step(f"스펙 작업이 완료되었다면 명령어(run 등)을 실행하라: python -m cli.specguard run {feature_dir}")
 
     result.add_info(f"Prepared implementation output root: {develop_root}")
     return result

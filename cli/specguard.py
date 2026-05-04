@@ -3,9 +3,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, initialize_specs
+from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
 from tools.llm_client import LLMConfigError, OpenAIResponsesClient
 from tools.runner import run_pipeline
+from tools.ux import print_banner, print_hint, print_section
 
 
 ROOT = Path.cwd()
@@ -17,19 +18,35 @@ class SpecGuardHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.Ra
 
 
 def init_project(args: argparse.Namespace) -> int:
+    print_banner("Discovery creates draft specs under specs/.")
     llm_client = _build_llm_client(args)
     if args.llm and llm_client is None:
         return 1
-    answers = answers_from_args(args) if args.non_interactive else collect_answers(args)
+
+    if args.llm and not args.non_interactive:
+        print_section("LLM Discovery")
+        print_hint("The assistant will stream questions in real time. Type 'done' or '완료' to finish.")
+        answers = collect_llm_answers(args, llm_client)
+    else:
+        print_section("Discovery")
+        answers = answers_from_args(args) if args.non_interactive else collect_answers(args)
+
+    print_section("Spec Draft")
     result = initialize_specs(ROOT, answers, force=args.force, llm_client=llm_client)
     result.print()
     return 0 if result.ok else 1
 
 
 def run(args: argparse.Namespace) -> int:
+    print_banner("Run Technical Design, Grill Me, Test, Contract, and Implementation Outputs.")
     llm_client = _build_llm_client(args)
     if args.llm and llm_client is None:
         return 1
+    print_section("Pipeline")
+    if args.force:
+        print_hint("Regenerating derived artifacts where SpecGuard owns the output.")
+    else:
+        print_hint("Missing artifacts are generated; stale tests and contracts are refreshed from the spec.")
     result = run_pipeline(Path(args.path), llm_client=llm_client, force=args.force)
     result.print()
     return 0 if result.ok else 1
@@ -77,7 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     init_parser.add_argument("--non-interactive", action="store_true", help="Generate specs from CLI values and defaults")
     init_parser.add_argument("--force", action="store_true", help="Overwrite generated discovery and spec drafts")
-    init_parser.add_argument("--llm", action="store_true", help="Use the configured LLM to draft spec.md from Discovery answers")
+    init_parser.add_argument("--llm", action="store_true", help="Use streaming LLM Discovery and draft spec.md from the conversation")
     init_parser.add_argument("--llm-model", help="Override SPECGUARD_LLM_MODEL for this run")
     init_parser.add_argument("--problem", default=DISCOVERY_DEFAULTS["problem"], help="Default answer for the problem Discovery question")
     init_parser.add_argument("--users", default=DISCOVERY_DEFAULTS["users"], help="Default answer for the users Discovery question")

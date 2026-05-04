@@ -22,6 +22,13 @@ def _feature_dirs(path: Path) -> list[Path]:
     return [path]
 
 
+def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
+    if force or not output.exists():
+        return True
+    output_mtime = output.stat().st_mtime
+    return any(source.exists() and source.stat().st_mtime > output_mtime for source in sources)
+
+
 def run_pipeline(path: Path, llm_client: object | None = None, force: bool = False) -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
@@ -39,13 +46,22 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
             result.add_next_step("Fix discovery.md or spec.md before running the pipeline again.")
             continue
 
+        discovery_path = feature_dir / "discovery.md"
+        spec_path = feature_dir / "spec.md"
+        technical_design_path = feature_dir / "technical-design.md"
+        test_path = feature_dir / "tests" / f"{feature_dir.name}.test.md"
+        contract_path = feature_dir / "contracts" / "openapi.yaml"
+
+        refresh_design = force or not technical_design_path.exists()
         if llm_client is None:
-            technical_design = generate_technical_design(feature_dir, force=force)
+            technical_design = generate_technical_design(feature_dir, force=refresh_design)
         else:
-            technical_design = generate_llm_technical_design(feature_dir, llm_client, force=force)
+            technical_design = generate_llm_technical_design(feature_dir, llm_client, force=refresh_design)
         action = "Generated" if technical_design.created else "Reused"
         mode = " LLM" if llm_client is not None and technical_design.created else ""
         result.add_info(f"{action}{mode} technical design: {technical_design.path}")
+        if not force and not technical_design.created and _is_stale(technical_design_path, [discovery_path, spec_path], False):
+            result.add_next_step(f"Review stale technical design or regenerate it with --force: {technical_design_path}")
 
         technical_validation = validate_technical_design(feature_dir)
         result.messages.extend(technical_validation.messages)
@@ -62,10 +78,12 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
             result.ok = False
             continue
 
-        test_output = generate_tests(feature_dir, force=force)
+        refresh_tests = _is_stale(test_path, [spec_path, technical_design_path], force)
+        test_output = generate_tests(feature_dir, force=refresh_tests)
         result.add_info(f"TDD scenarios ready: {test_output}")
 
-        contract = ensure_contract(feature_dir, force=force)
+        refresh_contract = _is_stale(contract_path, [spec_path], force)
+        contract = ensure_contract(feature_dir, force=refresh_contract)
         contract_action = "Generated" if contract.created else "Reused"
         result.add_info(f"{contract_action} contract scaffold: {contract.path}")
 
@@ -80,6 +98,8 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
         implementation_output = generate_implementation_output(feature_dir)
         output_action = "Generated" if implementation_output.created else "Reused"
         result.add_info(f"{output_action} implementation output guide: {implementation_output.path}")
+        result.add_next_step(f"Use this guide with Codex or Claude Code: {implementation_output.path}")
+        result.add_next_step("SpecGuard stops at spec validation. Put application code under develop/<stack>/ when you implement.")
 
     return result
 
