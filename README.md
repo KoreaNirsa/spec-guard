@@ -115,7 +115,6 @@ PowerShell:
 ```powershell
 python -m cli.specguard init your-feature-name
 Copy-Item -Recurse -Force example\* specs\your-feature-name\
-python -m cli.specguard run specs\your-feature-name --no-llm
 ```
 
 Bash:
@@ -123,7 +122,6 @@ Bash:
 ```bash
 python -m cli.specguard init your-feature-name
 cp -R example/. specs/your-feature-name/
-python -m cli.specguard run specs/your-feature-name --no-llm
 ```
 
 This replaces the initial draft with the authored example package and lets you verify the full pipeline before writing your own feature specs.
