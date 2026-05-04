@@ -38,7 +38,8 @@ def init_project(args: argparse.Namespace) -> int:
 
     if llm_client is not None and not args.non_interactive:
         print_section("LLM Discovery")
-        print_hint("The assistant will stream questions in real time. Type 'done' or 'complete' to finish.")
+        print_hint("Questions appear instantly. The configured LLM generates the draft spec after your answers.")
+        print_hint("Press Enter to accept defaults, or type 'done' / 'complete' to finish early.")
         try:
             answers = collect_llm_answers(args, llm_client)
         except LLMRequestError as exc:

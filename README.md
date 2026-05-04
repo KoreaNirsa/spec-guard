@@ -217,7 +217,7 @@ Interactive `init` accepts Enter for every default answer.
 
 ## LLM Provider Modes
 
-SpecGuard uses an LLM for interactive Discovery, technical design generation, and Grill Me during the normal CLI workflow.
+SpecGuard uses an LLM to synthesize the draft spec after guided Discovery answers are collected, and for technical design generation and Grill Me during the normal CLI workflow.
 
 Supported modes:
 
@@ -260,13 +260,13 @@ Or store an API key in the local ignored `.specguard/config.json` file:
 python -m cli.specguard auth setup --mode openai --api-key sk-...
 ```
 
-Generate a draft spec from streaming Discovery:
+Generate a draft spec from guided Discovery:
 
 ```bash
 python -m cli.specguard init my-feature
 ```
 
-SpecGuard streams Discovery questions in real time. Answer naturally, then type `done` when the conversation is ready to become a draft spec.
+SpecGuard shows Discovery questions immediately so the terminal is always ready for input. Press Enter to accept a visible default, or type `done` when the answers are ready to become a draft spec. The configured LLM is used after the guided answers are collected to synthesize the draft `spec.md`.
 
 Generate or regenerate LLM-backed technical design and Grill Me output:
 
@@ -281,7 +281,7 @@ Notes:
 - `--force` is useful when you want to regenerate derived artifacts even if SpecGuard does not detect them as stale.
 - `SPECGUARD_LLM_MODEL` can be overridden per command with `--llm-model`.
 - `--llm-mode codex` and `--llm-mode openai` can override the configured mode for one command.
-- The OpenAI adapter uses the Responses API through standard HTTP and supports streaming Discovery; no SDK dependency is required.
+- The OpenAI adapter uses the Responses API through standard HTTP; no SDK dependency is required.
 
 For scripted or CI setup:
 
@@ -372,7 +372,7 @@ The test suite covers:
 ## Current Capabilities
 
 - Discovery artifacts
-- streaming LLM Discovery conversation
+- guided LLM Discovery conversation
 - draft spec generation from Discovery
 - Spec and Technical Design validation
 - LLM-backed Grill Me engine

@@ -24,6 +24,17 @@ DISCOVERY_PROMPTS = (
     ("acceptance", "What would prove the spec is ready?", "Acceptance criteria, error cases, tests, and contract expectations are explicit."),
 )
 
+GUIDED_DISCOVERY_TURNS = (
+    ("problem", "Problem", "What problem should these specs solve?"),
+    ("users", "Users", "Who is affected by this feature, and who needs to use or maintain it?"),
+    ("constraints", "Constraints", "What constraints are non-negotiable for the first implementation?"),
+    ("flows", "Flows", "What are the main user or system flows from start to finish?"),
+    ("data", "Data Ownership", "What input, output, and state data does this feature use, and who owns each piece?"),
+    ("dependencies", "Dependencies", "Which external systems, contracts, storage, or services does this feature depend on?"),
+    ("risks", "Risks", "What can fail, be abused, or become ambiguous if the spec is incomplete?"),
+    ("acceptance", "Acceptance", "What would prove this spec is ready for technical design, tests, and contracts?"),
+)
+
 
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
@@ -82,10 +93,6 @@ def _finish_requested(value: str) -> bool:
     return value.strip().lower() in {"done", "end", "finish", "exit", "quit", "complete", "완료", "끝", "종료"}
 
 
-def _discovery_defaults_text(answers: dict[str, str]) -> str:
-    return "\n".join(f"- {key}: {value}" for key, value in answers.items())
-
-
 def _conversation_text(transcript: list[tuple[str, str]]) -> str:
     if not transcript:
         return "No additional LLM Discovery conversation was provided."
@@ -93,26 +100,6 @@ def _conversation_text(transcript: list[tuple[str, str]]) -> str:
     for role, content in transcript:
         lines.append(f"{role}: {content.strip()}")
     return "\n\n".join(lines)
-
-
-def _stream_or_generate(
-    llm_client: object,
-    instructions: str,
-    input_text: str,
-    write_func: Callable[[str], None],
-    max_output_tokens: int = 900,
-) -> str:
-    chunks: list[str] = []
-    stream_text = getattr(llm_client, "stream_text", None)
-    if callable(stream_text):
-        for chunk in stream_text(instructions, input_text, max_output_tokens=max_output_tokens):
-            chunks.append(chunk)
-            write_func(chunk)
-        return "".join(chunks).strip()
-
-    text = llm_client.generate_text(instructions, input_text, max_output_tokens=max_output_tokens)
-    write_func(text)
-    return text.strip()
 
 
 def collect_llm_answers(
@@ -123,35 +110,23 @@ def collect_llm_answers(
     input_func: Callable[[str], str] = input,
     write_func: Callable[[str], None] = _write_default,
 ) -> dict[str, str]:
+    _ = llm_client
     answers = answers_from_args(args)
     transcript: list[tuple[str, str]] = []
-    instructions = "\n".join([
-        "You are SpecGuard Discovery.",
-        "Your job is to interview the user before a spec is created.",
-        "SpecGuard is not prompt-to-code. Do not generate application code.",
-        "Ask exactly one focused question at a time.",
-        "Prioritize goal, users, constraints, flows, data, risks, acceptance criteria, tests, and contracts.",
-        "Keep each question concise and practical.",
-        "If the user has provided enough detail, ask them to type done when they are ready to generate the draft spec.",
-    ])
+    turns = GUIDED_DISCOVERY_TURNS[:max_turns]
 
     _write_line(write_func, "SpecGuard LLM Discovery")
-    _write_line(write_func, "Answer naturally. Type 'done' or '완료' to generate the draft spec.")
+    _write_line(write_func, "Answer naturally. Press Enter to accept the default.")
+    _write_line(write_func, "Questions are shown instantly; the configured LLM generates the draft spec after your answers.")
+    _write_line(write_func, "Type 'done' or '완료' to finish early and generate the draft spec.")
     _write_line(write_func, "")
 
-    for turn in range(1, max_turns + 1):
-        input_text = "\n\n".join([
-            "# Discovery defaults",
-            _discovery_defaults_text(answers),
-            "# Conversation so far",
-            _conversation_text(transcript),
-            "# Task",
-            f"Ask Discovery question {turn}. Do not summarize. Do not generate the spec yet.",
-        ])
-
-        _write_line(write_func, f"SpecGuard ({turn}/{max_turns}):")
-        assistant_message = _stream_or_generate(llm_client, instructions, input_text, write_func)
-        _write_line(write_func, "")
+    for index, (key, label, question) in enumerate(turns, start=1):
+        default = answers[key]
+        assistant_message = f"{label}: {question}"
+        _write_line(write_func, f"SpecGuard ({index}/{len(turns)}) {label}")
+        _write_line(write_func, question)
+        _write_line(write_func, f"Default: {default}")
         transcript.append(("assistant", assistant_message))
 
         try:
@@ -164,10 +139,11 @@ def collect_llm_answers(
             break
 
         if user_message:
+            answers[key] = user_message
             transcript.append(("user", user_message))
         else:
-            transcript.append(("user", "(accepted default direction)"))
-            _write_line(write_func, "> Empty answer recorded. Continuing with the default Discovery direction.")
+            transcript.append(("user", f"(accepted default: {default})"))
+            _write_line(write_func, f"> Using default: {default}")
         _write_line(write_func, "")
     else:
         _write_line(write_func, "")

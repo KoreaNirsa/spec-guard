@@ -270,7 +270,7 @@ def test_discovery_init_can_use_llm_for_spec(tmp_path: Path) -> None:
     assert any("feature specification" in call.lower() for call in llm.calls)
 
 
-def test_llm_discovery_streams_conversation_into_spec(tmp_path: Path) -> None:
+def test_llm_discovery_uses_fast_guided_questions_for_conversation(tmp_path: Path) -> None:
     llm = FakeLLM()
     inputs = iter(["Finance users need scoped exports.", "done"])
     output: list[str] = []
@@ -288,9 +288,32 @@ def test_llm_discovery_streams_conversation_into_spec(tmp_path: Path) -> None:
     discovery = tmp_path / "specs" / "billing-export" / "discovery.md"
     assert result.ok
     assert "Finance users need scoped exports." in answers["conversation"]
+    assert answers["problem"] == "Finance users need scoped exports."
     assert "LLM Discovery Conversation" in discovery.read_text(encoding="utf-8")
-    assert "What problem should the spec solve?" in "".join(output)
+    assert "Questions are shown instantly" in "".join(output)
+    assert "What problem should these specs solve?" in "".join(output)
+    assert "Empty answer recorded" not in "".join(output)
     assert any("반드시 스펙을 검토하고 보완하라" in step for step in result.next_steps)
+
+
+def test_llm_discovery_empty_answer_accepts_visible_default() -> None:
+    llm = FakeLLM()
+    output: list[str] = []
+    args = Namespace(feature="billing-export")
+
+    answers = collect_llm_answers(
+        args,
+        llm,
+        max_turns=1,
+        input_func=lambda _prompt: "",
+        write_func=output.append,
+    )
+
+    rendered = "".join(output)
+    assert answers["problem"] == "Capture the intended behavior before implementation."
+    assert "Default: Capture the intended behavior before implementation." in rendered
+    assert "> Using default: Capture the intended behavior before implementation." in rendered
+    assert "Empty answer recorded" not in rendered
 
 
 def test_response_stream_parser_reads_output_text_delta() -> None:

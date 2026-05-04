@@ -48,7 +48,7 @@ python -m cli.specguard init my-feature
 
 If no provider is configured, interactive `init` offers to run provider setup first.
 
-In LLM mode, Discovery becomes a short streaming conversation. SpecGuard asks one focused question at a time. The user answers naturally, then types `done` or `complete` when the conversation is ready to become a draft spec.
+In LLM mode, Discovery is a short guided conversation. SpecGuard shows each question immediately, includes a visible default, and waits for user input without blocking on an LLM response. The user answers naturally, presses Enter to accept a default, or types `done` / `complete` when the conversation is ready to become a draft spec. The configured LLM then synthesizes the draft `spec.md` from the guided answers.
 
 For OpenAI Platform mode, set an API key or store it in the local ignored config:
 
