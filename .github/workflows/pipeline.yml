@@ -24,7 +24,7 @@ jobs:
       - name: Run Todo API Risk Example
         run: |
           set +e
-          python tools/runner.py examples/todo-api
+          python tools/runner.py examples/risk/todo-api
           code=$?
           if [ "$code" -ne 1 ]; then
             echo "todo-api should be blocked by Grill Me findings"

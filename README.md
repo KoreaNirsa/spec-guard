@@ -10,10 +10,10 @@ The MVP is example-first. Run the pipeline against real feature folders before c
 
 ```bash
 python -m cli.specguard run examples/user-auth
-python -m cli.specguard run examples/todo-api
+python -m cli.specguard run examples/risk/todo-api
 ```
 
-`examples/user-auth` is the passing example. `examples/todo-api` is intentionally risky and should be blocked by Grill Me findings.
+`examples/user-auth` is the passing example. `examples/risk/todo-api` is intentionally risky and should be blocked by Grill Me findings.
 
 Each example contains:
 
@@ -79,7 +79,8 @@ Current MVP behavior:
 spec-guard/
 |-- examples/
 |   |-- user-auth/
-|   `-- todo-api/
+|   `-- risk/
+|       `-- todo-api/
 |-- specs/
 |   `-- user-auth/
 |-- tools/
