@@ -155,6 +155,14 @@ The implementation-ready threshold is:
 
 Anything worse is reported as not ready in red in the CLI. Ready specs are reported in green and continue through Test, Contract, and Implementation Outputs.
 
+Interactive refinement uses two review modes to avoid endless review loops:
+
+```text
+Initial Grill Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
+```
+
+The initial review is broad and adversarial. After SpecGuard regenerates `spec.md` from findings, the automatic rerun uses Verification Review mode: it checks whether previous blockers were resolved and only adds new Critical or Major findings when the current artifacts provide direct implementation-blocking evidence.
+
 ## Quick Start
 
 Clone and install:
@@ -295,7 +303,7 @@ Generate or regenerate LLM-backed technical design and Grill Me output:
 python -m cli.specguard run specs/my-feature --force
 ```
 
-After `run`, SpecGuard shows a continuation menu in interactive terminals. Use it to inspect the latest Grill Me review or regenerate `spec.md` from Grill Me findings and automatically rerun the pipeline so Grill Me is refreshed. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time so the CLI does not appear frozen. Press `q` to exit the menu. Use `--follow-up` to force the menu in terminals such as Git Bash if auto-detection fails. Use `--no-follow-up` when a script should exit immediately after the pipeline.
+After `run`, SpecGuard shows a continuation menu in interactive terminals. Use it to inspect the latest Grill Me review or regenerate `spec.md` from Grill Me findings and automatically rerun Verification Review so Grill Me checks whether the regenerated spec is ready. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time so the CLI does not appear frozen. Press `q` to exit the menu. Use `--follow-up` to force the menu in terminals such as Git Bash if auto-detection fails. Use `--no-follow-up` when a script should exit immediately after the pipeline.
 
 Notes:
 

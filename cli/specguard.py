@@ -352,9 +352,9 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
     _print_markdown_preview(revised_spec)
     spec_path = apply_spec_revision(feature_dir, revised_spec)
     print_success(f"[PASS] Updated spec: {spec_path}")
-    print_hint("Automatically re-running the pipeline so Grill Me is refreshed from the regenerated spec.")
+    print_hint("Automatically running Verification Review so Grill Me checks whether the regenerated spec is ready.")
     try:
-        return _rerun_pipeline(args, llm_client, force=True)
+        return _rerun_pipeline(args, llm_client, force=True, grill_mode="verification")
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
@@ -450,12 +450,15 @@ def _progress_phases(label: str) -> tuple[str, ...]:
     )
 
 
-def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool) -> object:
+def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool, grill_mode: str = "initial") -> object:
     print_section("Pipeline")
-    print_hint("Re-running SpecGuard from the current specs.")
+    if grill_mode == "verification":
+        print_hint("Re-running SpecGuard in Verification Review mode from the regenerated specs.")
+    else:
+        print_hint("Re-running SpecGuard from the current specs.")
     result = _run_with_progress(
         "Running pipeline",
-        lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=force),
+        lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=force, grill_mode=grill_mode),
     )
     result.print()
     return result

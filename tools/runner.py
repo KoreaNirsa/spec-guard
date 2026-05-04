@@ -31,7 +31,7 @@ def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
     return any(source.exists() and source.stat().st_mtime > output_mtime for source in sources)
 
 
-def run_pipeline(path: Path, llm_client: object | None = None, force: bool = False) -> CheckResult:
+def run_pipeline(path: Path, llm_client: object | None = None, force: bool = False, grill_mode: str = "initial") -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
@@ -73,7 +73,7 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
             result.add_next_step(f"Fix technical design: {technical_design.path}")
             continue
 
-        grill = run_grill(feature_dir, llm_client=llm_client)
+        grill = run_grill(feature_dir, llm_client=llm_client, review_mode=grill_mode)
         result.messages.extend(grill.messages)
         result.next_steps.extend(grill.next_steps)
         if not grill.ok:

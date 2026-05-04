@@ -177,6 +177,17 @@ class SixMinorGrillLLM:
         return json.dumps({"issues": issues})
 
 
+class CaptureVerificationGrillLLM:
+    def __init__(self) -> None:
+        self.instructions = ""
+        self.input_text = ""
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.instructions = instructions
+        self.input_text = input_text
+        return '{"issues":[]}'
+
+
 def copy_example(tmp_path: Path, example: str) -> Path:
     source = ROOT / "examples" / example
     target = tmp_path / example.replace("/", "-")
@@ -283,6 +294,7 @@ def test_example_passes_and_emits_grill_json(tmp_path: Path) -> None:
     assert result.ok
     payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is False
+    assert payload["review_mode"] == "initial"
     assert payload["readiness"]["implementation_ready"] is True
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
@@ -633,6 +645,21 @@ def test_grill_blocks_when_minor_findings_exceed_readiness_threshold(tmp_path: P
     assert any("[NOT READY]" in message for message in result.messages)
 
 
+def test_grill_verification_mode_uses_previous_findings(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+    llm = CaptureVerificationGrillLLM()
+
+    result = run_grill(feature, llm_client=llm, review_mode="verification")
+
+    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_mode"] == "verification"
+    assert "Verification Review board" in llm.instructions
+    assert "Previous Grill Review Findings" in llm.input_text
+    assert "Todo ownership boundary is unclear" in llm.input_text
+
+
 def test_post_run_grill_summary_supports_review_menu(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
     run_pipeline(feature)
@@ -703,10 +730,11 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     feature = copy_example(tmp_path, "risk/todo-api")
     result = run_pipeline(feature)
     rerun_result = CheckResult("SpecGuard pipeline")
-    captured = {"force": False}
+    captured = {"force": False, "grill_mode": ""}
 
-    def fake_rerun_pipeline(args, llm_client, *, force: bool):
+    def fake_rerun_pipeline(args, llm_client, *, force: bool, grill_mode: str = "initial"):
         captured["force"] = force
+        captured["grill_mode"] = grill_mode
         return rerun_result
 
     monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
@@ -721,6 +749,7 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
     assert returned is rerun_result
     assert captured["force"]
+    assert captured["grill_mode"] == "verification"
     assert "scope every todo read and write by owner" in spec
 
 
@@ -743,8 +772,9 @@ def test_pipeline_progress_line_uses_pipeline_phase() -> None:
 def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
     captured = {"label": ""}
 
-    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False) -> CheckResult:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, grill_mode: str = "initial") -> CheckResult:
         assert force
+        assert grill_mode == "initial"
         return CheckResult("SpecGuard pipeline")
 
     def fake_run_with_progress(label, operation):

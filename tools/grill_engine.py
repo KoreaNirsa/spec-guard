@@ -14,6 +14,7 @@ from tools.ux import green, red
 
 
 GRILL_MINOR_READY_LIMIT = 5
+GRILL_REVIEW_MODES = {"initial", "verification"}
 
 
 GRILL_PROMPT = """You are SpecGuard's Grill Review board: a principal software architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.
@@ -112,6 +113,41 @@ def _artifact_content(artifacts: list[ReviewArtifact], name: str) -> str:
 
 def _render_artifact_input(artifacts: list[ReviewArtifact]) -> str:
     return "\n\n".join([f"# Artifact: {artifact.path}\n\n{artifact.content}" for artifact in artifacts])
+
+
+def _previous_findings_text(previous_report: dict | None) -> str:
+    if not previous_report:
+        return "No previous Grill Review report was available."
+
+    issues = previous_report.get("issues", [])
+    if not isinstance(issues, list) or not issues:
+        return "Previous Grill Review had no findings."
+
+    lines = [
+        "Use these previous findings as the verification backlog.",
+        f"Previous summary: {json.dumps(previous_report.get('summary', {}), ensure_ascii=False)}",
+        "",
+    ]
+    for index, issue in enumerate(issues, start=1):
+        if not isinstance(issue, dict):
+            continue
+        lines.extend([
+            f"{index}. [{issue.get('severity', 'Unknown')}] {issue.get('title', 'Untitled issue')}",
+            f"   Description: {issue.get('description', 'Not specified.')}",
+            f"   Required fix: {issue.get('fix', 'Not specified.')}",
+        ])
+    return "\n".join(lines)
+
+
+def _load_previous_report(path: Path) -> dict | None:
+    report_path = path / "grill.json"
+    if not report_path.exists():
+        return None
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def _analyze(artifacts: list[ReviewArtifact]) -> list[GrillIssue]:
@@ -258,8 +294,8 @@ def _parse_llm_issues(text: str) -> list[GrillIssue]:
     return issues
 
 
-def _analyze_with_llm(artifacts: list[ReviewArtifact], llm_client: object) -> list[GrillIssue]:
-    instructions = "\n".join([
+def _initial_review_instructions() -> str:
+    return "\n".join([
         "You are SpecGuard's Grill Review board: principal architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.",
         "Your task is NOT to approve the implementation basis. Your task is to break it before Codex or Claude Code implements from it.",
         "Analyze every provided spec artifact together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
@@ -270,7 +306,40 @@ def _analyze_with_llm(artifacts: list[ReviewArtifact], llm_client: object) -> li
         '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
         "Do not include positive feedback. Every finding must be actionable and mapped to a spec, plan, task, checklist, technical design, test, or contract update.",
     ])
+
+
+def _verification_review_instructions() -> str:
+    return "\n".join([
+        "You are SpecGuard's Verification Review board.",
+        "This is NOT a fresh broad Grill Review. Verify whether the regenerated spec package resolves the previous Grill Review findings.",
+        "Your primary job is to close, downgrade, or keep previous findings based on the current artifacts.",
+        "Add a new Critical or Major finding only when there is direct evidence in the current artifacts that implementation would be unsafe, contradictory, or would require an important guess.",
+        "Do not create new blockers for best-practice improvements, optional hardening, style, naming, or future extensibility. Those are Minor or omitted.",
+        "Respect explicit out-of-scope, deferred, or accepted-risk decisions when they are documented in the spec package and do not contradict safety or contract requirements.",
+        f"Readiness policy: implementation is allowed only when Critical=0, Major=0, and Minor<={GRILL_MINOR_READY_LIMIT}.",
+        "Severity calibration: Critical means a concrete unsafe/contradictory blocker remains; Major means a concrete implementation-critical decision is still missing; Minor means non-blocking clarity or polish.",
+        "Return ONLY JSON with this shape:",
+        '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
+        "Every Critical or Major finding must cite evidence from the current artifacts and explain why it blocks implementation now.",
+    ])
+
+
+def _analyze_with_llm(
+    artifacts: list[ReviewArtifact],
+    llm_client: object,
+    *,
+    review_mode: str,
+    previous_report: dict | None,
+) -> list[GrillIssue]:
+    instructions = _verification_review_instructions() if review_mode == "verification" else _initial_review_instructions()
     input_text = _render_artifact_input(artifacts)
+    if review_mode == "verification":
+        input_text = "\n\n".join([
+            "# Previous Grill Review Findings",
+            _previous_findings_text(previous_report),
+            "# Current Spec Package Artifacts",
+            input_text,
+        ])
     text = llm_client.generate_text(instructions, input_text, max_output_tokens=2500)
     return _parse_llm_issues(text)
 
@@ -312,7 +381,7 @@ def _readiness_text(summary: dict[str, int]) -> str:
     return f"Not implementation-ready: requires Critical=0, Major=0, Minor<={GRILL_MINOR_READY_LIMIT}."
 
 
-def _build_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue]) -> str:
+def _build_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue], review_mode: str) -> str:
     summary = _build_summary(issues)
     critical = [issue for issue in issues if issue.severity == "Critical"]
     major = [issue for issue in issues if issue.severity == "Major"]
@@ -320,6 +389,8 @@ def _build_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue]) -> 
 
     return "\n".join([
         "# Grill Result",
+        "",
+        f"- Review mode: {review_mode}",
         "",
         "## Readiness",
         "",
@@ -349,11 +420,12 @@ def _build_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue]) -> 
     ])
 
 
-def _build_json_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue]) -> str:
+def _build_json_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue], review_mode: str) -> str:
     summary = _build_summary(issues)
     artifact_lengths = {artifact.path: len(artifact.content) for artifact in artifacts}
     payload = {
         "schema_version": "0.1",
+        "review_mode": review_mode,
         "blocked": not _is_implementation_ready(summary),
         "readiness": {
             "implementation_ready": _is_implementation_ready(summary),
@@ -377,7 +449,10 @@ def _build_json_report(artifacts: list[ReviewArtifact], issues: list[GrillIssue]
     return json.dumps(payload, indent=2) + "\n"
 
 
-def run_grill(path: Path, llm_client: object | None = None) -> CheckResult:
+def run_grill(path: Path, llm_client: object | None = None, review_mode: str = "initial") -> CheckResult:
+    if review_mode not in GRILL_REVIEW_MODES:
+        raise ValueError(f"Unsupported Grill Review mode: {review_mode}")
+
     result = CheckResult("Grill Me")
     discovery_path = path / "discovery.md"
     spec_path = path / "spec.md"
@@ -396,8 +471,13 @@ def run_grill(path: Path, llm_client: object | None = None) -> CheckResult:
         return result
 
     artifacts = _review_artifacts(path)
+    previous_report = _load_previous_report(path) if review_mode == "verification" else None
     try:
-        issues = _analyze_with_llm(artifacts, llm_client) if llm_client else _analyze(artifacts)
+        issues = (
+            _analyze_with_llm(artifacts, llm_client, review_mode=review_mode, previous_report=previous_report)
+            if llm_client
+            else _analyze(artifacts)
+        )
     except (json.JSONDecodeError, ValueError) as exc:
         result.add_error(f"LLM Grill Me response could not be parsed as JSON: {exc}")
         return result
@@ -407,12 +487,12 @@ def run_grill(path: Path, llm_client: object | None = None) -> CheckResult:
     minor_count = summary["minor"]
     implementation_ready = _is_implementation_ready(summary)
 
-    grill_path.write_text(_build_report(artifacts, issues), encoding="utf-8")
-    grill_json_path.write_text(_build_json_report(artifacts, issues), encoding="utf-8")
+    grill_path.write_text(_build_report(artifacts, issues, review_mode), encoding="utf-8")
+    grill_json_path.write_text(_build_json_report(artifacts, issues, review_mode), encoding="utf-8")
     result.details.update(summary)
     mode = "LLM" if llm_client else "heuristic"
-    result.add_info(f"Generated {mode} grill report: {grill_path}")
-    result.add_info(f"Generated {mode} machine-readable grill report: {grill_json_path}")
+    result.add_info(f"Generated {mode} {review_mode} grill report: {grill_path}")
+    result.add_info(f"Generated {mode} {review_mode} machine-readable grill report: {grill_json_path}")
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
     if implementation_ready:
         result.add_info(green(f"[READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
