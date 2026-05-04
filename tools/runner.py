@@ -32,9 +32,10 @@ def run_pipeline(path: Path) -> CheckResult:
         result.messages.extend(grill.messages)
         if not grill.ok:
             result.ok = False
+            continue
 
         test_output = generate_tests(feature_dir)
-        result.add_info(f"Generated TDD scenarios: {test_output}")
+        result.add_info(f"TDD scenarios ready: {test_output}")
 
         contracts = check_contracts(feature_dir)
         result.messages.extend(contracts.messages)

@@ -20,7 +20,7 @@ def _bullets_for_section(content: str, heading: str) -> list[str]:
     return bullets
 
 
-def generate_tests(path: Path) -> Path:
+def generate_tests(path: Path, force: bool = False) -> Path:
     spec_path = path / "spec.md"
     if not spec_path.exists():
         raise FileNotFoundError(f"Missing spec file: {spec_path}")
@@ -28,6 +28,9 @@ def generate_tests(path: Path) -> Path:
     tests_dir = path / "tests"
     tests_dir.mkdir(parents=True, exist_ok=True)
     output = tests_dir / f"{path.name}.test.md"
+    if output.exists() and not force:
+        return output
+
     spec = spec_path.read_text(encoding="utf-8")
     acceptance = _bullets_for_section(spec, "Acceptance Criteria")
     errors = _bullets_for_section(spec, "Error Cases")

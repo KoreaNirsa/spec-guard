@@ -8,6 +8,7 @@ class CheckResult:
     name: str
     ok: bool = True
     messages: list[str] = field(default_factory=list)
+    details: dict[str, int] = field(default_factory=dict)
 
     def add_error(self, message: str) -> None:
         self.ok = False

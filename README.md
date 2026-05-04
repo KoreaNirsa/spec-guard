@@ -13,6 +13,8 @@ python -m cli.specguard run examples/user-auth
 python -m cli.specguard run examples/todo-api
 ```
 
+`examples/user-auth` is the passing example. `examples/todo-api` is intentionally risky and should be blocked by Grill Me findings.
+
 Each example contains:
 
 ```text
@@ -50,6 +52,8 @@ Spec Validation
   -> Contract Check
 ```
 
+Critical or Major Grill Me findings stop the pipeline before tests and contract checks continue.
+
 ## Grill Me
 
 Grill Me is the core differentiator. It should feel uncomfortable in a useful way.
@@ -65,6 +69,7 @@ Instead of saying "looks good", it asks what can break:
 Current MVP behavior:
 
 - Local heuristic grill reports concrete issues without an AI dependency.
+- Critical and Major findings fail `specguard run`.
 - The prompt is embedded in the report so a model-based review can be added next.
 - Critical and Major findings should become acceptance criteria before implementation.
 

@@ -214,8 +214,16 @@ def run_grill(path: Path) -> CheckResult:
 
     spec = spec_path.read_text(encoding="utf-8")
     design = design_path.read_text(encoding="utf-8")
+    issues = _analyze(spec, design)
+    critical_count = sum(1 for issue in issues if issue.severity == "Critical")
+    major_count = sum(1 for issue in issues if issue.severity == "Major")
+
     grill_path.write_text(_build_report(spec, design), encoding="utf-8")
+    result.details["critical"] = critical_count
+    result.details["major"] = major_count
     result.add_info(f"Generated concrete grill report: {grill_path}")
+    if critical_count or major_count:
+        result.add_error(f"Blocked by Grill Me findings: {critical_count} critical, {major_count} major")
     return result
 
 

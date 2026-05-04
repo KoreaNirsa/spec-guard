@@ -21,5 +21,12 @@ jobs:
       - name: Run User Auth Example
         run: python tools/runner.py examples/user-auth
 
-      - name: Run Todo API Example
-        run: python tools/runner.py examples/todo-api
+      - name: Run Todo API Risk Example
+        run: |
+          set +e
+          python tools/runner.py examples/todo-api
+          code=$?
+          if [ "$code" -ne 1 ]; then
+            echo "todo-api should be blocked by Grill Me findings"
+            exit 1
+          fi

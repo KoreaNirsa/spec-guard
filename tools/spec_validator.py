@@ -21,6 +21,14 @@ DESIGN_REQUIRED_SECTIONS = {
     "state": "State",
 }
 
+PLACEHOLDER_MARKERS = (
+    "describe ",
+    "list ",
+    "pending",
+    "tbd",
+    "{{ ",
+)
+
 
 def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8").lower()
@@ -28,6 +36,37 @@ def _read(path: Path) -> str:
 
 def _has_section(content: str, section: str) -> bool:
     return section.lower() in content
+
+
+def _section(content: str, heading: str) -> str:
+    marker = f"## {heading}".lower()
+    start = content.find(marker)
+    if start == -1:
+        return ""
+    body_start = content.find("\n", start)
+    if body_start == -1:
+        return ""
+    next_heading = content.find("\n## ", body_start + 1)
+    if next_heading == -1:
+        return content[body_start:].strip()
+    return content[body_start:next_heading].strip()
+
+
+def _has_placeholder(content: str) -> bool:
+    for line in content.splitlines():
+        stripped = line.strip()
+        lowered = stripped.lower()
+        if not stripped:
+            continue
+        if "{{ " in lowered or "pending" in lowered or "tbd" in lowered:
+            return True
+        if lowered.startswith("describe ") or lowered.startswith("- list "):
+            return True
+    return False
+
+
+def _bullet_count(section: str) -> int:
+    return sum(1 for line in section.splitlines() if line.strip().startswith("-"))
 
 
 def _validate_doc(path: Path, sections: dict[str, str], result: CheckResult) -> None:
@@ -39,6 +78,13 @@ def _validate_doc(path: Path, sections: dict[str, str], result: CheckResult) -> 
     for key, label in sections.items():
         if not _has_section(content, key):
             result.add_error(f"{path} must include section: {label}")
+            continue
+
+        section = _section(content, label)
+        if not section:
+            result.add_error(f"{path} section is empty: {label}")
+        elif _has_placeholder(section):
+            result.add_error(f"{path} section still contains placeholder text: {label}")
 
 
 def _feature_dirs(path: Path) -> list[Path]:
@@ -61,6 +107,16 @@ def validate_feature(path: Path) -> CheckResult:
     for feature_dir in feature_dirs:
         _validate_doc(feature_dir / "spec.md", SPEC_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "design.md", DESIGN_REQUIRED_SECTIONS, result)
+
+        spec_path = feature_dir / "spec.md"
+        if spec_path.exists():
+            spec = _read(spec_path)
+            acceptance = _section(spec, "Acceptance Criteria")
+            errors = _section(spec, "Error Cases")
+            if _bullet_count(acceptance) == 0:
+                result.add_error(f"{spec_path} must include at least one acceptance criterion")
+            if _bullet_count(errors) == 0:
+                result.add_error(f"{spec_path} must include at least one error case")
 
         tests_dir = feature_dir / "tests"
         if not tests_dir.exists() or not any(tests_dir.glob("*.md")):
