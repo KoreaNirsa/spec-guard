@@ -4,6 +4,7 @@ import argparse
 import getpass
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
@@ -17,6 +18,13 @@ from tools.llm_client import (
     config_path,
     load_llm_settings,
     save_llm_settings,
+)
+from tools.post_run import (
+    apply_spec_revision,
+    blocked_feature_reports,
+    feature_grill_reports,
+    generate_spec_revision,
+    render_grill_summary,
 )
 from tools.runner import run_pipeline
 from tools.ux import print_banner, print_hint, print_section
@@ -56,6 +64,13 @@ def init_project(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
+
+    if _should_offer_follow_up(args):
+        try:
+            result = _run_follow_up_loop(args, llm_client, result)
+        except LLMRequestError as exc:
+            _print_llm_failure(exc)
+            return 1
     return 0 if result.ok else 1
 
 
@@ -218,6 +233,127 @@ def _prompt_yes_no(label: str, default: bool) -> bool:
     return value in {"y", "yes"}
 
 
+def _should_offer_follow_up(args: argparse.Namespace) -> bool:
+    return (
+        not getattr(args, "no_follow_up", False)
+        and sys.stdin.isatty()
+        and sys.stdout.isatty()
+    )
+
+
+def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, result: object) -> object:
+    path = Path(args.path)
+    while True:
+        print_section("Continue")
+        print("[1] Review Grill Me findings")
+        print("[2] Ask LLM to revise spec.md from Grill Me")
+        print("[3] Rerun pipeline")
+        print("[Enter] Exit")
+        try:
+            choice = input("Choose action: ").strip().lower()
+        except EOFError:
+            return result
+
+        if choice in {"", "q", "quit", "exit"}:
+            return result
+        if choice in {"1", "r", "review"}:
+            _print_grill_review(path)
+            continue
+        if choice in {"2", "f", "fix", "revise"}:
+            result = _revise_spec_from_grill(path, args, llm_client, result)
+            continue
+        if choice in {"3", "run", "rerun"}:
+            result = _rerun_pipeline(args, llm_client, force=args.force)
+            continue
+
+        print("[WARN] Choose 1, 2, 3, or press Enter to exit.")
+
+
+def _print_grill_review(path: Path) -> None:
+    reports = feature_grill_reports(path)
+    if not reports:
+        print("[WARN] No Grill Me report found. Run the pipeline first.")
+        return
+    print_section("Grill Me Review")
+    for index, (feature_dir, report) in enumerate(reports, start=1):
+        if index > 1:
+            print("")
+        print(render_grill_summary(feature_dir, report))
+
+
+def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:
+    if llm_client is None:
+        print("[WARN] LLM spec revision requires a configured provider.")
+        print("- Re-run without --no-llm, or configure one: python -m cli.specguard auth setup")
+        return result
+
+    reports = blocked_feature_reports(path) or feature_grill_reports(path)
+    if not reports:
+        print("[WARN] No Grill Me report found. Run the pipeline first.")
+        return result
+
+    selected = _select_feature_report(reports)
+    if selected is None:
+        return result
+    feature_dir, _report = selected
+
+    print_section("Spec Revision")
+    print_hint(f"Generating a revised spec.md from Grill Me findings: {feature_dir}")
+    revised_spec = generate_spec_revision(feature_dir, llm_client)
+    _print_markdown_preview(revised_spec)
+    if not _prompt_yes_no("Apply this revision to spec.md?", default=False):
+        print("[WARN] Revision was not applied.")
+        return result
+
+    spec_path = apply_spec_revision(feature_dir, revised_spec)
+    print(f"[PASS] Updated spec: {spec_path}")
+    if _prompt_yes_no("Rerun the pipeline now with --force?", default=True):
+        return _rerun_pipeline(args, llm_client, force=True)
+    print_hint("Run again when ready: python -m cli.specguard run specs --force")
+    return result
+
+
+def _select_feature_report(reports: list[tuple[Path, dict]]) -> tuple[Path, dict] | None:
+    if len(reports) == 1:
+        return reports[0]
+
+    print("Select a feature:")
+    for index, (feature_dir, report) in enumerate(reports, start=1):
+        summary = report.get("summary", {})
+        print(
+            f"[{index}] {feature_dir} "
+            f"(critical={summary.get('critical', 0)}, major={summary.get('major', 0)}, minor={summary.get('minor', 0)})"
+        )
+    try:
+        value = input("Feature [1]: ").strip()
+    except EOFError:
+        return None
+    selected = 1 if not value else int(value) if value.isdigit() else 0
+    if selected < 1 or selected > len(reports):
+        print("[WARN] Invalid feature selection.")
+        return None
+    return reports[selected - 1]
+
+
+def _print_markdown_preview(markdown: str, *, max_lines: int = 22) -> None:
+    lines = markdown.splitlines()
+    print("")
+    print("Preview:")
+    for line in lines[:max_lines]:
+        print(line)
+    if len(lines) > max_lines:
+        print(f"... {len(lines) - max_lines} more line(s)")
+    print("")
+
+
+def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool) -> object:
+    print_section("Pipeline")
+    print_hint("Re-running SpecGuard from the current specs.")
+    result = run_pipeline(Path(args.path), llm_client=llm_client, force=force)
+    result.print()
+    return result
+
+
 def _print_llm_failure(exc: Exception) -> None:
     print("[FAIL] LLM workflow failed")
     print(f"- {exc}")
@@ -286,6 +422,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic Grill Me")
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
     run_parser.add_argument("--llm-model", help="Override SPECGUARD_LLM_MODEL for this run")
+    run_parser.add_argument("--no-follow-up", action="store_true", help="Do not show the interactive post-run action menu")
     run_parser.set_defaults(func=run)
 
     auth_parser = subparsers.add_parser("auth", formatter_class=SpecGuardHelpFormatter)

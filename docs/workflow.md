@@ -128,6 +128,8 @@ specs/my-feature/
 
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 
+In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can review Grill Me findings, ask the configured LLM to revise `spec.md` from the findings, apply the revision, and rerun the pipeline from the same CLI session. Scripts can disable this with `--no-follow-up`.
+
 Use `--no-llm` only for deterministic local checks or CI examples:
 
 ```bash
@@ -150,7 +152,7 @@ Then run:
 python -m cli.specguard run specs/my-feature
 ```
 
-Repeat until Critical and Major findings are resolved.
+Or stay in the post-run menu and choose the LLM spec revision action. Repeat until Critical and Major findings are resolved.
 
 ## 5. Coding Agents Implement Later
 

@@ -17,6 +17,7 @@ from tools.llm_client import (
     load_llm_settings,
     save_llm_settings,
 )
+from tools.post_run import apply_spec_revision, feature_grill_reports, generate_spec_revision, render_grill_summary
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
 from tools.tdd_generator import generate_tests
@@ -112,6 +113,33 @@ class FakeLLM:
     def stream_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500):
         self.calls.append(instructions)
         yield "What problem should the spec solve?"
+
+
+class FakeRevisionLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        assert "spec refinement assistant" in instructions
+        assert "Grill Me report" in input_text
+        return "\n".join([
+            "# Feature Specification: Todo API",
+            "",
+            "## Requirements",
+            "",
+            "- The system must scope every todo read and write by owner.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Cross-user todo access is rejected.",
+            "",
+            "## Error Cases",
+            "",
+            "- Unauthorized todo access",
+            "",
+        ])
+
+
+class FencedRevisionLLM(FakeRevisionLLM):
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        return "```markdown\n" + super().generate_text(instructions, input_text, max_output_tokens) + "\n```"
 
 
 def copy_example(tmp_path: Path, example: str) -> Path:
@@ -508,6 +536,41 @@ def test_risk_todo_example_is_blocked_by_grill(tmp_path: Path) -> None:
     assert "Todo ownership boundary is unclear" in {issue["title"] for issue in payload["issues"]}
     assert any("Open the human report" in step for step in result.next_steps)
     assert any("specguard run" in step for step in result.next_steps)
+
+
+def test_post_run_grill_summary_supports_review_menu(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+
+    reports = feature_grill_reports(feature)
+    rendered = render_grill_summary(*reports[0])
+
+    assert len(reports) == 1
+    assert "blocked: True" in rendered
+    assert "Todo ownership boundary is unclear" in rendered
+    assert "Require owner-scoped queries" in rendered
+
+
+def test_post_run_can_generate_and_apply_spec_revision(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+
+    revised = generate_spec_revision(feature, FakeRevisionLLM())
+    spec_path = apply_spec_revision(feature, revised)
+
+    spec = spec_path.read_text(encoding="utf-8")
+    assert "scope every todo read and write by owner" in spec
+    assert "Cross-user todo access is rejected" in spec
+
+
+def test_post_run_strips_markdown_fences_from_spec_revision(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+
+    revised = generate_spec_revision(feature, FencedRevisionLLM())
+
+    assert revised.startswith("# Feature Specification")
+    assert "```" not in revised
 
 
 def test_tdd_generator_does_not_overwrite_existing_tests(tmp_path: Path) -> None:

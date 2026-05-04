@@ -197,6 +197,12 @@ Run the validation and artifact workflow:
 python -m cli.specguard run specs/my-feature
 ```
 
+In an interactive terminal, `run` stays open after the pipeline and offers follow-up actions:
+
+- review Grill Me findings
+- ask the configured LLM to revise `spec.md` from Grill Me
+- rerun the pipeline after spec refinement
+
 Use the generated implementation guide with a coding agent:
 
 ```text
@@ -274,9 +280,12 @@ Generate or regenerate LLM-backed technical design and Grill Me output:
 python -m cli.specguard run specs/my-feature --force
 ```
 
+After `run`, SpecGuard shows a continuation menu in interactive terminals. Use it to review Grill Me output, request an LLM-backed `spec.md` revision, apply the revision, and rerun the pipeline without leaving the CLI. Use `--no-follow-up` when a script should exit immediately after the pipeline.
+
 Notes:
 
 - `--no-llm` is available for local deterministic checks and CI examples.
+- `--no-follow-up` disables the interactive post-run action menu.
 - `run` generates missing artifacts and refreshes stale tests and contracts when `spec.md` changes.
 - `--force` is useful when you want to regenerate derived artifacts even if SpecGuard does not detect them as stale.
 - `SPECGUARD_LLM_MODEL` can be overridden per command with `--llm-model`.
@@ -376,6 +385,7 @@ The test suite covers:
 - draft spec generation from Discovery
 - Spec and Technical Design validation
 - LLM-backed Grill Me engine
+- interactive post-run review and spec revision loop
 - local heuristic fallback for `--no-llm` and CI examples
 - human and JSON Grill reports
 - TDD scenario generation
