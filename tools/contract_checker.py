@@ -48,7 +48,9 @@ def _minimal_yaml(content: str) -> dict[str, object]:
             stack.pop()
 
         parent = stack[-1][1]
-        if value:
+        if value == "{}":
+            parent[key] = {}
+        elif value:
             parent[key] = value
         else:
             child: dict[str, object] = {}
