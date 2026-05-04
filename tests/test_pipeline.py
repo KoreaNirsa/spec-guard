@@ -336,6 +336,31 @@ def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
     assert payload["summary"]["major"] == 0
 
 
+def test_pipeline_regenerates_stale_technical_design(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    design_path = feature / "technical-design.md"
+    spec_path = feature / "spec.md"
+    old_design = design_path.read_text(encoding="utf-8")
+    spec_path.write_text(
+        spec_path.read_text(encoding="utf-8") + "\n- The system must keep the design synchronized with the spec.\n",
+        encoding="utf-8",
+    )
+    old_time = time.time() - 20
+    newer_time = time.time() - 10
+    os.utime(design_path, (old_time, old_time))
+    os.utime(spec_path, (newer_time, newer_time))
+
+    result = run_pipeline(feature)
+
+    regenerated_design = design_path.read_text(encoding="utf-8")
+    assert result.ok
+    assert regenerated_design != old_design
+    assert "keep the design synchronized with the spec" in regenerated_design
+    assert design_path.stat().st_mtime > spec_path.stat().st_mtime
+    assert any("Generated technical design" in message for message in result.messages)
+    assert not any("stale technical design" in step.lower() for step in result.next_steps)
+
+
 def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
     completed = run_cli_smoke(
         tmp_path,
