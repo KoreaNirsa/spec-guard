@@ -64,13 +64,6 @@ def init_project(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
-
-    if _should_offer_follow_up(args):
-        try:
-            result = _run_follow_up_loop(args, llm_client, result)
-        except LLMRequestError as exc:
-            _print_llm_failure(exc)
-            return 1
     return 0 if result.ok else 1
 
 
@@ -92,6 +85,13 @@ def run(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
+
+    if _should_offer_follow_up(args):
+        try:
+            result = _run_follow_up_loop(args, llm_client, result)
+        except LLMRequestError as exc:
+            _print_llm_failure(exc)
+            return 1
     return 0 if result.ok else 1
 
 
@@ -234,11 +234,26 @@ def _prompt_yes_no(label: str, default: bool) -> bool:
 
 
 def _should_offer_follow_up(args: argparse.Namespace) -> bool:
-    return (
-        not getattr(args, "no_follow_up", False)
-        and sys.stdin.isatty()
-        and sys.stdout.isatty()
-    )
+    if getattr(args, "no_follow_up", False):
+        return False
+    if getattr(args, "follow_up", False):
+        return True
+    if _is_ci_environment():
+        return False
+    if sys.stdin.isatty() and sys.stdout.isatty():
+        return True
+    return _has_terminal_environment_hint()
+
+
+def _is_ci_environment() -> bool:
+    return os.getenv("CI", "").lower() in {"1", "true", "yes"}
+
+
+def _has_terminal_environment_hint() -> bool:
+    if os.getenv("MSYSTEM") or os.getenv("MINGW_PREFIX"):
+        return True
+    term = os.getenv("TERM", "")
+    return bool(term and term.lower() != "dumb")
 
 
 def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, result: object) -> object:
@@ -422,6 +437,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic Grill Me")
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
     run_parser.add_argument("--llm-model", help="Override SPECGUARD_LLM_MODEL for this run")
+    run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu")
     run_parser.add_argument("--no-follow-up", action="store_true", help="Do not show the interactive post-run action menu")
     run_parser.set_defaults(func=run)
 

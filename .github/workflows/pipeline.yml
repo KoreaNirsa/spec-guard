@@ -38,7 +38,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run example
-        run: python -m cli.specguard run examples/example --no-llm
+        run: python -m cli.specguard run examples/example --no-llm --no-follow-up
 
   risk-example:
     name: Risk Example
@@ -58,7 +58,7 @@ jobs:
       - name: Confirm todo-api is blocked
         run: |
           set +e
-          python -m cli.specguard run examples/risk/todo-api --no-llm
+          python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
           code=$?
           if [ "$code" -ne 1 ]; then
             echo "risk example should be blocked by Grill Me findings"

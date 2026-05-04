@@ -18,9 +18,12 @@ from tools.llm_client import (
     save_llm_settings,
 )
 from tools.post_run import apply_spec_revision, feature_grill_reports, generate_spec_revision, render_grill_summary
+from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
 from tools.tdd_generator import generate_tests
+import cli.specguard as specguard_cli
+from cli.specguard import _should_offer_follow_up
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -571,6 +574,47 @@ def test_post_run_strips_markdown_fences_from_spec_revision(tmp_path: Path) -> N
 
     assert revised.startswith("# Feature Specification")
     assert "```" not in revised
+
+
+def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+
+    assert _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=False))
+
+
+def test_follow_up_menu_can_be_forced_or_disabled(monkeypatch) -> None:
+    monkeypatch.delenv("MSYSTEM", raising=False)
+    monkeypatch.setenv("CI", "true")
+
+    assert _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=True))
+    assert not _should_offer_follow_up(Namespace(no_follow_up=True, follow_up=True))
+    assert not _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=False))
+
+
+def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
+    called = {"value": False}
+
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False) -> CheckResult:
+        return CheckResult("SpecGuard pipeline")
+
+    def fake_follow_up(args, llm_client, result):
+        called["value"] = True
+        return result
+
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_follow_up_loop", fake_follow_up)
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=False,
+        follow_up=True,
+    ))
+
+    assert exit_code == 0
+    assert called["value"]
 
 
 def test_tdd_generator_does_not_overwrite_existing_tests(tmp_path: Path) -> None:
