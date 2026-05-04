@@ -17,7 +17,7 @@ GRILL_PROMPT = """You are a senior software architect, security expert, and reli
 Your task is NOT to approve the implementation basis.
 Your task is to BREAK the implementation basis.
 
-Analyze the Discovery, Spec, Technical Design, tests, and contracts aggressively.
+Analyze the Discovery, Spec, and Technical Design aggressively.
 Identify logic flaws, edge cases, security issues, performance risks, and failure scenarios.
 """
 
@@ -46,8 +46,8 @@ def _is_placeholder(text: str) -> bool:
     return not text.strip() or _contains(lowered, "describe ", "list ", "pending", "tbd")
 
 
-def _analyze(spec: str, technical_design: str) -> list[GrillIssue]:
-    text = f"{spec}\n{technical_design}".lower()
+def _analyze(discovery: str, spec: str, technical_design: str) -> list[GrillIssue]:
+    text = f"{discovery}\n{spec}\n{technical_design}".lower()
     technical_design_text = technical_design.lower()
     issues: list[GrillIssue] = []
 
@@ -176,7 +176,7 @@ def _build_summary(issues: list[GrillIssue]) -> dict[str, int]:
     }
 
 
-def _build_report(spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
+def _build_report(discovery: str, spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
     critical = [issue for issue in issues if issue.severity == "Critical"]
     major = [issue for issue in issues if issue.severity == "Major"]
     minor = [issue for issue in issues if issue.severity == "Minor"]
@@ -201,13 +201,14 @@ def _build_report(spec: str, technical_design: str, issues: list[GrillIssue]) ->
         "",
         "## Input Summary",
         "",
+        f"- Discovery characters: {len(discovery)}",
         f"- Spec characters: {len(spec)}",
         f"- Technical design characters: {len(technical_design)}",
         "",
     ])
 
 
-def _build_json_report(spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
+def _build_json_report(discovery: str, spec: str, technical_design: str, issues: list[GrillIssue]) -> str:
     summary = _build_summary(issues)
     payload = {
         "schema_version": "0.1",
@@ -215,6 +216,7 @@ def _build_json_report(spec: str, technical_design: str, issues: list[GrillIssue
         "summary": summary,
         "issues": [asdict(issue) for issue in issues],
         "input": {
+            "discovery_characters": len(discovery),
             "spec_characters": len(spec),
             "technical_design_characters": len(technical_design),
         },
@@ -225,11 +227,15 @@ def _build_json_report(spec: str, technical_design: str, issues: list[GrillIssue
 
 def run_grill(path: Path) -> CheckResult:
     result = CheckResult("Grill Me")
+    discovery_path = path / "discovery.md"
     spec_path = path / "spec.md"
     technical_design_path = path / "technical-design.md"
     grill_path = path / "grill.md"
     grill_json_path = path / "grill.json"
 
+    if not discovery_path.exists():
+        result.add_error(f"Missing discovery file: {discovery_path}")
+        return result
     if not spec_path.exists():
         result.add_error(f"Missing spec file: {spec_path}")
         return result
@@ -237,15 +243,16 @@ def run_grill(path: Path) -> CheckResult:
         result.add_error(f"Missing technical design file: {technical_design_path}")
         return result
 
+    discovery = discovery_path.read_text(encoding="utf-8")
     spec = spec_path.read_text(encoding="utf-8")
     technical_design = technical_design_path.read_text(encoding="utf-8")
-    issues = _analyze(spec, technical_design)
+    issues = _analyze(discovery, spec, technical_design)
     summary = _build_summary(issues)
     critical_count = summary["critical"]
     major_count = summary["major"]
 
-    grill_path.write_text(_build_report(spec, technical_design, issues), encoding="utf-8")
-    grill_json_path.write_text(_build_json_report(spec, technical_design, issues), encoding="utf-8")
+    grill_path.write_text(_build_report(discovery, spec, technical_design, issues), encoding="utf-8")
+    grill_json_path.write_text(_build_json_report(discovery, spec, technical_design, issues), encoding="utf-8")
     result.details.update(summary)
     result.add_info(f"Generated concrete grill report: {grill_path}")
     result.add_info(f"Generated machine-readable grill report: {grill_json_path}")
@@ -254,7 +261,7 @@ def run_grill(path: Path) -> CheckResult:
         result.add_next_step(f"Open the human report: {grill_path}")
         result.add_next_step(f"Use the machine-readable report for automation: {grill_json_path}")
         result.add_next_step(
-            "Fix discovery.md, spec.md, technical-design.md, tests, or contracts so Critical and Major issues become explicit requirements or verified constraints."
+            "Fix discovery.md, spec.md, or technical-design.md so Critical and Major issues become explicit requirements or verified constraints."
         )
         result.add_next_step(f"Run again: specguard run {path}")
     return result

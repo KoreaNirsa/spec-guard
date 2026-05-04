@@ -5,6 +5,7 @@ import shutil
 from pathlib import Path
 
 from tools.contract_checker import check_contracts
+from tools.discovery_engine import initialize_specs
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
 from tools.tdd_generator import generate_tests
@@ -121,6 +122,84 @@ def test_user_auth_example_passes_and_emits_grill_json(tmp_path: Path) -> None:
     assert payload["blocked"] is False
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
+
+
+def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
+    result = initialize_specs(tmp_path, {
+        "feature_names": "billing-export",
+        "problem": "Export billing records safely.",
+        "users": "Finance users",
+        "outcomes": "Exports are scoped and auditable",
+        "constraints": "CSV only for the first pass",
+        "flows": "Request export, validate ownership, create file",
+        "data": "Billing record, owner, export file",
+        "dependencies": "Billing database",
+        "risks": "Cross-tenant export",
+        "out_of_scope": "Scheduled exports",
+        "acceptance": "An authorized user can export only owned records",
+    })
+
+    feature = tmp_path / "specs" / "billing-export"
+
+    assert result.ok
+    assert feature.joinpath("discovery.md").exists()
+    assert feature.joinpath("spec.md").exists()
+    assert "User Scenarios & Testing" in feature.joinpath("spec.md").read_text(encoding="utf-8")
+
+
+def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "profile-update"
+    feature.mkdir(parents=True)
+    feature.joinpath("discovery.md").write_text(
+        "\n".join([
+            "# Discovery: profile-update",
+            "",
+            "## Foundation",
+            "",
+            "- Goal: Update profile data safely.",
+            "",
+            "## Mechanisms",
+            "",
+            "- Components: API, profile service, profile store.",
+            "",
+            "## Stress Test",
+            "",
+            "- Failure: Invalid profile data is rejected.",
+            "",
+            "## Synthesis",
+            "",
+            "- Decision: Proceed after validation.",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            "# Feature Specification: profile-update",
+            "",
+            "## Requirements",
+            "",
+            "- The system must update valid profile fields.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Valid profile updates are saved.",
+            "",
+            "## Error Cases",
+            "",
+            "- Invalid profile data",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_pipeline(feature)
+
+    assert result.ok
+    assert feature.joinpath("technical-design.md").exists()
+    assert feature.joinpath("tests", "profile-update.test.md").exists()
+    assert feature.joinpath("contracts", "openapi.yaml").exists()
+    assert feature.joinpath("implementation-output.md").exists()
 
 
 def test_risk_todo_example_is_blocked_by_grill(tmp_path: Path) -> None:

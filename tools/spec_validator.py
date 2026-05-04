@@ -95,37 +95,78 @@ def _validate_doc(path: Path, sections: dict[str, str], result: CheckResult) -> 
 
 
 def _feature_dirs(path: Path) -> list[Path]:
-    if path.name == "specs" or path.is_dir() and (path / "spec.md").exists() is False:
-        return sorted([child for child in path.iterdir() if child.is_dir()])
+    if (path / "spec.md").exists():
+        return [path]
+    if path.is_dir():
+        return sorted({spec.parent for spec in path.rglob("spec.md")})
     return [path]
 
 
-def validate_feature(path: Path) -> CheckResult:
-    result = CheckResult("SpecGuard validation")
+def _validate_path(path: Path, result: CheckResult) -> list[Path]:
     if not path.exists():
         result.add_error(f"Path does not exist: {path}")
-        return result
+        return []
 
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
         result.add_error(f"No feature specs found in: {path}")
+        return []
+    return feature_dirs
+
+
+def _validate_spec_file(feature_dir: Path, result: CheckResult) -> None:
+    spec_path = feature_dir / "spec.md"
+    if spec_path.exists():
+        spec = _read(spec_path)
+        acceptance = _section(spec, "Acceptance Criteria")
+        errors = _section(spec, "Error Cases")
+        if _bullet_count(acceptance) == 0:
+            result.add_error(f"{spec_path} must include at least one acceptance criterion")
+        if _bullet_count(errors) == 0:
+            result.add_error(f"{spec_path} must include at least one error case")
+
+
+def validate_spec_basis(path: Path) -> CheckResult:
+    result = CheckResult("SpecGuard spec basis validation")
+    feature_dirs = _validate_path(path, result)
+    if not result.ok:
+        return result
+
+    for feature_dir in feature_dirs:
+        _validate_doc(feature_dir / "discovery.md", DISCOVERY_REQUIRED_SECTIONS, result)
+        _validate_doc(feature_dir / "spec.md", SPEC_REQUIRED_SECTIONS, result)
+        _validate_spec_file(feature_dir, result)
+
+    if result.ok:
+        result.add_info("Discovery and spec checks passed.")
+    return result
+
+
+def validate_technical_design(path: Path) -> CheckResult:
+    result = CheckResult("SpecGuard technical design validation")
+    feature_dirs = _validate_path(path, result)
+    if not result.ok:
+        return result
+
+    for feature_dir in feature_dirs:
+        _validate_doc(feature_dir / "technical-design.md", TECHNICAL_DESIGN_REQUIRED_SECTIONS, result)
+
+    if result.ok:
+        result.add_info("Technical design checks passed.")
+    return result
+
+
+def validate_feature(path: Path) -> CheckResult:
+    result = CheckResult("SpecGuard validation")
+    feature_dirs = _validate_path(path, result)
+    if not result.ok:
         return result
 
     for feature_dir in feature_dirs:
         _validate_doc(feature_dir / "discovery.md", DISCOVERY_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "spec.md", SPEC_REQUIRED_SECTIONS, result)
         _validate_doc(feature_dir / "technical-design.md", TECHNICAL_DESIGN_REQUIRED_SECTIONS, result)
-
-        spec_path = feature_dir / "spec.md"
-        if spec_path.exists():
-            spec = _read(spec_path)
-            acceptance = _section(spec, "Acceptance Criteria")
-            errors = _section(spec, "Error Cases")
-            if _bullet_count(acceptance) == 0:
-                result.add_error(f"{spec_path} must include at least one acceptance criterion")
-            if _bullet_count(errors) == 0:
-                result.add_error(f"{spec_path} must include at least one error case")
-
+        _validate_spec_file(feature_dir, result)
         tests_dir = feature_dir / "tests"
         if not tests_dir.exists() or not any(tests_dir.glob("*.md")):
             result.add_error(f"Missing test scenarios in: {tests_dir}")

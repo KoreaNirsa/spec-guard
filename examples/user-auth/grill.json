@@ -16,8 +16,9 @@
     }
   ],
   "input": {
+    "discovery_characters": 2395,
     "spec_characters": 856,
     "technical_design_characters": 1324
   },
-  "prompt_mode": "You are a senior software architect, security expert, and reliability engineer.\n\nYour task is NOT to approve the implementation basis.\nYour task is to BREAK the implementation basis.\n\nAnalyze the Discovery, Spec, Technical Design, tests, and contracts aggressively.\nIdentify logic flaws, edge cases, security issues, performance risks, and failure scenarios."
+  "prompt_mode": "You are a senior software architect, security expert, and reliability engineer.\n\nYour task is NOT to approve the implementation basis.\nYour task is to BREAK the implementation basis.\n\nAnalyze the Discovery, Spec, and Technical Design aggressively.\nIdentify logic flaws, edge cases, security issues, performance risks, and failure scenarios."
 }

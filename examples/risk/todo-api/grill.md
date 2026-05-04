@@ -38,11 +38,12 @@ You are a senior software architect, security expert, and reliability engineer.
 Your task is NOT to approve the implementation basis.
 Your task is to BREAK the implementation basis.
 
-Analyze the Discovery, Spec, Technical Design, tests, and contracts aggressively.
+Analyze the Discovery, Spec, and Technical Design aggressively.
 Identify logic flaws, edge cases, security issues, performance risks, and failure scenarios.
 ```
 
 ## Input Summary
 
+- Discovery characters: 1900
 - Spec characters: 865
 - Technical design characters: 812

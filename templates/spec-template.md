@@ -1,10 +1,28 @@
-# Spec: {{ feature_name }}
+# Feature Specification: {{ feature_name }}
 
-## Problem
+**Status**: Draft
+**Source**: `discovery.md`
 
-Describe the user or system problem this feature solves.
+## User Scenarios & Testing
+
+### Primary User Story
+
+As a user or system actor, I need this feature to solve a concrete problem safely.
+
+### Acceptance Scenarios
+
+1. Given valid input, when the feature runs, then the expected result is produced.
+2. Given invalid input, when the feature runs, then a clear error is returned.
+
+### Edge Cases
+
+- Missing required input
+- Invalid state
+- Unauthorized access
 
 ## Requirements
+
+### Functional Requirements
 
 - The system must define the required behavior.
 - The system must reject invalid behavior.
@@ -23,3 +41,10 @@ Describe the user or system problem this feature solves.
 ## Out of Scope
 
 - List anything intentionally excluded from this feature.
+
+## Review & Acceptance Checklist
+
+- [ ] Requirements are written from user and system intent.
+- [ ] Acceptance criteria are independently testable.
+- [ ] Error cases are explicit.
+- [ ] Implementation details are deferred to `technical-design.md`.
