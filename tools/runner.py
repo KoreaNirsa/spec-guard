@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.artifact_generator import ensure_contract, generate_implementation_output, generate_llm_technical_design, generate_technical_design
 from tools.contract_checker import check_contracts
 from tools.grill_engine import run_grill
+from tools.llm_client import LLMConfigError, build_llm_client
 from tools.result import CheckResult
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
@@ -107,8 +108,25 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("path", nargs="?", default="specs")
+    parser.add_argument("--force", action="store_true")
+    parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic Grill Me")
+    parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
+    parser.add_argument("--llm-model", help="Override the configured LLM model")
     args = parser.parse_args()
-    result = run_pipeline(Path(args.path))
+
+    llm_client = None
+    if not args.no_llm:
+        try:
+            llm_client = build_llm_client(Path.cwd(), mode=args.llm_mode, model=args.llm_model)
+        except LLMConfigError as exc:
+            result = CheckResult("SpecGuard pipeline")
+            result.add_error(f"LLM provider is required by default: {exc}")
+            result.add_next_step("Configure a provider: python -m cli.specguard auth setup")
+            result.add_next_step("Use --no-llm only for local heuristic checks or CI examples.")
+            result.print()
+            return 1
+
+    result = run_pipeline(Path(args.path), llm_client=llm_client, force=args.force)
     result.print()
     return 0 if result.ok else 1
 

@@ -340,7 +340,7 @@ The GitHub Actions workflow is split into explicit jobs:
 - `Passing Example`: confirms `examples/example` passes
 - `Risk Example`: confirms `examples/risk/todo-api` is blocked
 
-This makes both expected outcomes visible: a validated SDD flow should pass, and a risky implementation basis should fail.
+CI uses explicit `--no-llm` checks because repository CI should not require a personal Codex login or OpenAI API key. This makes both expected outcomes visible: a validated SDD flow should pass, and a risky implementation basis should fail.
 
 ## Development
 
@@ -375,7 +375,8 @@ The test suite covers:
 - streaming LLM Discovery conversation
 - draft spec generation from Discovery
 - Spec and Technical Design validation
-- local heuristic Grill Me engine
+- LLM-backed Grill Me engine
+- local heuristic fallback for `--no-llm` and CI examples
 - human and JSON Grill reports
 - TDD scenario generation
 - basic OpenAPI contract checks
