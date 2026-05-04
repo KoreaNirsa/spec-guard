@@ -1,3 +1,5 @@
+![SpecGuard verification-first workflow](assets/spec_guard_logo.png)
+
 # SpecGuard
 
 SpecGuard is a validation-first workflow for AI-assisted software development.
