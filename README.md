@@ -63,6 +63,16 @@ Spec Validation
 
 Critical or Major Grill Me findings stop the pipeline before tests and contract checks continue.
 
+When the pipeline is blocked, the CLI prints the report paths and the next command to run:
+
+```text
+Next steps:
+- Open the human report: examples/risk/todo-api/grill.md
+- Use the machine-readable report for automation: examples/risk/todo-api/grill.json
+- Fix spec.md or design.md so Critical and Major issues become explicit requirements.
+- Run again: specguard run examples/risk/todo-api
+```
+
 ## Grill Me
 
 Grill Me is the core differentiator. It should feel uncomfortable in a useful way.

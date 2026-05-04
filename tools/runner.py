@@ -23,13 +23,16 @@ def run_pipeline(path: Path) -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     validation = validate_feature(path)
     result.messages.extend(validation.messages)
+    result.next_steps.extend(validation.next_steps)
     if not validation.ok:
         result.ok = False
+        result.add_next_step("Fix spec.md, design.md, or tests before running the pipeline again.")
         return result
 
     for feature_dir in _feature_dirs(path):
         grill = run_grill(feature_dir)
         result.messages.extend(grill.messages)
+        result.next_steps.extend(grill.next_steps)
         if not grill.ok:
             result.ok = False
             continue
@@ -39,8 +42,10 @@ def run_pipeline(path: Path) -> CheckResult:
 
         contracts = check_contracts(feature_dir)
         result.messages.extend(contracts.messages)
+        result.next_steps.extend(contracts.next_steps)
         if not contracts.ok:
             result.ok = False
+            result.add_next_step(f"Fix contract files under: {feature_dir / 'contracts'}")
 
     return result
 

@@ -106,6 +106,8 @@ def test_risk_todo_example_is_blocked_by_grill(tmp_path: Path) -> None:
     assert payload["summary"]["critical"] == 1
     assert payload["summary"]["major"] == 1
     assert "Todo ownership boundary is unclear" in {issue["title"] for issue in payload["issues"]}
+    assert any("Open the human report" in step for step in result.next_steps)
+    assert any("specguard run" in step for step in result.next_steps)
 
 
 def test_tdd_generator_does_not_overwrite_existing_tests(tmp_path: Path) -> None:
