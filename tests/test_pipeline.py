@@ -9,7 +9,14 @@ from pathlib import Path
 
 from tools.contract_checker import check_contracts
 from tools.discovery_engine import collect_llm_answers, initialize_specs
-from tools.llm_client import LLMSettings, _extract_codex_event_text, _iter_response_text_deltas, load_llm_settings, save_llm_settings
+from tools.llm_client import (
+    LLMSettings,
+    _extract_codex_error_text,
+    _extract_codex_event_text,
+    _iter_response_text_deltas,
+    load_llm_settings,
+    save_llm_settings,
+)
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
 from tools.tdd_generator import generate_tests
@@ -323,6 +330,34 @@ def test_codex_json_event_parser_reads_deltas_only() -> None:
     assert _extract_codex_event_text(delta, delta_only=True) == "Question?"
     assert _extract_codex_event_text(final, delta_only=True) == ""
     assert _extract_codex_event_text(final) == "Question?"
+
+
+def test_codex_json_event_parser_reads_error_message() -> None:
+    line = (
+        '{"type":"error","message":"{\\"type\\":\\"error\\",\\"status\\":400,'
+        '\\"error\\":{\\"type\\":\\"invalid_request_error\\",'
+        '\\"message\\":\\"The model requires a newer Codex version.\\"}}"}'
+    )
+
+    assert _extract_codex_error_text(line) == "The model requires a newer Codex version."
+
+
+def test_codex_error_parser_reads_nested_raw_json_string() -> None:
+    raw = (
+        '{"type":"error","status":400,"error":{"type":"invalid_request_error",'
+        '"message":"The selected model requires a newer Codex version."}}'
+    )
+
+    assert _extract_codex_error_text(f'ERROR: {raw}') == "The selected model requires a newer Codex version."
+
+
+def test_codex_error_parser_reads_escaped_raw_json_string() -> None:
+    raw = (
+        r'{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\",'
+        r'\"message\":\"The escaped model error is readable.\"}}'
+    )
+
+    assert _extract_codex_error_text(f"ERROR: {raw}") == "The escaped model error is readable."
 
 
 def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> None:

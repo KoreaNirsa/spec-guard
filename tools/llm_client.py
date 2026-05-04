@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -170,12 +171,19 @@ class CodexExecClient:
                 command,
                 input=prompt,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 capture_output=True,
                 cwd=self.root,
                 timeout=self.settings.timeout,
             )
             if completed.returncode != 0:
-                message = (completed.stderr or completed.stdout or "unknown Codex error").strip()
+                message = (
+                    _normalize_codex_error_message(_extract_codex_error_text(completed.stdout))
+                    or _normalize_codex_error_message(_extract_codex_error_text(completed.stderr))
+                    or _shorten_process_output(completed.stderr or completed.stdout)
+                    or "unknown Codex error"
+                )
                 raise LLMRequestError(f"Codex request failed: {message}")
             text = output_path.read_text(encoding="utf-8").strip() if output_path.exists() else ""
             if not text:
@@ -192,13 +200,16 @@ class CodexExecClient:
         command = self._base_command() + ["--json", "-"]
         prompt = _build_prompt(instructions, input_text, max_output_tokens)
         emitted = False
+        error_message = ""
         try:
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=self.root,
             )
             assert process.stdin is not None
@@ -207,15 +218,16 @@ class CodexExecClient:
             process.stdin.close()
 
             for line in process.stdout:
+                error_message = _extract_codex_error_text(line) or error_message
                 delta = _extract_codex_event_text(line, delta_only=True)
                 if delta:
                     emitted = True
                     yield delta
 
-            stderr = process.stderr.read() if process.stderr else ""
             return_code = process.wait(timeout=self.settings.timeout)
             if return_code != 0:
-                raise LLMRequestError(f"Codex stream failed: {stderr.strip() or 'unknown Codex error'}")
+                message = _normalize_codex_error_message(error_message) or "unknown Codex error"
+                raise LLMRequestError(f"Codex stream failed: {message}")
         except subprocess.TimeoutExpired as exc:
             process.kill()
             raise LLMRequestError("Codex stream timed out.") from exc
@@ -455,6 +467,91 @@ def _extract_codex_event_text(line: str, delta_only: bool = False) -> str:
     if not isinstance(event, dict):
         return ""
     return _extract_text_from_event(event, delta_only=delta_only)
+
+
+def _extract_codex_error_text(output: str | None) -> str:
+    if not output:
+        return ""
+    for raw_line in output.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        try:
+            event = json.loads(stripped)
+        except json.JSONDecodeError:
+            if "ERROR:" in stripped:
+                candidate = stripped.split("ERROR:", 1)[1].strip()
+                parsed = _extract_error_from_event(candidate)
+                return parsed or candidate
+            if stripped.startswith("{") or stripped.startswith("{\\") or '"message"' in stripped:
+                parsed = _extract_error_from_event(stripped)
+                if parsed and parsed != stripped:
+                    return parsed
+            continue
+        message = _extract_error_from_event(event)
+        if message:
+            return message
+    return ""
+
+
+def _extract_error_from_event(event: object) -> str:
+    if isinstance(event, str):
+        text = event.strip()
+        if text.startswith("ERROR:"):
+            return _extract_error_from_event(text.split("ERROR:", 1)[1].strip())
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            unescaped = text.replace('\\"', '"')
+            if unescaped != text:
+                try:
+                    return _extract_error_from_event(json.loads(unescaped))
+                except json.JSONDecodeError:
+                    text = unescaped
+            match = re.search(r'"message"\s*:\s*"([^"]+)"', text)
+            return match.group(1) if match else text
+        return _extract_error_from_event(parsed)
+    if isinstance(event, list):
+        for item in event:
+            message = _extract_error_from_event(item)
+            if message:
+                return message
+        return ""
+    if not isinstance(event, dict):
+        return ""
+
+    event_type = str(event.get("type") or "")
+    if event_type in {"error", "turn.failed"}:
+        for key in ("message", "error"):
+            message = _extract_error_from_event(event.get(key))
+            if message:
+                return message
+
+    error = event.get("error")
+    if isinstance(error, dict):
+        message = error.get("message") or error.get("type")
+        if isinstance(message, str):
+            return message
+
+    for key in ("event", "data", "payload"):
+        message = _extract_error_from_event(event.get(key))
+        if message:
+            return message
+    return ""
+
+
+def _shorten_process_output(output: str, limit: int = 500) -> str:
+    text = " ".join(output.split())
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + "..."
+
+
+def _normalize_codex_error_message(message: str) -> str:
+    if not message:
+        return ""
+    parsed = _extract_error_from_event(message)
+    return parsed or message
 
 
 def _extract_text_from_event(event: object, delta_only: bool = False) -> str:

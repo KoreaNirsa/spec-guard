@@ -39,7 +39,11 @@ def init_project(args: argparse.Namespace) -> int:
     if llm_client is not None and not args.non_interactive:
         print_section("LLM Discovery")
         print_hint("The assistant will stream questions in real time. Type 'done' or 'complete' to finish.")
-        answers = collect_llm_answers(args, llm_client)
+        try:
+            answers = collect_llm_answers(args, llm_client)
+        except LLMRequestError as exc:
+            _print_llm_failure(exc)
+            return 1
     else:
         print_section("Discovery")
         answers = answers_from_args(args) if args.non_interactive else collect_answers(args)
@@ -216,6 +220,9 @@ def _prompt_yes_no(label: str, default: bool) -> bool:
 def _print_llm_failure(exc: Exception) -> None:
     print("[FAIL] LLM workflow failed")
     print(f"- {exc}")
+    if "newer version of Codex" in str(exc):
+        print("- Update the Codex CLI/app, or reconfigure SpecGuard with a Codex-supported model.")
+        print("- Example: python -m cli.specguard auth setup --mode codex --model gpt-5.1 --skip-login")
     print("- Check provider status: python -m cli.specguard auth status")
     print("- Reconfigure provider: python -m cli.specguard auth setup")
 
