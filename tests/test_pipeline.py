@@ -620,6 +620,54 @@ def test_progress_line_shows_elapsed_time_and_phase() -> None:
     assert "[" in line and "]" in line
 
 
+def test_pipeline_progress_line_uses_pipeline_phase() -> None:
+    line = _progress_line("Running pipeline", elapsed_seconds=45, tick=5)
+
+    assert "Running pipeline" in line
+    assert "running Grill Me" in line
+
+
+def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
+    captured = {"label": ""}
+
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False) -> CheckResult:
+        assert force
+        return CheckResult("SpecGuard pipeline")
+
+    def fake_run_with_progress(label, operation):
+        captured["label"] = label
+        return operation()
+
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", fake_run_with_progress)
+
+    result = specguard_cli._rerun_pipeline(
+        Namespace(path="specs/example"),
+        llm_client=None,
+        force=True,
+    )
+
+    assert result.ok
+    assert captured["label"] == "Running pipeline"
+
+
+def test_follow_up_empty_input_keeps_menu_open(monkeypatch, capsys) -> None:
+    choices = iter(["", "q"])
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "No action selected" in rendered
+
+
 def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:
     monkeypatch.delenv("CI", raising=False)
     monkeypatch.setenv("MSYSTEM", "MINGW64")

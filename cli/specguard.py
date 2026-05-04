@@ -276,13 +276,18 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
         print("[1] Review Grill Me findings")
         print("[2] Ask LLM to revise spec.md from Grill Me")
         print("[3] Rerun pipeline")
-        print("[Enter] Exit")
+        print("[q] Exit")
         try:
             choice = input("Choose action: ").strip().lower()
         except EOFError:
+            print("")
+            print("[WARN] Input stream closed. Leaving the follow-up menu.")
             return result
 
-        if choice in {"", "q", "quit", "exit"}:
+        if choice == "":
+            print_hint("No action selected. Choose 1, 2, 3, or q to exit.")
+            continue
+        if choice in {"q", "quit", "exit"}:
             return result
         if choice in {"1", "r", "review"}:
             _print_grill_review(path)
@@ -291,10 +296,14 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             result = _revise_spec_from_grill(path, args, llm_client, result)
             continue
         if choice in {"3", "run", "rerun"}:
-            result = _rerun_pipeline(args, llm_client, force=args.force)
+            try:
+                result = _rerun_pipeline(args, llm_client, force=args.force)
+            except LLMRequestError as exc:
+                _print_llm_failure(exc)
+                print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
             continue
 
-        print("[WARN] Choose 1, 2, 3, or press Enter to exit.")
+        print("[WARN] Choose 1, 2, 3, or q to exit.")
 
 
 def _print_grill_review(path: Path) -> None:
@@ -345,7 +354,12 @@ def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: ob
     spec_path = apply_spec_revision(feature_dir, revised_spec)
     print(f"[PASS] Updated spec: {spec_path}")
     if _prompt_yes_no("Rerun the pipeline now with --force?", default=True):
-        return _rerun_pipeline(args, llm_client, force=True)
+        try:
+            return _rerun_pipeline(args, llm_client, force=True)
+        except LLMRequestError as exc:
+            _print_llm_failure(exc)
+            print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
+            return result
     print_hint("Run again when ready: python -m cli.specguard run specs --force")
     return result
 
@@ -417,20 +431,34 @@ def _progress_line(label: str, elapsed_seconds: int, tick: int) -> str:
     width = 18
     active = tick % width
     bar = "".join("#" if index <= active else "-" for index in range(width))
-    phases = (
+    phases = _progress_phases(label)
+    phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
+    return f"> {label} [{bar}] {elapsed_seconds:>3}s - {phase}"
+
+
+def _progress_phases(label: str) -> tuple[str, ...]:
+    if "pipeline" in label.lower():
+        return (
+            "validating spec artifacts",
+            "generating technical design",
+            "running Grill Me",
+            "building tests, contracts, and outputs",
+        )
+    return (
         "preparing compact Grill Me context",
         "waiting for LLM provider response",
         "reading model output",
         "finalizing spec draft",
     )
-    phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
-    return f"> {label} [{bar}] {elapsed_seconds:>3}s - {phase}"
 
 
 def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool) -> object:
     print_section("Pipeline")
     print_hint("Re-running SpecGuard from the current specs.")
-    result = run_pipeline(Path(args.path), llm_client=llm_client, force=force)
+    result = _run_with_progress(
+        "Running pipeline",
+        lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=force),
+    )
     result.print()
     return result
 
