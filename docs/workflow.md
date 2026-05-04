@@ -104,6 +104,40 @@ These are human-owned artifacts. SpecGuard can draft them, but it should not rep
 
 The CLI intentionally reminds the user to review and strengthen the generated spec before continuing. The next command should be run only after the spec has been checked and edited.
 
+### Optional: Try The Authored Example Package
+
+The repository includes `example/`, a pre-run authored spec package. Treat it as the state after `init` has created draft files and a user has replaced those drafts with real development requirements.
+
+The package is for testing SpecGuard behavior, not for implementing SpecGuard itself. It uses the same Spec Kit-inspired structure expected from real feature planning:
+
+```text
+example/
+|-- discovery.md
+|-- spec.md
+|-- plan.md
+|-- tasks.md
+|-- constitution.md
+`-- checklists/spec-readiness.md
+```
+
+PowerShell:
+
+```powershell
+python -m cli.specguard init your-feature-name
+Copy-Item -Recurse -Force example\* specs\your-feature-name\
+python -m cli.specguard run specs\your-feature-name --no-llm
+```
+
+Bash:
+
+```bash
+python -m cli.specguard init your-feature-name
+cp -R example/. specs/your-feature-name/
+python -m cli.specguard run specs/your-feature-name --no-llm
+```
+
+After this test, replace the copied files with your own feature's product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria.
+
 ## 3. Run Builds The Implementation Basis
 
 Run:

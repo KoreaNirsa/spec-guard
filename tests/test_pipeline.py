@@ -300,6 +300,23 @@ def test_example_passes_and_emits_grill_json(tmp_path: Path) -> None:
     assert payload["summary"]["major"] == 0
 
 
+def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "team-invite"
+    shutil.copytree(ROOT / "example", feature)
+
+    result = run_pipeline(feature)
+
+    assert result.ok
+    assert feature.joinpath("technical-design.md").exists()
+    assert feature.joinpath("tests", "team-invite.test.md").exists()
+    assert feature.joinpath("contracts", "openapi.yaml").exists()
+    assert feature.joinpath("implementation-output.md").exists()
+    payload = json.loads(feature.joinpath("grill.json").read_text(encoding="utf-8"))
+    assert payload["readiness"]["implementation_ready"] is True
+    assert payload["summary"]["critical"] == 0
+    assert payload["summary"]["major"] == 0
+
+
 def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
     result = initialize_specs(tmp_path, {
         "feature_names": "billing-export",

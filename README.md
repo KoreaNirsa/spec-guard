@@ -53,6 +53,30 @@ This is where the real development spec is written. Add the actual product behav
 
 If the default Discovery answers are mostly unchanged, `run` stops early and asks you to edit the spec package first. This prevents a generic sample draft from being treated as an implementation-ready feature.
 
+### Try SpecGuard With Authored Example Specs
+
+The `example/` directory contains a realistic authored spec package. It represents the point after a user has run `init`, reviewed the generated draft, and written the real development intent before running `run`.
+
+Use it only to test SpecGuard behavior. It is not product guidance for this repository, but the files are intentionally structured like production specs so the review workflow exercises a real package shape.
+
+PowerShell:
+
+```powershell
+python -m cli.specguard init your-feature-name
+Copy-Item -Recurse -Force example\* specs\your-feature-name\
+python -m cli.specguard run specs\your-feature-name --no-llm
+```
+
+Bash:
+
+```bash
+python -m cli.specguard init your-feature-name
+cp -R example/. specs/your-feature-name/
+python -m cli.specguard run specs/your-feature-name --no-llm
+```
+
+This replaces the initial draft with the authored example package and lets you verify the full pipeline before writing your own feature specs.
+
 ### 2. Run SpecGuard
 
 ```bash
