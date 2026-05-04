@@ -1,6 +1,7 @@
 ## Spec
 
-- [ ] Written
+- [ ] Generated through Discovery
+- [ ] Reviewed and strengthened by the user
 
 ## Technical Design
 
@@ -13,6 +14,10 @@
 ## Test
 
 - [ ] Included
+
+## Contract
+
+- [ ] Included or not applicable
 
 ## Description
 

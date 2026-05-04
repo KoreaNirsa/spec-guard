@@ -3,7 +3,7 @@
 SpecGuard contributions must preserve the core workflow:
 
 ```text
-Discovery -> Spec -> Technical Design -> Grill -> Test -> Contract -> Implementation Outputs
+Discovery -> Spec Refinement -> Technical Design -> Grill -> Test -> Contract -> Implementation Outputs
 ```
 
 ## Required Workflow
@@ -11,10 +11,11 @@ Discovery -> Spec -> Technical Design -> Grill -> Test -> Contract -> Implementa
 All contributions must include:
 
 - A written discovery artifact
-- A written spec
+- A reviewed and strengthened spec
 - A written technical design
 - A Grill Me result
 - Tests or test scenarios
+- Contracts when the feature exposes an API
 
 ## PR Rules
 
