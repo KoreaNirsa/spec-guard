@@ -13,7 +13,7 @@ Discovery -> Spec Package -> Technical Design -> Initial Grill Review
 ```
 
 <p align="center">
-  <img src="assets/specguard_user_flow.png" alt="SpecGuard user workflow" width="420">
+  <img src="assets/specguard_user_flow.png" alt="SpecGuard user workflow" width="900">
 </p>
 
 ## Core Value
