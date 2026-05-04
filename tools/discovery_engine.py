@@ -352,8 +352,7 @@ def initialize_specs(root: Path, answers: dict[str, str], force: bool = False, l
                 result.add_info(f"Generated LLM draft spec: {spec_path}")
             spec_path.write_text(spec, encoding="utf-8")
 
-        result.add_next_step(f"반드시 스펙을 검토하고 보완하라: {spec_path}")
-        result.add_next_step(f"스펙 작업이 완료되었다면 명령어(run 등)을 실행하라: python -m cli.specguard run {feature_dir}")
-
     result.add_info(f"Prepared implementation output root: {develop_root}")
+    result.add_next_step("Review and refine generated specs under specs/: requirements, acceptance criteria, error cases, data ownership, and out-of-scope behavior.")
+    result.add_next_step("After spec review, run: python -m cli.specguard run specs (or target one feature with specs/<feature-name>)")
     return result
