@@ -1,12 +1,79 @@
 # SpecGuard
 
-Discovery -> Spec -> Design -> Grill -> Test -> Code
+SpecGuard is an early-stage framework for **Spec-Driven Development (SDD)** in AI-assisted software projects.
 
-SpecGuard is not a code generator. It is a small control system for AI-driven development: discover the problem, write the spec, force the design, grill the weak points, generate test scenarios, then implement.
+It does not generate application code. Instead, it makes the development process harder to misuse:
+
+```text
+Discovery -> Spec -> Design -> Grill -> Test -> Contract
+```
+
+SpecGuard helps teams define intent, expose weak assumptions, block risky designs, and produce testable implementation inputs before code generation begins.
+
+## Why SpecGuard?
+
+AI coding tools can produce useful code quickly, but they also make it easy to skip the steps that keep software reliable:
+
+- unclear requirements
+- missing design decisions
+- untested edge cases
+- weak authorization boundaries
+- undocumented failure behavior
+- contracts that do not match intended behavior
+
+SpecGuard treats those steps as first-class artifacts. A feature is not ready for implementation until its discovery, spec, design, risk review, test scenarios, and contract checks are in place.
+
+## Core Concepts
+
+### Spec-Driven Development
+
+Spec-Driven Development, or SDD, is the practice of treating the spec as the control surface for implementation.
+
+In SpecGuard, a feature folder contains the artifacts that define whether implementation is allowed to proceed:
+
+```text
+feature/
+|-- discovery.md
+|-- spec.md
+|-- design.md
+|-- grill.md
+|-- grill.json
+|-- tests/
+`-- contracts/
+```
+
+### Deep Discovery
+
+Deep Discovery is the pre-spec exploration step. It is adapted from a 100-question sequential self-interrogation technique, but the MVP uses 24 focused questions so the workflow stays practical.
+
+Use Deep Discovery to uncover goals, constraints, assumptions, mechanisms, failure modes, and stop conditions before writing `spec.md`.
+
+See [docs/deep-discovery.md](docs/deep-discovery.md).
+
+### Grill Me
+
+Grill Me is the post-design risk review step. It does not approve the design. It attacks it.
+
+The local MVP engine looks for issues such as missing token lifecycle rules, weak ownership boundaries, unsafe delete semantics, placeholder design content, and undefined failure behavior.
+
+Outputs:
+
+- `grill.md`: human-readable risk report
+- `grill.json`: machine-readable report for CI and automation
+
+Critical or Major Grill Me findings fail the pipeline.
 
 ## Quick Start
 
-Run the passing MVP example:
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/KoreaNirsa/spec-guard.git
+cd spec-guard
+pip install -r requirements.txt
+```
+
+Run the passing example:
 
 ```bash
 python -m cli.specguard run examples/user-auth
@@ -18,58 +85,17 @@ Run the intentionally risky example:
 python -m cli.specguard run examples/risk/todo-api
 ```
 
-The risk example should fail. That failure is the product: SpecGuard blocks designs with Critical or Major Grill Me findings.
+The risk example should fail. That failure is expected: it demonstrates that SpecGuard can block a design with Critical or Major findings.
 
-## MVP Workflow
-
-```text
-1. Run Deep Discovery in discovery.md
-   - Foundation
-   - Mechanisms
-   - Stress Test
-   - Synthesis
-
-2. Write spec.md
-   - Requirements
-   - Acceptance Criteria
-   - Error Cases
-
-3. Write design.md
-   - Architecture
-   - Data Flow
-   - State
-   - Failure Handling
-
-4. Run SpecGuard
-   python -m cli.specguard run <feature-folder>
-
-5. Review Grill results
-   - grill.md for humans
-   - grill.json for CI and automation
-
-6. Fix Critical and Major findings
-
-7. Generate or preserve TDD scenarios
-
-8. Validate contracts
-```
-
-## What Run Checks
+## Example Output
 
 ```text
-Discovery Validation
-  -> Spec Validation
-  -> Design Validation
-  -> Grill Me
-  -> TDD Scenario Generation
-  -> Contract Check
-```
+[FAIL] SpecGuard pipeline
+- Discovery, spec, design, and test scenario checks passed.
+- Generated concrete grill report: examples/risk/todo-api/grill.md
+- Generated machine-readable grill report: examples/risk/todo-api/grill.json
+- Blocked by Grill Me findings: 1 critical, 1 major
 
-Critical or Major Grill Me findings stop the pipeline before TDD generation and contract checks continue.
-
-When the pipeline is blocked, the CLI prints the report paths and the next command to run:
-
-```text
 Next steps:
 - Open the human report: examples/risk/todo-api/grill.md
 - Use the machine-readable report for automation: examples/risk/todo-api/grill.json
@@ -77,144 +103,128 @@ Next steps:
 - Run again: specguard run examples/risk/todo-api
 ```
 
+## Workflow
+
+```text
+1. Discover
+   Write discovery.md using the Deep Discovery phases.
+
+2. Specify
+   Write spec.md with requirements, acceptance criteria, and error cases.
+
+3. Design
+   Write design.md with architecture, data flow, state, dependencies, and failure handling.
+
+4. Grill
+   Run SpecGuard. Critical and Major findings block the pipeline.
+
+5. Test
+   Generate or preserve TDD scenarios under tests/.
+
+6. Contract
+   Validate OpenAPI basics under contracts/.
+```
+
+## CLI
+
+SpecGuard intentionally keeps the public CLI small:
+
+```bash
+python -m cli.specguard init
+python -m cli.specguard run <feature-folder>
+```
+
+Default run target:
+
+```bash
+python -m cli.specguard run specs
+```
+
 ## Examples
 
 ```text
 examples/
 |-- user-auth/
-|   |-- discovery.md
-|   |-- spec.md
-|   |-- design.md
-|   |-- grill.md
-|   |-- grill.json
-|   |-- tests/
-|   |   `-- user-auth.test.md
-|   `-- contracts/
-|       `-- openapi.yaml
 `-- risk/
     `-- todo-api/
-        |-- discovery.md
-        |-- spec.md
-        |-- design.md
-        |-- grill.md
-        |-- grill.json
-        |-- tests/
-        |   `-- todo-api.test.md
-        `-- contracts/
-            `-- openapi.yaml
 ```
 
-- `examples/user-auth` is the passing example.
-- `examples/risk/todo-api` is intentionally risky and should be blocked.
+- `examples/user-auth` is a passing SDD example.
+- `examples/risk/todo-api` is intentionally incomplete and should be blocked by Grill Me.
 
-## Minimal CLI
+## CI
 
-The public CLI should stay small while the project is young.
+The GitHub Actions workflow is split into explicit jobs:
 
-```bash
-# prepare local folders
-python -m cli.specguard init
+- `Tests`: runs the pytest suite
+- `Passing Example`: confirms `examples/user-auth` passes
+- `Risk Example`: confirms `examples/risk/todo-api` is blocked
 
-# run the full guardrail pipeline
-python -m cli.specguard run examples/user-auth
-```
+This keeps the two expected outcomes visible in CI: a good spec-driven flow should pass, and a risky design should fail.
 
-Advanced internals exist for development, but the product should feel like one command: `run`.
+## Development
 
-## Deep Discovery
-
-Deep Discovery is the pre-spec exploration step. It is adapted from a 100-question sequential self-interrogation technique, but SpecGuard MVP uses 24 focused questions so the workflow stays usable.
-
-The phases are:
-
-- Foundation: goal, users, constraints, assumptions
-- Mechanisms: components, data flow, dependencies, state
-- Stress Test: edge cases, concurrency, security, recovery
-- Differentiation: existing options, unique value, non-goals
-- Feasibility: MVP buildability, blockers, validation
-- Improvement: simplification, automation, unknowns
-- Synthesis: decision, required artifacts, stop conditions
-
-Use Deep Discovery to discover hidden assumptions. Use Grill Me to attack the design after those assumptions become concrete.
-
-See [docs/deep-discovery.md](docs/deep-discovery.md) for the 24-question MVP framework.
-
-## Tests And CI
-
-Run local tests:
+Run tests:
 
 ```bash
 pytest
 ```
 
-The test suite checks the passing example, the blocked risk example, non-destructive TDD generation, placeholder validation, and invalid contract detection.
+Run local pipeline checks:
 
-CI is split into explicit jobs:
-
-- `Tests`: runs `pytest`
-- `Passing Example`: confirms `examples/user-auth` passes
-- `Risk Example`: confirms `examples/risk/todo-api` is blocked
-
-## Grill Me
-
-Grill Me is the core differentiator. It should feel uncomfortable in a useful way.
-
-Instead of saying "looks good", it asks what can break:
-
-- Is token expiration missing?
-- Can one user access another user's data?
-- Are state transitions invalid or vague?
-- Are retry, timeout, and rollback rules testable?
-- Can duplicate requests create duplicate side effects?
-
-Current MVP behavior:
-
-- Local heuristic grill reports concrete issues without an AI dependency.
-- Critical and Major findings fail `specguard run`.
-- `grill.md` is for humans and `grill.json` is for CI or later automation.
-- The prompt is embedded in the report so a model-based review can be added next.
-- Critical and Major findings should become acceptance criteria before implementation.
-
-## Project Structure
-
-```text
-spec-guard/
-|-- examples/
-|   |-- user-auth/
-|   `-- risk/
-|       `-- todo-api/
-|-- specs/
-|   `-- user-auth/
-|-- tools/
-|   |-- spec_validator.py
-|   |-- grill_engine.py
-|   |-- tdd_generator.py
-|   |-- contract_checker.py
-|   `-- runner.py
-|-- tests/
-|-- templates/
-|-- cli/
-`-- .github/workflows/
+```bash
+python -m cli.specguard run examples/user-auth
+python -m cli.specguard run examples/risk/todo-api
 ```
 
-## MVP Scope
+The test suite currently covers:
 
-- Examples first
-- Deep Discovery before Spec
-- Minimal CLI: `init`, `run`
-- Grill results that expose real implementation risk
-- TDD scenarios generated from spec folders
-- Contract checks that catch broken OpenAPI basics
-- CI that proves both passing and blocked flows
+- passing example behavior
+- blocked risk example behavior
+- `grill.json` generation
+- non-destructive TDD generation
+- placeholder validation
+- invalid OpenAPI contract detection
+- required Deep Discovery artifacts
 
-## Why SpecGuard?
+## Project Status
 
-| Problem | Common AI Workflow | SpecGuard |
-| --- | --- | --- |
-| Missing requirements | Frequent | Blocked |
-| Missing design | Common | Required |
-| Weak tests | Common | Generated before code |
-| AI mistakes | Hard to detect | Grilled before implementation |
+SpecGuard is in MVP development.
+
+Current scope:
+
+- Deep Discovery artifacts
+- Spec and Design validation
+- local heuristic Grill Me engine
+- human and JSON Grill reports
+- TDD scenario generation
+- basic OpenAPI contract checks
+- CI coverage for passing and blocked flows
+
+Not in scope yet:
+
+- application code generation
+- model-backed Grill Me execution
+- package publishing
+- VS Code extension
+- full OpenAPI or JSON Schema validation
+
+## Contributing
+
+Contributions should preserve the SDD workflow:
+
+```text
+Discovery -> Spec -> Design -> Grill -> Test -> Contract
+```
+
+Before opening a pull request, make sure:
+
+- discovery/spec/design artifacts are included for feature work
+- Critical and Major Grill Me findings are resolved or intentionally documented
+- tests are included or updated
+- `pytest` passes
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
