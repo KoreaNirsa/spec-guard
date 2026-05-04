@@ -12,6 +12,10 @@ Discovery -> Spec Package -> Technical Design -> Initial Grill Review
 -> Implementation Outputs -> AI Implementation
 ```
 
+<p align="center">
+  <img src="assets/specguard_user_flow.png" alt="SpecGuard user workflow" width="420">
+</p>
+
 ## Core Value
 
 AI coding works best when the implementation input is explicit. SpecGuard focuses on the parts that often fail before code is written:
@@ -77,8 +81,6 @@ python -m cli.specguard auth setup --mode codex --model gpt-5.4 --codex-command 
 ## Recommended User Flow
 
 Use a real feature name. Running `init` without a name creates a default sample feature and is mostly useful for trying the CLI.
-
-![SpecGuard user workflow](assets/specguard_user_flow.png)
 
 ### 1. Initialize A Spec
 
