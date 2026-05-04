@@ -26,6 +26,7 @@ from tools.post_run import (
     blocked_feature_reports,
     feature_grill_reports,
     generate_spec_revision,
+    grill_report_stale_reason,
     render_grill_summary,
 )
 from tools.runner import run_pipeline
@@ -316,6 +317,10 @@ def _print_grill_review(path: Path) -> None:
         if index > 1:
             print("")
         print(render_grill_summary(feature_dir, report))
+        stale_reason = grill_report_stale_reason(feature_dir)
+        if stale_reason:
+            print(f"- warning: {stale_reason}")
+            print("- rerun did not update Grill Me if validation failed before the Grill Me step.")
 
 
 def _revise_spec_from_grill(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:

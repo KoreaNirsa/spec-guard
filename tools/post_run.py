@@ -52,6 +52,23 @@ def render_grill_summary(feature_dir: Path, report: dict[str, Any], *, limit: in
     return "\n".join(lines)
 
 
+def grill_report_stale_reason(feature_dir: Path) -> str | None:
+    report_path = feature_dir / "grill.json"
+    if not report_path.exists():
+        return None
+
+    report_mtime = report_path.stat().st_mtime
+    sources = [
+        feature_dir / "discovery.md",
+        feature_dir / "spec.md",
+        feature_dir / "technical-design.md",
+    ]
+    newer_sources = [source.name for source in sources if source.exists() and source.stat().st_mtime > report_mtime]
+    if not newer_sources:
+        return None
+    return f"Grill Me report may be stale; newer source file(s): {', '.join(newer_sources)}"
+
+
 def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
     discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
     spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
@@ -63,6 +80,9 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
         "SpecGuard is not prompt-to-code. Do not write application code.",
         "Return ONLY the full replacement Markdown for spec.md.",
         "Preserve the feature intent and the existing spec structure when possible.",
+        "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
+        "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
+        "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
         "Prioritize Critical and Major Grill Me findings.",
         "Do not include commentary, patch markers, or code fences.",
     ])

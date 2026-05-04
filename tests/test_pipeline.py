@@ -17,7 +17,13 @@ from tools.llm_client import (
     load_llm_settings,
     save_llm_settings,
 )
-from tools.post_run import apply_spec_revision, feature_grill_reports, generate_spec_revision, render_grill_summary
+from tools.post_run import (
+    apply_spec_revision,
+    feature_grill_reports,
+    generate_spec_revision,
+    grill_report_stale_reason,
+    render_grill_summary,
+)
 from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
@@ -121,6 +127,8 @@ class FakeLLM:
 class FakeRevisionLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         assert "spec refinement assistant" in instructions
+        assert "## Acceptance Criteria" in instructions
+        assert "Do not rename ## Acceptance Criteria" in instructions
         assert "Grill Me findings" in input_text
         assert max_output_tokens == 3000
         return "\n".join([
@@ -570,6 +578,20 @@ def test_post_run_grill_summary_supports_review_menu(tmp_path: Path) -> None:
     assert "blocked: True" in rendered
     assert "Todo ownership boundary is unclear" in rendered
     assert "Require owner-scoped queries" in rendered
+
+
+def test_post_run_detects_stale_grill_report_after_spec_change(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+    spec_path = feature / "spec.md"
+    spec_path.write_text(spec_path.read_text(encoding="utf-8") + "\n- Added later.\n", encoding="utf-8")
+    future = time.time() + 2
+    os.utime(spec_path, (future, future))
+
+    reason = grill_report_stale_reason(feature)
+
+    assert reason is not None
+    assert "spec.md" in reason
 
 
 def test_post_run_can_generate_and_apply_spec_revision(tmp_path: Path) -> None:
