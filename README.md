@@ -22,6 +22,7 @@ examples/user-auth/
 |-- spec.md
 |-- design.md
 |-- grill.md
+|-- grill.json
 |-- tests/
 |   `-- user-auth.test.md
 `-- contracts/
@@ -70,6 +71,7 @@ Current MVP behavior:
 
 - Local heuristic grill reports concrete issues without an AI dependency.
 - Critical and Major findings fail `specguard run`.
+- `grill.md` is for humans and `grill.json` is for CI or later automation.
 - The prompt is embedded in the report so a model-based review can be added next.
 - Critical and Major findings should become acceptance criteria before implementation.
 

@@ -1,0 +1,30 @@
+{
+  "schema_version": "0.1",
+  "blocked": true,
+  "summary": {
+    "critical": 1,
+    "major": 1,
+    "minor": 0
+  },
+  "issues": [
+    {
+      "severity": "Critical",
+      "title": "Todo ownership boundary is unclear",
+      "description": "The design does not prove that users can only read or mutate their own todos.",
+      "impact": "A generated API may expose cross-user data through list, update, or delete operations.",
+      "fix": "Require owner-scoped queries and authorization checks for every todo read/write path."
+    },
+    {
+      "severity": "Major",
+      "title": "Delete semantics are unsafe",
+      "description": "The spec allows deletion but does not define hard delete, soft delete, restore, or audit behavior.",
+      "impact": "Data loss and compliance issues can appear after code generation.",
+      "fix": "Choose hard or soft delete explicitly and define audit records, restore behavior, and API response codes."
+    }
+  ],
+  "input": {
+    "spec_characters": 865,
+    "design_characters": 802
+  },
+  "prompt_mode": "You are a senior software architect, security expert, and reliability engineer.\n\nYour task is NOT to approve the design.\nYour task is to BREAK the design.\n\nAnalyze the design aggressively and identify logic flaws, edge cases,\nsecurity issues, performance risks, and failure scenarios."
+}

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -167,8 +168,15 @@ def _render_group(title: str, issues: list[GrillIssue]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def _build_report(spec: str, design: str) -> str:
-    issues = _analyze(spec, design)
+def _build_summary(issues: list[GrillIssue]) -> dict[str, int]:
+    return {
+        "critical": sum(1 for issue in issues if issue.severity == "Critical"),
+        "major": sum(1 for issue in issues if issue.severity == "Major"),
+        "minor": sum(1 for issue in issues if issue.severity == "Minor"),
+    }
+
+
+def _build_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
     critical = [issue for issue in issues if issue.severity == "Critical"]
     major = [issue for issue in issues if issue.severity == "Major"]
     minor = [issue for issue in issues if issue.severity == "Minor"]
@@ -199,11 +207,28 @@ def _build_report(spec: str, design: str) -> str:
     ])
 
 
+def _build_json_report(spec: str, design: str, issues: list[GrillIssue]) -> str:
+    summary = _build_summary(issues)
+    payload = {
+        "schema_version": "0.1",
+        "blocked": bool(summary["critical"] or summary["major"]),
+        "summary": summary,
+        "issues": [asdict(issue) for issue in issues],
+        "input": {
+            "spec_characters": len(spec),
+            "design_characters": len(design),
+        },
+        "prompt_mode": GRILL_PROMPT.strip(),
+    }
+    return json.dumps(payload, indent=2) + "\n"
+
+
 def run_grill(path: Path) -> CheckResult:
     result = CheckResult("Grill Me")
     spec_path = path / "spec.md"
     design_path = path / "design.md"
     grill_path = path / "grill.md"
+    grill_json_path = path / "grill.json"
 
     if not spec_path.exists():
         result.add_error(f"Missing spec file: {spec_path}")
@@ -215,13 +240,15 @@ def run_grill(path: Path) -> CheckResult:
     spec = spec_path.read_text(encoding="utf-8")
     design = design_path.read_text(encoding="utf-8")
     issues = _analyze(spec, design)
-    critical_count = sum(1 for issue in issues if issue.severity == "Critical")
-    major_count = sum(1 for issue in issues if issue.severity == "Major")
+    summary = _build_summary(issues)
+    critical_count = summary["critical"]
+    major_count = summary["major"]
 
-    grill_path.write_text(_build_report(spec, design), encoding="utf-8")
-    result.details["critical"] = critical_count
-    result.details["major"] = major_count
+    grill_path.write_text(_build_report(spec, design, issues), encoding="utf-8")
+    grill_json_path.write_text(_build_json_report(spec, design, issues), encoding="utf-8")
+    result.details.update(summary)
     result.add_info(f"Generated concrete grill report: {grill_path}")
+    result.add_info(f"Generated machine-readable grill report: {grill_json_path}")
     if critical_count or major_count:
         result.add_error(f"Blocked by Grill Me findings: {critical_count} critical, {major_count} major")
     return result
