@@ -16,8 +16,9 @@
 
 ## Implementation Handoff
 
+- [ ] Confirm React screens cover admin invite creation and invite token acceptance.
+- [ ] Confirm Spring Boot services enforce authorization, token lifecycle, duplicate invite handling, email timeout behavior, and audit writes.
 - [ ] Confirm contract includes invite creation, revoke, and acceptance endpoints.
 - [ ] Confirm tests cover valid invite, duplicate pending invite, invalid role, expired token, revoked token, replay, wrong workspace, and email timeout.
 - [ ] Confirm implementation guide references `spec.md`, `plan.md`, `tasks.md`, `constitution.md`, checklist, tests, and contracts.
 - [ ] Hand `implementation-output.md` to Codex or Claude Code only after SpecGuard passes.
-

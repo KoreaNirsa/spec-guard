@@ -9,6 +9,7 @@
 ## Architecture Inputs
 
 - [x] Data ownership and workspace boundaries are explicit.
+- [x] React and Spring Boot technology choices are documented.
 - [x] External dependencies are named.
 - [x] State transitions are defined through invite status values.
 - [x] Idempotency and duplicate invite behavior are defined.
@@ -21,4 +22,3 @@
 - [ ] Major findings: 0.
 - [ ] Minor findings: 5 or fewer, with no unresolved ambiguity that blocks coding.
 - [x] Acceptance evidence is testable through API, state, audit, and contract checks.
-
