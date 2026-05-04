@@ -209,7 +209,6 @@ python -m cli.specguard run specs/my-feature
 
 In an interactive terminal, `run` stays open after the pipeline and offers follow-up actions:
 
-- run Grill Me review from the current files
 - inspect the latest Grill Me review
 - regenerate `spec.md` from Grill Me findings and automatically rerun Grill Me
 
@@ -296,7 +295,7 @@ Generate or regenerate LLM-backed technical design and Grill Me output:
 python -m cli.specguard run specs/my-feature --force
 ```
 
-After `run`, SpecGuard shows a continuation menu in interactive terminals. Use it to run Grill Me review from the current files, inspect the latest review, or regenerate `spec.md` from Grill Me findings and automatically rerun the pipeline so Grill Me is refreshed. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time so the CLI does not appear frozen. Press `q` to exit the menu. Use `--follow-up` to force the menu in terminals such as Git Bash if auto-detection fails. Use `--no-follow-up` when a script should exit immediately after the pipeline.
+After `run`, SpecGuard shows a continuation menu in interactive terminals. Use it to inspect the latest Grill Me review or regenerate `spec.md` from Grill Me findings and automatically rerun the pipeline so Grill Me is refreshed. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time so the CLI does not appear frozen. Press `q` to exit the menu. Use `--follow-up` to force the menu in terminals such as Git Bash if auto-detection fails. Use `--no-follow-up` when a script should exit immediately after the pipeline.
 
 Notes:
 

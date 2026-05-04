@@ -280,9 +280,8 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
     path = Path(args.path)
     while True:
         print_section("Continue")
-        print(menu_item("[1] Run Grill Me review"))
-        print(menu_item("[2] View Grill Me review"))
-        print(menu_item("[3] Regenerate spec from Grill Me review (auto-runs Grill Me review after)"))
+        print(menu_item("[1] View Grill Me review"))
+        print(menu_item("[2] Regenerate spec from Grill Me review (auto-runs Grill Me review after)"))
         print(menu_item("[q] Exit"))
         try:
             choice = input("Choose action: ").strip().lower()
@@ -292,25 +291,18 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             return result
 
         if choice == "":
-            print_hint("No action selected. Choose 1, 2, 3, or q to exit.")
+            print_hint("No action selected. Choose 1, 2, or q to exit.")
             continue
         if choice in {"q", "quit", "exit"}:
             return result
-        if choice in {"1", "run", "rerun", "grill"}:
-            try:
-                result = _rerun_pipeline(args, llm_client, force=True)
-            except LLMRequestError as exc:
-                _print_llm_failure(exc)
-                print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Grill Me findings.")
-            continue
-        if choice in {"2", "r", "review"}:
+        if choice in {"1", "r", "review"}:
             _print_grill_review(path)
             continue
-        if choice in {"3", "f", "fix", "revise"}:
+        if choice in {"2", "f", "fix", "revise"}:
             result = _revise_spec_from_grill(path, args, llm_client, result)
             continue
 
-        print_warning("[WARN] Choose 1, 2, 3, or q to exit.")
+        print_warning("[WARN] Choose 1, 2, or q to exit.")
 
 
 def _print_grill_review(path: Path) -> None:

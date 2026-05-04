@@ -794,9 +794,9 @@ def test_follow_up_menu_uses_grill_review_actions(monkeypatch, capsys) -> None:
 
     rendered = capsys.readouterr().out
     assert returned is result
-    assert "[1] Run Grill Me review" in rendered
-    assert "[2] View Grill Me review" in rendered
-    assert "[3] Regenerate spec from Grill Me review (auto-runs Grill Me review after)" in rendered
+    assert "[1] View Grill Me review" in rendered
+    assert "[2] Regenerate spec from Grill Me review (auto-runs Grill Me review after)" in rendered
+    assert "Run Grill Me review" not in rendered
     assert "[q] Exit" in rendered
 
 
