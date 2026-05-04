@@ -35,6 +35,15 @@ GUIDED_DISCOVERY_TURNS = (
     ("acceptance", "Acceptance", "What would prove this spec is ready for technical design, tests, and contracts?"),
 )
 
+SPEC_PACKAGE_FILES = (
+    "discovery.md",
+    "spec.md",
+    "plan.md",
+    "tasks.md",
+    "constitution.md",
+    "checklists/spec-readiness.md",
+)
+
 
 def slugify(value: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", value.strip().lower()).strip("-")
@@ -283,6 +292,124 @@ def _spec_markdown(feature_slug: str, answers: dict[str, str]) -> str:
     ])
 
 
+def _plan_markdown(feature_slug: str, answers: dict[str, str]) -> str:
+    title = _feature_title(feature_slug)
+    return "\n".join([
+        f"# Implementation Plan: {title}",
+        "",
+        "## Objective",
+        "",
+        f"- Deliverable: {answers['problem']}",
+        f"- Success outcome: {answers['outcomes']}",
+        "- Implementation may start only after Grill Me reports an implementation-ready result.",
+        "",
+        "## Scope",
+        "",
+        f"- In scope: {answers['flows']}",
+        f"- Out of scope: {answers['out_of_scope']}",
+        f"- Non-negotiable constraints: {answers['constraints']}",
+        "",
+        "## Technical Context",
+        "",
+        f"- Data and entities: {answers['data']}",
+        f"- Dependencies: {answers['dependencies']}",
+        "- Required downstream artifacts: `technical-design.md`, `tests/`, `contracts/`, and `implementation-output.md`.",
+        "",
+        "## Quality Gates",
+        "",
+        "- Discovery and spec validation pass.",
+        "- Technical design is regenerated after meaningful spec changes.",
+        "- Grill Me readiness is implementation-ready before tests, contracts, and implementation output are trusted.",
+        "- Coding agents consume only the approved implementation package.",
+        "",
+    ])
+
+
+def _tasks_markdown(feature_slug: str, answers: dict[str, str]) -> str:
+    title = _feature_title(feature_slug)
+    return "\n".join([
+        f"# Tasks: {title}",
+        "",
+        "## Spec Package",
+        "",
+        "- [ ] Review `discovery.md` for goal, users, constraints, flows, data, dependencies, risks, and acceptance evidence.",
+        "- [ ] Review `spec.md` for explicit requirements, acceptance criteria, and error cases.",
+        "- [ ] Review `plan.md` for scope, quality gates, and implementation boundary.",
+        "- [ ] Review `constitution.md` for project rules that must not be violated.",
+        "- [ ] Complete `checklists/spec-readiness.md` before implementation starts.",
+        "",
+        "## Design And Validation",
+        "",
+        f"- [ ] Run `python -m cli.specguard run specs/{feature_slug} --force`.",
+        "- [ ] Convert every Critical or Major Grill Me finding into a spec, plan, task, or design update.",
+        "- [ ] Re-run SpecGuard until Grill Me reports implementation-ready status.",
+        "",
+        "## Implementation Handoff",
+        "",
+        f"- [ ] Confirm the primary flow is covered: {answers['flows']}.",
+        f"- [ ] Confirm risk handling is covered: {answers['risks']}.",
+        f"- [ ] Confirm acceptance evidence is testable: {answers['acceptance']}.",
+        "- [ ] Hand `implementation-output.md` to Codex or Claude Code only after SpecGuard passes.",
+        "",
+    ])
+
+
+def _constitution_markdown(feature_slug: str, answers: dict[str, str]) -> str:
+    title = _feature_title(feature_slug)
+    return "\n".join([
+        f"# Constitution: {title}",
+        "",
+        "## Principles",
+        "",
+        "- Spec-first: implementation must follow the approved spec package, not inferred intent.",
+        "- Review-first: Critical and Major Grill Me findings block implementation readiness.",
+        "- Testability: every meaningful requirement needs acceptance evidence or an explicit deferral.",
+        "- Safety: authorization, data ownership, failure handling, and abuse cases must be explicit.",
+        "- Determinism: generated artifacts must be reproducible enough for audit and review.",
+        "",
+        "## Boundaries",
+        "",
+        f"- User and maintainer boundary: {answers['users']}",
+        f"- Data boundary: {answers['data']}",
+        f"- Dependency boundary: {answers['dependencies']}",
+        f"- Exclusion boundary: {answers['out_of_scope']}",
+        "",
+        "## Change Control",
+        "",
+        "- Update spec artifacts before changing generated implementation outputs.",
+        "- Re-run SpecGuard after any requirement, risk, contract, or state-flow change.",
+        "- Do not ask coding agents to fill missing requirements by assumption.",
+        "",
+    ])
+
+
+def _readiness_checklist_markdown(feature_slug: str, answers: dict[str, str]) -> str:
+    title = _feature_title(feature_slug)
+    return "\n".join([
+        f"# Spec Readiness Checklist: {title}",
+        "",
+        "## Requirements",
+        "",
+        "- [ ] Requirements describe observable behavior, not implementation wishes.",
+        "- [ ] Acceptance criteria cover success, rejection, and edge behavior.",
+        "- [ ] Error cases include missing, invalid, unauthorized, conflicting, and dependency-failure paths where relevant.",
+        "",
+        "## Architecture Inputs",
+        "",
+        "- [ ] Data ownership and privacy boundaries are explicit.",
+        "- [ ] External dependencies and contracts are named.",
+        "- [ ] State transitions, idempotency, retry, timeout, and rollback behavior are defined when relevant.",
+        "",
+        "## Grill Me Gate",
+        "",
+        "- [ ] Critical findings: 0.",
+        "- [ ] Major findings: 0.",
+        "- [ ] Minor findings: 5 or fewer, with no unresolved ambiguity that blocks coding.",
+        f"- [ ] Acceptance evidence is clear: {answers['acceptance']}.",
+        "",
+    ])
+
+
 def _answers_text(feature_slug: str, answers: dict[str, str]) -> str:
     lines = [f"Feature: {feature_slug}", ""]
     for key, value in answers.items():
@@ -292,10 +419,14 @@ def _answers_text(feature_slug: str, answers: dict[str, str]) -> str:
 
 def _llm_spec_markdown(feature_slug: str, answers: dict[str, str], llm_client: object) -> str:
     instructions = "\n".join([
-        "You are SpecGuard, a spec refinement assistant.",
-        "Generate a human-reviewable feature specification from Discovery answers.",
+        "You are SpecGuard, a principal product/specification architect.",
+        "Generate a human-reviewable spec.md from the user's Discovery answers.",
+        "The complete SpecGuard package also includes discovery.md, plan.md, tasks.md, constitution.md, and checklists/spec-readiness.md.",
+        "Write spec.md so it can stand beside those package files without contradiction.",
         "SpecGuard is not prompt-to-code. Do not generate application code.",
         "Return ONLY Markdown.",
+        "Make every requirement explicit, testable, versionable, and reviewable by an adversarial Grill Me review.",
+        "Prefer precise contracts, state, ownership, authorization, failure, and determinism language over broad product prose.",
         "Use this exact section structure:",
         "# Feature Specification: <Feature Title>",
         "**Status**: Draft",
@@ -311,8 +442,18 @@ def _llm_spec_markdown(feature_slug: str, answers: dict[str, str], llm_client: o
         "## Key Entities",
         "## Out of Scope",
         "## Review & Acceptance Checklist",
+        "Each required section must contain concrete content derived from Discovery answers.",
+        "Acceptance Criteria and Error Cases must each contain at least one Markdown checklist or bullet item.",
     ])
     return llm_client.generate_text(instructions, _answers_text(feature_slug, answers), max_output_tokens=3000)
+
+
+def _write_text_if_needed(path: Path, content: str, force: bool) -> bool:
+    if path.exists() and not force:
+        return False
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return True
 
 
 def initialize_specs(root: Path, answers: dict[str, str], force: bool = False, llm_client: object | None = None) -> CheckResult:
@@ -334,11 +475,16 @@ def initialize_specs(root: Path, answers: dict[str, str], force: bool = False, l
 
         discovery_path = feature_dir / "discovery.md"
         spec_path = feature_dir / "spec.md"
+        package_artifacts = {
+            "plan.md": _plan_markdown(feature_slug, answers),
+            "tasks.md": _tasks_markdown(feature_slug, answers),
+            "constitution.md": _constitution_markdown(feature_slug, answers),
+            "checklists/spec-readiness.md": _readiness_checklist_markdown(feature_slug, answers),
+        }
 
-        if discovery_path.exists() and not force:
+        if not _write_text_if_needed(discovery_path, _discovery_markdown(feature_slug, answers), force):
             result.add_info(f"Kept existing discovery artifact: {discovery_path}")
         else:
-            discovery_path.write_text(_discovery_markdown(feature_slug, answers), encoding="utf-8")
             result.add_info(f"Generated discovery artifact: {discovery_path}")
 
         if spec_path.exists() and not force:
@@ -352,7 +498,14 @@ def initialize_specs(root: Path, answers: dict[str, str], force: bool = False, l
                 result.add_info(f"Generated LLM draft spec: {spec_path}")
             spec_path.write_text(spec, encoding="utf-8")
 
+        for relative_path, content in package_artifacts.items():
+            artifact_path = feature_dir / relative_path
+            if _write_text_if_needed(artifact_path, content, force):
+                result.add_info(f"Generated spec package artifact: {artifact_path}")
+            else:
+                result.add_info(f"Kept existing spec package artifact: {artifact_path}")
+
     result.add_info(f"Prepared implementation output root: {develop_root}")
-    result.add_next_step("Review and refine generated specs under specs/: requirements, acceptance criteria, error cases, data ownership, and out-of-scope behavior.")
+    result.add_next_step("Review and refine generated specs under specs/: discovery, spec, plan, tasks, constitution, and checklists.")
     result.add_next_step("After spec review, run: python -m cli.specguard run specs (or target one feature with specs/<feature-name>)")
     return result

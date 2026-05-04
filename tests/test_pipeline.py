@@ -291,7 +291,15 @@ def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
     assert result.ok
     assert feature.joinpath("discovery.md").exists()
     assert feature.joinpath("spec.md").exists()
+    assert feature.joinpath("plan.md").exists()
+    assert feature.joinpath("tasks.md").exists()
+    assert feature.joinpath("constitution.md").exists()
+    assert feature.joinpath("checklists", "spec-readiness.md").exists()
     assert "User Scenarios & Testing" in feature.joinpath("spec.md").read_text(encoding="utf-8")
+    assert "Quality Gates" in feature.joinpath("plan.md").read_text(encoding="utf-8")
+    assert "Spec Package" in feature.joinpath("tasks.md").read_text(encoding="utf-8")
+    assert "Spec-first" in feature.joinpath("constitution.md").read_text(encoding="utf-8")
+    assert "Critical findings: 0" in feature.joinpath("checklists", "spec-readiness.md").read_text(encoding="utf-8")
 
 
 def test_discovery_init_can_use_llm_for_spec(tmp_path: Path) -> None:
@@ -315,6 +323,7 @@ def test_discovery_init_can_use_llm_for_spec(tmp_path: Path) -> None:
     assert result.ok
     assert "Billing Export" in spec.read_text(encoding="utf-8")
     assert any("feature specification" in call.lower() for call in llm.calls)
+    assert any("plan.md" in call and "tasks.md" in call and "constitution.md" in call for call in llm.calls)
 
 
 def test_llm_discovery_uses_fast_guided_questions_for_conversation(tmp_path: Path) -> None:
