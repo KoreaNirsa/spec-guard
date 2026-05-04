@@ -27,6 +27,7 @@ def run_pipeline(path: Path) -> CheckResult:
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
         result.add_error(f"No feature specs found in: {path}")
+        result.add_next_step("Run discovery first: python -m cli.specguard init <feature-name>")
         return result
 
     for feature_dir in feature_dirs:

@@ -158,25 +158,25 @@ pip install -r requirements.txt
 Start discovery and generate draft specs:
 
 ```bash
-python -m cli.specguard init example
+python -m cli.specguard init my-feature
 ```
 
 Review and strengthen the generated spec:
 
 ```text
-specs/example/spec.md
+specs/my-feature/spec.md
 ```
 
 Run the validation and artifact workflow:
 
 ```bash
-python -m cli.specguard run specs/example
+python -m cli.specguard run specs/my-feature
 ```
 
 Use the generated implementation guide with a coding agent:
 
 ```text
-specs/example/implementation-output.md
+specs/my-feature/implementation-output.md
 develop/<stack>/
 ```
 
@@ -195,7 +195,7 @@ For scripted or CI setup:
 python -m cli.specguard init billing-export --non-interactive
 ```
 
-Default target:
+Run all initialized specs:
 
 ```bash
 python -m cli.specguard run specs
