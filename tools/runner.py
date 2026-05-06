@@ -97,10 +97,10 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
 
         implementation_output = generate_implementation_output(feature_dir)
         output_action = "Generated" if implementation_output.created else "Reused"
-        result.add_info(f"{output_action} implementation output guide: {implementation_output.path}")
-        result.add_info(green("SpecGuard says this spec package is implementation-ready. You can now start implementation with Codex or Claude Code using the generated guide."))
-        result.add_next_step(f"Use this guide with Codex or Claude Code: {implementation_output.path}")
-        result.add_next_step("SpecGuard stops at spec validation. Put application code under develop/<stack>/ when you implement.")
+        result.add_info(f"{output_action} implementation handoff guide: {implementation_output.path}")
+        result.add_info(green("External AI implementation handoff ready. SpecGuard stops here and does not invoke Codex or Claude Code as an internal pipeline stage."))
+        result.add_next_step(f"Hand this approved guide to an external coding agent: {implementation_output.path}")
+        result.add_next_step("Put application code under develop/<stack>/ when implementation happens outside SpecGuard.")
 
     return result
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -124,7 +125,7 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
         "- Invalid input returns a clear error.",
         "- Unauthorized access is rejected before state change.",
         "- Ambiguous behavior becomes a spec update instead of implementation guesswork.",
-        "- Critical or Major Readiness Findings block implementation outputs.",
+        "- Critical or Major Readiness Findings block implementation handoff.",
         "",
     ])
     output.write_text(content, encoding="utf-8")
@@ -206,14 +207,6 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
 
     test_files = sorted((path / "tests").glob("*.md")) if (path / "tests").exists() else []
     contract_files = sorted((path / "contracts").glob("*")) if (path / "contracts").exists() else []
-    lines = [
-        f"# Implementation Output: {path.name}",
-        "",
-        "Use this feature folder as the implementation context for Codex, Claude Code, or another coding agent.",
-        "",
-        "## Agent Input Artifacts",
-        "",
-    ]
     agent_artifacts = [
         "spec.md",
         "plan.md",
@@ -222,16 +215,34 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "checklists/spec-readiness.md",
         "technical-design.md",
     ]
-    lines.extend(f"- `{artifact}`" for artifact in agent_artifacts if (path / artifact).exists())
-    lines.extend(f"- `tests/{test.name}`" for test in test_files)
-    lines.extend(f"- `contracts/{contract.name}`" for contract in contract_files if contract.is_file())
+    approved_artifacts = [artifact for artifact in agent_artifacts if (path / artifact).exists()]
+    approved_artifacts.extend(f"tests/{test.name}" for test in test_files)
+    approved_artifacts.extend(f"contracts/{contract.name}" for contract in contract_files if contract.is_file())
+    handoff_metadata = _implementation_handoff_metadata(path, approved_artifacts)
+    lines = [
+        f"# Implementation Output: {path.name}",
+        "",
+        "SpecGuard stops at an approved implementation handoff. It does not invoke Codex, Claude Code, or another coding agent as an internal pipeline stage.",
+        "",
+        "Use this feature folder as external handoff context for a coding agent only after the machine-readable readiness status below is `ready`.",
+        "",
+        "## Machine-Readable Handoff",
+        "",
+        "```json",
+        *json.dumps(handoff_metadata, indent=2).splitlines(),
+        "```",
+        "",
+        "## Agent Input Artifacts",
+        "",
+    ]
+    lines.extend(f"- `{artifact}`" for artifact in approved_artifacts)
     lines.extend([
         "",
         "## SpecGuard-Only Artifacts",
         "",
         "- `discovery.md` is for SpecGuard discovery and user refinement.",
         "- `readiness-review.md` and `readiness-review.json` are for SpecGuard adversarial validation.",
-        "- Coding agents should treat the agent input artifacts as the implementation basis after SpecGuard reports implementation-ready status.",
+        "- Coding agents should treat the agent input artifacts as the implementation basis only after SpecGuard reports READY.",
         "",
         "## Output Location",
         "",
@@ -244,7 +255,36 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "- Implement or preserve the behavior described in `tests/`.",
         "- Keep API shape compatible with files under `contracts/`.",
         "- When implementation reveals missing behavior, update the spec and rerun SpecGuard.",
+        "- Do not ask the coding agent to resolve Critical or Major readiness blockers by assumption.",
         "",
     ])
     output.write_text("\n".join(lines), encoding="utf-8")
     return ArtifactWrite(output, created=True)
+
+
+def _implementation_handoff_metadata(path: Path, approved_artifacts: list[str]) -> dict[str, object]:
+    report_path = path / "readiness-review.json"
+    report: dict[str, object] = {}
+    if report_path.exists():
+        try:
+            loaded = json.loads(report_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                report = loaded
+        except json.JSONDecodeError:
+            report = {}
+
+    readiness = report.get("readiness", {})
+    readiness_status = "unknown"
+    implementation_ready = False
+    if isinstance(readiness, dict):
+        readiness_status = str(readiness.get("status") or "unknown")
+        implementation_ready = bool(readiness.get("implementation_ready"))
+
+    return {
+        "schema_version": "0.1",
+        "implementation_boundary": "external_handoff",
+        "readiness_status": readiness_status,
+        "implementation_allowed": implementation_ready and readiness_status == "ready",
+        "readiness_report": "readiness-review.json" if report_path.exists() else None,
+        "approved_artifacts": approved_artifacts,
+    }

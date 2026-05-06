@@ -75,7 +75,7 @@ def init_project(args: argparse.Namespace) -> int:
 
 
 def run(args: argparse.Namespace) -> int:
-    print_banner("Run Technical Design, SpecGuard Review, Test, Contract, and Implementation Outputs.")
+    print_banner("Run Technical Design, SpecGuard Review, Test, Contract, and Implementation Handoff.")
     llm_client = _build_llm_client(args, purpose="run", allow_setup=False)
     if _requires_llm(args) and llm_client is None:
         return 1
