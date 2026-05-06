@@ -26,12 +26,6 @@ cd spec-guard
 python -m pip install -r requirements.txt
 ```
 
-Optional, if you want the `specguard` console command in addition to `python -m cli.specguard`:
-
-```bash
-python -m pip install -e .
-```
-
 ### 2. Configure Codex
 
 Then configure SpecGuard to use local Codex:
