@@ -27,6 +27,7 @@ from tools.post_run import (
     generate_spec_revision,
     readiness_report_stale_reason,
     render_readiness_summary,
+    validate_spec_revision_intent,
 )
 from tools.result import CheckResult
 from tools.runner import run_pipeline
@@ -139,17 +140,34 @@ class FakeRevisionLLM:
         return "\n".join([
             "# Feature Specification: Todo API",
             "",
+            "## Problem",
+            "",
+            "Authenticated users need to create, list, update, and delete their own todo items with explicit owner scope.",
+            "",
             "## Requirements",
             "",
+            "- The system must allow authenticated users to create todos.",
+            "- The system must list only todos owned by the current user.",
+            "- The system must allow users to mark their own todos as completed.",
+            "- The system must allow users to delete their own todos.",
             "- The system must scope every todo read and write by owner.",
             "",
             "## Acceptance Criteria",
             "",
+            "- [ ] Creating a todo stores the current user as owner.",
+            "- [ ] Listing todos returns only the current user's todos.",
+            "- [ ] Updating another user's todo returns `404 Not Found` or `403 Forbidden`.",
+            "- [ ] Deleting a todo records an audit event.",
             "- [ ] Cross-user todo access is rejected.",
             "",
             "## Error Cases",
             "",
+            "- Missing title",
+            "- Empty title",
+            "- Duplicate create request",
+            "- Unauthorized request",
             "- Unauthorized todo access",
+            "- Delete request for a missing todo",
             "",
         ])
 
@@ -164,6 +182,31 @@ class TimeoutRevisionLLM:
         from tools.llm_client import LLMRequestError
 
         raise LLMRequestError("Codex request timed out.")
+
+
+class IntentDriftRevisionLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        assert "spec refinement assistant" in instructions
+        return "\n".join([
+            "# Feature Specification: SSO Provisioning",
+            "",
+            "## Problem",
+            "",
+            "Administrators need a full SSO provisioning system.",
+            "",
+            "## Requirements",
+            "",
+            "- The system must configure SAML identity providers.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] SAML login succeeds.",
+            "",
+            "## Error Cases",
+            "",
+            "- Invalid SAML metadata",
+            "",
+        ])
 
 
 class SixMinorReadinessLLM:
@@ -1009,6 +1052,7 @@ def test_readiness_excludes_current_and_legacy_generated_review_artifacts(tmp_pa
     stale_generated_text = "# Generated report\n\nStale todo delete finding from an older run.\n"
     feature.joinpath("readiness-review.md").write_text(stale_generated_text, encoding="utf-8")
     feature.joinpath("implementation-output.md").write_text(stale_generated_text, encoding="utf-8")
+    feature.joinpath("spec.proposed.md").write_text(stale_generated_text, encoding="utf-8")
     feature.joinpath("grill.md").write_text(stale_generated_text, encoding="utf-8")
     feature.joinpath("grill.json").write_text('{"issues": ["stale todo delete finding"]}\n', encoding="utf-8")
 
@@ -1017,7 +1061,7 @@ def test_readiness_excludes_current_and_legacy_generated_review_artifacts(tmp_pa
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
     assert result.ok
-    assert {"readiness-review.md", "implementation-output.md", "grill.md", "grill.json"}.isdisjoint(reviewed_paths)
+    assert {"readiness-review.md", "implementation-output.md", "spec.proposed.md", "grill.md", "grill.json"}.isdisjoint(reviewed_paths)
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
 
@@ -1167,6 +1211,60 @@ def test_post_run_can_generate_and_apply_spec_revision(tmp_path: Path) -> None:
     assert "Cross-user todo access is rejected" in spec
 
 
+def test_intent_preservation_check_accepts_coverage_preserving_revision(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+    revised = generate_spec_revision(feature, FakeRevisionLLM())
+
+    result = validate_spec_revision_intent(feature, revised)
+
+    assert result.ok
+
+
+def test_intent_preservation_check_blocks_dropped_acceptance_coverage(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+    revised = IntentDriftRevisionLLM().generate_text("spec refinement assistant", "")
+
+    result = validate_spec_revision_intent(feature, revised)
+
+    assert not result.ok
+    assert any("acceptance coverage" in message for message in result.messages)
+
+
+def test_intent_preservation_check_blocks_out_of_scope_promotion(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    spec_path = feature / "spec.md"
+    spec_path.write_text(
+        spec_path.read_text(encoding="utf-8")
+        + "\n## Out of Scope\n\n- Billing automation\n",
+        encoding="utf-8",
+    )
+    revised = "\n".join([
+        "# Spec: feature",
+        "",
+        "## Requirements",
+        "",
+        "- The system must accept valid input.",
+        "- The system must implement billing automation.",
+        "",
+        "## Acceptance Criteria",
+        "",
+        "- [ ] Valid input succeeds.",
+        "- [ ] Billing automation succeeds.",
+        "",
+        "## Error Cases",
+        "",
+        "- Invalid input",
+        "",
+    ])
+
+    result = validate_spec_revision_intent(feature, revised)
+
+    assert not result.ok
+    assert any("out-of-scope" in message for message in result.messages)
+
+
 def test_post_run_strips_markdown_fences_from_spec_revision(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
     run_pipeline(feature)
@@ -1219,6 +1317,31 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert captured["force"]
     assert captured["review_mode"] == "verification"
     assert "scope every todo read and write by owner" in spec
+
+
+def test_post_run_spec_revision_blocks_intent_drift_before_apply(tmp_path: Path, monkeypatch, capsys) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    result = run_pipeline(feature)
+    original = feature.joinpath("spec.md").read_text(encoding="utf-8")
+
+    def fail_rerun(*args, **kwargs):
+        raise AssertionError("Verification Review should not run after intent preservation failure")
+
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fail_rerun)
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(force=False),
+        IntentDriftRevisionLLM(),
+        result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert feature.joinpath("spec.md").read_text(encoding="utf-8") == original
+    assert feature.joinpath("spec.proposed.md").exists()
+    assert "Intent Preservation Check" in rendered
+    assert "Kept original spec.md unchanged" in rendered
 
 
 def test_progress_line_shows_elapsed_time_and_phase() -> None:

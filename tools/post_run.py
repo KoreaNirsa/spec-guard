@@ -1,8 +1,42 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
+
+from tools.result import CheckResult
+
+
+PROPOSED_SPEC_REVISION_NAME = "spec.proposed.md"
+
+_STOPWORDS = {
+    "about",
+    "after",
+    "before",
+    "between",
+    "cannot",
+    "could",
+    "from",
+    "given",
+    "must",
+    "need",
+    "needs",
+    "only",
+    "return",
+    "returns",
+    "should",
+    "spec",
+    "specification",
+    "system",
+    "that",
+    "their",
+    "then",
+    "this",
+    "when",
+    "with",
+    "without",
+}
 
 
 def feature_dirs(path: Path) -> list[Path]:
@@ -88,7 +122,9 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
         "Maintain consistency with plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, and technical-design.md.",
         "SpecGuard is not prompt-to-code. Do not write application code.",
         "Return ONLY the full replacement Markdown for spec.md.",
-        "Preserve the feature intent and the existing spec structure when possible.",
+        "Preserve the feature intent, user goal, existing acceptance coverage, and explicit out-of-scope decisions.",
+        "Do not delete, weaken, or replace existing acceptance criteria unless the Readiness Findings directly require that change.",
+        "Do not promote any documented out-of-scope or non-goal item into Requirements, Acceptance Criteria, or Error Cases.",
         "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
         "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
         "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
@@ -120,6 +156,31 @@ def apply_spec_revision(feature_dir: Path, revised_spec: str) -> Path:
     spec_path = feature_dir / "spec.md"
     spec_path.write_text(revised_spec.rstrip() + "\n", encoding="utf-8")
     return spec_path
+
+
+def write_proposed_spec_revision(feature_dir: Path, revised_spec: str) -> Path:
+    proposal_path = feature_dir / PROPOSED_SPEC_REVISION_NAME
+    proposal_path.write_text(revised_spec.rstrip() + "\n", encoding="utf-8")
+    return proposal_path
+
+
+def validate_spec_revision_intent(feature_dir: Path, revised_spec: str) -> CheckResult:
+    result = CheckResult("Intent Preservation Check")
+    original_spec = _read_optional(feature_dir / "spec.md")
+    normalized_revised = _normalize(revised_spec)
+
+    _check_title_intent(original_spec, revised_spec, result)
+    _check_problem_intent(original_spec, normalized_revised, result)
+    _check_acceptance_coverage(original_spec, normalized_revised, result)
+    _check_out_of_scope(original_spec, revised_spec, result)
+
+    if result.ok:
+        result.add_info("Revised spec preserves title/problem intent, acceptance coverage, and out-of-scope boundaries.")
+    else:
+        result.add_next_step(
+            f"Review the proposed revision manually, then edit spec.md or {PROPOSED_SPEC_REVISION_NAME} before rerunning SpecGuard."
+        )
+    return result
 
 
 def _read_optional(path: Path) -> str:
@@ -180,3 +241,163 @@ def _strip_markdown_fence(text: str) -> str:
     if len(lines) >= 2 and lines[-1].strip() == "```":
         return "\n".join(lines[1:-1]).strip()
     return stripped
+
+
+def _check_title_intent(original_spec: str, revised_spec: str, result: CheckResult) -> None:
+    original_title = _first_heading(original_spec)
+    revised_title = _first_heading(revised_spec)
+    if not original_title or not revised_title:
+        return
+
+    original_tokens = _keywords(original_title)
+    if len(original_tokens) < 2:
+        return
+    revised_tokens = _keywords(revised_title)
+    if len(original_tokens & revised_tokens) < min(2, len(original_tokens)):
+        result.add_error(
+            "Intent Preservation Check blocked spec revision: revised title no longer matches the original feature intent."
+        )
+
+
+def _check_problem_intent(original_spec: str, normalized_revised: str, result: CheckResult) -> None:
+    problem = _section(original_spec, "Problem")
+    if not problem:
+        return
+
+    problem_tokens = _keywords(problem)
+    if len(problem_tokens) < 4:
+        return
+
+    preserved = sum(1 for token in problem_tokens if token in normalized_revised)
+    if preserved / len(problem_tokens) < 0.5:
+        result.add_error(
+            "Intent Preservation Check blocked spec revision: revised spec no longer preserves the original Problem statement."
+        )
+
+
+def _check_acceptance_coverage(original_spec: str, normalized_revised: str, result: CheckResult) -> None:
+    original_items = _list_items(_section(original_spec, "Acceptance Criteria"))
+    if not original_items:
+        return
+
+    missing: list[str] = []
+    for item in original_items:
+        if not _item_is_preserved(item, normalized_revised):
+            missing.append(item)
+
+    if missing:
+        preview = "; ".join(missing[:3])
+        result.add_error(
+            "Intent Preservation Check blocked spec revision: revised spec drops or weakens existing acceptance coverage "
+            f"({preview})."
+        )
+
+
+def _check_out_of_scope(original_spec: str, revised_spec: str, result: CheckResult) -> None:
+    original_items = _out_of_scope_items(original_spec)
+    if not original_items:
+        return
+
+    revised_out_of_scope = _normalize("\n".join(_out_of_scope_sections(revised_spec)))
+    protected_body = _normalize(
+        "\n".join([
+            _section(revised_spec, "Requirements"),
+            _section(revised_spec, "Acceptance Criteria"),
+            _section(revised_spec, "Error Cases"),
+        ])
+    )
+
+    missing_boundaries: list[str] = []
+    promoted_boundaries: list[str] = []
+    for item in original_items:
+        if not _item_is_preserved(item, revised_out_of_scope):
+            missing_boundaries.append(item)
+
+        tokens = _keywords(item)
+        if len(tokens) >= 2 and tokens.issubset(set(protected_body.split())):
+            promoted_boundaries.append(item)
+
+    if missing_boundaries:
+        preview = "; ".join(missing_boundaries[:3])
+        result.add_error(
+            "Intent Preservation Check blocked spec revision: revised spec drops documented out-of-scope boundaries "
+            f"({preview})."
+        )
+    if promoted_boundaries:
+        preview = "; ".join(promoted_boundaries[:3])
+        result.add_error(
+            "Intent Preservation Check blocked spec revision: revised spec appears to promote out-of-scope items into implementation scope "
+            f"({preview})."
+        )
+
+
+def _first_heading(text: str) -> str:
+    match = re.search(r"^#\s+(.+)$", text, flags=re.MULTILINE)
+    return match.group(1).strip() if match else ""
+
+
+def _section(content: str, heading: str) -> str:
+    pattern = rf"^##\s+{re.escape(heading)}\s*$([\s\S]*?)(?=^##\s+|\Z)"
+    match = re.search(pattern, content, flags=re.IGNORECASE | re.MULTILINE)
+    return match.group(1).strip() if match else ""
+
+
+def _out_of_scope_sections(content: str) -> list[str]:
+    sections: list[str] = []
+    for heading in ("Out of Scope", "Non-goals", "Non Goals", "Non-goal"):
+        section = _section(content, heading)
+        if section:
+            sections.append(section)
+    return sections
+
+
+def _out_of_scope_items(content: str) -> list[str]:
+    items: list[str] = []
+    for section in _out_of_scope_sections(content):
+        items.extend(_list_items(section))
+    return items
+
+
+def _list_items(section: str) -> list[str]:
+    items: list[str] = []
+    for line in section.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        checklist = re.match(r"^[-*]\s+\[[ xX]\]\s+(.+)$", stripped)
+        bullet = re.match(r"^[-*]\s+(.+)$", stripped)
+        numbered = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+        if checklist:
+            items.append(checklist.group(1).strip())
+        elif bullet:
+            items.append(bullet.group(1).strip())
+        elif numbered:
+            items.append(numbered.group(1).strip())
+    return items
+
+
+def _item_is_preserved(item: str, normalized_target: str) -> bool:
+    normalized_item = _normalize(item)
+    if normalized_item and normalized_item in normalized_target:
+        return True
+
+    tokens = _keywords(item)
+    if not tokens:
+        return True
+    target_tokens = set(normalized_target.split())
+    overlap = len(tokens & target_tokens)
+    required = min(3, max(1, len(tokens) - 1))
+    return overlap >= required
+
+
+def _keywords(text: str) -> set[str]:
+    normalized = _normalize(text)
+    return {
+        token
+        for token in normalized.split()
+        if len(token) >= 4 and token not in _STOPWORDS
+    }
+
+
+def _normalize(text: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", text.lower()))

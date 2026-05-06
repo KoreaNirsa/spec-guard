@@ -29,6 +29,8 @@ from tools.post_run import (
     generate_spec_revision,
     readiness_report_stale_reason,
     render_readiness_summary,
+    validate_spec_revision_intent,
+    write_proposed_spec_revision,
 )
 from tools.runner import run_pipeline
 from tools.strict_e2e import run_strict_e2e_pipeline
@@ -392,6 +394,13 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         print_hint("The follow-up menu is still open. Review findings or retry after adjusting timeout/model.")
+        return result
+    intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
+    if not intent_check.ok:
+        proposal_path = write_proposed_spec_revision(feature_dir, revised_spec)
+        intent_check.add_info(f"Kept original spec.md unchanged. Proposed revision written to: {proposal_path}")
+        intent_check.print()
+        print_hint("SpecGuard stopped before Verification Review because the proposed revision may alter product intent.")
         return result
     _print_markdown_preview(revised_spec)
     spec_path = apply_spec_revision(feature_dir, revised_spec)

@@ -170,13 +170,15 @@ Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or
 
 The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
 
+Before a regenerated `spec.md` is applied, SpecGuard runs an Intent Preservation Check. The check blocks obvious intent drift: a changed feature title/problem, dropped acceptance coverage, removed out-of-scope boundaries, or out-of-scope items promoted into Requirements, Acceptance Criteria, or Error Cases. When it blocks, SpecGuard leaves the original `spec.md` unchanged, writes the proposal to `spec.proposed.md`, and asks the user to review the diff manually.
+
 Strict E2E mode automates that loop for LLM-enabled runs:
 
 ```bash
 python -m cli.specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
 ```
 
-Strict E2E records every review attempt and every spec regeneration in `strict-e2e-trace.json`. Regeneration uses the previous Readiness Findings as the required backlog, then reruns Verification Review. The final result is READY only when the normal readiness gate passes; otherwise strict E2E reports that the configured iteration limit was exhausted.
+Strict E2E records every review attempt and every spec regeneration in `strict-e2e-trace.json`. Regeneration uses the previous Readiness Findings as the required backlog, checks intent preservation, then reruns Verification Review. The final result is READY only when the normal readiness gate passes; otherwise strict E2E reports that the configured iteration limit was exhausted or that intent preservation blocked automatic overwrite.
 Strict E2E does not treat markdown TDD scenarios alone as executable verification. Before implementation handoff, the package must include executable tests under `tests/` or an accepted `tests/verification-contract.md` that names the expected command or machine-verifiable artifact.
 
 Generated or reused artifacts:
@@ -197,7 +199,7 @@ specs/my-feature/
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
 
-In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If Intent Preservation Check fails, the regenerated text is saved as `spec.proposed.md` and Verification Review is skipped until the user resolves the diff. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
 If a local Codex follow-up request times out, check `python -m cli.specguard auth status` and increase the timeout:
 
