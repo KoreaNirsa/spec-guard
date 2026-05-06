@@ -60,7 +60,7 @@ def red(text: str) -> str:
 
 def print_banner(subtitle: str | None = None) -> None:
     print(cyan(LOGO.strip("\n")))
-    print(dim("Spec-first validation for AI-assisted implementation."))
+    print(dim("Validation-First Workflow (VFW) for AI-assisted development."))
     if subtitle:
         print(bold(subtitle))
     print("")
