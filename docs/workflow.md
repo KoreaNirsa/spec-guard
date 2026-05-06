@@ -274,3 +274,19 @@ develop/spring/
 develop/react/
 develop/fastapi/
 ```
+
+## 6. Advisory PR Review
+
+After external implementation opens a pull request, the optional `SpecGuard PR Review` workflow can run a read-only Codex-compatible review against the approved spec package and PR diff.
+
+The workflow:
+
+- checks credentials before assembling review context;
+- skips safely in advisory mode when `SPECGUARD_OPENAI_API_KEY` or `SPECGUARD_PR_REVIEW_COMMAND` is unavailable;
+- refuses to invoke Codex when the selected spec package is NOT READY or stale;
+- sends approved artifacts, tests, contracts, `implementation-output.md`, and the PR diff to the reviewer prompt;
+- asks `SpecGuard PR Reviewer` to focus on spec conformance, security, reliability, API contracts, data ownership, testability, and operational risk;
+- updates one PR comment with a stable hidden marker instead of creating duplicates;
+- uses workflow concurrency to cancel stale review runs for the same PR.
+
+The first version is advisory. Maintainers can make the check required later after confirming credential handling, bot identity, and review quality for their repository.

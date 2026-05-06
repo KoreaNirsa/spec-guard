@@ -204,6 +204,12 @@ CLI output highlights READY states in green and NOT READY states in red.
 
 Pull request CI includes a stable required-check candidate named `SpecGuard Readiness Gate`. It inspects changed packages under `specs/`, fails when a changed package is NOT READY, and fails when source artifacts are stale relative to `readiness-review.json` or changed without an updated readiness report. Repositories that want merge-time enforcement should add `SpecGuard Readiness Gate` to branch protection or ruleset required status checks.
 
+## Advisory PR Review
+
+After READY and external implementation, repositories can enable the optional `SpecGuard PR Review` workflow. It builds a compact context from approved spec artifacts plus the PR diff, asks a Codex-compatible reviewer to check spec-to-implementation alignment, and updates a single PR comment headed `SpecGuard PR Reviewer`.
+
+The workflow is advisory by default. If `SPECGUARD_OPENAI_API_KEY` or `SPECGUARD_PR_REVIEW_COMMAND` is unavailable, it skips without exposing secrets. It does not run secret-bearing review calls on fork PRs unless maintainers explicitly provide a safe credential strategy. The comment includes the reviewed head SHA, mode, reviewed spec package paths, coverage summary, and any findings.
+
 ## CLI Reference
 
 ```bash
