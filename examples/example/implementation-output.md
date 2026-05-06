@@ -1,6 +1,32 @@
 # Implementation Output: example
 
-Use this feature folder as the implementation context for Codex, Claude Code, or another coding agent.
+SpecGuard stops at an approved implementation handoff. It does not invoke Codex, Claude Code, or another coding agent as an internal pipeline stage.
+
+Use this feature folder as external handoff context for a coding agent only after the machine-readable readiness status below is `ready`.
+
+## Machine-Readable Handoff
+
+```json
+{
+  "schema_version": "0.1",
+  "implementation_boundary": "external_handoff",
+  "readiness_status": "ready",
+  "implementation_allowed": true,
+  "readiness_report": "readiness-review.json",
+  "approved_artifacts": [
+    "spec.md",
+    "technical-design.md",
+    "tests/example.test.md",
+    "contracts/openapi.yaml"
+  ],
+  "verification": {
+    "kind": "markdown_scenarios",
+    "artifact": "tests/example.test.md",
+    "command": null,
+    "strict_ready": false
+  }
+}
+```
 
 ## Agent Input Artifacts
 
@@ -9,11 +35,17 @@ Use this feature folder as the implementation context for Codex, Claude Code, or
 - `tests/example.test.md`
 - `contracts/openapi.yaml`
 
+## Verification
+
+- Kind: `markdown_scenarios`
+- Artifact: `tests/example.test.md`
+- Command: `not specified`
+
 ## SpecGuard-Only Artifacts
 
 - `discovery.md` is for SpecGuard discovery and user refinement.
 - `readiness-review.md` and `readiness-review.json` are for SpecGuard adversarial validation.
-- Coding agents should treat the agent input artifacts as the implementation basis after SpecGuard reports implementation-ready status.
+- Coding agents should treat the agent input artifacts as the implementation basis only after SpecGuard reports READY.
 
 ## Output Location
 
@@ -26,3 +58,4 @@ Use this feature folder as the implementation context for Codex, Claude Code, or
 - Implement or preserve the behavior described in `tests/`.
 - Keep API shape compatible with files under `contracts/`.
 - When implementation reveals missing behavior, update the spec and rerun SpecGuard.
+- Do not ask the coding agent to resolve Critical or Major readiness blockers by assumption.

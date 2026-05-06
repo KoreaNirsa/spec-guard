@@ -14,6 +14,7 @@ from tools.result import CheckResult
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
 from tools.ux import green
+from tools.verification_checker import check_verification_artifacts
 
 
 def _feature_dirs(path: Path) -> list[Path]:
@@ -31,7 +32,13 @@ def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
     return any(source.exists() and source.stat().st_mtime > output_mtime for source in sources)
 
 
-def run_pipeline(path: Path, llm_client: object | None = None, force: bool = False, review_mode: str = "initial") -> CheckResult:
+def run_pipeline(
+    path: Path,
+    llm_client: object | None = None,
+    force: bool = False,
+    review_mode: str = "initial",
+    strict_verification: bool = False,
+) -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
@@ -82,6 +89,14 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
         test_output = generate_tests(feature_dir, force=refresh_tests)
         result.add_info(f"TDD scenarios ready: {test_output}")
 
+        if strict_verification:
+            verification = check_verification_artifacts(feature_dir)
+            result.messages.extend(verification.messages)
+            result.next_steps.extend(verification.next_steps)
+            if not verification.ok:
+                result.ok = False
+                continue
+
         refresh_contract = _is_stale(contract_path, [spec_path], force)
         contract = ensure_contract(feature_dir, force=refresh_contract)
         contract_action = "Generated" if contract.created else "Reused"
@@ -97,10 +112,10 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
 
         implementation_output = generate_implementation_output(feature_dir)
         output_action = "Generated" if implementation_output.created else "Reused"
-        result.add_info(f"{output_action} implementation output guide: {implementation_output.path}")
-        result.add_info(green("SpecGuard says this spec package is implementation-ready. You can now start implementation with Codex or Claude Code using the generated guide."))
-        result.add_next_step(f"Use this guide with Codex or Claude Code: {implementation_output.path}")
-        result.add_next_step("SpecGuard stops at spec validation. Put application code under develop/<stack>/ when you implement.")
+        result.add_info(f"{output_action} implementation handoff guide: {implementation_output.path}")
+        result.add_info(green("External AI implementation handoff ready. SpecGuard stops here and does not invoke Codex or Claude Code as an internal pipeline stage."))
+        result.add_next_step(f"Hand this approved guide to an external coding agent: {implementation_output.path}")
+        result.add_next_step("Put application code under develop/<stack>/ when implementation happens outside SpecGuard.")
 
     return result
 

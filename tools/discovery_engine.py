@@ -320,8 +320,8 @@ def _plan_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         "",
         "- Discovery and spec validation pass.",
         "- Technical design is regenerated after meaningful spec changes.",
-        "- SpecGuard Readiness Gate is implementation-ready before tests, contracts, and implementation output are trusted.",
-        "- Coding agents consume only the approved implementation package.",
+        "- SpecGuard Readiness Gate is implementation-ready before tests, contracts, and implementation handoff are trusted.",
+        "- Coding agents consume only the approved external handoff package after SpecGuard passes.",
         "",
     ])
 
@@ -350,7 +350,7 @@ def _tasks_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         f"- [ ] Confirm the primary flow is covered: {answers['flows']}.",
         f"- [ ] Confirm risk handling is covered: {answers['risks']}.",
         f"- [ ] Confirm acceptance evidence is testable: {answers['acceptance']}.",
-        "- [ ] Hand `implementation-output.md` to Codex or Claude Code only after SpecGuard passes.",
+        "- [ ] Hand `implementation-output.md` to an external Codex or Claude Code session only after SpecGuard passes.",
         "",
     ])
 
@@ -377,7 +377,7 @@ def _constitution_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         "",
         "## Change Control",
         "",
-        "- Update spec artifacts before changing generated implementation outputs.",
+        "- Update spec artifacts before changing generated implementation handoff outputs.",
         "- Re-run SpecGuard after any requirement, risk, contract, or state-flow change.",
         "- Do not ask coding agents to fill missing requirements by assumption.",
         "",

@@ -1,0 +1,27 @@
+openapi: 3.1.0
+info:
+  title: Team Invite API
+  version: 0.1.0
+paths:
+  /workspaces/{workspaceId}/invites:
+    post:
+      responses:
+        "201":
+          description: Pending invite created
+        "200":
+          description: Existing pending invite returned
+        "400":
+          description: Invalid invite email
+        "403":
+          description: Authenticated user is not a workspace admin
+        "409":
+          description: Invitee is already a workspace member
+  /invites/{token}/accept:
+    post:
+      responses:
+        "201":
+          description: Membership created and invite accepted
+        "400":
+          description: Malformed, expired, revoked, accepted, or wrong-workspace token
+        "409":
+          description: Membership already exists

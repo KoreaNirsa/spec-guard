@@ -31,6 +31,7 @@ from tools.post_run import (
 from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
+from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.tdd_generator import generate_tests
 import cli.specguard as specguard_cli
 from cli.specguard import _progress_line, _should_offer_follow_up
@@ -191,11 +192,107 @@ class CaptureVerificationReadinessLLM:
         return '{"issues":[]}'
 
 
+class StrictE2EConvergingLLM:
+    def __init__(self) -> None:
+        self.verification_inputs: list[str] = []
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        lowered = instructions.lower()
+        if "technical design generator" in lowered:
+            return "\n".join([
+                "# Technical Design: feature",
+                "",
+                "## Architecture",
+                "",
+                "- API layer calls a service layer with owner-scoped validation.",
+                "",
+                "## Data Flow",
+                "",
+                "1. Request arrives.",
+                "2. Service validates owner scope and input.",
+                "3. Response is returned.",
+                "",
+                "## State",
+                "",
+                "- Initial state: request received but not validated.",
+                "- Terminal state: completed or rejected.",
+                "",
+                "## Dependencies",
+                "",
+                "- Feature database.",
+                "",
+                "## Failure Handling",
+                "",
+                "- Unauthorized owner access returns 403.",
+                "",
+                "## Implementation Blockers",
+                "",
+                "- None.",
+                "",
+            ])
+        if "spec refinement assistant" in lowered:
+            assert "Owner scope missing" in input_text
+            return "\n".join([
+                "# Spec: feature",
+                "",
+                "## Requirements",
+                "",
+                "- The system must accept valid input.",
+                "- The system must scope every request to the authenticated owner.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] Valid owner-scoped input succeeds.",
+                "- [ ] Cross-owner access is rejected.",
+                "",
+                "## Error Cases",
+                "",
+                "- Invalid input",
+                "- Unauthorized owner access",
+                "",
+            ])
+        if "verification review board" in lowered:
+            self.verification_inputs.append(input_text)
+            return '{"issues":[]}'
+        return json.dumps({
+            "issues": [{
+                "severity": "Major",
+                "title": "Owner scope missing",
+                "description": "The spec does not state how ownership is enforced.",
+                "impact": "Implementation would need to guess authorization behavior.",
+                "fix": "Add owner-scoped requirements and acceptance criteria.",
+            }]
+        })
+
+
+class StrictE2EAlwaysBlockingLLM(StrictE2EConvergingLLM):
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        if "verification review board" in instructions.lower():
+            self.verification_inputs.append(input_text)
+            return json.dumps({
+                "issues": [{
+                    "severity": "Major",
+                    "title": "Verification blocker remains",
+                    "description": "The regenerated spec still leaves implementation-critical behavior unclear.",
+                    "impact": "Implementation would still need to guess.",
+                    "fix": "Clarify the remaining behavior before implementation.",
+                }]
+            })
+        return super().generate_text(instructions, input_text, max_output_tokens)
+
+
 def copy_example(tmp_path: Path, example: str) -> Path:
     source = ROOT / "examples" / example
     target = tmp_path / example.replace("/", "-")
     shutil.copytree(source, target)
     return target
+
+
+def read_handoff_metadata(feature: Path) -> dict:
+    text = feature.joinpath("implementation-output.md").read_text(encoding="utf-8")
+    start = text.index("```json") + len("```json")
+    end = text.index("```", start)
+    return json.loads(text[start:end].strip())
 
 
 def run_cli_smoke(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -214,7 +311,13 @@ def run_cli_smoke(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str
     )
 
 
-def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool = False) -> Path:
+def write_feature(
+    base: Path,
+    *,
+    placeholder: bool = False,
+    bad_contract: bool = False,
+    empty_contract: bool = False,
+) -> Path:
     feature = base / "feature"
     (feature / "tests").mkdir(parents=True)
     (feature / "contracts").mkdir()
@@ -294,13 +397,31 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
         encoding="utf-8",
     )
     feature.joinpath("tests", "feature.test.md").write_text("# Existing tests\n", encoding="utf-8")
-    contract = "openapi: 3.1.0\npaths: {}\n" if bad_contract else (
-        "openapi: 3.1.0\n"
-        "info:\n"
-        "  title: Feature API\n"
-        "  version: 0.1.0\n"
-        "paths: {}\n"
-    )
+    if bad_contract:
+        contract = "openapi: 3.1.0\npaths: {}\n"
+    elif empty_contract:
+        contract = (
+            "openapi: 3.1.0\n"
+            "info:\n"
+            "  title: Feature API\n"
+            "  version: 0.1.0\n"
+            "paths: {}\n"
+        )
+    else:
+        contract = (
+            "openapi: 3.1.0\n"
+            "info:\n"
+            "  title: Feature API\n"
+            "  version: 0.1.0\n"
+            "paths:\n"
+            "  /feature:\n"
+            "    post:\n"
+            "      responses:\n"
+            "        \"200\":\n"
+            "          description: Feature accepted\n"
+            "        \"400\":\n"
+            "          description: Invalid input\n"
+        )
     feature.joinpath("contracts", "openapi.yaml").write_text(contract, encoding="utf-8")
     return feature
 
@@ -317,6 +438,36 @@ def test_example_passes_and_emits_readiness_json(tmp_path: Path) -> None:
     assert payload["readiness"]["implementation_ready"] is True
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
+
+
+def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "example")
+
+    result = run_pipeline(feature, force=True)
+
+    output = feature.joinpath("implementation-output.md").read_text(encoding="utf-8")
+    metadata = read_handoff_metadata(feature)
+    assert result.ok
+    assert metadata["implementation_boundary"] == "external_handoff"
+    assert metadata["readiness_status"] == "ready"
+    assert metadata["implementation_allowed"] is True
+    assert "spec.md" in metadata["approved_artifacts"]
+    assert "technical-design.md" in metadata["approved_artifacts"]
+    assert "contracts/openapi.yaml" in metadata["approved_artifacts"]
+    assert "SpecGuard stops at an approved implementation handoff" in output
+    assert any("External AI implementation handoff ready" in message for message in result.messages)
+    assert any("external coding agent" in step for step in result.next_steps)
+
+
+def test_blocked_pipeline_does_not_recommend_ai_implementation(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+
+    result = run_pipeline(feature)
+
+    assert not result.ok
+    assert not feature.joinpath("implementation-output.md").exists()
+    assert any("Do not start external AI implementation" in step for step in result.next_steps)
+    assert not any("Hand this approved guide" in step for step in result.next_steps)
 
 
 def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
@@ -418,7 +569,7 @@ def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> 
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "[PASS] SpecGuard pipeline" in completed.stdout
     assert "Running pipeline completed" in completed.stdout
-    assert "implementation-ready" in completed.stdout
+    assert "External AI implementation handoff ready" in completed.stdout
     assert feature.joinpath("technical-design.md").exists()
     assert feature.joinpath("tests", "team-invite.test.md").exists()
     assert feature.joinpath("contracts", "openapi.yaml").exists()
@@ -650,7 +801,7 @@ def test_codex_error_parser_reads_escaped_raw_json_string() -> None:
     assert _extract_codex_error_text(f"ERROR: {raw}") == "The escaped model error is readable."
 
 
-def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> None:
+def test_run_generates_spec_derived_contract_from_spec_basis(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "profile-update"
     feature.mkdir(parents=True)
     feature.joinpath("discovery.md").write_text(
@@ -701,7 +852,16 @@ def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> N
     assert result.ok
     assert feature.joinpath("technical-design.md").exists()
     assert feature.joinpath("tests", "profile-update.test.md").exists()
-    assert feature.joinpath("contracts", "openapi.yaml").exists()
+    contract = feature.joinpath("contracts", "openapi.yaml")
+    assert contract.exists()
+    contract_text = contract.read_text(encoding="utf-8")
+    assert "paths:" in contract_text
+    assert "/profile-update:" in contract_text
+    assert "x-specguard-coverage:" in contract_text
+    assert "Valid profile updates are saved." in contract_text
+    assert "Invalid profile data" in contract_text
+    assert "requestBody:" in contract_text
+    assert "ErrorResponse:" in contract_text
     assert feature.joinpath("implementation-output.md").exists()
 
 
@@ -746,6 +906,25 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
             "## Error Cases",
             "",
             "- Unauthorized access",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("contracts").mkdir()
+    feature.joinpath("contracts", "openapi.yaml").write_text(
+        "\n".join([
+            "openapi: 3.1.0",
+            "info:",
+            "  title: Billing Export API",
+            "  version: 0.1.0",
+            "paths:",
+            "  /billing-exports:",
+            "    post:",
+            "      responses:",
+            "        \"200\":",
+            "          description: Billing export created",
+            "        \"403\":",
+            "          description: Unauthorized export",
             "",
         ]),
         encoding="utf-8",
@@ -797,6 +976,25 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     })
     assert result.ok
     feature = tmp_path / "specs" / "billing-export"
+    feature.joinpath("contracts").mkdir()
+    feature.joinpath("contracts", "openapi.yaml").write_text(
+        "\n".join([
+            "openapi: 3.1.0",
+            "info:",
+            "  title: Billing Export API",
+            "  version: 0.1.0",
+            "paths:",
+            "  /billing-exports:",
+            "    post:",
+            "      responses:",
+            "        \"200\":",
+            "          description: Billing export created",
+            "        \"403\":",
+            "          description: Unauthorized export",
+            "",
+        ]),
+        encoding="utf-8",
+    )
 
     pipeline = run_pipeline(feature)
 
@@ -850,6 +1048,84 @@ def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> N
     assert "Verification Review board" in llm.instructions
     assert "Previous SpecGuard Review Findings" in llm.input_text
     assert "Delete semantics are unsafe" in llm.input_text
+
+
+def test_strict_e2e_converges_after_spec_regeneration(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("tests", "test_feature.py").write_text("def test_owner_scope_contract():\n    assert True\n", encoding="utf-8")
+    llm = StrictE2EConvergingLLM()
+
+    result = run_strict_e2e_pipeline(feature, llm, max_iterations=2)
+
+    trace = json.loads(feature.joinpath("strict-e2e-trace.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_mode"] == "verification"
+    assert payload["blocked"] is False
+    assert trace["final"] == {"status": "ready", "iterations": 1}
+    assert trace["regenerations"][0]["source_findings"][0]["title"] == "Owner scope missing"
+    assert "Owner scope missing" in llm.verification_inputs[0]
+    assert "Previous SpecGuard Review Findings" in llm.verification_inputs[0]
+    assert "scope every request to the authenticated owner" in feature.joinpath("spec.md").read_text(encoding="utf-8")
+
+
+def test_strict_e2e_fails_markdown_only_verification(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    assert not result.ok
+    assert any("executable verification artifacts" in message for message in result.messages)
+    assert not feature.joinpath("implementation-output.md").exists()
+
+
+def test_strict_e2e_accepts_executable_verification(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("tests", "test_feature.py").write_text("def test_feature_contract():\n    assert True\n", encoding="utf-8")
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    metadata = read_handoff_metadata(feature)
+    assert result.ok
+    assert metadata["verification"]["kind"] == "executable"
+    assert metadata["verification"]["command"] == "python -m pytest tests/test_feature.py"
+
+
+def test_strict_e2e_accepts_verification_contract(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("tests", "verification-contract.md").write_text(
+        "\n".join([
+            "# Verification Contract",
+            "",
+            "Status: accepted",
+            "Command: make verify-feature",
+            "Artifact: CI job `verify-feature`",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    metadata = read_handoff_metadata(feature)
+    assert result.ok
+    assert metadata["verification"]["kind"] == "accepted_contract"
+    assert metadata["verification"]["command"] == "make verify-feature"
+
+
+def test_strict_e2e_fails_after_max_iterations(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = StrictE2EAlwaysBlockingLLM()
+
+    result = run_strict_e2e_pipeline(feature, llm, max_iterations=1)
+
+    trace = json.loads(feature.joinpath("strict-e2e-trace.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert trace["final"] == {"status": "max_iterations_exhausted", "iterations": 1}
+    assert len(trace["attempts"]) == 2
+    assert len(trace["regenerations"]) == 1
+    assert any("Strict E2E failed after 1 verification iteration" in message for message in result.messages)
+    assert any("strict-e2e-trace.json" in step for step in result.next_steps)
 
 
 def test_post_run_readiness_review_summary_supports_review_menu(tmp_path: Path) -> None:
@@ -1189,7 +1465,80 @@ def test_contract_checker_rejects_invalid_openapi(tmp_path: Path) -> None:
     assert any("info.title" in message for message in result.messages)
 
 
-def test_contract_checker_fallback_accepts_generated_empty_paths(tmp_path: Path, monkeypatch) -> None:
+def test_contract_checker_rejects_empty_openapi_paths(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path, empty_contract=True)
+
+    result = check_contracts(feature)
+
+    assert not result.ok
+    assert any("at least one API path" in message for message in result.messages)
+
+
+def test_contract_checker_rejects_operations_without_error_responses(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("contracts", "openapi.yaml").write_text(
+        "\n".join([
+            "openapi: 3.1.0",
+            "info:",
+            "  title: Feature API",
+            "  version: 0.1.0",
+            "paths:",
+            "  /feature:",
+            "    post:",
+            "      responses:",
+            "        \"200\":",
+            "          description: Feature accepted",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = check_contracts(feature)
+
+    assert not result.ok
+    assert any("documented error response" in message for message in result.messages)
+
+
+def test_contract_checker_accepts_non_api_exemption(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    contracts = feature / "contracts"
+    contracts.mkdir(parents=True)
+    contracts.joinpath("contract-exemption.md").write_text(
+        "\n".join([
+            "# Contract Exemption",
+            "",
+            "Status: accepted",
+            "Contract: not applicable",
+            "Reason: This feature produces an internal batch report and has no API boundary.",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = check_contracts(feature)
+
+    assert result.ok
+    assert any("Accepted non-API contract exemption" in message for message in result.messages)
+
+
+def test_contract_checker_fallback_rejects_empty_openapi_paths(tmp_path: Path, monkeypatch) -> None:
+    feature = write_feature(tmp_path, empty_contract=True)
+    original_import = builtins.__import__
+
+    def block_yaml(name, *args, **kwargs):
+        if name == "yaml":
+            raise ImportError("yaml unavailable")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", block_yaml)
+
+    result = check_contracts(feature)
+
+    assert not result.ok
+    assert any("at least one API path" in message for message in result.messages)
+
+
+def test_contract_checker_fallback_accepts_defined_openapi_paths(tmp_path: Path, monkeypatch) -> None:
     feature = write_feature(tmp_path)
     original_import = builtins.__import__
 

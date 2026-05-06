@@ -509,6 +509,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
         result.add_next_step(
             "Fix spec package artifacts so Critical and Major issues become explicit requirements or verified constraints, and Minor findings stay within the readiness threshold."
         )
+        result.add_next_step("Do not start external AI implementation until SpecGuard reports READY and writes implementation-output.md.")
         result.add_next_step(f"Run again: specguard run {path}")
     return result
 

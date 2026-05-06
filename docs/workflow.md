@@ -5,10 +5,10 @@ SpecGuard is not a code generator. It is a spec refinement and validation workfl
 The intended user experience is:
 
 ```text
-Discovery -> Draft Specs -> User Refinement -> Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Outputs
+Discovery -> Draft Specs -> User Refinement -> Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
-After that, the user can run Codex, Claude Code, or another coding agent against the generated spec package.
+After that, the user can run Codex, Claude Code, or another coding agent outside the SpecGuard pipeline against the approved handoff package.
 
 ## 0. Configure LLM Provider
 
@@ -17,7 +17,7 @@ SpecGuard supports two LLM provider modes today:
 - `codex`: local Codex CLI installed on the machine.
 - `openai`: OpenAI Platform Responses API.
 
-Claude Code provider integration is planned later. For now, Claude Code should be used separately after SpecGuard produces implementation outputs.
+Claude Code provider integration is planned later. For now, Claude Code should be used separately after SpecGuard produces an approved implementation handoff.
 
 Configure local Codex:
 
@@ -157,10 +157,10 @@ python -m cli.specguard run specs/my-feature --force
 SpecGuard then performs:
 
 ```text
-Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Outputs
+Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
-SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Outputs.
+SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Handoff.
 
 Interactive refinement uses this loop:
 
@@ -169,6 +169,15 @@ Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or
 ```
 
 The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
+
+Strict E2E mode automates that loop for LLM-enabled runs:
+
+```bash
+python -m cli.specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
+```
+
+Strict E2E records every review attempt and every spec regeneration in `strict-e2e-trace.json`. Regeneration uses the previous Readiness Findings as the required backlog, then reruns Verification Review. The final result is READY only when the normal readiness gate passes; otherwise strict E2E reports that the configured iteration limit was exhausted.
+Strict E2E does not treat markdown TDD scenarios alone as executable verification. Before implementation handoff, the package must include executable tests under `tests/` or an accepted `tests/verification-contract.md` that names the expected command or machine-verifiable artifact.
 
 Generated or reused artifacts:
 
@@ -179,10 +188,14 @@ specs/my-feature/
 |-- readiness-review.json
 |-- tests/
 |-- contracts/
+|-- strict-e2e-trace.json
 `-- implementation-output.md
 ```
 
+`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, the approved artifact list, and the expected verification command or accepted verification artifact for coding agents.
+
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
+For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
 
 In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
@@ -222,7 +235,7 @@ Or stay in the post-run menu and choose the LLM spec revision action. Repeat unt
 
 ## 5. Coding Agents Implement Later
 
-After SpecGuard passes, hand the implementation basis to Codex, Claude Code, or another coding agent.
+After SpecGuard passes, hand the implementation basis to Codex, Claude Code, or another coding agent outside the SpecGuard pipeline. SpecGuard does not invoke or supervise implementation while Critical or Major blockers remain.
 
 Coding agents should focus on:
 
@@ -261,3 +274,19 @@ develop/spring/
 develop/react/
 develop/fastapi/
 ```
+
+## 6. Advisory PR Review
+
+After external implementation opens a pull request, the optional `SpecGuard PR Review` workflow can run a read-only Codex-compatible review against the approved spec package and PR diff.
+
+The workflow:
+
+- checks credentials before assembling review context;
+- skips safely in advisory mode when `SPECGUARD_OPENAI_API_KEY` or `SPECGUARD_PR_REVIEW_COMMAND` is unavailable;
+- refuses to invoke Codex when the selected spec package is NOT READY or stale;
+- sends approved artifacts, tests, contracts, `implementation-output.md`, and the PR diff to the reviewer prompt;
+- asks `SpecGuard PR Reviewer` to focus on spec conformance, security, reliability, API contracts, data ownership, testability, and operational risk;
+- updates one PR comment with a stable hidden marker instead of creating duplicates;
+- uses workflow concurrency to cancel stale review runs for the same PR.
+
+The first version is advisory. Maintainers can make the check required later after confirming credential handling, bot identity, and review quality for their repository.

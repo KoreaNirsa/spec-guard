@@ -4,12 +4,12 @@
 
 SpecGuard is a validation-first workflow for AI-assisted software development.
 
-It is not a prompt-to-code generator. SpecGuard helps you turn an idea into a reviewed, testable, implementation-ready spec package before Codex, Claude Code, or another coding agent starts writing application code.
+It is not a prompt-to-code generator. SpecGuard helps you turn an idea into a reviewed, testable, implementation-ready spec package before an external Codex, Claude Code, or another coding agent starts writing application code.
 
 ```text
 Discovery -> Spec Package -> Technical Design -> Initial SpecGuard Review
 -> Spec Regeneration -> Verification Review -> Test -> Contract
--> Implementation Outputs -> AI Implementation
+-> Implementation Handoff -> External AI Implementation
 ```
 
 ## Core Value
@@ -141,6 +141,7 @@ Technical Design -> Initial SpecGuard Review -> READY or NOT READY
 SpecGuard Review inspects the full spec package and generated technical design. It looks for blockers before implementation begins.
 
 Run is a validator, not the place where product intent is invented. Use it after the spec package has enough real detail to review.
+For API features, `contracts/openapi.yaml` must define at least one concrete path before SpecGuard can produce an implementation handoff; `paths: {}` is treated as a blocker, not a ready contract. Generated contracts include spec-derived success/error responses, request/response schemas, and `x-specguard-coverage` links back to acceptance criteria and error cases.
 
 ### 3. Iterate Until Ready
 
@@ -162,12 +163,21 @@ The initial review is broad and adversarial. After spec regeneration, Verificati
 
 Repeat until SpecGuard reports READY.
 
-### 4. Start Implementation
+LLM-enabled runs can automate this bounded loop:
+
+```bash
+python -m cli.specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
+```
+
+Strict E2E always runs Initial SpecGuard Review first. When it receives NOT READY, it regenerates `spec.md` from the readiness findings, reruns Verification Review with those findings as the backlog, and stops only when READY or the iteration limit is exhausted. Each run writes `strict-e2e-trace.json` so regeneration attempts can be traced back to the findings that caused them.
+Strict E2E also requires executable verification before handoff: add tests such as `tests/test_*.py`, or document an accepted `tests/verification-contract.md` with the command or artifact that a coding agent must preserve.
+
+### 4. External Implementation Handoff
 
 When the spec package is ready, SpecGuard continues through:
 
 ```text
-Test -> Contract -> Implementation Outputs
+Test -> Contract -> Implementation Handoff
 ```
 
 Then use:
@@ -177,7 +187,8 @@ specs/your-feature-name/implementation-output.md
 develop/<stack>/
 ```
 
-Give the implementation output guide to Codex, Claude Code, or another coding agent, and place application code under `develop/<stack>/`.
+SpecGuard does not invoke Codex, Claude Code, or another coding agent as an internal pipeline stage. Give the approved implementation output guide to an external coding agent, and place application code under `develop/<stack>/`.
+The guide includes machine-readable readiness status and the approved artifact list that the coding agent may use.
 
 ## SpecGuard Readiness Gate
 
@@ -193,6 +204,12 @@ CLI output highlights READY states in green and NOT READY states in red.
 
 Pull request CI includes a stable required-check candidate named `SpecGuard Readiness Gate`. It inspects changed packages under `specs/`, fails when a changed package is NOT READY, and fails when source artifacts are stale relative to `readiness-review.json` or changed without an updated readiness report. Repositories that want merge-time enforcement should add `SpecGuard Readiness Gate` to branch protection or ruleset required status checks.
 
+## Advisory PR Review
+
+After READY and external implementation, repositories can enable the optional `SpecGuard PR Review` workflow. It builds a compact context from approved spec artifacts plus the PR diff, asks a Codex-compatible reviewer to check spec-to-implementation alignment, and updates a single PR comment headed `SpecGuard PR Reviewer`.
+
+The workflow is advisory by default. If `SPECGUARD_OPENAI_API_KEY` or `SPECGUARD_PR_REVIEW_COMMAND` is unavailable, it skips without exposing secrets. It does not run secret-bearing review calls on fork PRs unless maintainers explicitly provide a safe credential strategy. The comment includes the reviewed head SHA, mode, reviewed spec package paths, coverage summary, and any findings.
+
 ## CLI Reference
 
 ```bash
@@ -206,6 +223,8 @@ Useful options:
 - `--follow-up`: force the interactive continuation menu.
 - `--no-follow-up`: exit immediately after the pipeline.
 - `--no-llm`: use local deterministic checks and heuristic SpecGuard Review.
+- `--strict-e2e`: use an LLM to automatically regenerate blocked specs and rerun Verification Review.
+- `--strict-max-iterations`: bound the number of strict E2E verification iterations.
 
 CI or scripted example:
 
@@ -235,7 +254,7 @@ Contributions should preserve the SpecGuard workflow:
 
 ```text
 Discovery -> Spec Package -> Technical Design -> SpecGuard Review
--> Test -> Contract -> Implementation Outputs
+-> Test -> Contract -> Implementation Handoff
 ```
 
 Before opening a pull request:

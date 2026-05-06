@@ -10,6 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.result import CheckResult
 
 
+CONTRACT_EXEMPTION_NAME = "contract-exemption.md"
+
+
 def _read_yaml_like(path: Path) -> dict[str, object]:
     try:
         import yaml
@@ -27,6 +30,23 @@ def _read_yaml_like(path: Path) -> dict[str, object]:
     if not isinstance(data, dict):
         raise ValueError("contract root must be an object")
     return data
+
+
+def _has_openapi_paths(data: dict[str, object]) -> bool:
+    paths = data.get("paths")
+    return isinstance(paths, dict) and bool(paths)
+
+
+def has_openapi_paths(contract: Path) -> bool:
+    return _has_openapi_paths(_read_yaml_like(contract))
+
+
+def has_contract_exemption(contracts_dir: Path) -> bool:
+    exemption = contracts_dir / CONTRACT_EXEMPTION_NAME
+    if not exemption.exists():
+        return False
+    text = exemption.read_text(encoding="utf-8").lower()
+    return "not applicable" in text and "reason" in text
 
 
 def _minimal_yaml(content: str) -> dict[str, object]:
@@ -59,35 +79,60 @@ def _minimal_yaml(content: str) -> dict[str, object]:
     return data
 
 
-def _validate_openapi(contract: Path, data: dict[str, object], result: CheckResult) -> None:
+def _validate_openapi(contract: Path, data: dict[str, object], result: CheckResult) -> bool:
+    valid = True
     if "openapi" not in data:
         result.add_error(f"{contract} must define openapi version")
+        valid = False
 
     info = data.get("info")
     if not isinstance(info, dict):
         result.add_error(f"{contract} must define info.title and info.version")
+        valid = False
     else:
         if not info.get("title"):
             result.add_error(f"{contract} must define info.title")
+            valid = False
         if not info.get("version"):
             result.add_error(f"{contract} must define info.version")
+            valid = False
 
     paths = data.get("paths")
     if not isinstance(paths, dict):
         result.add_error(f"{contract} must define paths")
-        return
+        return False
+    if not _has_openapi_paths(data):
+        result.add_error(
+            f"{contract} must define at least one API path; empty OpenAPI paths cannot be treated as implementation-ready"
+        )
+        return False
 
     for path_name, path_item in paths.items():
         if path_name == "{}":
             continue
         if not isinstance(path_item, dict):
             result.add_error(f"{contract} path must be an object: {path_name}")
+            valid = False
             continue
         for method, operation in path_item.items():
             if method.lower() not in {"get", "post", "put", "patch", "delete"}:
                 continue
             if not isinstance(operation, dict) or not isinstance(operation.get("responses"), dict):
                 result.add_error(f"{contract} operation must define responses: {method.upper()} {path_name}")
+                valid = False
+                continue
+            responses = operation["responses"]
+            if not _has_response_status(responses, lambda status: status.startswith("2")):
+                result.add_error(f"{contract} operation must define a success response: {method.upper()} {path_name}")
+                valid = False
+            if not _has_response_status(responses, lambda status: status.startswith(("4", "5"))):
+                result.add_error(f"{contract} operation must define a documented error response: {method.upper()} {path_name}")
+                valid = False
+    return valid
+
+
+def _has_response_status(responses: dict[str, object], predicate) -> bool:
+    return any(predicate(str(status).strip('"')) for status in responses)
 
 
 def check_contracts(path: Path) -> CheckResult:
@@ -99,7 +144,12 @@ def check_contracts(path: Path) -> CheckResult:
 
     contract_files = list(contracts_dir.glob("*.yaml")) + list(contracts_dir.glob("*.yml")) + list(contracts_dir.glob("*.json"))
     if not contract_files:
-        result.add_info(f"No contract files found in: {contracts_dir}")
+        if has_contract_exemption(contracts_dir):
+            result.add_info(f"Accepted non-API contract exemption: {contracts_dir / CONTRACT_EXEMPTION_NAME}")
+        else:
+            result.add_error(
+                f"No contract files found in: {contracts_dir}; add an API contract or {CONTRACT_EXEMPTION_NAME} with a reason"
+            )
         return result
 
     for contract in contract_files:
@@ -109,8 +159,8 @@ def check_contracts(path: Path) -> CheckResult:
 
         try:
             data = _read_yaml_like(contract)
-            _validate_openapi(contract, data, result)
-            result.add_info(f"Validated contract: {contract}")
+            if _validate_openapi(contract, data, result):
+                result.add_info(f"Validated contract: {contract}")
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             result.add_error(f"Invalid contract file: {contract} ({exc})")
     return result

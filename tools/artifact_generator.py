@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+from tools.contract_checker import CONTRACT_EXEMPTION_NAME, has_contract_exemption, has_openapi_paths
+from tools.verification_checker import verification_metadata
 
 
 @dataclass(frozen=True)
@@ -122,7 +126,7 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
         "- Invalid input returns a clear error.",
         "- Unauthorized access is rejected before state change.",
         "- Ambiguous behavior becomes a spec update instead of implementation guesswork.",
-        "- Critical or Major Readiness Findings block implementation outputs.",
+        "- Critical or Major Readiness Findings block implementation handoff.",
         "",
     ])
     output.write_text(content, encoding="utf-8")
@@ -170,22 +174,136 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
 def ensure_contract(path: Path, force: bool = False) -> ArtifactWrite:
     contracts_dir = path / "contracts"
     contracts_dir.mkdir(parents=True, exist_ok=True)
+    exemption = contracts_dir / CONTRACT_EXEMPTION_NAME
+    if has_contract_exemption(contracts_dir):
+        return ArtifactWrite(exemption, created=False)
     output = contracts_dir / "openapi.yaml"
-    if output.exists() and not force:
-        return ArtifactWrite(output, created=False)
+    if output.exists():
+        if not force or _has_concrete_contract_paths(output):
+            return ArtifactWrite(output, created=False)
 
     spec = (path / "spec.md").read_text(encoding="utf-8")
     title = _title(path, spec)
-    content = "\n".join([
-        "openapi: 3.1.0",
-        "info:",
-        f"  title: {title} API",
-        "  version: 0.1.0",
-        "paths: {}",
-        "",
-    ])
+    content = _spec_derived_openapi(path, spec, title)
     output.write_text(content, encoding="utf-8")
     return ArtifactWrite(output, created=True)
+
+
+def _has_concrete_contract_paths(output: Path) -> bool:
+    try:
+        return has_openapi_paths(output)
+    except Exception:
+        return False
+
+
+def _spec_derived_openapi(path: Path, spec: str, title: str) -> str:
+    acceptance = _bullets(spec, "Acceptance Criteria")
+    errors = _bullets(spec, "Error Cases")
+    success_status = _success_status(acceptance)
+    error_statuses = _error_statuses(errors)
+    schema_prefix = _schema_prefix(title)
+
+    lines = [
+        "openapi: 3.1.0",
+        "info:",
+        f"  title: {_yaml_string(title + ' API')}",
+        "  version: 0.1.0",
+        "paths:",
+        f"  /{path.name}:",
+        "    post:",
+        f"      summary: {_yaml_string('Execute ' + title)}",
+        "      x-specguard-coverage:",
+        "        acceptanceCriteria:",
+    ]
+    lines.extend(f"          - {_yaml_string(item)}" for item in (acceptance or ["Primary happy path satisfies acceptance criteria."]))
+    lines.extend([
+        "        errorCases:",
+    ])
+    lines.extend(f"          - {_yaml_string(item)}" for item in (errors or ["Invalid input is rejected with a documented error."]))
+    lines.extend([
+        "      requestBody:",
+        "        required: true",
+        "        content:",
+        "          application/json:",
+        "            schema:",
+        f"              $ref: '#/components/schemas/{schema_prefix}Request'",
+        "      responses:",
+        f"        \"{success_status}\":",
+        "          description: Success response for the approved acceptance criteria",
+        "          content:",
+        "            application/json:",
+        "              schema:",
+        f"                $ref: '#/components/schemas/{schema_prefix}Response'",
+    ])
+    for status, description in error_statuses:
+        lines.extend([
+            f"        \"{status}\":",
+            f"          description: {_yaml_string(description)}",
+            "          content:",
+            "            application/json:",
+            "              schema:",
+            "                $ref: '#/components/schemas/ErrorResponse'",
+        ])
+    lines.extend([
+        "components:",
+        "  schemas:",
+        f"    {schema_prefix}Request:",
+        "      type: object",
+        "      additionalProperties: true",
+        f"    {schema_prefix}Response:",
+        "      type: object",
+        "      additionalProperties: true",
+        "    ErrorResponse:",
+        "      type: object",
+        "      required:",
+        "        - error_code",
+        "        - message",
+        "      properties:",
+        "        error_code:",
+        "          type: string",
+        "        message:",
+        "          type: string",
+        "",
+    ])
+    return "\n".join(lines)
+
+
+def _success_status(acceptance: list[str]) -> str:
+    joined = " ".join(acceptance)
+    match = re.search(r"\b(200|201|202|204)\b", joined)
+    return match.group(1) if match else "200"
+
+
+def _error_statuses(errors: list[str]) -> list[tuple[str, str]]:
+    if not errors:
+        return [("400", "Invalid input")]
+
+    statuses: dict[str, str] = {}
+    for error in errors:
+        lowered = error.lower()
+        if any(marker in lowered for marker in ("forbidden", "non-admin", "ownership", "wrong-workspace")):
+            status = "403"
+        elif any(marker in lowered for marker in ("unauthorized", "unknown user", "invalid password", "token")):
+            status = "401"
+        elif any(marker in lowered for marker in ("duplicate", "already", "conflict")):
+            status = "409"
+        elif "not found" in lowered:
+            status = "404"
+        elif any(marker in lowered for marker in ("rate", "too many", "throttle")):
+            status = "429"
+        else:
+            status = "400"
+        statuses.setdefault(status, error)
+    return sorted(statuses.items())
+
+
+def _schema_prefix(title: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9]+", " ", title).title().replace(" ", "")
+    return cleaned or "Feature"
+
+
+def _yaml_string(text: str) -> str:
+    return json.dumps(text)
 
 
 def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWrite:
@@ -195,14 +313,6 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
 
     test_files = sorted((path / "tests").glob("*.md")) if (path / "tests").exists() else []
     contract_files = sorted((path / "contracts").glob("*")) if (path / "contracts").exists() else []
-    lines = [
-        f"# Implementation Output: {path.name}",
-        "",
-        "Use this feature folder as the implementation context for Codex, Claude Code, or another coding agent.",
-        "",
-        "## Agent Input Artifacts",
-        "",
-    ]
     agent_artifacts = [
         "spec.md",
         "plan.md",
@@ -211,16 +321,40 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "checklists/spec-readiness.md",
         "technical-design.md",
     ]
-    lines.extend(f"- `{artifact}`" for artifact in agent_artifacts if (path / artifact).exists())
-    lines.extend(f"- `tests/{test.name}`" for test in test_files)
-    lines.extend(f"- `contracts/{contract.name}`" for contract in contract_files if contract.is_file())
+    approved_artifacts = [artifact for artifact in agent_artifacts if (path / artifact).exists()]
+    approved_artifacts.extend(f"tests/{test.name}" for test in test_files)
+    approved_artifacts.extend(f"contracts/{contract.name}" for contract in contract_files if contract.is_file())
+    handoff_metadata = _implementation_handoff_metadata(path, approved_artifacts)
+    lines = [
+        f"# Implementation Output: {path.name}",
+        "",
+        "SpecGuard stops at an approved implementation handoff. It does not invoke Codex, Claude Code, or another coding agent as an internal pipeline stage.",
+        "",
+        "Use this feature folder as external handoff context for a coding agent only after the machine-readable readiness status below is `ready`.",
+        "",
+        "## Machine-Readable Handoff",
+        "",
+        "```json",
+        *json.dumps(handoff_metadata, indent=2).splitlines(),
+        "```",
+        "",
+        "## Agent Input Artifacts",
+        "",
+    ]
+    lines.extend(f"- `{artifact}`" for artifact in approved_artifacts)
     lines.extend([
+        "",
+        "## Verification",
+        "",
+        f"- Kind: `{handoff_metadata['verification']['kind']}`",
+        f"- Artifact: `{handoff_metadata['verification']['artifact']}`",
+        f"- Command: `{handoff_metadata['verification']['command'] or 'not specified'}`",
         "",
         "## SpecGuard-Only Artifacts",
         "",
         "- `discovery.md` is for SpecGuard discovery and user refinement.",
         "- `readiness-review.md` and `readiness-review.json` are for SpecGuard adversarial validation.",
-        "- Coding agents should treat the agent input artifacts as the implementation basis after SpecGuard reports implementation-ready status.",
+        "- Coding agents should treat the agent input artifacts as the implementation basis only after SpecGuard reports READY.",
         "",
         "## Output Location",
         "",
@@ -233,7 +367,37 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "- Implement or preserve the behavior described in `tests/`.",
         "- Keep API shape compatible with files under `contracts/`.",
         "- When implementation reveals missing behavior, update the spec and rerun SpecGuard.",
+        "- Do not ask the coding agent to resolve Critical or Major readiness blockers by assumption.",
         "",
     ])
     output.write_text("\n".join(lines), encoding="utf-8")
     return ArtifactWrite(output, created=True)
+
+
+def _implementation_handoff_metadata(path: Path, approved_artifacts: list[str]) -> dict[str, object]:
+    report_path = path / "readiness-review.json"
+    report: dict[str, object] = {}
+    if report_path.exists():
+        try:
+            loaded = json.loads(report_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                report = loaded
+        except json.JSONDecodeError:
+            report = {}
+
+    readiness = report.get("readiness", {})
+    readiness_status = "unknown"
+    implementation_ready = False
+    if isinstance(readiness, dict):
+        readiness_status = str(readiness.get("status") or "unknown")
+        implementation_ready = bool(readiness.get("implementation_ready"))
+
+    return {
+        "schema_version": "0.1",
+        "implementation_boundary": "external_handoff",
+        "readiness_status": readiness_status,
+        "implementation_allowed": implementation_ready and readiness_status == "ready",
+        "readiness_report": "readiness-review.json" if report_path.exists() else None,
+        "approved_artifacts": approved_artifacts,
+        "verification": verification_metadata(path),
+    }
