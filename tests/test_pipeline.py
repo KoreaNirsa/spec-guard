@@ -760,6 +760,9 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
     assert payload["blocked"] is False
     assert any("technical design generator" in call.lower() for call in llm.calls)
     assert any("full SpecGuard spec package" in call for call in llm.calls)
+    assert any("Do not resolve contradictions by inventing behavior" in call for call in llm.calls)
+    assert any("mark the item as a blocker" in call for call in llm.calls)
+    assert not any("safest explicit design assumption" in call for call in llm.calls)
 
 
 def test_risk_todo_example_is_blocked_by_readiness_review(tmp_path: Path) -> None:
