@@ -15,6 +15,13 @@ from tools.ux import green, red
 
 READINESS_MINOR_READY_LIMIT = 5
 READINESS_REVIEW_MODES = {"initial", "verification"}
+GENERATED_ARTIFACT_NAMES = {
+    "readiness-review.md",
+    "readiness-review.json",
+    "implementation-output.md",
+    "grill.md",
+    "grill.json",
+}
 
 
 READINESS_PROMPT = """You are SpecGuard's readiness review board: a principal software architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.
@@ -88,7 +95,6 @@ def _review_artifacts(path: Path) -> list[ReviewArtifact]:
     ]
     preferred.extend(sorted((path / "checklists").glob("*.md")) if (path / "checklists").exists() else [])
 
-    excluded_names = {"readiness-review.md", "implementation-output.md"}
     seen: set[Path] = set()
     artifacts: list[ReviewArtifact] = []
     for candidate in preferred + sorted(path.rglob("*.md")):
@@ -96,7 +102,7 @@ def _review_artifacts(path: Path) -> list[ReviewArtifact]:
             continue
         seen.add(candidate)
         relative = candidate.relative_to(path)
-        if candidate.name in excluded_names:
+        if candidate.name in GENERATED_ARTIFACT_NAMES:
             continue
         if relative.parts and relative.parts[0] == "tests":
             continue
