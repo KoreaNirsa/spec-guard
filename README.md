@@ -70,14 +70,12 @@ PowerShell:
 
 ```powershell
 Copy-Item -Recurse -Force example\* specs\your-feature-name\
-python -m cli.specguard run specs\your-feature-name
 ```
 
 Bash:
 
 ```bash
 cp -R example/. specs/your-feature-name/
-python -m cli.specguard run specs/your-feature-name
 ```
 
 This exercises the same Codex-backed validation path that a real feature spec will use.
