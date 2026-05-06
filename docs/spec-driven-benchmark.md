@@ -191,6 +191,29 @@ The script creates temporary benchmark projects, invokes Codex for Spec Kit and 
 
 In the incomplete-spec cases, SpecGuard blocked the package before readiness review because validation found placeholder or incomplete technical-design content. In the fault-injected cases, the local readiness heuristic produced `not_ready` findings. This is different from a Codex-based SpecGuard Review, which would require running without `--no-llm` after configuring a Codex provider.
 
+### Why `--no-llm` Reduced the Exposed Defect Rate
+
+The local gate did not make generated code better. It reduced the exposed defect rate by preventing code generation from starting when the implementation input was already unsafe.
+
+That distinction is important:
+
+| Mechanism | What Happened |
+| --- | --- |
+| Spec Kit and OpenSpec | Weak specs were handed directly to Codex `gpt-5.5`; Codex produced runnable code; hidden contract checks found runtime defects. |
+| SpecGuard `--no-llm` gate | Weak specs were validated first; local checks returned `not_ready` or validation failure; no implementation was generated from those inputs. |
+
+In other words, the measured improvement is an exposure-control improvement:
+
+```text
+exposed_contract_defect_rate =
+  contract-defective implementations that reach runtime
+  / implementations generated from weak specs
+```
+
+For Spec Kit and OpenSpec, weak specs produced runnable implementations, so contract defects were exposed. For SpecGuard, the same weak specs were blocked before implementation, so no contract-defective implementation reached the runtime checker.
+
+This is a conservative result. It shows that even without LLM review, SpecGuard's deterministic and heuristic gate can catch a useful class of implementation blockers. It does not claim that local `--no-llm` review is as complete as a Codex-based SpecGuard Review.
+
 ### Weak-Spec Cases
 
 | Category | Case | Spec Problem |
@@ -325,3 +348,24 @@ Those follow-up runs would distinguish between two different claims:
 
 - "Clear specs are enough for strong models to generate correct code."
 - "When specs are incomplete or defective, SpecGuard reduces the chance that contract-defective code reaches implementation and review."
+
+### How Follow-Up Benchmarks Improve Confidence
+
+The recommended follow-up benchmarks would increase confidence in the current result, but they would not change what the current benchmark proves.
+
+The current benchmark supports a narrow claim:
+
+> SpecGuard's local gate can prevent a set of defective or incomplete Todo Task Service specs from becoming exposed contract-defective code.
+
+The follow-up benchmark would test broader claims:
+
+| Follow-Up Addition | Confidence Improvement |
+| --- | --- |
+| More domains | Reduces the chance that the result is specific to Todo-style ownership and deletion rules. |
+| Multiple runs per workflow | Measures variance across Codex generations and avoids over-reading a single run. |
+| Codex-based SpecGuard Review | Separates local-gate evidence from LLM-review evidence. |
+| Strict E2E regeneration | Measures whether SpecGuard can not only block weak specs, but also improve them until they become implementation-ready. |
+| PR drift review | Measures post-implementation contract conformance, not only pre-implementation readiness. |
+| False-positive tracking | Shows whether SpecGuard blocks only meaningful implementation risks or blocks too aggressively. |
+
+So yes: the follow-up plan would make the benchmark more trustworthy. The most important next step is to run a Codex `gpt-5.5` SpecGuard Review variant alongside the current `--no-llm` baseline, because that would directly answer whether LLM-backed SpecGuard catches more blockers or reduces false positives compared with the local gate.
