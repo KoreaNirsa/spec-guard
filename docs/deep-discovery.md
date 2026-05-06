@@ -33,9 +33,10 @@ Discovery
   -> SpecGuard Review
   -> TDD
   -> Contract Check
+  -> Implementation Handoff
 ```
 
-Discovery asks what should be understood before a spec and technical design harden. `specguard init` uses the answers to generate draft specs under `specs/`. SpecGuard Review later challenges the spec and technical design before tests, contracts, and implementation outputs are produced.
+Discovery asks what should be understood before a spec and technical design harden. `specguard init` uses the answers to generate draft specs under `specs/`. SpecGuard Review later challenges the spec and technical design before tests, contracts, and the implementation handoff are produced.
 
 ## Question Phases
 

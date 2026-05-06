@@ -3,7 +3,7 @@
 SpecGuard contributions must preserve the core workflow:
 
 ```text
-Discovery -> Spec Refinement -> Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Outputs
+Discovery -> Spec Refinement -> Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
 ## Required Workflow

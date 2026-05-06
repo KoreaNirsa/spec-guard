@@ -5,27 +5,49 @@ SpecGuard is not a code generator. It is a spec refinement and validation workfl
 The intended user experience is:
 
 ```text
-Discovery -> Draft Specs -> User Refinement -> Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
+Setup -> Discovery -> User Spec Refinement -> SpecGuard Run
+-> READY Implementation Handoff -> External AI Implementation
+-> GitHub PR -> SpecGuard PR Review
 ```
 
-After that, the user can run Codex, Claude Code, or another coding agent outside the SpecGuard pipeline against the approved handoff package.
+SpecGuard owns the spec validation path. Codex, Claude Code, or another coding agent owns the implementation after SpecGuard produces an approved handoff.
 
-## 0. Configure LLM Provider
+## 0. Setup
+
+Clone and install from the repository root:
+
+```bash
+git clone https://github.com/KoreaNirsa/spec-guard.git
+cd spec-guard
+python -m pip install -r requirements.txt
+```
+
+Optional editable install:
+
+```bash
+python -m pip install -e .
+```
 
 SpecGuard supports two LLM provider modes today:
 
 - `codex`: local Codex CLI installed on the machine.
 - `openai`: OpenAI Platform Responses API.
 
-Claude Code provider integration is planned later. For now, Claude Code should be used separately after SpecGuard produces an approved implementation handoff.
+Claude Code provider integration is not an internal SpecGuard provider today. Use Claude Code externally after SpecGuard writes the approved implementation handoff.
 
 Configure local Codex:
 
 ```bash
+codex login
 python -m cli.specguard auth setup --mode codex --model gpt-5.4
+python -m cli.specguard auth status
 ```
 
-Codex mode defaults to `gpt-5.4` when setup asks for a model. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in.
+Use `--skip-login` when Codex is already logged in and setup should not offer to launch `codex login`:
+
+```bash
+python -m cli.specguard auth setup --mode codex --model gpt-5.4 --skip-login
+```
 
 Configure OpenAI Platform:
 
@@ -40,6 +62,8 @@ python -m cli.specguard auth status
 python -m cli.specguard auth logout
 ```
 
+For OpenAI Platform mode, provide an API key through the configured environment variable or local ignored config. The default environment variable is `OPENAI_API_KEY`.
+
 ## 1. Init Runs Discovery
 
 Run:
@@ -50,15 +74,7 @@ python -m cli.specguard init my-feature
 
 If no provider is configured, interactive `init` offers to run provider setup first.
 
-In LLM mode, Discovery is a short guided conversation. SpecGuard shows each question immediately, includes a visible default, and waits for user input without blocking on an LLM response. The user answers naturally, presses Enter to accept a default, or types `done` / `complete` when the conversation is ready to become a draft spec. The configured LLM then synthesizes the draft `spec.md` from the guided answers.
-
-For OpenAI Platform mode, set an API key or store it in the local ignored config:
-
-```bash
-export OPENAI_API_KEY=...
-export SPECGUARD_LLM_MODEL=gpt-5.1
-python -m cli.specguard auth setup --mode openai
-```
+In LLM mode, Discovery is a guided conversation. SpecGuard asks for the feature goal, users, flows, data, dependencies, risks, out-of-scope boundaries, and acceptance evidence. The configured LLM then synthesizes draft artifacts from those answers.
 
 You can also run deterministic local Discovery without an LLM:
 
@@ -75,26 +91,15 @@ specs/my-feature/
 |-- plan.md
 |-- tasks.md
 |-- constitution.md
-`-- checklists/
+`-- checklists/spec-readiness.md
 ```
-
-The generated spec package follows a Spec Kit-inspired shape:
-
-- user scenarios and testing
-- functional requirements
-- acceptance criteria
-- error cases
-- key entities
-- out-of-scope boundaries
-- implementation plan
-- task breakdown
-- constitution and readiness checklist
 
 ## 2. User Refines The Spec
 
-The user reviews and edits:
+The generated package is a draft. Before running validation, the user should review and strengthen:
 
 ```text
+specs/my-feature/discovery.md
 specs/my-feature/spec.md
 specs/my-feature/plan.md
 specs/my-feature/tasks.md
@@ -102,25 +107,24 @@ specs/my-feature/constitution.md
 specs/my-feature/checklists/spec-readiness.md
 ```
 
-These are human-owned artifacts. SpecGuard can draft them, but it should not replace product or engineering judgment.
+The spec should contain real implementation input: requirements, acceptance criteria, API or UI expectations, data ownership, authorization rules, state transitions, error cases, non-goals, and verification expectations.
 
-The CLI intentionally reminds the user to review and strengthen the generated spec before continuing. The next command should be run only after the spec has been checked and edited.
+If the default Discovery answers are mostly unchanged, `run` can stop early and ask the user to edit the spec package first. This prevents a generic sample draft from being treated as implementation-ready.
 
-### Optional: Try The Authored Example Package
+## 3. Optional Example Specs
 
-The repository includes `example/`, a pre-run authored spec package. Treat it as the state after `init` has created draft files and a user has replaced those drafts with real development requirements.
+Use authored examples when you want to test SpecGuard behavior before writing a real feature spec.
 
-The package is for testing SpecGuard behavior, not for implementing SpecGuard itself. It uses the same Spec Kit-inspired structure expected from real feature planning:
+Quick local checks:
 
-```text
-example/
-|-- discovery.md
-|-- spec.md
-|-- plan.md
-|-- tasks.md
-|-- constitution.md
-`-- checklists/spec-readiness.md
+```bash
+python -m cli.specguard run examples/example --no-llm --no-follow-up
+python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
 ```
+
+The first example should pass. The risk example should remain blocked.
+
+To test the normal `init -> run` folder shape with authored example files:
 
 PowerShell:
 
@@ -138,9 +142,9 @@ cp -R example/. specs/your-feature-name/
 python -m cli.specguard run specs/your-feature-name --no-llm
 ```
 
-After this test, replace the copied files with your own feature's product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria.
+After this test, replace the copied files with your own feature's product and engineering intent.
 
-## 3. Run Builds The Implementation Basis
+## 4. Run Builds The Implementation Basis
 
 Run:
 
@@ -154,30 +158,11 @@ python -m cli.specguard run specs/my-feature
 python -m cli.specguard run specs/my-feature --force
 ```
 
-SpecGuard then performs:
+SpecGuard performs:
 
 ```text
 Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
-
-SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Handoff.
-
-Interactive refinement uses this loop:
-
-```text
-Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
-```
-
-The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
-
-Strict E2E mode automates that loop for LLM-enabled runs:
-
-```bash
-python -m cli.specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
-```
-
-Strict E2E records every review attempt and every spec regeneration in `strict-e2e-trace.json`. Regeneration uses the previous Readiness Findings as the required backlog, then reruns Verification Review. The final result is READY only when the normal readiness gate passes; otherwise strict E2E reports that the configured iteration limit was exhausted.
-Strict E2E does not treat markdown TDD scenarios alone as executable verification. Before implementation handoff, the package must include executable tests under `tests/` or an accepted `tests/verification-contract.md` that names the expected command or machine-verifiable artifact.
 
 Generated or reused artifacts:
 
@@ -188,54 +173,74 @@ specs/my-feature/
 |-- readiness-review.json
 |-- tests/
 |-- contracts/
-|-- strict-e2e-trace.json
 `-- implementation-output.md
 ```
 
-`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, the approved artifact list, and the expected verification command or accepted verification artifact for coding agents.
+SpecGuard Review inspects authored spec documents and generated technical design. It excludes generated review reports, implementation-output handoffs, and test scenario files from the review input.
 
-SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
-For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
+Readiness threshold:
 
-In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+- Critical: 0
+- Major: 0
+- Minor: 5 or fewer
 
-If a local Codex follow-up request times out, check `python -m cli.specguard auth status` and increase the timeout:
+Critical and Major findings block Test, Contract, and Implementation Handoff. Minor findings are allowed only when they do not hide missing requirements or implementation ambiguity.
 
-```bash
-python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
-```
+## 5. Iterate Until READY
 
-Use `--no-llm` only for deterministic local checks or CI examples:
-
-```bash
-python -m cli.specguard run specs/my-feature --no-llm
-```
-
-## 4. User Refines And Repeats
-
-If SpecGuard Review blocks the workflow, update:
+Interactive refinement uses this loop:
 
 ```text
-discovery.md
-spec.md
-plan.md
-tasks.md
-constitution.md
-checklists/spec-readiness.md
-technical-design.md
+Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
 ```
 
-Then run:
+When `run` returns NOT READY, the continuation menu can:
+
+- print the latest Readiness Findings;
+- regenerate `spec.md` from those findings;
+- automatically rerun Verification Review.
+
+The initial review is broad and adversarial. Verification Review checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
+
+Strict E2E mode automates this loop for LLM-enabled runs:
 
 ```bash
-python -m cli.specguard run specs/my-feature
+python -m cli.specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
 ```
 
-Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the SpecGuard Readiness Gate threshold is met.
+Strict E2E records every review attempt and regeneration in:
 
-## 5. Coding Agents Implement Later
+```text
+specs/my-feature/strict-e2e-trace.json
+```
 
-After SpecGuard passes, hand the implementation basis to Codex, Claude Code, or another coding agent outside the SpecGuard pipeline. SpecGuard does not invoke or supervise implementation while Critical or Major blockers remain.
+The final result is READY only when the normal readiness gate passes. Otherwise strict E2E reports that the configured iteration limit was exhausted.
+
+## 6. Contract And Verification Rules
+
+For API features, OpenAPI contracts must include at least one concrete path. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified.
+
+Generated contracts derive a first-pass operation, success response, documented error responses, request and response schemas, and `x-specguard-coverage` links from acceptance criteria and error cases.
+
+Non-API features can use:
+
+```text
+contracts/contract-exemption.md
+```
+
+The exemption must clearly state that an API contract is not applicable and include the reason.
+
+Strict E2E does not treat markdown TDD scenarios alone as executable verification. Before implementation handoff, the package must include executable tests under `tests/` or an accepted:
+
+```text
+tests/verification-contract.md
+```
+
+The verification contract must name the expected command or machine-verifiable artifact.
+
+## 7. External AI Implementation
+
+After SpecGuard reports READY, hand the implementation basis to Codex, Claude Code, or another coding agent outside the SpecGuard pipeline.
 
 Coding agents should focus on:
 
@@ -251,16 +256,6 @@ contracts/
 implementation-output.md
 ```
 
-Coding agents should not treat these as implementation input:
-
-```text
-discovery.md
-readiness-review.md
-readiness-review.json
-```
-
-Those files are SpecGuard validation artifacts.
-
 Generated application code should go under:
 
 ```text
@@ -275,18 +270,55 @@ develop/react/
 develop/fastapi/
 ```
 
-## 6. Advisory PR Review
+SpecGuard does not invoke or supervise implementation while Critical or Major blockers remain.
 
-After external implementation opens a pull request, the optional `SpecGuard PR Review` workflow can run a read-only Codex-compatible review against the approved spec package and PR diff.
+## 8. GitHub PR And SpecGuard PR Review
+
+After external implementation, the user opens a GitHub pull request with the completed code.
+
+The optional `SpecGuard PR Review` workflow runs a read-only Codex-compatible review against the approved spec package and PR diff. It asks `SpecGuard PR Reviewer` to focus on spec conformance, security, reliability, API contracts, data ownership, testability, and operational risk.
+
+Default GitHub Actions credential:
+
+```text
+SPECGUARD_OPENAI_API_KEY
+```
+
+Optional repository variables:
+
+```text
+SPECGUARD_PR_REVIEW_MODEL
+SPECGUARD_REVIEW_SPEC_PATHS
+```
+
+`SPECGUARD_REVIEW_SPEC_PATHS` is important when the PR changes only implementation files under `develop/<stack>/`. Without changed files under `specs/`, the reviewer cannot infer the correct spec package unless this variable is set. It accepts comma-separated paths, for example:
+
+```text
+specs/billing-export,specs/team-invites
+```
 
 The workflow:
 
 - checks credentials before assembling review context;
-- skips safely in advisory mode when `SPECGUARD_OPENAI_API_KEY` or `SPECGUARD_PR_REVIEW_COMMAND` is unavailable;
-- refuses to invoke Codex when the selected spec package is NOT READY or stale;
+- skips safely in advisory mode when `SPECGUARD_OPENAI_API_KEY` is unavailable;
+- refuses to invoke the reviewer when the selected spec package is NOT READY or stale;
 - sends approved artifacts, tests, contracts, `implementation-output.md`, and the PR diff to the reviewer prompt;
-- asks `SpecGuard PR Reviewer` to focus on spec conformance, security, reliability, API contracts, data ownership, testability, and operational risk;
 - updates one PR comment with a stable hidden marker instead of creating duplicates;
 - uses workflow concurrency to cancel stale review runs for the same PR.
 
 The first version is advisory. Maintainers can make the check required later after confirming credential handling, bot identity, and review quality for their repository.
+
+## 9. PR Readiness Gate
+
+Pull request CI includes a stable required-check candidate named:
+
+```text
+SpecGuard Readiness Gate
+```
+
+It discovers changed SpecGuard packages under `specs/`, fails when a changed package is NOT READY, and fails when source artifacts are stale relative to `readiness-review.json`.
+
+This gate is distinct from `SpecGuard PR Review`:
+
+- `SpecGuard Readiness Gate` checks whether changed spec packages are READY before merge.
+- `SpecGuard PR Review` checks whether implementation code appears aligned with an approved spec package.
