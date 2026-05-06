@@ -35,6 +35,8 @@ specguard auth setup --mode codex --model gpt-5.4
 specguard auth status
 ```
 
+Codex mode uses a 600-second request timeout by default because `run` can ask Codex to review the full spec package. `auth status` confirms the saved configuration and local Codex command availability; the first full provider request happens during `init`, `run`, or follow-up regeneration.
+
 If Codex is already logged in and you do not want setup to offer `codex login`:
 
 ```bash
