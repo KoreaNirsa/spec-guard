@@ -154,6 +154,20 @@ SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
 
 The workflow is advisory by default. If credentials are unavailable, if the selected spec package is NOT READY, or if the readiness report is stale, the workflow skips or reports the blocker instead of invoking the reviewer.
 
+## Benchmark Summary
+
+A controlled benchmark used Codex `gpt-5.5` for code generation and SpecGuard's local no-LLM gate for weak-spec blocking.
+
+With a complete and explicit spec, all workflows generated code that passed the hidden contract checks. With defective or incomplete specs, Spec Kit and OpenSpec still generated runnable Codex code, but every generated implementation exposed contract defects. SpecGuard blocked the same defective inputs before implementation using local deterministic and heuristic validation.
+
+| Workflow | Generated code from defective specs | Average exposed contract defect rate | Blocked before implementation |
+| --- | ---: | ---: | ---: |
+| Spec Kit | 6 | 77.2% | 0/6 |
+| OpenSpec | 6 | 63.6% | 0/6 |
+| SpecGuard | 0 | 0% exposed | 6/6 |
+
+Full methodology, case breakdown, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
+
 ## Core Value
 
 AI coding works best when the implementation input is explicit. SpecGuard focuses on the parts that often fail before code is written:
@@ -227,6 +241,7 @@ Use the example flow above when you want to exercise SpecGuard with the configur
 
 - [Workflow Guide](docs/workflow.md)
 - [Discovery Guide](docs/deep-discovery.md)
+- [Spec-Driven Benchmark](docs/spec-driven-benchmark.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## License
