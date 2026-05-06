@@ -83,10 +83,29 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
     assert init_result.returncode == 0
     assert (tmp_path / "specs" / "pip-smoke" / "spec.md").exists()
 
-    run_result = _run(
-        [str(specguard), "run", "specs/pip-smoke", "--no-llm", "--no-follow-up"],
+    copy_without_force = _run(
+        [str(specguard), "example", "copy", "pip-smoke"],
         cwd=tmp_path,
         check=False,
     )
-    assert run_result.returncode == 1
-    assert "appears to be a mostly default init draft" in run_result.stdout
+    assert copy_without_force.returncode == 1
+    assert "would overwrite existing files" in copy_without_force.stdout
+
+    copy_result = _run(
+        [str(specguard), "example", "copy", "pip-smoke", "--force"],
+        cwd=tmp_path,
+    )
+    assert copy_result.returncode == 0
+    assert "Copied authored example specs" in copy_result.stdout
+    assert (tmp_path / "specs" / "pip-smoke" / "contracts" / "openapi.yaml").exists()
+    assert (tmp_path / "specs" / "pip-smoke" / "tests" / "team-invite.test.md").exists()
+    assert "Feature Specification: Team Invite" in (
+        tmp_path / "specs" / "pip-smoke" / "spec.md"
+    ).read_text(encoding="utf-8")
+
+    run_result = _run(
+        [str(specguard), "run", "specs/pip-smoke", "--no-llm", "--no-follow-up"],
+        cwd=tmp_path,
+    )
+    assert run_result.returncode == 0
+    assert "External AI implementation handoff ready" in run_result.stdout

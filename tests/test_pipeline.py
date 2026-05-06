@@ -714,7 +714,7 @@ def test_llm_discovery_uses_fast_guided_questions_for_conversation(tmp_path: Pat
     assert "What problem should these specs solve?" in "".join(output)
     assert "Empty answer recorded" not in "".join(output)
     assert any("Review and refine generated specs under specs/" in step for step in result.next_steps)
-    assert any("python -m cli.specguard run specs" in step for step in result.next_steps)
+    assert any("specguard run specs" in step for step in result.next_steps)
 
 
 def test_llm_discovery_empty_answer_accepts_visible_default() -> None:

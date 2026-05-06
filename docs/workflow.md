@@ -22,7 +22,7 @@ Claude Code provider integration is planned later. For now, Claude Code should b
 Configure local Codex:
 
 ```bash
-python -m cli.specguard auth setup --mode codex --model gpt-5.4
+specguard auth setup --mode codex --model gpt-5.4
 ```
 
 Codex mode defaults to `gpt-5.4` when setup asks for a model. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in.
@@ -30,14 +30,14 @@ Codex mode defaults to `gpt-5.4` when setup asks for a model. Use `--model` to m
 Configure OpenAI Platform:
 
 ```bash
-python -m cli.specguard auth setup --mode openai
+specguard auth setup --mode openai
 ```
 
 Inspect or reset configuration:
 
 ```bash
-python -m cli.specguard auth status
-python -m cli.specguard auth logout
+specguard auth status
+specguard auth logout
 ```
 
 ## 1. Init Runs Discovery
@@ -45,7 +45,7 @@ python -m cli.specguard auth logout
 Run:
 
 ```bash
-python -m cli.specguard init my-feature
+specguard init my-feature
 ```
 
 If no provider is configured, interactive `init` offers to run provider setup first.
@@ -57,13 +57,13 @@ For OpenAI Platform mode, set an API key or store it in the local ignored config
 ```bash
 export OPENAI_API_KEY=...
 export SPECGUARD_LLM_MODEL=gpt-5.1
-python -m cli.specguard auth setup --mode openai
+specguard auth setup --mode openai
 ```
 
 You can also run deterministic local Discovery without an LLM:
 
 ```bash
-python -m cli.specguard init my-feature --no-llm
+specguard init my-feature --no-llm
 ```
 
 SpecGuard creates draft specs under `specs/`:
@@ -108,12 +108,12 @@ The CLI intentionally reminds the user to review and strengthen the generated sp
 
 ### Optional: Try The Authored Example Package
 
-The repository includes `example/`, a pre-run authored spec package. Treat it as the state after `init` has created draft files and a user has replaced those drafts with real development requirements.
+SpecGuard includes a packaged authored example spec package. Treat it as the state after `init` has created draft files and a user has replaced those drafts with real development requirements.
 
 The package is for testing SpecGuard behavior, not for implementing SpecGuard itself. It uses the same Spec Kit-inspired structure expected from real feature planning:
 
 ```text
-example/
+packaged example
 |-- discovery.md
 |-- spec.md
 |-- plan.md
@@ -122,36 +122,26 @@ example/
 `-- checklists/spec-readiness.md
 ```
 
-PowerShell:
-
-```powershell
-python -m cli.specguard init your-feature-name
-Copy-Item -Recurse -Force example\* specs\your-feature-name\
-python -m cli.specguard run specs\your-feature-name --no-llm
-```
-
-Bash:
-
 ```bash
-python -m cli.specguard init your-feature-name
-cp -R example/. specs/your-feature-name/
-python -m cli.specguard run specs/your-feature-name --no-llm
+specguard init your-feature-name --no-llm
+specguard example copy your-feature-name --force
+specguard run specs/your-feature-name --no-llm
 ```
 
-After this test, replace the copied files with your own feature's product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria.
+After this test, replace the copied example files with your own feature's product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria.
 
 ## 3. Run Builds The Implementation Basis
 
 Run:
 
 ```bash
-python -m cli.specguard run specs/my-feature
+specguard run specs/my-feature
 ```
 
 `run` uses the configured LLM provider for Technical Design and SpecGuard Review. Use `--force` when regenerated derived artifacts are needed:
 
 ```bash
-python -m cli.specguard run specs/my-feature --force
+specguard run specs/my-feature --force
 ```
 
 SpecGuard then performs:
@@ -175,7 +165,7 @@ Before a regenerated `spec.md` is applied, SpecGuard runs an Intent Preservation
 Strict E2E mode automates that loop for LLM-enabled runs:
 
 ```bash
-python -m cli.specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
+specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
 ```
 
 Strict E2E records every review attempt and every spec regeneration in `strict-e2e-trace.json`. Regeneration uses the previous Readiness Findings as the required backlog, checks intent preservation, then reruns Verification Review. The final result is READY only when the normal readiness gate passes; otherwise strict E2E reports that the configured iteration limit was exhausted or that intent preservation blocked automatic overwrite.
@@ -201,16 +191,16 @@ For API features, OpenAPI contracts must include at least one concrete path. Gen
 
 In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If Intent Preservation Check fails, the regenerated text is saved as `spec.proposed.md` and Verification Review is skipped until the user resolves the diff. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
-If a local Codex follow-up request times out, check `python -m cli.specguard auth status` and increase the timeout:
+If a local Codex follow-up request times out, check `specguard auth status` and increase the timeout:
 
 ```bash
-python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login
+specguard auth setup --mode codex --timeout 240 --skip-login
 ```
 
 Use `--no-llm` only for deterministic local checks or CI examples:
 
 ```bash
-python -m cli.specguard run specs/my-feature --no-llm
+specguard run specs/my-feature --no-llm
 ```
 
 ## 4. User Refines And Repeats
@@ -230,7 +220,7 @@ technical-design.md
 Then run:
 
 ```bash
-python -m cli.specguard run specs/my-feature
+specguard run specs/my-feature
 ```
 
 Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the SpecGuard Readiness Gate threshold is met.

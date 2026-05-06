@@ -341,7 +341,7 @@ def _tasks_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         "",
         "## Design And Validation",
         "",
-        f"- [ ] Run `python -m cli.specguard run specs/{feature_slug} --force`.",
+        f"- [ ] Run `specguard run specs/{feature_slug} --force`.",
         "- [ ] Convert every Critical or Major Readiness Finding into a spec, plan, task, or design update.",
         "- [ ] Re-run SpecGuard until SpecGuard Review reports implementation-ready status.",
         "",
@@ -508,5 +508,5 @@ def initialize_specs(root: Path, answers: dict[str, str], force: bool = False, l
 
     result.add_info(f"Prepared implementation output root: {develop_root}")
     result.add_next_step("Review and refine generated specs under specs/: discovery, spec, plan, tasks, constitution, and checklists.")
-    result.add_next_step("After spec review, run: python -m cli.specguard run specs (or target one feature with specs/<feature-name>)")
+    result.add_next_step("After spec review, run: specguard run specs (or target one feature with specs/<feature-name>)")
     return result

@@ -158,7 +158,7 @@ def _validate_not_default_draft(feature_dir: Path, result: CheckResult) -> None:
             "Edit the spec package with real feature goals, users, flows, data, risks, and acceptance evidence before running SpecGuard."
         )
         result.add_next_step(f"Edit the generated spec package first: {feature_dir / 'spec.md'}")
-        result.add_next_step(f"Then rerun: python -m cli.specguard run {feature_dir}")
+        result.add_next_step(f"Then rerun: specguard run {feature_dir}")
 
 
 def validate_spec_basis(path: Path) -> CheckResult:
