@@ -177,6 +177,7 @@ python -m cli.specguard run specs/my-feature --strict-e2e --strict-max-iteration
 ```
 
 Strict E2E records every review attempt and every spec regeneration in `strict-e2e-trace.json`. Regeneration uses the previous Readiness Findings as the required backlog, then reruns Verification Review. The final result is READY only when the normal readiness gate passes; otherwise strict E2E reports that the configured iteration limit was exhausted.
+Strict E2E does not treat markdown TDD scenarios alone as executable verification. Before implementation handoff, the package must include executable tests under `tests/` or an accepted `tests/verification-contract.md` that names the expected command or machine-verifiable artifact.
 
 Generated or reused artifacts:
 
@@ -191,7 +192,7 @@ specs/my-feature/
 `-- implementation-output.md
 ```
 
-`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, and the approved artifact list for coding agents.
+`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, the approved artifact list, and the expected verification command or accepted verification artifact for coding agents.
 
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.

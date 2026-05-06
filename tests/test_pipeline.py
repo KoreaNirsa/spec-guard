@@ -1052,6 +1052,7 @@ def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> N
 
 def test_strict_e2e_converges_after_spec_regeneration(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
+    feature.joinpath("tests", "test_feature.py").write_text("def test_owner_scope_contract():\n    assert True\n", encoding="utf-8")
     llm = StrictE2EConvergingLLM()
 
     result = run_strict_e2e_pipeline(feature, llm, max_iterations=2)
@@ -1066,6 +1067,50 @@ def test_strict_e2e_converges_after_spec_regeneration(tmp_path: Path) -> None:
     assert "Owner scope missing" in llm.verification_inputs[0]
     assert "Previous SpecGuard Review Findings" in llm.verification_inputs[0]
     assert "scope every request to the authenticated owner" in feature.joinpath("spec.md").read_text(encoding="utf-8")
+
+
+def test_strict_e2e_fails_markdown_only_verification(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    assert not result.ok
+    assert any("executable verification artifacts" in message for message in result.messages)
+    assert not feature.joinpath("implementation-output.md").exists()
+
+
+def test_strict_e2e_accepts_executable_verification(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("tests", "test_feature.py").write_text("def test_feature_contract():\n    assert True\n", encoding="utf-8")
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    metadata = read_handoff_metadata(feature)
+    assert result.ok
+    assert metadata["verification"]["kind"] == "executable"
+    assert metadata["verification"]["command"] == "python -m pytest tests/test_feature.py"
+
+
+def test_strict_e2e_accepts_verification_contract(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("tests", "verification-contract.md").write_text(
+        "\n".join([
+            "# Verification Contract",
+            "",
+            "Status: accepted",
+            "Command: make verify-feature",
+            "Artifact: CI job `verify-feature`",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    metadata = read_handoff_metadata(feature)
+    assert result.ok
+    assert metadata["verification"]["kind"] == "accepted_contract"
+    assert metadata["verification"]["command"] == "make verify-feature"
 
 
 def test_strict_e2e_fails_after_max_iterations(tmp_path: Path) -> None:

@@ -29,7 +29,7 @@ def run_strict_e2e_pipeline(
         "final": {},
     }
 
-    attempt = run_pipeline(path, llm_client=llm_client, force=force, review_mode="initial")
+    attempt = run_pipeline(path, llm_client=llm_client, force=force, review_mode="initial", strict_verification=True)
     _merge_messages(result, attempt)
     _record_attempt(trace, path, 0, "initial", attempt)
     if attempt.ok:
@@ -55,7 +55,7 @@ def run_strict_e2e_pipeline(
                 f"Strict E2E iteration {iteration}: regenerated {spec_path} from {len(report.get('issues', []))} readiness finding(s)."
             )
 
-        attempt = run_pipeline(path, llm_client=llm_client, force=True, review_mode="verification")
+        attempt = run_pipeline(path, llm_client=llm_client, force=True, review_mode="verification", strict_verification=True)
         _merge_messages(result, attempt)
         _record_attempt(trace, path, iteration, "verification", attempt)
         if attempt.ok:
