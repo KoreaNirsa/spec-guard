@@ -19,6 +19,7 @@ GENERATED_ARTIFACT_NAMES = {
     "readiness-review.md",
     "readiness-review.json",
     "implementation-output.md",
+    "spec.proposed.md",
     "grill.md",
     "grill.json",
 }
