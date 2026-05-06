@@ -191,6 +191,8 @@ Critical and Major findings block implementation. Minor findings are allowed onl
 
 CLI output highlights READY states in green and NOT READY states in red.
 
+Pull request CI includes a stable required-check candidate named `SpecGuard Readiness Gate`. It inspects changed packages under `specs/`, fails when a changed package is NOT READY, and fails when source artifacts are stale relative to `readiness-review.json` or changed without an updated readiness report. Repositories that want merge-time enforcement should add `SpecGuard Readiness Gate` to branch protection or ruleset required status checks.
+
 ## CLI Reference
 
 ```bash
