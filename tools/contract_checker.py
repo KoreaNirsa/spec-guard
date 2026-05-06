@@ -48,15 +48,19 @@ def _minimal_yaml(content: str) -> dict[str, object]:
             stack.pop()
 
         parent = stack[-1][1]
-        if value == "{}":
-            parent[key] = {}
-        elif value:
-            parent[key] = value
+        if value:
+            parent[key] = _minimal_yaml_value(value)
         else:
             child: dict[str, object] = {}
             parent[key] = child
             stack.append((indent, child))
     return data
+
+
+def _minimal_yaml_value(value: str) -> object:
+    if value == "{}":
+        return {}
+    return value
 
 
 def _validate_openapi(contract: Path, data: dict[str, object], result: CheckResult) -> None:

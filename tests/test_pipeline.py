@@ -10,7 +10,7 @@ import sys
 import time
 from pathlib import Path
 
-from tools.contract_checker import check_contracts
+from tools.contract_checker import _minimal_yaml, check_contracts
 from tools.discovery_engine import answers_from_args, collect_llm_answers, initialize_specs
 from tools.readiness_engine import run_readiness_review
 from tools.llm_client import (
@@ -1200,3 +1200,17 @@ def test_contract_checker_fallback_accepts_generated_empty_paths(tmp_path: Path,
     result = check_contracts(feature)
 
     assert result.ok
+
+
+def test_minimal_yaml_parser_reads_inline_empty_map() -> None:
+    data = _minimal_yaml(
+        "\n".join([
+            "openapi: 3.1.0",
+            "info:",
+            "  title: Feature API",
+            "  version: 0.1.0",
+            "paths: {}",
+        ])
+    )
+
+    assert data["paths"] == {}
