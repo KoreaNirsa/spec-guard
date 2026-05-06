@@ -28,12 +28,6 @@ python -m pip install -r requirements.txt
 
 ### 2. Configure Codex
 
-Install the Codex CLI and log in first if needed:
-
-```bash
-codex login
-```
-
 Then configure SpecGuard to use local Codex:
 
 ```bash
@@ -47,11 +41,6 @@ If Codex is already logged in and you do not want setup to offer `codex login`:
 python -m cli.specguard auth setup --mode codex --model gpt-5.4 --skip-login
 ```
 
-OpenAI Platform mode is also supported:
-
-```bash
-python -m cli.specguard auth setup --mode openai
-```
 
 ### 3. Create A Feature Spec
 
@@ -80,7 +69,6 @@ This step assumes Codex login and SpecGuard auth setup already succeeded in step
 PowerShell:
 
 ```powershell
-python -m cli.specguard init your-feature-name
 Copy-Item -Recurse -Force example\* specs\your-feature-name\
 python -m cli.specguard run specs\your-feature-name
 ```
@@ -88,7 +76,6 @@ python -m cli.specguard run specs\your-feature-name
 Bash:
 
 ```bash
-python -m cli.specguard init your-feature-name
 cp -R example/. specs/your-feature-name/
 python -m cli.specguard run specs/your-feature-name
 ```
