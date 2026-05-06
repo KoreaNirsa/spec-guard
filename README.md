@@ -26,12 +26,6 @@ cd spec-guard
 python -m pip install -r requirements.txt
 ```
 
-Optional, if you want the `specguard` console command in addition to `python -m cli.specguard`:
-
-```bash
-python -m pip install -e .
-```
-
 ### 2. Configure Codex
 
 Install the Codex CLI and log in first if needed:
