@@ -803,6 +803,24 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     assert {"discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md", "technical-design.md"} <= reviewed_paths
 
 
+def test_readiness_excludes_current_and_legacy_generated_review_artifacts(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    stale_generated_text = "# Generated report\n\nStale todo delete finding from an older run.\n"
+    feature.joinpath("readiness-review.md").write_text(stale_generated_text, encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text(stale_generated_text, encoding="utf-8")
+    feature.joinpath("grill.md").write_text(stale_generated_text, encoding="utf-8")
+    feature.joinpath("grill.json").write_text('{"issues": ["stale todo delete finding"]}\n', encoding="utf-8")
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
+    assert result.ok
+    assert {"readiness-review.md", "implementation-output.md", "grill.md", "grill.json"}.isdisjoint(reviewed_paths)
+    assert payload["summary"]["critical"] == 0
+    assert payload["summary"]["major"] == 0
+
+
 def test_readiness_blocks_when_minor_findings_exceed_readiness_threshold(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 
