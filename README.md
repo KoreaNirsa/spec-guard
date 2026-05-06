@@ -81,23 +81,14 @@ For real work, this is where the user writes the actual development spec. Streng
 
 ### 4. Try The Example Specs
 
-Users who only want to test SpecGuard can run the authored examples without creating a real feature:
-
-```bash
-python -m cli.specguard run examples/example --no-llm --no-follow-up
-python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
-```
-
-The first example should pass. The risk example should remain blocked.
-
-If you want to test the normal `init -> run` folder shape with example content:
+This step assumes Codex login and SpecGuard auth setup already succeeded in step 2. Use it when you want to test the normal `init -> run` flow with an authored example spec package before writing your own feature spec.
 
 PowerShell:
 
 ```powershell
 python -m cli.specguard init your-feature-name
 Copy-Item -Recurse -Force example\* specs\your-feature-name\
-python -m cli.specguard run specs\your-feature-name --no-llm
+python -m cli.specguard run specs\your-feature-name
 ```
 
 Bash:
@@ -105,8 +96,10 @@ Bash:
 ```bash
 python -m cli.specguard init your-feature-name
 cp -R example/. specs/your-feature-name/
-python -m cli.specguard run specs/your-feature-name --no-llm
+python -m cli.specguard run specs/your-feature-name
 ```
+
+This exercises the same Codex-backed validation path that a real feature spec will use.
 
 ### 5. Run And Iterate Until READY
 
@@ -162,24 +155,20 @@ After implementation, open a PR in your GitHub repository with the completed cod
 
 The optional `SpecGuard PR Review` workflow compares the approved spec package to the PR diff and posts one advisory PR comment headed `SpecGuard PR Reviewer`.
 
-To enable the default GitHub Actions path, add this repository secret:
+To enable the default GitHub Actions path, add this repository secret in GitHub repository settings:
 
 ```text
-SPECGUARD_OPENAI_API_KEY
+SPECGUARD_OPENAI_API_KEY=sk-...
 ```
 
-Optional repository variables:
+Add optional repository variables when you want to choose the review model or force the reviewer to use a specific spec package:
 
 ```text
-SPECGUARD_PR_REVIEW_MODEL
-SPECGUARD_REVIEW_SPEC_PATHS
+SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
+SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
 ```
 
-Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only `develop/<stack>/` files and does not modify files under `specs/`. Example:
-
-```text
-specs/your-feature-name
-```
+`SPECGUARD_OPENAI_API_KEY` must be stored as a GitHub Actions secret, not committed to the repository. Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only `develop/<stack>/` files and does not modify files under `specs/`.
 
 The workflow is advisory by default. If credentials are unavailable, if the selected spec package is NOT READY, or if the readiness report is stale, the workflow skips or reports the blocker instead of invoking the reviewer.
 
@@ -250,12 +239,7 @@ Run tests:
 python -m pytest
 ```
 
-Run local example checks:
-
-```bash
-python -m cli.specguard run examples/example --no-llm --no-follow-up
-python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
-```
+Use the example flow above when you want to exercise SpecGuard with the configured Codex provider.
 
 ## Documentation
 
