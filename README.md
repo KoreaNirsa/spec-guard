@@ -2,9 +2,10 @@
 
 # SpecGuard
 
-SpecGuard is a validation-first workflow for AI-assisted software development.
+SpecGuard is a Validation-First Workflow (VFW) for AI-assisted development.
+It turns specs into reviewed, testable, implementation-ready packages before AI coding begins.
 
-It is not a prompt-to-code generator. SpecGuard helps you turn an idea into a reviewed, testable, implementation-ready spec package before an external Codex, Claude Code, or another coding agent writes application code.
+It is not a prompt-to-code generator. SpecGuard helps you prepare an approved spec package before an external Codex, Claude Code, or another coding agent writes application code.
 
 ```text
 Discovery -> Spec Package -> Technical Design -> SpecGuard Review
