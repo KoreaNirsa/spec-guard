@@ -1,6 +1,6 @@
 [project]
 name = "spec-guard"
-version = "0.1.0"
+version = "0.1.1"
 description = "Spec-driven guardrails for AI development."
 readme = "README.md"
 requires-python = ">=3.11"
