@@ -10,6 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.result import CheckResult
 
 
+CONTRACT_EXEMPTION_NAME = "contract-exemption.md"
+
+
 def _read_yaml_like(path: Path) -> dict[str, object]:
     try:
         import yaml
@@ -36,6 +39,14 @@ def _has_openapi_paths(data: dict[str, object]) -> bool:
 
 def has_openapi_paths(contract: Path) -> bool:
     return _has_openapi_paths(_read_yaml_like(contract))
+
+
+def has_contract_exemption(contracts_dir: Path) -> bool:
+    exemption = contracts_dir / CONTRACT_EXEMPTION_NAME
+    if not exemption.exists():
+        return False
+    text = exemption.read_text(encoding="utf-8").lower()
+    return "not applicable" in text and "reason" in text
 
 
 def _minimal_yaml(content: str) -> dict[str, object]:
@@ -113,7 +124,19 @@ def _validate_openapi(contract: Path, data: dict[str, object], result: CheckResu
             if not isinstance(operation, dict) or not isinstance(operation.get("responses"), dict):
                 result.add_error(f"{contract} operation must define responses: {method.upper()} {path_name}")
                 valid = False
+                continue
+            responses = operation["responses"]
+            if not _has_response_status(responses, lambda status: status.startswith("2")):
+                result.add_error(f"{contract} operation must define a success response: {method.upper()} {path_name}")
+                valid = False
+            if not _has_response_status(responses, lambda status: status.startswith(("4", "5"))):
+                result.add_error(f"{contract} operation must define a documented error response: {method.upper()} {path_name}")
+                valid = False
     return valid
+
+
+def _has_response_status(responses: dict[str, object], predicate) -> bool:
+    return any(predicate(str(status).strip('"')) for status in responses)
 
 
 def check_contracts(path: Path) -> CheckResult:
@@ -125,7 +148,12 @@ def check_contracts(path: Path) -> CheckResult:
 
     contract_files = list(contracts_dir.glob("*.yaml")) + list(contracts_dir.glob("*.yml")) + list(contracts_dir.glob("*.json"))
     if not contract_files:
-        result.add_info(f"No contract files found in: {contracts_dir}")
+        if has_contract_exemption(contracts_dir):
+            result.add_info(f"Accepted non-API contract exemption: {contracts_dir / CONTRACT_EXEMPTION_NAME}")
+        else:
+            result.add_error(
+                f"No contract files found in: {contracts_dir}; add an API contract or {CONTRACT_EXEMPTION_NAME} with a reason"
+            )
         return result
 
     for contract in contract_files:

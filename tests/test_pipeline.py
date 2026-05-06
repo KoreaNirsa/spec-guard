@@ -801,7 +801,7 @@ def test_codex_error_parser_reads_escaped_raw_json_string() -> None:
     assert _extract_codex_error_text(f"ERROR: {raw}") == "The escaped model error is readable."
 
 
-def test_run_blocks_generated_empty_contract_until_paths_defined(tmp_path: Path) -> None:
+def test_run_generates_spec_derived_contract_from_spec_basis(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "profile-update"
     feature.mkdir(parents=True)
     feature.joinpath("discovery.md").write_text(
@@ -849,14 +849,20 @@ def test_run_blocks_generated_empty_contract_until_paths_defined(tmp_path: Path)
 
     result = run_pipeline(feature)
 
-    assert not result.ok
+    assert result.ok
     assert feature.joinpath("technical-design.md").exists()
     assert feature.joinpath("tests", "profile-update.test.md").exists()
     contract = feature.joinpath("contracts", "openapi.yaml")
     assert contract.exists()
-    assert "x-specguard-blocker" in contract.read_text(encoding="utf-8")
-    assert not feature.joinpath("implementation-output.md").exists()
-    assert any("at least one API path" in message for message in result.messages)
+    contract_text = contract.read_text(encoding="utf-8")
+    assert "paths:" in contract_text
+    assert "/profile-update:" in contract_text
+    assert "x-specguard-coverage:" in contract_text
+    assert "Valid profile updates are saved." in contract_text
+    assert "Invalid profile data" in contract_text
+    assert "requestBody:" in contract_text
+    assert "ErrorResponse:" in contract_text
+    assert feature.joinpath("implementation-output.md").exists()
 
 
 def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
@@ -1421,6 +1427,53 @@ def test_contract_checker_rejects_empty_openapi_paths(tmp_path: Path) -> None:
 
     assert not result.ok
     assert any("at least one API path" in message for message in result.messages)
+
+
+def test_contract_checker_rejects_operations_without_error_responses(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("contracts", "openapi.yaml").write_text(
+        "\n".join([
+            "openapi: 3.1.0",
+            "info:",
+            "  title: Feature API",
+            "  version: 0.1.0",
+            "paths:",
+            "  /feature:",
+            "    post:",
+            "      responses:",
+            "        \"200\":",
+            "          description: Feature accepted",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = check_contracts(feature)
+
+    assert not result.ok
+    assert any("documented error response" in message for message in result.messages)
+
+
+def test_contract_checker_accepts_non_api_exemption(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    contracts = feature / "contracts"
+    contracts.mkdir(parents=True)
+    contracts.joinpath("contract-exemption.md").write_text(
+        "\n".join([
+            "# Contract Exemption",
+            "",
+            "Status: accepted",
+            "Contract: not applicable",
+            "Reason: This feature produces an internal batch report and has no API boundary.",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = check_contracts(feature)
+
+    assert result.ok
+    assert any("Accepted non-API contract exemption" in message for message in result.messages)
 
 
 def test_contract_checker_fallback_rejects_empty_openapi_paths(tmp_path: Path, monkeypatch) -> None:

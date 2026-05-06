@@ -5,7 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from tools.contract_checker import has_openapi_paths
+from tools.contract_checker import CONTRACT_EXEMPTION_NAME, has_contract_exemption, has_openapi_paths
 
 
 @dataclass(frozen=True)
@@ -173,6 +173,9 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
 def ensure_contract(path: Path, force: bool = False) -> ArtifactWrite:
     contracts_dir = path / "contracts"
     contracts_dir.mkdir(parents=True, exist_ok=True)
+    exemption = contracts_dir / CONTRACT_EXEMPTION_NAME
+    if has_contract_exemption(contracts_dir):
+        return ArtifactWrite(exemption, created=False)
     output = contracts_dir / "openapi.yaml"
     if output.exists():
         if not force or _has_concrete_contract_paths(output):
@@ -180,15 +183,7 @@ def ensure_contract(path: Path, force: bool = False) -> ArtifactWrite:
 
     spec = (path / "spec.md").read_text(encoding="utf-8")
     title = _title(path, spec)
-    content = "\n".join([
-        "openapi: 3.1.0",
-        "info:",
-        f"  title: {title} API",
-        "  version: 0.1.0",
-        "x-specguard-blocker: Define concrete API paths, operations, responses, and error schemas before implementation.",
-        "paths: {}",
-        "",
-    ])
+    content = _spec_derived_openapi(path, spec, title)
     output.write_text(content, encoding="utf-8")
     return ArtifactWrite(output, created=True)
 
@@ -198,6 +193,116 @@ def _has_concrete_contract_paths(output: Path) -> bool:
         return has_openapi_paths(output)
     except Exception:
         return False
+
+
+def _spec_derived_openapi(path: Path, spec: str, title: str) -> str:
+    acceptance = _bullets(spec, "Acceptance Criteria")
+    errors = _bullets(spec, "Error Cases")
+    success_status = _success_status(acceptance)
+    error_statuses = _error_statuses(errors)
+    schema_prefix = _schema_prefix(title)
+
+    lines = [
+        "openapi: 3.1.0",
+        "info:",
+        f"  title: {_yaml_string(title + ' API')}",
+        "  version: 0.1.0",
+        "paths:",
+        f"  /{path.name}:",
+        "    post:",
+        f"      summary: {_yaml_string('Execute ' + title)}",
+        "      x-specguard-coverage:",
+        "        acceptanceCriteria:",
+    ]
+    lines.extend(f"          - {_yaml_string(item)}" for item in (acceptance or ["Primary happy path satisfies acceptance criteria."]))
+    lines.extend([
+        "        errorCases:",
+    ])
+    lines.extend(f"          - {_yaml_string(item)}" for item in (errors or ["Invalid input is rejected with a documented error."]))
+    lines.extend([
+        "      requestBody:",
+        "        required: true",
+        "        content:",
+        "          application/json:",
+        "            schema:",
+        f"              $ref: '#/components/schemas/{schema_prefix}Request'",
+        "      responses:",
+        f"        \"{success_status}\":",
+        "          description: Success response for the approved acceptance criteria",
+        "          content:",
+        "            application/json:",
+        "              schema:",
+        f"                $ref: '#/components/schemas/{schema_prefix}Response'",
+    ])
+    for status, description in error_statuses:
+        lines.extend([
+            f"        \"{status}\":",
+            f"          description: {_yaml_string(description)}",
+            "          content:",
+            "            application/json:",
+            "              schema:",
+            "                $ref: '#/components/schemas/ErrorResponse'",
+        ])
+    lines.extend([
+        "components:",
+        "  schemas:",
+        f"    {schema_prefix}Request:",
+        "      type: object",
+        "      additionalProperties: true",
+        f"    {schema_prefix}Response:",
+        "      type: object",
+        "      additionalProperties: true",
+        "    ErrorResponse:",
+        "      type: object",
+        "      required:",
+        "        - error_code",
+        "        - message",
+        "      properties:",
+        "        error_code:",
+        "          type: string",
+        "        message:",
+        "          type: string",
+        "",
+    ])
+    return "\n".join(lines)
+
+
+def _success_status(acceptance: list[str]) -> str:
+    joined = " ".join(acceptance)
+    match = re.search(r"\b(200|201|202|204)\b", joined)
+    return match.group(1) if match else "200"
+
+
+def _error_statuses(errors: list[str]) -> list[tuple[str, str]]:
+    if not errors:
+        return [("400", "Invalid input")]
+
+    statuses: dict[str, str] = {}
+    for error in errors:
+        lowered = error.lower()
+        if any(marker in lowered for marker in ("forbidden", "non-admin", "ownership", "wrong-workspace")):
+            status = "403"
+        elif any(marker in lowered for marker in ("unauthorized", "unknown user", "invalid password", "token")):
+            status = "401"
+        elif any(marker in lowered for marker in ("duplicate", "already", "conflict")):
+            status = "409"
+        elif "not found" in lowered:
+            status = "404"
+        elif any(marker in lowered for marker in ("rate", "too many", "throttle")):
+            status = "429"
+        else:
+            status = "400"
+        statuses.setdefault(status, error)
+    return sorted(statuses.items())
+
+
+def _schema_prefix(title: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9]+", " ", title).title().replace(" ", "")
+    return cleaned or "Feature"
+
+
+def _yaml_string(text: str) -> str:
+    return json.dumps(text)
 
 
 def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWrite:
