@@ -214,7 +214,13 @@ def run_cli_smoke(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str
     )
 
 
-def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool = False) -> Path:
+def write_feature(
+    base: Path,
+    *,
+    placeholder: bool = False,
+    bad_contract: bool = False,
+    empty_contract: bool = False,
+) -> Path:
     feature = base / "feature"
     (feature / "tests").mkdir(parents=True)
     (feature / "contracts").mkdir()
@@ -294,13 +300,31 @@ def write_feature(base: Path, *, placeholder: bool = False, bad_contract: bool =
         encoding="utf-8",
     )
     feature.joinpath("tests", "feature.test.md").write_text("# Existing tests\n", encoding="utf-8")
-    contract = "openapi: 3.1.0\npaths: {}\n" if bad_contract else (
-        "openapi: 3.1.0\n"
-        "info:\n"
-        "  title: Feature API\n"
-        "  version: 0.1.0\n"
-        "paths: {}\n"
-    )
+    if bad_contract:
+        contract = "openapi: 3.1.0\npaths: {}\n"
+    elif empty_contract:
+        contract = (
+            "openapi: 3.1.0\n"
+            "info:\n"
+            "  title: Feature API\n"
+            "  version: 0.1.0\n"
+            "paths: {}\n"
+        )
+    else:
+        contract = (
+            "openapi: 3.1.0\n"
+            "info:\n"
+            "  title: Feature API\n"
+            "  version: 0.1.0\n"
+            "paths:\n"
+            "  /feature:\n"
+            "    post:\n"
+            "      responses:\n"
+            "        \"200\":\n"
+            "          description: Feature accepted\n"
+            "        \"400\":\n"
+            "          description: Invalid input\n"
+        )
     feature.joinpath("contracts", "openapi.yaml").write_text(contract, encoding="utf-8")
     return feature
 
@@ -650,7 +674,7 @@ def test_codex_error_parser_reads_escaped_raw_json_string() -> None:
     assert _extract_codex_error_text(f"ERROR: {raw}") == "The escaped model error is readable."
 
 
-def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> None:
+def test_run_blocks_generated_empty_contract_until_paths_defined(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "profile-update"
     feature.mkdir(parents=True)
     feature.joinpath("discovery.md").write_text(
@@ -698,11 +722,14 @@ def test_run_generates_supporting_artifacts_from_spec_basis(tmp_path: Path) -> N
 
     result = run_pipeline(feature)
 
-    assert result.ok
+    assert not result.ok
     assert feature.joinpath("technical-design.md").exists()
     assert feature.joinpath("tests", "profile-update.test.md").exists()
-    assert feature.joinpath("contracts", "openapi.yaml").exists()
-    assert feature.joinpath("implementation-output.md").exists()
+    contract = feature.joinpath("contracts", "openapi.yaml")
+    assert contract.exists()
+    assert "x-specguard-blocker" in contract.read_text(encoding="utf-8")
+    assert not feature.joinpath("implementation-output.md").exists()
+    assert any("at least one API path" in message for message in result.messages)
 
 
 def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
@@ -746,6 +773,25 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
             "## Error Cases",
             "",
             "- Unauthorized access",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("contracts").mkdir()
+    feature.joinpath("contracts", "openapi.yaml").write_text(
+        "\n".join([
+            "openapi: 3.1.0",
+            "info:",
+            "  title: Billing Export API",
+            "  version: 0.1.0",
+            "paths:",
+            "  /billing-exports:",
+            "    post:",
+            "      responses:",
+            "        \"200\":",
+            "          description: Billing export created",
+            "        \"403\":",
+            "          description: Unauthorized export",
             "",
         ]),
         encoding="utf-8",
@@ -797,6 +843,25 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     })
     assert result.ok
     feature = tmp_path / "specs" / "billing-export"
+    feature.joinpath("contracts").mkdir()
+    feature.joinpath("contracts", "openapi.yaml").write_text(
+        "\n".join([
+            "openapi: 3.1.0",
+            "info:",
+            "  title: Billing Export API",
+            "  version: 0.1.0",
+            "paths:",
+            "  /billing-exports:",
+            "    post:",
+            "      responses:",
+            "        \"200\":",
+            "          description: Billing export created",
+            "        \"403\":",
+            "          description: Unauthorized export",
+            "",
+        ]),
+        encoding="utf-8",
+    )
 
     pipeline = run_pipeline(feature)
 
@@ -1189,7 +1254,33 @@ def test_contract_checker_rejects_invalid_openapi(tmp_path: Path) -> None:
     assert any("info.title" in message for message in result.messages)
 
 
-def test_contract_checker_fallback_accepts_generated_empty_paths(tmp_path: Path, monkeypatch) -> None:
+def test_contract_checker_rejects_empty_openapi_paths(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path, empty_contract=True)
+
+    result = check_contracts(feature)
+
+    assert not result.ok
+    assert any("at least one API path" in message for message in result.messages)
+
+
+def test_contract_checker_fallback_rejects_empty_openapi_paths(tmp_path: Path, monkeypatch) -> None:
+    feature = write_feature(tmp_path, empty_contract=True)
+    original_import = builtins.__import__
+
+    def block_yaml(name, *args, **kwargs):
+        if name == "yaml":
+            raise ImportError("yaml unavailable")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", block_yaml)
+
+    result = check_contracts(feature)
+
+    assert not result.ok
+    assert any("at least one API path" in message for message in result.messages)
+
+
+def test_contract_checker_fallback_accepts_defined_openapi_paths(tmp_path: Path, monkeypatch) -> None:
     feature = write_feature(tmp_path)
     original_import = builtins.__import__
 

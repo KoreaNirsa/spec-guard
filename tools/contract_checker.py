@@ -29,6 +29,15 @@ def _read_yaml_like(path: Path) -> dict[str, object]:
     return data
 
 
+def _has_openapi_paths(data: dict[str, object]) -> bool:
+    paths = data.get("paths")
+    return isinstance(paths, dict) and bool(paths)
+
+
+def has_openapi_paths(contract: Path) -> bool:
+    return _has_openapi_paths(_read_yaml_like(contract))
+
+
 def _minimal_yaml(content: str) -> dict[str, object]:
     data: dict[str, object] = {}
     stack: list[tuple[int, dict[str, object]]] = [(-1, data)]
@@ -63,35 +72,48 @@ def _minimal_yaml_value(value: str) -> object:
     return value
 
 
-def _validate_openapi(contract: Path, data: dict[str, object], result: CheckResult) -> None:
+def _validate_openapi(contract: Path, data: dict[str, object], result: CheckResult) -> bool:
+    valid = True
     if "openapi" not in data:
         result.add_error(f"{contract} must define openapi version")
+        valid = False
 
     info = data.get("info")
     if not isinstance(info, dict):
         result.add_error(f"{contract} must define info.title and info.version")
+        valid = False
     else:
         if not info.get("title"):
             result.add_error(f"{contract} must define info.title")
+            valid = False
         if not info.get("version"):
             result.add_error(f"{contract} must define info.version")
+            valid = False
 
     paths = data.get("paths")
     if not isinstance(paths, dict):
         result.add_error(f"{contract} must define paths")
-        return
+        return False
+    if not _has_openapi_paths(data):
+        result.add_error(
+            f"{contract} must define at least one API path; empty OpenAPI paths cannot be treated as implementation-ready"
+        )
+        return False
 
     for path_name, path_item in paths.items():
         if path_name == "{}":
             continue
         if not isinstance(path_item, dict):
             result.add_error(f"{contract} path must be an object: {path_name}")
+            valid = False
             continue
         for method, operation in path_item.items():
             if method.lower() not in {"get", "post", "put", "patch", "delete"}:
                 continue
             if not isinstance(operation, dict) or not isinstance(operation.get("responses"), dict):
                 result.add_error(f"{contract} operation must define responses: {method.upper()} {path_name}")
+                valid = False
+    return valid
 
 
 def check_contracts(path: Path) -> CheckResult:
@@ -113,8 +135,8 @@ def check_contracts(path: Path) -> CheckResult:
 
         try:
             data = _read_yaml_like(contract)
-            _validate_openapi(contract, data, result)
-            result.add_info(f"Validated contract: {contract}")
+            if _validate_openapi(contract, data, result):
+                result.add_info(f"Validated contract: {contract}")
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             result.add_error(f"Invalid contract file: {contract} ({exc})")
     return result

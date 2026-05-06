@@ -2,4 +2,20 @@ openapi: 3.1.0
 info:
   title: simple-auth API
   version: 0.1.0
-paths: {}
+paths:
+  /auth/login:
+    post:
+      responses:
+        "200":
+          description: Access token issued
+        "400":
+          description: Missing credentials
+        "401":
+          description: Invalid credentials
+  /protected:
+    get:
+      responses:
+        "200":
+          description: Protected resource returned
+        "401":
+          description: Authentication required
