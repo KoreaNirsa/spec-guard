@@ -15,16 +15,15 @@ Discovery -> Spec Package -> Technical Design -> SpecGuard Review
 
 ## Setup To User Flow
 
-This is the shortest path from a fresh clone to a reviewed implementation PR.
+This is the shortest path from installation to a reviewed implementation PR.
 
-### 1. Clone And Install
+### 1. Install
 
 SpecGuard expects Python 3.11 or newer.
 
 ```bash
-git clone https://github.com/KoreaNirsa/spec-guard.git
-cd spec-guard
-python -m pip install -r requirements.txt
+pip install spec-guard
+specguard --help
 ```
 
 ### 2. Configure Codex
@@ -32,21 +31,21 @@ python -m pip install -r requirements.txt
 Then configure SpecGuard to use local Codex:
 
 ```bash
-python -m cli.specguard auth setup --mode codex --model gpt-5.4
-python -m cli.specguard auth status
+specguard auth setup --mode codex --model gpt-5.4
+specguard auth status
 ```
 
 If Codex is already logged in and you do not want setup to offer `codex login`:
 
 ```bash
-python -m cli.specguard auth setup --mode codex --model gpt-5.4 --skip-login
+specguard auth setup --mode codex --model gpt-5.4 --skip-login
 ```
 
 
 ### 3. Create A Feature Spec
 
 ```bash
-python -m cli.specguard init your-feature-name
+specguard init your-feature-name
 ```
 
 SpecGuard writes draft artifacts under:
@@ -63,28 +62,10 @@ specs/your-feature-name/
 
 For real work, this is where the user writes the actual development spec. Strengthen `specs/your-feature-name/` with product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria before running validation.
 
-### 4. Try The Example Specs
-
-This step assumes Codex login and SpecGuard auth setup already succeeded in step 2. Use it when you want to test the normal `init -> run` flow with an authored example spec package before writing your own feature spec.
-
-PowerShell:
-
-```powershell
-Copy-Item -Recurse -Force example\* specs\your-feature-name\
-```
-
-Bash:
+### 4. Run And Iterate Until READY
 
 ```bash
-cp -R example/. specs/your-feature-name/
-```
-
-This exercises the same Codex-backed validation path that a real feature spec will use.
-
-### 5. Run And Iterate Until READY
-
-```bash
-python -m cli.specguard run specs/your-feature-name
+specguard run specs/your-feature-name
 ```
 
 `run` builds and validates the implementation basis:
@@ -108,12 +89,12 @@ Spec regeneration is guarded by an Intent Preservation Check. If the proposed `s
 For LLM-enabled strict automation:
 
 ```bash
-python -m cli.specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
+specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
 ```
 
 Strict E2E runs Initial SpecGuard Review first, regenerates `spec.md` from blockers, runs the same Intent Preservation Check, reruns Verification Review, and stops only when READY or when the iteration limit is exhausted. It writes `strict-e2e-trace.json` for traceability.
 
-### 6. Implement With An External AI Coding Agent
+### 5. Implement With An External AI Coding Agent
 
 When READY, SpecGuard writes:
 
@@ -131,7 +112,7 @@ develop/react/
 develop/fastapi/
 ```
 
-### 7. Open A Pull Request And Run SpecGuard PR Review
+### 6. Open A Pull Request And Run SpecGuard PR Review
 
 After implementation, open a PR in your GitHub repository with the completed code.
 
@@ -165,6 +146,12 @@ With a complete and explicit spec, all workflows generated code that passed the 
 | Spec Kit | 6 | 77.2% | 0/6 |
 | OpenSpec | 6 | 63.6% | 0/6 |
 | SpecGuard | 0 | 0% exposed | 6/6 |
+
+### Weak-Spec Before And After
+
+Before SpecGuard, the benchmark passed the same six defective or incomplete specs into Spec Kit and OpenSpec prompts. Both workflows still produced runnable Codex `gpt-5.5` implementations, and every weak-spec case exposed hidden contract defects.
+
+After SpecGuard, the same weak specs were checked by the local no-LLM gate before implementation. SpecGuard marked all six packages NOT READY, produced no implementation handoff, and blocked the bad inputs before an AI coding agent could turn them into code.
 
 Full methodology, case breakdown, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
@@ -206,9 +193,9 @@ Repositories that want merge-time enforcement should add `SpecGuard Readiness Ga
 ## CLI Reference
 
 ```bash
-python -m cli.specguard init <spec-name>
-python -m cli.specguard run specs/<spec-name>
-python -m cli.specguard auth status
+specguard init <spec-name>
+specguard run specs/<spec-name>
+specguard auth status
 ```
 
 Useful `run` options:
@@ -223,11 +210,19 @@ Useful `run` options:
 CI or scripted example:
 
 ```bash
-python -m cli.specguard init billing-export --non-interactive --no-llm
-python -m cli.specguard run specs/billing-export --no-llm --no-follow-up
+specguard init billing-export --non-interactive --no-llm
+specguard run specs/billing-export --no-llm --no-follow-up
 ```
 
 ## Development
+
+For contributors or local source testing:
+
+```bash
+git clone https://github.com/KoreaNirsa/spec-guard.git
+cd spec-guard
+python -m pip install -e ".[test]"
+```
 
 Run tests:
 
@@ -235,7 +230,11 @@ Run tests:
 python -m pytest
 ```
 
-Use the example flow above when you want to exercise SpecGuard with the configured Codex provider.
+Use the source example package when you want to exercise SpecGuard without authoring a new spec first:
+
+```bash
+specguard run examples/example --no-llm --no-follow-up
+```
 
 ## Documentation
 
