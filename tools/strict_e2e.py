@@ -4,7 +4,14 @@ import json
 from pathlib import Path
 from typing import Any
 
-from tools.post_run import apply_spec_revision, blocked_feature_reports, feature_readiness_reports, generate_spec_revision
+from tools.post_run import (
+    apply_spec_revision,
+    blocked_feature_reports,
+    feature_readiness_reports,
+    generate_spec_revision,
+    validate_spec_revision_intent,
+    write_proposed_spec_revision,
+)
 from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.ux import green, red
@@ -49,6 +56,19 @@ def run_strict_e2e_pipeline(
 
         for feature_dir, report in blocked_reports:
             revised_spec = generate_spec_revision(feature_dir, llm_client)
+            intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
+            if not intent_check.ok:
+                proposal_path = write_proposed_spec_revision(feature_dir, revised_spec)
+                _merge_messages(result, intent_check)
+                result.add_error(
+                    red(
+                        f"Strict E2E iteration {iteration}: stopped before applying {feature_dir / 'spec.md'} because intent preservation failed."
+                    )
+                )
+                result.add_next_step(f"Review proposed revision: {proposal_path}")
+                result.add_next_step("Edit spec.md manually or adjust Readiness Findings before rerunning strict E2E.")
+                _finish_trace(path, trace, status="failed_intent_preservation", iterations=iteration - 1)
+                return result
             spec_path = apply_spec_revision(feature_dir, revised_spec)
             trace["regenerations"].append(_regeneration_entry(feature_dir, iteration, report, spec_path))
             result.add_info(

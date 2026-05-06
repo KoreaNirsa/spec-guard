@@ -103,13 +103,15 @@ If SpecGuard returns NOT READY, use the continuation menu:
 
 Repeat until SpecGuard reports READY.
 
+Spec regeneration is guarded by an Intent Preservation Check. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, or move out-of-scope work into implementation scope, SpecGuard keeps the original `spec.md`, writes `spec.proposed.md`, and stops before Verification Review.
+
 For LLM-enabled strict automation:
 
 ```bash
 python -m cli.specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
 ```
 
-Strict E2E runs Initial SpecGuard Review first, regenerates `spec.md` from blockers, reruns Verification Review, and stops only when READY or when the iteration limit is exhausted. It writes `strict-e2e-trace.json` for traceability.
+Strict E2E runs Initial SpecGuard Review first, regenerates `spec.md` from blockers, runs the same Intent Preservation Check, reruns Verification Review, and stops only when READY or when the iteration limit is exhausted. It writes `strict-e2e-trace.json` for traceability.
 
 ### 6. Implement With An External AI Coding Agent
 
