@@ -1,4 +1,4 @@
-![SpecGuard verification-first workflow](assets/spec_guard_logo.png)
+![SpecGuard banner](assets/spec_guard_banner.png)
 
 # SpecGuard
 
