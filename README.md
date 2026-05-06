@@ -62,7 +62,17 @@ specs/your-feature-name/
 
 For real work, this is where the user writes the actual development spec. Strengthen `specs/your-feature-name/` with product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria before running validation.
 
-### 4. Run And Iterate Until READY
+### 4. Write Specs Or Try The Example Package
+
+After `init`, either replace the draft with your real feature spec or copy the packaged authored example into the same feature package:
+
+```bash
+specguard example copy your-feature-name --force
+```
+
+The example is for trying the full `run` pipeline before authoring your own production spec. It replaces the init draft with a complete sample package under `specs/your-feature-name/`.
+
+### 5. Run And Iterate Until READY
 
 ```bash
 specguard run specs/your-feature-name
@@ -94,7 +104,7 @@ specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
 
 Strict E2E runs Initial SpecGuard Review first, regenerates `spec.md` from blockers, runs the same Intent Preservation Check, reruns Verification Review, and stops only when READY or when the iteration limit is exhausted. It writes `strict-e2e-trace.json` for traceability.
 
-### 5. Implement With An External AI Coding Agent
+### 6. Implement With An External AI Coding Agent
 
 When READY, SpecGuard writes:
 
@@ -112,7 +122,7 @@ develop/react/
 develop/fastapi/
 ```
 
-### 6. Open A Pull Request And Run SpecGuard PR Review
+### 7. Open A Pull Request And Run SpecGuard PR Review
 
 After implementation, open a PR in your GitHub repository with the completed code.
 
@@ -194,6 +204,7 @@ Repositories that want merge-time enforcement should add `SpecGuard Readiness Ga
 
 ```bash
 specguard init <spec-name>
+specguard example copy <spec-name> --force
 specguard run specs/<spec-name>
 specguard auth status
 ```
@@ -211,6 +222,7 @@ CI or scripted example:
 
 ```bash
 specguard init billing-export --non-interactive --no-llm
+specguard example copy billing-export --force
 specguard run specs/billing-export --no-llm --no-follow-up
 ```
 
@@ -230,10 +242,12 @@ Run tests:
 python -m pytest
 ```
 
-Use the source example package when you want to exercise SpecGuard without authoring a new spec first:
+Use the packaged example when you want to exercise SpecGuard without authoring a new spec first:
 
 ```bash
-specguard run examples/example --no-llm --no-follow-up
+specguard init sample-run --non-interactive --no-llm
+specguard example copy sample-run --force
+specguard run specs/sample-run --no-llm --no-follow-up
 ```
 
 ## Documentation

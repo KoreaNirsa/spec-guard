@@ -43,7 +43,7 @@ def run_pipeline(
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
         result.add_error(f"No feature specs found in: {path}")
-        result.add_next_step("Run discovery first: python -m cli.specguard init <feature-name>")
+        result.add_next_step("Run discovery first: specguard init <feature-name>")
         return result
 
     for feature_dir in feature_dirs:
@@ -136,7 +136,7 @@ def main() -> int:
         except LLMConfigError as exc:
             result = CheckResult("SpecGuard pipeline")
             result.add_error(f"LLM provider is required by default: {exc}")
-            result.add_next_step("Configure a provider: python -m cli.specguard auth setup")
+            result.add_next_step("Configure a provider: specguard auth setup")
             result.add_next_step("Use --no-llm only for local heuristic checks or CI examples.")
             result.print()
             return 1

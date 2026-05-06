@@ -52,8 +52,24 @@ Repository = "https://github.com/KoreaNirsa/spec-guard"
 Issues = "https://github.com/KoreaNirsa/spec-guard/issues"
 
 [tool.setuptools]
-include-package-data = false
-packages = ["cli", "tools"]
+include-package-data = true
+packages = [
+  "cli",
+  "tools",
+  "tools.resources",
+  "tools.resources.example",
+  "tools.resources.example.checklists",
+  "tools.resources.example.contracts",
+  "tools.resources.example.tests",
+]
+
+[tool.setuptools.package-data]
+tools = [
+  "resources/example/*.md",
+  "resources/example/checklists/*.md",
+  "resources/example/contracts/*.yaml",
+  "resources/example/tests/*.md",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

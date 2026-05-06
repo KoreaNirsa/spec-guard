@@ -8,6 +8,7 @@ import subprocess
 import sys
 import threading
 import time
+from importlib import resources
 from pathlib import Path
 
 from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
@@ -86,7 +87,7 @@ def run(args: argparse.Namespace) -> int:
     strict_max_iterations = getattr(args, "strict_max_iterations", 3)
     if strict_e2e and llm_client is None:
         print_error("[FAIL] Strict E2E requires an LLM provider.")
-        print("- Re-run without --no-llm, or configure one: python -m cli.specguard auth setup")
+        print("- Re-run without --no-llm, or configure one: specguard auth setup")
         return 1
 
     print_section("Pipeline")
@@ -127,6 +128,74 @@ def run(args: argparse.Namespace) -> int:
     return 0 if result.ok else 1
 
 
+def copy_example(args: argparse.Namespace) -> int:
+    feature_dir = _example_target_path(args.feature)
+    print_banner("Copy authored example specs into a feature package.")
+
+    source = resources.files("tools").joinpath("resources", "example")
+    if not source.is_dir():
+        print_error("[FAIL] Packaged example resources are missing.")
+        print("- Reinstall SpecGuard, or use a source checkout with the example package.")
+        return 1
+
+    conflicts = sorted(path for path in _resource_relative_files(source) if (feature_dir / path).exists())
+    if conflicts and not args.force:
+        print_error("[FAIL] Example copy would overwrite existing files.")
+        print(f"- Target: {feature_dir}")
+        print("- Re-run with --force to replace the current draft package with the authored example.")
+        for path in conflicts[:8]:
+            print(f"- Existing file: {feature_dir / path}")
+        if len(conflicts) > 8:
+            print(f"- ... {len(conflicts) - 8} more existing file(s)")
+        return 1
+
+    copied = _copy_resource_tree(source, feature_dir)
+    print_success("[PASS] Copied authored example specs.")
+    print(f"- Target: {feature_dir}")
+    print(f"- Files copied: {copied}")
+    print("")
+    print("Next steps:")
+    print(f"- Run: specguard run {feature_dir} --no-llm --no-follow-up")
+    print("- Replace the example files with your own feature requirements before real implementation.")
+    return 0
+
+
+def _example_target_path(feature: str) -> Path:
+    target = Path(feature)
+    if target.is_absolute() or target.parts[:1] == ("specs",):
+        return target
+    return ROOT / "specs" / feature
+
+
+def _resource_relative_files(root) -> list[Path]:
+    files: list[Path] = []
+
+    def visit(node, prefix: Path) -> None:
+        for child in node.iterdir():
+            child_path = prefix / child.name
+            if child.is_dir():
+                visit(child, child_path)
+            else:
+                files.append(child_path)
+
+    visit(root, Path())
+    return files
+
+
+def _copy_resource_tree(source, target: Path) -> int:
+    copied = 0
+    target.mkdir(parents=True, exist_ok=True)
+    for child in source.iterdir():
+        destination = target / child.name
+        if child.is_dir():
+            copied += _copy_resource_tree(child, destination)
+            continue
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(child.read_bytes())
+        copied += 1
+    return copied
+
+
 def auth(args: argparse.Namespace) -> int:
     if args.auth_command == "status":
         print_banner("LLM provider status.")
@@ -134,7 +203,7 @@ def auth(args: argparse.Namespace) -> int:
         if settings is None:
             print_warning("[WARN] No LLM provider configured.")
             print(f"- Config path: {config_path(ROOT)}")
-            print("- Run: python -m cli.specguard auth setup")
+            print("- Run: specguard auth setup")
             return 1
         print_success("[PASS] SpecGuard LLM configuration")
         print(f"- Mode: {settings.mode}")
@@ -202,7 +271,7 @@ def _build_llm_client(args: argparse.Namespace, *, purpose: str, allow_setup: bo
                     exc = retry_exc
         print_error("[FAIL] SpecGuard LLM configuration")
         print(f"- {exc}")
-        print("- Run: python -m cli.specguard auth setup")
+        print("- Run: specguard auth setup")
         if purpose == "run":
             print("- Use --no-llm only for local heuristic checks or CI examples.")
         return None
@@ -223,7 +292,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         codex_command = args.codex_command or "codex"
         if not codex_available(codex_command):
             print_error("[FAIL] Local Codex CLI was not found.")
-            print("- Install Codex, or choose OpenAI Platform mode: python -m cli.specguard auth setup --mode openai")
+            print("- Install Codex, or choose OpenAI Platform mode: specguard auth setup --mode openai")
             return 1
         settings = LLMSettings(
             mode="codex",
@@ -370,7 +439,7 @@ def _print_readiness_review(path: Path) -> None:
 def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:
     if llm_client is None:
         print_warning("[WARN] LLM spec revision requires a configured provider.")
-        print("- Re-run without --no-llm, or configure one: python -m cli.specguard auth setup")
+        print("- Re-run without --no-llm, or configure one: specguard auth setup")
         return result
 
     reports = blocked_feature_reports(path) or feature_readiness_reports(path)
@@ -530,12 +599,12 @@ def _print_llm_failure(exc: Exception) -> None:
     print(f"- {exc}")
     if "newer version of Codex" in str(exc):
         print("- Update the Codex CLI/app, or reconfigure SpecGuard with a Codex-supported model.")
-        print("- Example: python -m cli.specguard auth setup --mode codex --model gpt-5.1 --skip-login")
+        print("- Example: specguard auth setup --mode codex --model gpt-5.1 --skip-login")
     if "timed out" in str(exc).lower():
         print("- The provider is reachable, but the request exceeded the configured timeout.")
-        print("- Retry the action, or increase timeout: python -m cli.specguard auth setup --mode codex --timeout 240 --skip-login")
-    print("- Check provider status: python -m cli.specguard auth status")
-    print("- Reconfigure provider: python -m cli.specguard auth setup")
+        print("- Retry the action, or increase timeout: specguard auth setup --mode codex --timeout 240 --skip-login")
+    print("- Check provider status: specguard auth status")
+    print("- Reconfigure provider: specguard auth setup")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -601,6 +670,24 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu")
     run_parser.add_argument("--no-follow-up", action="store_true", help="Do not show the interactive post-run action menu")
     run_parser.set_defaults(func=run)
+
+    example_parser = subparsers.add_parser("example", formatter_class=SpecGuardHelpFormatter)
+    example_subparsers = example_parser.add_subparsers(dest="example_command", required=True)
+
+    example_copy = example_subparsers.add_parser(
+        "copy",
+        description="Copy the packaged authored example spec package into specs/<feature>.",
+        epilog=(
+            "Examples:\n"
+            "  specguard example copy team-invite\n"
+            "  specguard example copy team-invite --force\n"
+            "  specguard example copy specs/team-invite --force"
+        ),
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    example_copy.add_argument("feature", help="Feature name under specs/ or an explicit specs/<feature> path")
+    example_copy.add_argument("--force", action="store_true", help="Overwrite existing files in the target package")
+    example_copy.set_defaults(func=copy_example)
 
     auth_parser = subparsers.add_parser("auth", formatter_class=SpecGuardHelpFormatter)
     auth_subparsers = auth_parser.add_subparsers(dest="auth_command", required=True)
