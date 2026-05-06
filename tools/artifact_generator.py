@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tools.contract_checker import CONTRACT_EXEMPTION_NAME, has_contract_exemption, has_openapi_paths
+from tools.verification_checker import verification_metadata
 
 
 @dataclass(frozen=True)
@@ -343,6 +344,12 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
     lines.extend(f"- `{artifact}`" for artifact in approved_artifacts)
     lines.extend([
         "",
+        "## Verification",
+        "",
+        f"- Kind: `{handoff_metadata['verification']['kind']}`",
+        f"- Artifact: `{handoff_metadata['verification']['artifact']}`",
+        f"- Command: `{handoff_metadata['verification']['command'] or 'not specified'}`",
+        "",
         "## SpecGuard-Only Artifacts",
         "",
         "- `discovery.md` is for SpecGuard discovery and user refinement.",
@@ -392,4 +399,5 @@ def _implementation_handoff_metadata(path: Path, approved_artifacts: list[str]) 
         "implementation_allowed": implementation_ready and readiness_status == "ready",
         "readiness_report": "readiness-review.json" if report_path.exists() else None,
         "approved_artifacts": approved_artifacts,
+        "verification": verification_metadata(path),
     }

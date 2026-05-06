@@ -170,6 +170,7 @@ python -m cli.specguard run specs/your-feature-name --strict-e2e --strict-max-it
 ```
 
 Strict E2E always runs Initial SpecGuard Review first. When it receives NOT READY, it regenerates `spec.md` from the readiness findings, reruns Verification Review with those findings as the backlog, and stops only when READY or the iteration limit is exhausted. Each run writes `strict-e2e-trace.json` so regeneration attempts can be traced back to the findings that caused them.
+Strict E2E also requires executable verification before handoff: add tests such as `tests/test_*.py`, or document an accepted `tests/verification-contract.md` with the command or artifact that a coding agent must preserve.
 
 ### 4. External Implementation Handoff
 

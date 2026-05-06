@@ -14,6 +14,7 @@ from tools.result import CheckResult
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
 from tools.ux import green
+from tools.verification_checker import check_verification_artifacts
 
 
 def _feature_dirs(path: Path) -> list[Path]:
@@ -31,7 +32,13 @@ def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
     return any(source.exists() and source.stat().st_mtime > output_mtime for source in sources)
 
 
-def run_pipeline(path: Path, llm_client: object | None = None, force: bool = False, review_mode: str = "initial") -> CheckResult:
+def run_pipeline(
+    path: Path,
+    llm_client: object | None = None,
+    force: bool = False,
+    review_mode: str = "initial",
+    strict_verification: bool = False,
+) -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
@@ -81,6 +88,14 @@ def run_pipeline(path: Path, llm_client: object | None = None, force: bool = Fal
         refresh_tests = _is_stale(test_path, [spec_path, technical_design_path], force)
         test_output = generate_tests(feature_dir, force=refresh_tests)
         result.add_info(f"TDD scenarios ready: {test_output}")
+
+        if strict_verification:
+            verification = check_verification_artifacts(feature_dir)
+            result.messages.extend(verification.messages)
+            result.next_steps.extend(verification.next_steps)
+            if not verification.ok:
+                result.ok = False
+                continue
 
         refresh_contract = _is_stale(contract_path, [spec_path], force)
         contract = ensure_contract(feature_dir, force=refresh_contract)

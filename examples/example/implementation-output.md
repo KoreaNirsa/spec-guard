@@ -18,7 +18,13 @@ Use this feature folder as external handoff context for a coding agent only afte
     "technical-design.md",
     "tests/example.test.md",
     "contracts/openapi.yaml"
-  ]
+  ],
+  "verification": {
+    "kind": "markdown_scenarios",
+    "artifact": "tests/example.test.md",
+    "command": null,
+    "strict_ready": false
+  }
 }
 ```
 
@@ -28,6 +34,12 @@ Use this feature folder as external handoff context for a coding agent only afte
 - `technical-design.md`
 - `tests/example.test.md`
 - `contracts/openapi.yaml`
+
+## Verification
+
+- Kind: `markdown_scenarios`
+- Artifact: `tests/example.test.md`
+- Command: `not specified`
 
 ## SpecGuard-Only Artifacts
 
