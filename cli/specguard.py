@@ -31,6 +31,7 @@ from tools.post_run import (
     render_readiness_summary,
 )
 from tools.runner import run_pipeline
+from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.ux import bold, green, menu_item, print_banner, print_error, print_hint, print_section, print_success, print_warning, yellow
 
 
@@ -79,24 +80,43 @@ def run(args: argparse.Namespace) -> int:
     llm_client = _build_llm_client(args, purpose="run", allow_setup=False)
     if _requires_llm(args) and llm_client is None:
         return 1
+    strict_e2e = getattr(args, "strict_e2e", False)
+    strict_max_iterations = getattr(args, "strict_max_iterations", 3)
+    if strict_e2e and llm_client is None:
+        print_error("[FAIL] Strict E2E requires an LLM provider.")
+        print("- Re-run without --no-llm, or configure one: python -m cli.specguard auth setup")
+        return 1
 
     print_section("Pipeline")
     if args.force:
         print_hint("Regenerating derived artifacts where SpecGuard owns the output.")
+    elif strict_e2e:
+        print_hint(f"Running strict E2E with at most {strict_max_iterations} verification iteration(s).")
     else:
         print_hint("Missing artifacts are generated; stale tests and contracts are refreshed from the spec.")
 
     try:
-        result = _run_with_progress(
-            "Running pipeline",
-            lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=args.force),
-        )
+        if strict_e2e:
+            result = _run_with_progress(
+                "Running strict E2E pipeline",
+                lambda: run_strict_e2e_pipeline(
+                    Path(args.path),
+                    llm_client,
+                    force=args.force,
+                    max_iterations=strict_max_iterations,
+                ),
+            )
+        else:
+            result = _run_with_progress(
+                "Running pipeline",
+                lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=args.force),
+            )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         return 1
     result.print()
 
-    if _should_offer_follow_up(args):
+    if not strict_e2e and _should_offer_follow_up(args):
         try:
             result = _run_follow_up_loop(args, llm_client, result)
         except LLMRequestError as exc:
@@ -567,6 +587,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic SpecGuard Review")
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
     run_parser.add_argument("--llm-model", help="Override SPECGUARD_LLM_MODEL for this run")
+    run_parser.add_argument("--strict-e2e", action="store_true", help="Automatically regenerate blocked specs and rerun Verification Review")
+    run_parser.add_argument("--strict-max-iterations", type=int, default=3, help="Maximum strict E2E verification iterations")
     run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu")
     run_parser.add_argument("--no-follow-up", action="store_true", help="Do not show the interactive post-run action menu")
     run_parser.set_defaults(func=run)

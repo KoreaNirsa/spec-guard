@@ -170,6 +170,14 @@ Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or
 
 The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
 
+Strict E2E mode automates that loop for LLM-enabled runs:
+
+```bash
+python -m cli.specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
+```
+
+Strict E2E records every review attempt and every spec regeneration in `strict-e2e-trace.json`. Regeneration uses the previous Readiness Findings as the required backlog, then reruns Verification Review. The final result is READY only when the normal readiness gate passes; otherwise strict E2E reports that the configured iteration limit was exhausted.
+
 Generated or reused artifacts:
 
 ```text
@@ -179,6 +187,7 @@ specs/my-feature/
 |-- readiness-review.json
 |-- tests/
 |-- contracts/
+|-- strict-e2e-trace.json
 `-- implementation-output.md
 ```
 
