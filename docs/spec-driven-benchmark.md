@@ -64,7 +64,7 @@ The practical conclusion is:
 
 | Level | Meaning | Evidence Used Here |
 | --- | --- | --- |
-| E0 | Locally executed benchmark evidence | 16 Codex `gpt-5.5` code generation runs, hidden contract runners, and 10 SpecGuard readiness gate runs |
+| E0 | Locally executed benchmark evidence | 16 Codex `gpt-5.5` code generation runs, hidden contract runners, and 10 SpecGuard readiness gate runs. The weak-spec SpecGuard gate used local `--no-llm` validation, not a Codex review. |
 | E1 | Official project documentation | Spec Kit, OpenSpec, and SpecGuard workflow and artifact documentation |
 | E2 | Analysis based on E0 and E1 | Defect-rate comparison, contract-risk interpretation, and workflow positioning |
 
@@ -82,7 +82,9 @@ Reference materials:
 | --- | --- |
 | Run date | 2026-05-06 |
 | Code generation command | `npx @openai/codex@0.128.0 exec -m gpt-5.5` |
+| SpecGuard weak-spec gate | `python -m cli.specguard run <temp-feature> --no-llm --no-follow-up` |
 | Model | `gpt-5.5` |
+| SpecGuard gate model | None. `--no-llm` uses local deterministic validation and heuristic readiness checks. |
 | Reasoning effort | `low` |
 | Implementation task | In-memory Python `TaskService` |
 | Generated file | `task_service.py` |
@@ -164,7 +166,7 @@ xychart-beta
 
 The second benchmark intentionally used weak implementation inputs.
 
-Spec Kit and OpenSpec received the weak specs and generated code with Codex `gpt-5.5`. SpecGuard received the same spec packages first and was evaluated on whether it allowed or blocked implementation.
+Spec Kit and OpenSpec received the weak specs and generated code with Codex `gpt-5.5`. SpecGuard received the same spec packages first and was evaluated on whether it allowed or blocked implementation. In this weak-spec gate benchmark, SpecGuard used `--no-llm`, so blocker detection came from local validation and heuristic readiness rules rather than from Codex.
 
 ### Reproducibility
 
@@ -174,7 +176,20 @@ The benchmark harness is included in [tools/spec_driven_ai_benchmark.py](../tool
 python tools/spec_driven_ai_benchmark.py
 ```
 
-The script creates temporary benchmark projects, invokes Codex for Spec Kit and OpenSpec prompts, runs the hidden checker against generated `task_service.py` files, runs the SpecGuard gate, and removes the temporary root.
+The script creates temporary benchmark projects, invokes Codex for Spec Kit and OpenSpec prompts, runs the hidden checker against generated `task_service.py` files, runs the local SpecGuard gate, and removes the temporary root.
+
+### Why `--no-llm` Still Found Defects
+
+`--no-llm` does not mean SpecGuard skips review. It means the pipeline does not call a model. The gate still runs local checks such as:
+
+- required artifact and section validation
+- placeholder detection in `spec.md` and `technical-design.md`
+- heuristic readiness checks for missing ownership boundaries in Todo-style specs
+- unsafe delete semantics
+- external dependency failure paths without timeout, retry, or fallback policy
+- incomplete state and failure-handling sections
+
+In the incomplete-spec cases, SpecGuard blocked the package before readiness review because validation found placeholder or incomplete technical-design content. In the fault-injected cases, the local readiness heuristic produced `not_ready` findings. This is different from a Codex-based SpecGuard Review, which would require running without `--no-llm` after configuring a Codex provider.
 
 ### Weak-Spec Cases
 
@@ -275,7 +290,7 @@ The benchmark supports the following positioning:
 | --- | --- |
 | Was real code generated? | Yes. Spec Kit and OpenSpec generated Codex `gpt-5.5` code for the benchmark cases. |
 | Was the same task domain used? | Yes. All cases used an in-memory Todo Task Service. |
-| Was Codex `gpt-5.5` used? | Yes. |
+| Was Codex `gpt-5.5` used? | Yes for code generation. The weak-spec SpecGuard gate used local `--no-llm` validation, not Codex. |
 | Was defect rate measured? | Yes. Hidden contract runners measured runtime and contract defects. |
 | Were temporary projects removed? | Yes. Final benchmark roots reported cleanup success. |
 | Which workflow generated the best code on the complete spec? | No winner. All workflows passed. |
@@ -289,7 +304,7 @@ The benchmark supports the following positioning:
 - The complete-spec task was intentionally small and explicit, which made it easy for `gpt-5.5` to implement correctly.
 - The hidden runner measured runtime behavior and DTO/API contracts, not long-term maintainability or architecture quality.
 - The benchmark used controlled prompts that reflected each tool's artifact style. It did not execute the full official Spec Kit or OpenSpec CLI slash-command workflows.
-- SpecGuard was evaluated with local heuristic review via `--no-llm`. LLM-based strict review and live PR review would need separate measurement.
+- SpecGuard was evaluated with local heuristic review via `--no-llm`. The blocker-detection result is therefore evidence for the local SpecGuard gate, not for Codex-based SpecGuard Review. LLM-based strict review and live PR review would need separate measurement.
 - Spec Kit and OpenSpec were evaluated without adding a custom validator or manual review step. Adding those controls would change the baseline.
 
 ## Recommended Follow-Up Benchmarks

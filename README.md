@@ -154,9 +154,9 @@ The workflow is advisory by default. If credentials are unavailable, if the sele
 
 ## Benchmark Summary
 
-A controlled Codex `gpt-5.5` benchmark compared Spec Kit, OpenSpec, and SpecGuard on the same Todo Task Service task.
+A controlled benchmark used Codex `gpt-5.5` for code generation and SpecGuard's local no-LLM gate for weak-spec blocking.
 
-With a complete and explicit spec, all workflows generated code that passed the hidden contract checks. With defective or incomplete specs, Spec Kit and OpenSpec still generated runnable code, but every generated implementation exposed contract defects. SpecGuard blocked the same defective inputs before implementation.
+With a complete and explicit spec, all workflows generated code that passed the hidden contract checks. With defective or incomplete specs, Spec Kit and OpenSpec still generated runnable Codex code, but every generated implementation exposed contract defects. SpecGuard blocked the same defective inputs before implementation using local deterministic and heuristic validation.
 
 | Workflow | Generated code from defective specs | Average exposed contract defect rate | Blocked before implementation |
 | --- | ---: | ---: | ---: |
