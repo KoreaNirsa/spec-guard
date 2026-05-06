@@ -4,12 +4,12 @@
 
 SpecGuard is a validation-first workflow for AI-assisted software development.
 
-It is not a prompt-to-code generator. SpecGuard helps you turn an idea into a reviewed, testable, implementation-ready spec package before Codex, Claude Code, or another coding agent starts writing application code.
+It is not a prompt-to-code generator. SpecGuard helps you turn an idea into a reviewed, testable, implementation-ready spec package before an external Codex, Claude Code, or another coding agent starts writing application code.
 
 ```text
 Discovery -> Spec Package -> Technical Design -> Initial SpecGuard Review
 -> Spec Regeneration -> Verification Review -> Test -> Contract
--> Implementation Outputs -> AI Implementation
+-> Implementation Handoff -> External AI Implementation
 ```
 
 ## Core Value
@@ -141,7 +141,7 @@ Technical Design -> Initial SpecGuard Review -> READY or NOT READY
 SpecGuard Review inspects the full spec package and generated technical design. It looks for blockers before implementation begins.
 
 Run is a validator, not the place where product intent is invented. Use it after the spec package has enough real detail to review.
-For API features, `contracts/openapi.yaml` must define at least one concrete path before SpecGuard can produce implementation outputs; `paths: {}` is treated as a blocker, not a ready contract.
+For API features, `contracts/openapi.yaml` must define at least one concrete path before SpecGuard can produce an implementation handoff; `paths: {}` is treated as a blocker, not a ready contract.
 
 ### 3. Iterate Until Ready
 
@@ -163,12 +163,12 @@ The initial review is broad and adversarial. After spec regeneration, Verificati
 
 Repeat until SpecGuard reports READY.
 
-### 4. Start Implementation
+### 4. External Implementation Handoff
 
 When the spec package is ready, SpecGuard continues through:
 
 ```text
-Test -> Contract -> Implementation Outputs
+Test -> Contract -> Implementation Handoff
 ```
 
 Then use:
@@ -178,7 +178,8 @@ specs/your-feature-name/implementation-output.md
 develop/<stack>/
 ```
 
-Give the implementation output guide to Codex, Claude Code, or another coding agent, and place application code under `develop/<stack>/`.
+SpecGuard does not invoke Codex, Claude Code, or another coding agent as an internal pipeline stage. Give the approved implementation output guide to an external coding agent, and place application code under `develop/<stack>/`.
+The guide includes machine-readable readiness status and the approved artifact list that the coding agent may use.
 
 ## SpecGuard Readiness Gate
 
@@ -236,7 +237,7 @@ Contributions should preserve the SpecGuard workflow:
 
 ```text
 Discovery -> Spec Package -> Technical Design -> SpecGuard Review
--> Test -> Contract -> Implementation Outputs
+-> Test -> Contract -> Implementation Handoff
 ```
 
 Before opening a pull request:

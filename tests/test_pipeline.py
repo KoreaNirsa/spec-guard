@@ -198,6 +198,13 @@ def copy_example(tmp_path: Path, example: str) -> Path:
     return target
 
 
+def read_handoff_metadata(feature: Path) -> dict:
+    text = feature.joinpath("implementation-output.md").read_text(encoding="utf-8")
+    start = text.index("```json") + len("```json")
+    end = text.index("```", start)
+    return json.loads(text[start:end].strip())
+
+
 def run_cli_smoke(tmp_path: Path, *args: str) -> subprocess.CompletedProcess[str]:
     env = os.environ.copy()
     existing_pythonpath = env.get("PYTHONPATH")
@@ -343,6 +350,36 @@ def test_example_passes_and_emits_readiness_json(tmp_path: Path) -> None:
     assert payload["summary"]["major"] == 0
 
 
+def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "example")
+
+    result = run_pipeline(feature, force=True)
+
+    output = feature.joinpath("implementation-output.md").read_text(encoding="utf-8")
+    metadata = read_handoff_metadata(feature)
+    assert result.ok
+    assert metadata["implementation_boundary"] == "external_handoff"
+    assert metadata["readiness_status"] == "ready"
+    assert metadata["implementation_allowed"] is True
+    assert "spec.md" in metadata["approved_artifacts"]
+    assert "technical-design.md" in metadata["approved_artifacts"]
+    assert "contracts/openapi.yaml" in metadata["approved_artifacts"]
+    assert "SpecGuard stops at an approved implementation handoff" in output
+    assert any("External AI implementation handoff ready" in message for message in result.messages)
+    assert any("external coding agent" in step for step in result.next_steps)
+
+
+def test_blocked_pipeline_does_not_recommend_ai_implementation(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+
+    result = run_pipeline(feature)
+
+    assert not result.ok
+    assert not feature.joinpath("implementation-output.md").exists()
+    assert any("Do not start external AI implementation" in step for step in result.next_steps)
+    assert not any("Hand this approved guide" in step for step in result.next_steps)
+
+
 def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "team-invite"
     shutil.copytree(ROOT / "example", feature)
@@ -442,7 +479,7 @@ def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> 
     assert completed.returncode == 0, completed.stdout + completed.stderr
     assert "[PASS] SpecGuard pipeline" in completed.stdout
     assert "Running pipeline completed" in completed.stdout
-    assert "implementation-ready" in completed.stdout
+    assert "External AI implementation handoff ready" in completed.stdout
     assert feature.joinpath("technical-design.md").exists()
     assert feature.joinpath("tests", "team-invite.test.md").exists()
     assert feature.joinpath("contracts", "openapi.yaml").exists()
