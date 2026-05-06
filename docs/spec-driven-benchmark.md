@@ -330,42 +330,44 @@ The benchmark supports the following positioning:
 - SpecGuard was evaluated with local heuristic review via `--no-llm`. The blocker-detection result is therefore evidence for the local SpecGuard gate, not for Codex-based SpecGuard Review. LLM-based strict review and live PR review would need separate measurement.
 - Spec Kit and OpenSpec were evaluated without adding a custom validator or manual review step. Adding those controls would change the baseline.
 
-## Recommended Follow-Up Benchmarks
+## Benchmark Expansion Roadmap
 
-To make a stronger statistical claim, run a broader benchmark with:
-
-| Area | Recommended Expansion |
-| --- | --- |
-| Feature set | Authentication, authorization boundaries, payment webhooks, state machines, OpenAPI CRUD, and multi-tenant data access |
-| Repetition | At least three runs per workflow per feature |
-| Spec control | Same canonical requirements, transformed only into each workflow's artifact shape |
-| Evaluation | Hidden tests, OpenAPI response matching, mutation tests, static analysis, and PR diff review |
-| Defect taxonomy | Missing behavior, contract drift, authorization bugs, state-transition bugs, idempotency bugs, and out-of-scope additions |
-| Statistics | Mean defect rate, median, standard deviation, confidence intervals, and worst-case failure count |
-| SpecGuard-specific metrics | Readiness blocker detection rate, false-positive rate, PR drift detection rate, and stale-artifact block rate |
-
-Those follow-up runs would distinguish between two different claims:
-
-- "Clear specs are enough for strong models to generate correct code."
-- "When specs are incomplete or defective, SpecGuard reduces the chance that contract-defective code reaches implementation and review."
-
-### How Follow-Up Benchmarks Improve Confidence
-
-The recommended follow-up benchmarks would increase confidence in the current result, but they would not change what the current benchmark proves.
+Future releases will expand this benchmark suite so the document can track SpecGuard's behavior across broader and more realistic implementation risks.
 
 The current benchmark supports a narrow claim:
 
 > SpecGuard's local gate can prevent a set of defective or incomplete Todo Task Service specs from becoming exposed contract-defective code.
 
-The follow-up benchmark would test broader claims:
+Upcoming benchmark updates are planned to test broader claims:
 
-| Follow-Up Addition | Confidence Improvement |
+- "Clear specs are enough for strong models to generate correct code."
+- "When specs are incomplete or defective, SpecGuard reduces the chance that contract-defective code reaches implementation and review."
+- "LLM-backed SpecGuard Review catches blockers that are outside the current local heuristic coverage."
+- "SpecGuard can detect post-implementation drift between an approved spec package and a pull request diff."
+
+Planned expansion areas:
+
+| Area | Planned Expansion |
+| --- | --- |
+| Feature set | Add authentication, authorization boundaries, payment webhooks, state machines, OpenAPI CRUD, and multi-tenant data access. |
+| Repetition | Run at least three generations per workflow per feature to measure variance. |
+| Spec control | Keep canonical requirements identical and transform only the artifact shape for each workflow. |
+| Evaluation | Add hidden tests, OpenAPI response matching, mutation tests, static analysis, and PR diff review. |
+| Defect taxonomy | Track missing behavior, contract drift, authorization bugs, state-transition bugs, idempotency bugs, and out-of-scope additions. |
+| Statistics | Report mean defect rate, median, standard deviation, confidence intervals, and worst-case failure count. |
+| SpecGuard-specific metrics | Track readiness blocker detection rate, false-positive rate, PR drift detection rate, and stale-artifact block rate. |
+
+### Confidence Roadmap
+
+The current result is intentionally conservative because the weak-spec SpecGuard gate used local `--no-llm` validation. Future benchmark releases will add evidence in layers rather than replacing the current result.
+
+| Planned Addition | Confidence Improvement |
 | --- | --- |
 | More domains | Reduces the chance that the result is specific to Todo-style ownership and deletion rules. |
 | Multiple runs per workflow | Measures variance across Codex generations and avoids over-reading a single run. |
-| Codex-based SpecGuard Review | Separates local-gate evidence from LLM-review evidence. |
+| Codex `gpt-5.5` SpecGuard Review | Separates local-gate evidence from LLM-review evidence. |
 | Strict E2E regeneration | Measures whether SpecGuard can not only block weak specs, but also improve them until they become implementation-ready. |
 | PR drift review | Measures post-implementation contract conformance, not only pre-implementation readiness. |
 | False-positive tracking | Shows whether SpecGuard blocks only meaningful implementation risks or blocks too aggressively. |
 
-So yes: the follow-up plan would make the benchmark more trustworthy. The most important next step is to run a Codex `gpt-5.5` SpecGuard Review variant alongside the current `--no-llm` baseline, because that would directly answer whether LLM-backed SpecGuard catches more blockers or reduces false positives compared with the local gate.
+The next benchmark milestone is expected to add a Codex `gpt-5.5` SpecGuard Review variant alongside the current `--no-llm` baseline. That will make it possible to compare local gate coverage, LLM-backed blocker detection, and false-positive behavior in the same benchmark document.
