@@ -1,1 +1,2 @@
+build>=1.2
 pytest>=8.0
