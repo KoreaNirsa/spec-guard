@@ -155,24 +155,20 @@ After implementation, open a PR in your GitHub repository with the completed cod
 
 The optional `SpecGuard PR Review` workflow compares the approved spec package to the PR diff and posts one advisory PR comment headed `SpecGuard PR Reviewer`.
 
-To enable the default GitHub Actions path, add this repository secret:
+To enable the default GitHub Actions path, add this repository secret in GitHub repository settings:
 
 ```text
-SPECGUARD_OPENAI_API_KEY
+SPECGUARD_OPENAI_API_KEY=sk-...
 ```
 
-Optional repository variables:
+Add optional repository variables when you want to choose the review model or force the reviewer to use a specific spec package:
 
 ```text
-SPECGUARD_PR_REVIEW_MODEL
-SPECGUARD_REVIEW_SPEC_PATHS
+SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
+SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
 ```
 
-Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only `develop/<stack>/` files and does not modify files under `specs/`. Example:
-
-```text
-specs/your-feature-name
-```
+`SPECGUARD_OPENAI_API_KEY` must be stored as a GitHub Actions secret, not committed to the repository. Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only `develop/<stack>/` files and does not modify files under `specs/`.
 
 The workflow is advisory by default. If credentials are unavailable, if the selected spec package is NOT READY, or if the readiness report is stale, the workflow skips or reports the blocker instead of invoking the reviewer.
 
