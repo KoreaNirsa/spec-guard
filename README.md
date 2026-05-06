@@ -81,23 +81,14 @@ For real work, this is where the user writes the actual development spec. Streng
 
 ### 4. Try The Example Specs
 
-Users who only want to test SpecGuard can run the authored examples without creating a real feature:
-
-```bash
-python -m cli.specguard run examples/example --no-llm --no-follow-up
-python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
-```
-
-The first example should pass. The risk example should remain blocked.
-
-If you want to test the normal `init -> run` folder shape with example content:
+This step assumes Codex login and SpecGuard auth setup already succeeded in step 2. Use it when you want to test the normal `init -> run` flow with an authored example spec package before writing your own feature spec.
 
 PowerShell:
 
 ```powershell
 python -m cli.specguard init your-feature-name
 Copy-Item -Recurse -Force example\* specs\your-feature-name\
-python -m cli.specguard run specs\your-feature-name --no-llm
+python -m cli.specguard run specs\your-feature-name
 ```
 
 Bash:
@@ -105,8 +96,10 @@ Bash:
 ```bash
 python -m cli.specguard init your-feature-name
 cp -R example/. specs/your-feature-name/
-python -m cli.specguard run specs/your-feature-name --no-llm
+python -m cli.specguard run specs/your-feature-name
 ```
+
+This exercises the same Codex-backed validation path that a real feature spec will use.
 
 ### 5. Run And Iterate Until READY
 
@@ -250,12 +243,7 @@ Run tests:
 python -m pytest
 ```
 
-Run local example checks:
-
-```bash
-python -m cli.specguard run examples/example --no-llm --no-follow-up
-python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
-```
+Use the example flow above when you want to exercise SpecGuard with the configured Codex provider.
 
 ## Documentation
 
