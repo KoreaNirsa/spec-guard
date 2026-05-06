@@ -163,6 +163,14 @@ The initial review is broad and adversarial. After spec regeneration, Verificati
 
 Repeat until SpecGuard reports READY.
 
+LLM-enabled runs can automate this bounded loop:
+
+```bash
+python -m cli.specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
+```
+
+Strict E2E always runs Initial SpecGuard Review first. When it receives NOT READY, it regenerates `spec.md` from the readiness findings, reruns Verification Review with those findings as the backlog, and stops only when READY or the iteration limit is exhausted. Each run writes `strict-e2e-trace.json` so regeneration attempts can be traced back to the findings that caused them.
+
 ### 4. External Implementation Handoff
 
 When the spec package is ready, SpecGuard continues through:
@@ -208,6 +216,8 @@ Useful options:
 - `--follow-up`: force the interactive continuation menu.
 - `--no-follow-up`: exit immediately after the pipeline.
 - `--no-llm`: use local deterministic checks and heuristic SpecGuard Review.
+- `--strict-e2e`: use an LLM to automatically regenerate blocked specs and rerun Verification Review.
+- `--strict-max-iterations`: bound the number of strict E2E verification iterations.
 
 CI or scripted example:
 

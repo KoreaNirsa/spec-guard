@@ -31,6 +31,7 @@ from tools.post_run import (
 from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
+from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.tdd_generator import generate_tests
 import cli.specguard as specguard_cli
 from cli.specguard import _progress_line, _should_offer_follow_up
@@ -189,6 +190,95 @@ class CaptureVerificationReadinessLLM:
         self.instructions = instructions
         self.input_text = input_text
         return '{"issues":[]}'
+
+
+class StrictE2EConvergingLLM:
+    def __init__(self) -> None:
+        self.verification_inputs: list[str] = []
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        lowered = instructions.lower()
+        if "technical design generator" in lowered:
+            return "\n".join([
+                "# Technical Design: feature",
+                "",
+                "## Architecture",
+                "",
+                "- API layer calls a service layer with owner-scoped validation.",
+                "",
+                "## Data Flow",
+                "",
+                "1. Request arrives.",
+                "2. Service validates owner scope and input.",
+                "3. Response is returned.",
+                "",
+                "## State",
+                "",
+                "- Initial state: request received but not validated.",
+                "- Terminal state: completed or rejected.",
+                "",
+                "## Dependencies",
+                "",
+                "- Feature database.",
+                "",
+                "## Failure Handling",
+                "",
+                "- Unauthorized owner access returns 403.",
+                "",
+                "## Implementation Blockers",
+                "",
+                "- None.",
+                "",
+            ])
+        if "spec refinement assistant" in lowered:
+            assert "Owner scope missing" in input_text
+            return "\n".join([
+                "# Spec: feature",
+                "",
+                "## Requirements",
+                "",
+                "- The system must accept valid input.",
+                "- The system must scope every request to the authenticated owner.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] Valid owner-scoped input succeeds.",
+                "- [ ] Cross-owner access is rejected.",
+                "",
+                "## Error Cases",
+                "",
+                "- Invalid input",
+                "- Unauthorized owner access",
+                "",
+            ])
+        if "verification review board" in lowered:
+            self.verification_inputs.append(input_text)
+            return '{"issues":[]}'
+        return json.dumps({
+            "issues": [{
+                "severity": "Major",
+                "title": "Owner scope missing",
+                "description": "The spec does not state how ownership is enforced.",
+                "impact": "Implementation would need to guess authorization behavior.",
+                "fix": "Add owner-scoped requirements and acceptance criteria.",
+            }]
+        })
+
+
+class StrictE2EAlwaysBlockingLLM(StrictE2EConvergingLLM):
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        if "verification review board" in instructions.lower():
+            self.verification_inputs.append(input_text)
+            return json.dumps({
+                "issues": [{
+                    "severity": "Major",
+                    "title": "Verification blocker remains",
+                    "description": "The regenerated spec still leaves implementation-critical behavior unclear.",
+                    "impact": "Implementation would still need to guess.",
+                    "fix": "Clarify the remaining behavior before implementation.",
+                }]
+            })
+        return super().generate_text(instructions, input_text, max_output_tokens)
 
 
 def copy_example(tmp_path: Path, example: str) -> Path:
@@ -952,6 +1042,39 @@ def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> N
     assert "Verification Review board" in llm.instructions
     assert "Previous SpecGuard Review Findings" in llm.input_text
     assert "Delete semantics are unsafe" in llm.input_text
+
+
+def test_strict_e2e_converges_after_spec_regeneration(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = StrictE2EConvergingLLM()
+
+    result = run_strict_e2e_pipeline(feature, llm, max_iterations=2)
+
+    trace = json.loads(feature.joinpath("strict-e2e-trace.json").read_text(encoding="utf-8"))
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_mode"] == "verification"
+    assert payload["blocked"] is False
+    assert trace["final"] == {"status": "ready", "iterations": 1}
+    assert trace["regenerations"][0]["source_findings"][0]["title"] == "Owner scope missing"
+    assert "Owner scope missing" in llm.verification_inputs[0]
+    assert "Previous SpecGuard Review Findings" in llm.verification_inputs[0]
+    assert "scope every request to the authenticated owner" in feature.joinpath("spec.md").read_text(encoding="utf-8")
+
+
+def test_strict_e2e_fails_after_max_iterations(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = StrictE2EAlwaysBlockingLLM()
+
+    result = run_strict_e2e_pipeline(feature, llm, max_iterations=1)
+
+    trace = json.loads(feature.joinpath("strict-e2e-trace.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert trace["final"] == {"status": "max_iterations_exhausted", "iterations": 1}
+    assert len(trace["attempts"]) == 2
+    assert len(trace["regenerations"]) == 1
+    assert any("Strict E2E failed after 1 verification iteration" in message for message in result.messages)
+    assert any("strict-e2e-trace.json" in step for step in result.next_steps)
 
 
 def test_post_run_readiness_review_summary_supports_review_menu(tmp_path: Path) -> None:
