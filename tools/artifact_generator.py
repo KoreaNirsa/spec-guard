@@ -142,7 +142,9 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
         "Generate a technical design from the full SpecGuard spec package.",
         "SpecGuard is not a code generator. Do not write application code.",
         "Return ONLY Markdown.",
-        "Resolve contradictions between discovery.md, spec.md, plan.md, tasks.md, constitution.md, and checklists by making the safest explicit design assumption and naming any remaining blocker.",
+        "Do not resolve contradictions by inventing behavior or filling gaps with assumptions.",
+        "When discovery.md, spec.md, plan.md, tasks.md, constitution.md, or checklists conflict or omit implementation-critical details, mark the item as a blocker that must be clarified in the spec package before implementation.",
+        "Use TODO or Blocker language only for unresolved clarification needs, and do not present unresolved blockers as implementation-ready design decisions.",
         "Use this exact section structure:",
         f"# Technical Design: {path.name}",
         "## Architecture",
@@ -150,6 +152,7 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
         "## State",
         "## Dependencies",
         "## Failure Handling",
+        "## Implementation Blockers",
         "Keep the design implementation-ready, testable, and explicit about ownership, state, and failure boundaries.",
     ])
     input_text = "\n\n".join([
