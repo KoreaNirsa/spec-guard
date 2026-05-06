@@ -2,4 +2,29 @@ openapi: 3.1.0
 info:
   title: example API
   version: 0.1.0
-paths: {}
+paths:
+  /auth/login:
+    post:
+      responses:
+        "200":
+          description: Access and refresh tokens issued
+        "400":
+          description: Missing email or password
+        "401":
+          description: Invalid credentials
+        "429":
+          description: Too many failed login attempts
+  /auth/refresh:
+    post:
+      responses:
+        "200":
+          description: Rotated access and refresh tokens issued
+        "401":
+          description: Expired or replayed refresh token
+  /protected:
+    get:
+      responses:
+        "200":
+          description: Protected resource returned
+        "401":
+          description: Missing or expired access token

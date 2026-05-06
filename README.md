@@ -141,6 +141,7 @@ Technical Design -> Initial SpecGuard Review -> READY or NOT READY
 SpecGuard Review inspects the full spec package and generated technical design. It looks for blockers before implementation begins.
 
 Run is a validator, not the place where product intent is invented. Use it after the spec package has enough real detail to review.
+For API features, `contracts/openapi.yaml` must define at least one concrete path before SpecGuard can produce implementation outputs; `paths: {}` is treated as a blocker, not a ready contract.
 
 ### 3. Iterate Until Ready
 

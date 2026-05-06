@@ -4,6 +4,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from tools.contract_checker import has_openapi_paths
+
 
 @dataclass(frozen=True)
 class ArtifactWrite:
@@ -171,8 +173,9 @@ def ensure_contract(path: Path, force: bool = False) -> ArtifactWrite:
     contracts_dir = path / "contracts"
     contracts_dir.mkdir(parents=True, exist_ok=True)
     output = contracts_dir / "openapi.yaml"
-    if output.exists() and not force:
-        return ArtifactWrite(output, created=False)
+    if output.exists():
+        if not force or _has_concrete_contract_paths(output):
+            return ArtifactWrite(output, created=False)
 
     spec = (path / "spec.md").read_text(encoding="utf-8")
     title = _title(path, spec)
@@ -181,11 +184,19 @@ def ensure_contract(path: Path, force: bool = False) -> ArtifactWrite:
         "info:",
         f"  title: {title} API",
         "  version: 0.1.0",
+        "x-specguard-blocker: Define concrete API paths, operations, responses, and error schemas before implementation.",
         "paths: {}",
         "",
     ])
     output.write_text(content, encoding="utf-8")
     return ArtifactWrite(output, created=True)
+
+
+def _has_concrete_contract_paths(output: Path) -> bool:
+    try:
+        return has_openapi_paths(output)
+    except Exception:
+        return False
 
 
 def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWrite:
