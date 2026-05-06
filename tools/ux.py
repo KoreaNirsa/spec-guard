@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 
 LOGO = r"""
@@ -14,9 +15,19 @@ LOGO = r"""
 
 
 def _color(code: str, text: str) -> str:
-    if os.getenv("NO_COLOR"):
+    if not _colors_enabled():
         return text
     return f"\033[{code}m{text}\033[0m"
+
+
+def _colors_enabled() -> bool:
+    if os.getenv("NO_COLOR") or os.getenv("CLICOLOR") == "0":
+        return False
+    if os.getenv("FORCE_COLOR") or os.getenv("CLICOLOR_FORCE"):
+        return True
+    if os.getenv("CI", "").lower() in {"1", "true", "yes"}:
+        return False
+    return sys.stdout.isatty()
 
 
 def bold(text: str) -> str:
