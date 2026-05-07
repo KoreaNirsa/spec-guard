@@ -10,12 +10,15 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
+
 from tools.contract_checker import check_contracts
 from tools.discovery_engine import answers_from_args, collect_llm_answers, initialize_specs
 from tools.readiness_engine import run_readiness_review
 from tools.llm_client import (
     DEFAULT_CODEX_TIMEOUT,
     CodexExecClient,
+    LLMConfigError,
     LLMSettings,
     _build_codex_prompt,
     _build_prompt,
@@ -873,6 +876,22 @@ def test_codex_settings_preserve_explicit_non_legacy_timeout(tmp_path: Path) -> 
     assert settings.timeout == 300
 
 
+def test_codex_settings_round_trip_execution_tuning(tmp_path: Path) -> None:
+    save_llm_settings(tmp_path, LLMSettings(
+        mode="codex",
+        model="gpt-5.4",
+        timeout=300,
+        codex_profile="specguard-fast",
+        codex_reasoning_effort="medium",
+    ))
+
+    settings = load_llm_settings(tmp_path)
+
+    assert settings is not None
+    assert settings.codex_profile == "specguard-fast"
+    assert settings.codex_reasoning_effort == "medium"
+
+
 def test_codex_prompt_constrains_provider_to_supplied_input() -> None:
     prompt = _build_codex_prompt("Return JSON.", "# Artifact: spec.md\n\nBody", 2500)
 
@@ -903,6 +922,30 @@ def test_codex_exec_omits_ephemeral_when_cli_does_not_support_it(tmp_path: Path,
     assert "--color" in command
 
 
+def test_codex_exec_includes_reasoning_effort_when_supported(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(llm_client_module, "_codex_supports_ephemeral", lambda _command: False)
+    monkeypatch.setattr(llm_client_module, "_codex_supports_reasoning_effort", lambda _command: True)
+    client = CodexExecClient(
+        LLMSettings(mode="codex", codex_command=sys.executable, codex_reasoning_effort="medium"),
+        root=tmp_path,
+    )
+
+    command = client._base_command()
+
+    assert "--reasoning-effort" in command
+    assert command[command.index("--reasoning-effort") + 1] == "medium"
+
+
+def test_codex_exec_rejects_reasoning_effort_when_unsupported(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(llm_client_module, "_codex_supports_reasoning_effort", lambda _command: False)
+
+    with pytest.raises(LLMConfigError, match="does not support `--reasoning-effort`"):
+        CodexExecClient(
+            LLMSettings(mode="codex", codex_command=sys.executable, codex_reasoning_effort="medium"),
+            root=tmp_path,
+        )
+
+
 def test_codex_setup_defaults_model_and_skips_missing_login(tmp_path: Path, monkeypatch, capsys) -> None:
     monkeypatch.setattr(specguard_cli, "ROOT", tmp_path)
     monkeypatch.setattr(specguard_cli, "codex_available", lambda _command="codex": True)
@@ -920,6 +963,7 @@ def test_codex_setup_defaults_model_and_skips_missing_login(tmp_path: Path, monk
         timeout=None,
         codex_command="codex",
         codex_profile=None,
+        codex_reasoning_effort=None,
         skip_login=False,
     ))
 
@@ -932,6 +976,32 @@ def test_codex_setup_defaults_model_and_skips_missing_login(tmp_path: Path, monk
     assert settings.timeout == DEFAULT_CODEX_TIMEOUT
     assert "could not be launched" in rendered
     assert "provider config is still saved" in rendered
+
+
+def test_codex_setup_saves_and_status_reports_execution_tuning(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setattr(specguard_cli, "ROOT", tmp_path)
+    monkeypatch.setattr(specguard_cli, "codex_available", lambda _command="codex": True)
+
+    exit_code = specguard_cli._setup_llm(Namespace(
+        mode="codex",
+        model="gpt-5.4",
+        timeout=300,
+        codex_command="codex",
+        codex_profile="specguard-fast",
+        codex_reasoning_effort="medium",
+        skip_login=True,
+    ))
+    status_code = specguard_cli.auth(Namespace(auth_command="status"))
+
+    settings = load_llm_settings(tmp_path)
+    rendered = capsys.readouterr().out
+    assert exit_code == 0
+    assert status_code == 0
+    assert settings is not None
+    assert settings.codex_profile == "specguard-fast"
+    assert settings.codex_reasoning_effort == "medium"
+    assert "Codex profile: specguard-fast" in rendered
+    assert "Codex reasoning effort: medium" in rendered
 
 
 def test_codex_json_event_parser_reads_deltas_only() -> None:
