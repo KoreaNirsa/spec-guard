@@ -311,7 +311,7 @@ Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only files u
 The workflow:
 
 - checks credentials before assembling review context;
-- skips safely in advisory mode when `SPECGUARD_OPENAI_API_KEY` or `SPECGUARD_PR_REVIEW_COMMAND` is unavailable;
+- skips safely in advisory mode when `SPECGUARD_OPENAI_API_KEY` is unavailable;
 - refuses to invoke Codex when the selected spec package is NOT READY or stale;
 - sends approved artifacts, tests, contracts, `implementation-output.md`, and the PR diff to the reviewer prompt;
 - asks `SpecGuard PR Reviewer` to focus on spec conformance, security, reliability, API contracts, data ownership, testability, and operational risk;
