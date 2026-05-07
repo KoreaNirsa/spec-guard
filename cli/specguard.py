@@ -13,6 +13,8 @@ from pathlib import Path
 
 from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
 from tools.llm_client import (
+    DEFAULT_CODEX_TIMEOUT,
+    DEFAULT_OPENAI_TIMEOUT,
     LLMConfigError,
     LLMRequestError,
     LLMSettings,
@@ -209,6 +211,7 @@ def auth(args: argparse.Namespace) -> int:
         print(f"- Mode: {settings.mode}")
         print(f"- Model: {settings.model or '(provider default)'}")
         print(f"- Timeout: {settings.timeout}s")
+        print("- Status checks saved configuration and command availability, not a full live model request.")
         if settings.mode == "openai":
             print(f"- API key source: {settings.api_key_env if not settings.api_key else 'local config'}")
             print(f"- Endpoint: {settings.endpoint}")
@@ -259,7 +262,7 @@ def _build_llm_client(args: argparse.Namespace, *, purpose: str, allow_setup: bo
                 api_key=None,
                 api_key_env="OPENAI_API_KEY",
                 endpoint="https://api.openai.com/v1/responses",
-                timeout=180,
+                timeout=None,
                 codex_command="codex",
                 codex_profile=None,
                 skip_login=False,
@@ -288,7 +291,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
 
     if mode == "codex":
         model = args.model or _prompt("Model", "gpt-5.4")
-        timeout = args.timeout or 180
+        timeout = args.timeout or DEFAULT_CODEX_TIMEOUT
         codex_command = args.codex_command or "codex"
         if not codex_available(codex_command):
             print_error("[FAIL] Local Codex CLI was not found.")
@@ -308,7 +311,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         return 0
 
     model = args.model or _prompt("Model", "gpt-5.1")
-    timeout = args.timeout or 180
+    timeout = args.timeout or DEFAULT_OPENAI_TIMEOUT
     api_key = args.api_key
     if api_key is None and not os.getenv(args.api_key_env):
         entered = getpass.getpass("OpenAI API key (leave empty to use environment variable): ").strip()
@@ -602,7 +605,7 @@ def _print_llm_failure(exc: Exception) -> None:
         print("- Example: specguard auth setup --mode codex --model gpt-5.1 --skip-login")
     if "timed out" in str(exc).lower():
         print("- The provider is reachable, but the request exceeded the configured timeout.")
-        print("- Retry the action, or increase timeout: specguard auth setup --mode codex --timeout 240 --skip-login")
+        print(f"- Retry the action, or increase timeout: specguard auth setup --mode codex --timeout {DEFAULT_CODEX_TIMEOUT} --skip-login")
     print("- Check provider status: specguard auth status")
     print("- Reconfigure provider: specguard auth setup")
 
@@ -695,7 +698,7 @@ def build_parser() -> argparse.ArgumentParser:
     auth_setup = auth_subparsers.add_parser("setup", formatter_class=SpecGuardHelpFormatter)
     auth_setup.add_argument("--mode", choices=["codex", "openai"], help="LLM provider mode")
     auth_setup.add_argument("--model", help="Model name for the selected provider; Codex setup defaults to gpt-5.4")
-    auth_setup.add_argument("--timeout", type=int, help="Provider request timeout in seconds")
+    auth_setup.add_argument("--timeout", type=int, help="Provider request timeout in seconds; Codex defaults to 600, OpenAI defaults to 180")
     auth_setup.add_argument("--api-key", help="Store an OpenAI API key in local ignored config")
     auth_setup.add_argument("--api-key-env", default="OPENAI_API_KEY", help="Environment variable for the OpenAI API key")
     auth_setup.add_argument("--endpoint", default="https://api.openai.com/v1/responses", help="OpenAI Responses API endpoint")
