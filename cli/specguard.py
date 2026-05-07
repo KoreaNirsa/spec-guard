@@ -11,6 +11,7 @@ import time
 from importlib import resources
 from pathlib import Path
 
+from tools.action_installer import WorkflowInstallResult, install_workflow
 from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
 from tools.llm_client import (
     LLMConfigError,
@@ -75,6 +76,9 @@ def init_project(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
+    if result.ok and hasattr(args, "no_actions") and not args.no_actions:
+        if not _install_default_readiness_gate(force=getattr(args, "force_actions", False)):
+            return 1
     return 0 if result.ok else 1
 
 
@@ -160,6 +164,34 @@ def copy_example(args: argparse.Namespace) -> int:
     return 0
 
 
+def actions(args: argparse.Namespace) -> int:
+    if args.actions_command == "install-readiness-gate":
+        return 0 if _install_default_readiness_gate(force=args.force) else 1
+    if args.actions_command == "install-pr-review":
+        return 0 if _install_pr_review(force=args.force) else 1
+    if args.actions_command == "install":
+        workflows: list[str] = []
+        if args.readiness_gate:
+            workflows.append("readiness-gate")
+        if args.pr_review:
+            workflows.append("pr-review")
+        if not workflows:
+            print_error("[FAIL] Choose at least one workflow to install.")
+            print("- Example: specguard actions install --readiness-gate")
+            print("- Example: specguard actions install --pr-review")
+            return 1
+        ok = True
+        for workflow in workflows:
+            if workflow == "readiness-gate":
+                ok = _install_default_readiness_gate(force=args.force) and ok
+            if workflow == "pr-review":
+                ok = _install_pr_review(force=args.force) and ok
+        return 0 if ok else 1
+
+    print_error("[FAIL] Unknown actions command.")
+    return 1
+
+
 def _example_target_path(feature: str) -> Path:
     target = Path(feature)
     if target.is_absolute() or target.parts[:1] == ("specs",):
@@ -194,6 +226,70 @@ def _copy_resource_tree(source, target: Path) -> int:
         destination.write_bytes(child.read_bytes())
         copied += 1
     return copied
+
+
+def _install_default_readiness_gate(*, force: bool) -> bool:
+    try:
+        result = install_workflow(ROOT, "readiness-gate", force=force)
+    except (OSError, ValueError) as exc:
+        print_error("[FAIL] Could not install SpecGuard Readiness Gate workflow.")
+        print(f"- {exc}")
+        return False
+
+    _print_workflow_install_result(result, force_hint="--force-actions")
+    if result.installed:
+        print("")
+        print("Merge protection:")
+        print("- Add `SpecGuard Readiness Gate` as a required status check in your GitHub branch protection or ruleset.")
+        print("")
+        print("Optional PR Review:")
+        print("- Run `specguard actions install-pr-review` to add AI-assisted PR review comments.")
+    return True
+
+
+def _install_pr_review(*, force: bool) -> bool:
+    try:
+        result = install_workflow(ROOT, "pr-review", force=force)
+    except (OSError, ValueError) as exc:
+        print_error("[FAIL] Could not install SpecGuard PR Review workflow.")
+        print(f"- {exc}")
+        return False
+
+    _print_workflow_install_result(result, force_hint="--force")
+    if result.installed:
+        print("")
+        print("Next steps:")
+        print("1. Commit and push the workflow file.")
+        print("2. Add this GitHub Actions secret in Repository Settings > Secrets and variables > Actions:")
+        print("")
+        print("SPECGUARD_OPENAI_API_KEY=sk-...")
+        print("")
+        print("Optional repository variables:")
+        print("SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano")
+        print("SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name")
+        print("")
+        print("Use SPECGUARD_REVIEW_SPEC_PATHS when a PR changes only implementation files under develop/.")
+    return True
+
+
+def _print_workflow_install_result(result: WorkflowInstallResult, *, force_hint: str) -> None:
+    display_path = _display_path(result.path)
+    if result.installed:
+        verb = "Updated" if result.overwritten else "Installed"
+        print_success(f"[PASS] {verb} {result.name} workflow:")
+        print(f"- {display_path}")
+        return
+
+    print_warning(f"[WARN] {result.name} workflow already exists; kept current file.")
+    print(f"- {display_path}")
+    print(f"- Re-run with {force_hint} to replace it.")
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def auth(args: argparse.Namespace) -> int:
@@ -637,6 +733,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     init_parser.add_argument("--non-interactive", action="store_true", help="Generate specs from CLI values and defaults")
     init_parser.add_argument("--force", action="store_true", help="Overwrite generated discovery and spec drafts")
+    init_parser.add_argument("--no-actions", action="store_true", help="Do not install the default SpecGuard Readiness Gate workflow")
+    init_parser.add_argument("--force-actions", action="store_true", help="Overwrite an existing default SpecGuard Actions workflow")
     init_parser.add_argument("--llm", action="store_true", help="Use configured LLM mode. Kept for compatibility; LLM is the default.")
     init_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic Discovery without LLM")
     init_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
@@ -688,6 +786,35 @@ def build_parser() -> argparse.ArgumentParser:
     example_copy.add_argument("feature", help="Feature name under specs/ or an explicit specs/<feature> path")
     example_copy.add_argument("--force", action="store_true", help="Overwrite existing files in the target package")
     example_copy.set_defaults(func=copy_example)
+
+    actions_parser = subparsers.add_parser("actions", formatter_class=SpecGuardHelpFormatter)
+    actions_subparsers = actions_parser.add_subparsers(dest="actions_command", required=True)
+
+    actions_install_readiness = actions_subparsers.add_parser(
+        "install-readiness-gate",
+        description="Install the consumer SpecGuard Readiness Gate workflow.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    actions_install_readiness.add_argument("--force", action="store_true", help="Overwrite an existing workflow file")
+    actions_install_readiness.set_defaults(func=actions)
+
+    actions_install_pr_review = actions_subparsers.add_parser(
+        "install-pr-review",
+        description="Install the optional AI-assisted SpecGuard PR Review workflow.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    actions_install_pr_review.add_argument("--force", action="store_true", help="Overwrite an existing workflow file")
+    actions_install_pr_review.set_defaults(func=actions)
+
+    actions_install = actions_subparsers.add_parser(
+        "install",
+        description="Install selected consumer SpecGuard GitHub Actions workflows.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    actions_install.add_argument("--readiness-gate", action="store_true", help="Install the SpecGuard Readiness Gate workflow")
+    actions_install.add_argument("--pr-review", action="store_true", help="Install the SpecGuard PR Review workflow")
+    actions_install.add_argument("--force", action="store_true", help="Overwrite existing workflow files")
+    actions_install.set_defaults(func=actions)
 
     auth_parser = subparsers.add_parser("auth", formatter_class=SpecGuardHelpFormatter)
     auth_subparsers = auth_parser.add_subparsers(dest="auth_command", required=True)

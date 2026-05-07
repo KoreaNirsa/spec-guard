@@ -48,7 +48,7 @@ specguard auth setup --mode codex --model gpt-5.4 --skip-login
 specguard init your-feature-name
 ```
 
-SpecGuard writes draft artifacts under:
+SpecGuard writes draft artifacts and the default readiness workflow:
 
 ```text
 specs/your-feature-name/
@@ -58,9 +58,13 @@ specs/your-feature-name/
 |-- tasks.md
 |-- constitution.md
 `-- checklists/spec-readiness.md
+.github/
+`-- workflows/specguard-readiness-gate.yml
 ```
 
 For real work, this is where the user writes the actual development spec. Strengthen `specs/your-feature-name/` with product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria before running validation.
+
+`init` installs the default `SpecGuard Readiness Gate` GitHub Actions workflow so changed spec packages can be checked on pull requests. Use `--no-actions` when you do not want SpecGuard to write `.github/workflows`.
 
 ### 4. Write Specs Or Try The Example Package
 
@@ -128,7 +132,13 @@ After implementation, open a PR in your GitHub repository with the completed cod
 
 The optional `SpecGuard PR Review` workflow compares the approved spec package to the PR diff and posts one advisory PR comment headed `SpecGuard PR Reviewer`.
 
-To enable the default GitHub Actions path, add this repository secret in GitHub repository settings:
+Install it explicitly when you want AI-assisted review comments:
+
+```bash
+specguard actions install-pr-review
+```
+
+After the command completes, commit and push the workflow file, then add this repository secret in GitHub repository settings:
 
 ```text
 SPECGUARD_OPENAI_API_KEY=sk-...
@@ -196,6 +206,8 @@ Strict E2E also requires executable verification before handoff. Add tests such 
 
 Pull request CI includes a stable required-check candidate named `SpecGuard Readiness Gate`. It inspects changed packages under `specs/`, fails when a changed package is NOT READY, and fails when source artifacts are stale relative to `readiness-review.json`.
 
+`specguard init <feature>` installs `.github/workflows/specguard-readiness-gate.yml` by default. Use `specguard init <feature> --no-actions` to opt out, or `specguard actions install-readiness-gate` to install the workflow later.
+
 Repositories that want merge-time enforcement should add `SpecGuard Readiness Gate` to branch protection or ruleset required status checks.
 
 `SpecGuard PR Review` is separate from the readiness gate. It is a post-implementation advisory review that checks whether code appears aligned with the approved spec package.
@@ -205,6 +217,7 @@ Repositories that want merge-time enforcement should add `SpecGuard Readiness Ga
 ```bash
 specguard init <spec-name>
 specguard example copy <spec-name> --force
+specguard actions install-pr-review
 specguard run specs/<spec-name>
 specguard auth status
 ```

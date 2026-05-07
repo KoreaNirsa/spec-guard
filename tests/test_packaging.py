@@ -83,6 +83,8 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
     )
     assert init_result.returncode == 0
     assert (tmp_path / "specs" / "pip-smoke" / "spec.md").exists()
+    assert (tmp_path / ".github" / "workflows" / "specguard-readiness-gate.yml").exists()
+    assert "SpecGuard Readiness Gate workflow" in init_result.stdout
 
     copy_without_force = _run(
         [str(specguard), "example", "copy", "pip-smoke"],

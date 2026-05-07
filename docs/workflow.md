@@ -66,7 +66,7 @@ You can also run deterministic local Discovery without an LLM:
 specguard init my-feature --no-llm
 ```
 
-SpecGuard creates draft specs under `specs/`:
+SpecGuard creates draft specs under `specs/` and installs the default readiness workflow:
 
 ```text
 specs/my-feature/
@@ -76,7 +76,11 @@ specs/my-feature/
 |-- tasks.md
 |-- constitution.md
 `-- checklists/
+.github/
+`-- workflows/specguard-readiness-gate.yml
 ```
+
+Use `specguard init my-feature --no-actions` when you do not want SpecGuard to write `.github/workflows`. Existing workflow files are kept unless you explicitly use the workflow force option.
 
 The generated spec package follows a Spec Kit-inspired shape:
 
@@ -267,9 +271,34 @@ develop/react/
 develop/fastapi/
 ```
 
-## 6. Advisory PR Review
+## 6. Pull Request Gates And Advisory Review
+
+`specguard init` installs the `SpecGuard Readiness Gate` workflow by default. The gate runs on pull requests, checks changed packages under `specs/`, and fails when the package is not READY or when `readiness-review.json` is stale relative to source spec artifacts.
+
+For merge-time enforcement, add `SpecGuard Readiness Gate` as a required status check in GitHub branch protection or rulesets.
 
 After external implementation opens a pull request, the optional `SpecGuard PR Review` workflow can run a read-only Codex-compatible review against the approved spec package and PR diff.
+
+Install PR Review only when you want AI-assisted advisory comments:
+
+```bash
+specguard actions install-pr-review
+```
+
+After installing it, commit and push `.github/workflows/specguard-pr-review.yml`, then add this GitHub Actions secret:
+
+```text
+SPECGUARD_OPENAI_API_KEY=sk-...
+```
+
+Optional repository variables:
+
+```text
+SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
+SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
+```
+
+Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only files under `develop/` and does not modify files under `specs/`.
 
 The workflow:
 
