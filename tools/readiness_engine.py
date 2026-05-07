@@ -1,14 +1,20 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime, timezone
+import hashlib
 import json
 import re
+import shutil
 import sys
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.llm_client import describe_llm_client
+from tools.progress import progress_activity
 from tools.result import CheckResult
 from tools.ux import green, red, yellow
 
@@ -17,6 +23,10 @@ READINESS_READY_MINOR_LIMIT = 5
 READINESS_WARNING_MAJOR_LIMIT = 2
 READINESS_WARNING_MINOR_LIMIT = 10
 READINESS_REVIEW_MODES = {"initial", "verification"}
+READINESS_CACHE_SCHEMA_VERSION = "0.1"
+READINESS_CACHE_PROMPT_VERSION = "readiness-review-v1"
+SPECGUARD_STATE_DIR = ".specguard"
+READINESS_CACHE_DIR = "readiness-cache"
 GENERATED_ARTIFACT_NAMES = {
     "readiness-review.md",
     "readiness-review.json",
@@ -62,6 +72,13 @@ class ReadinessIssue:
 class ReviewArtifact:
     path: str
     content: str
+
+
+@dataclass(frozen=True)
+class CachedReview:
+    cache_dir: Path
+    cache_key: str
+    payload: dict
 
 
 def _contains(text: str, *needles: str) -> bool:
@@ -159,6 +176,145 @@ def _load_previous_report(path: Path) -> dict | None:
     except json.JSONDecodeError:
         return None
     return payload if isinstance(payload, dict) else None
+
+
+def _readiness_cache_root(feature_dir: Path) -> tuple[Path, str]:
+    resolved = feature_dir.resolve()
+    for parent in resolved.parents:
+        if parent.name == "specs":
+            relative = resolved.relative_to(parent)
+            return parent.parent / SPECGUARD_STATE_DIR / READINESS_CACHE_DIR, _slugify_path(relative)
+    return resolved.parent / SPECGUARD_STATE_DIR / READINESS_CACHE_DIR, _slugify_path(Path(resolved.name))
+
+
+def _slugify_path(path: Path) -> str:
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", path.as_posix()).strip("-._")
+    return slug or "feature"
+
+
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _client_cache_identity(llm_client: object) -> dict[str, str]:
+    settings = getattr(llm_client, "settings", None)
+    config = getattr(llm_client, "config", None)
+    mode = getattr(settings, "mode", None)
+    if not mode:
+        mode = "openai" if config is not None else llm_client.__class__.__name__
+    model = getattr(llm_client, "model", None) or getattr(settings, "model", None) or getattr(config, "model", None) or ""
+    endpoint = getattr(settings, "endpoint", None) or getattr(config, "endpoint", None) or ""
+    codex_profile = getattr(settings, "codex_profile", None) or ""
+
+    return {
+        "mode": str(mode),
+        "model": str(model),
+        "endpoint": str(endpoint),
+        "codex_profile": str(codex_profile),
+        "client_class": llm_client.__class__.__name__,
+    }
+
+
+def _review_artifact_manifest(artifacts: list[ReviewArtifact]) -> list[dict[str, object]]:
+    return [
+        {
+            "path": artifact.path,
+            "characters": len(artifact.content),
+            "sha256": _sha256_text(artifact.content),
+        }
+        for artifact in artifacts
+    ]
+
+
+def _stable_json(payload: object) -> str:
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def _build_llm_review_request(
+    artifacts: list[ReviewArtifact],
+    *,
+    review_mode: str,
+    previous_report: dict | None,
+) -> tuple[str, str]:
+    instructions = _verification_review_instructions() if review_mode == "verification" else _initial_review_instructions()
+    input_text = _render_artifact_input(artifacts)
+    if review_mode == "verification":
+        input_text = "\n\n".join([
+            "# Previous SpecGuard Review Findings",
+            _previous_findings_text(previous_report),
+            "# Current Spec Package Artifacts",
+            input_text,
+        ])
+    return instructions, input_text
+
+
+def _review_cache_metadata(
+    artifacts: list[ReviewArtifact],
+    *,
+    review_mode: str,
+    instructions: str,
+    input_text: str,
+    llm_client: object,
+) -> tuple[str, dict[str, object]]:
+    artifact_manifest = _review_artifact_manifest(artifacts)
+    artifact_fingerprint = hashlib.sha256(_stable_json(artifact_manifest).encode("utf-8")).hexdigest()
+    client_identity = _client_cache_identity(llm_client)
+    metadata: dict[str, object] = {
+        "schema_version": READINESS_CACHE_SCHEMA_VERSION,
+        "prompt_version": READINESS_CACHE_PROMPT_VERSION,
+        "review_mode": review_mode,
+        "client": client_identity,
+        "artifact_fingerprint": artifact_fingerprint,
+        "input_fingerprint": _sha256_text(input_text),
+        "instructions_fingerprint": _sha256_text(instructions),
+        "artifact_count": len(artifacts),
+        "total_input_characters": sum(len(artifact.content) for artifact in artifacts),
+        "artifacts": artifact_manifest,
+    }
+    cache_key = hashlib.sha256(_stable_json(metadata).encode("utf-8")).hexdigest()
+    metadata["cache_key"] = cache_key
+    return cache_key, metadata
+
+
+def _load_cached_review(feature_dir: Path, cache_key: str) -> CachedReview | None:
+    cache_root, feature_slug = _readiness_cache_root(feature_dir)
+    cache_dir = cache_root / feature_slug / cache_key
+    report_path = cache_dir / "readiness-review.md"
+    report_json_path = cache_dir / "readiness-review.json"
+    metadata_path = cache_dir / "metadata.json"
+    if not report_path.exists() or not report_json_path.exists() or not metadata_path.exists():
+        return None
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        payload = json.loads(report_json_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(metadata, dict) or metadata.get("cache_key") != cache_key or not isinstance(payload, dict):
+        return None
+    return CachedReview(cache_dir=cache_dir, cache_key=cache_key, payload=payload)
+
+
+def _copy_cached_review(cached: CachedReview, report_path: Path, report_json_path: Path) -> None:
+    shutil.copyfile(cached.cache_dir / "readiness-review.md", report_path)
+    shutil.copyfile(cached.cache_dir / "readiness-review.json", report_json_path)
+
+
+def _store_cached_review(
+    feature_dir: Path,
+    cache_key: str,
+    metadata: dict[str, object],
+    report_path: Path,
+    report_json_path: Path,
+) -> Path:
+    cache_root, feature_slug = _readiness_cache_root(feature_dir)
+    cache_dir = cache_root / feature_slug / cache_key
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    metadata = dict(metadata)
+    metadata["created_at"] = datetime.now(timezone.utc).isoformat()
+    (cache_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    shutil.copyfile(report_path, cache_dir / "readiness-review.md")
+    shutil.copyfile(report_json_path, cache_dir / "readiness-review.json")
+    return cache_dir
 
 
 def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
@@ -392,21 +548,11 @@ def _verification_review_instructions() -> str:
 
 
 def _analyze_with_llm(
-    artifacts: list[ReviewArtifact],
     llm_client: object,
     *,
-    review_mode: str,
-    previous_report: dict | None,
+    instructions: str,
+    input_text: str,
 ) -> list[ReadinessIssue]:
-    instructions = _verification_review_instructions() if review_mode == "verification" else _initial_review_instructions()
-    input_text = _render_artifact_input(artifacts)
-    if review_mode == "verification":
-        input_text = "\n\n".join([
-            "# Previous SpecGuard Review Findings",
-            _previous_findings_text(previous_report),
-            "# Current Spec Package Artifacts",
-            input_text,
-        ])
     text = llm_client.generate_text(instructions, input_text, max_output_tokens=2500)
     return _parse_llm_issues(text)
 
@@ -583,12 +729,41 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     artifacts = _review_artifacts(path)
     total_input_characters = sum(len(artifact.content) for artifact in artifacts)
     previous_report = _load_previous_report(path) if review_mode == "verification" else None
+    mode = "LLM" if llm_client else "heuristic"
+    cache_hit: CachedReview | None = None
+    cache_key = ""
+    cache_metadata: dict[str, object] | None = None
+    llm_elapsed_ms: int | None = None
+    llm_summary = describe_llm_client(llm_client) if llm_client else ""
     try:
-        issues = (
-            _analyze_with_llm(artifacts, llm_client, review_mode=review_mode, previous_report=previous_report)
-            if llm_client
-            else _analyze(artifacts)
-        )
+        if llm_client:
+            instructions, input_text = _build_llm_review_request(
+                artifacts,
+                review_mode=review_mode,
+                previous_report=previous_report,
+            )
+            cache_key, cache_metadata = _review_cache_metadata(
+                artifacts,
+                review_mode=review_mode,
+                instructions=instructions,
+                input_text=input_text,
+                llm_client=llm_client,
+            )
+            cache_hit = _load_cached_review(path, cache_key)
+            if cache_hit:
+                _copy_cached_review(cache_hit, report_path, report_json_path)
+                issues = _parse_llm_issues(json.dumps({"issues": cache_hit.payload.get("issues", [])}))
+            else:
+                activity = (
+                    f"waiting for LLM SpecGuard Review "
+                    f"({llm_summary}, {review_mode}, {len(artifacts)} artifacts, {total_input_characters} chars)"
+                )
+                started = time.perf_counter()
+                with progress_activity(activity):
+                    issues = _analyze_with_llm(llm_client, instructions=instructions, input_text=input_text)
+                llm_elapsed_ms = int((time.perf_counter() - started) * 1000)
+        else:
+            issues = _analyze(artifacts)
     except (json.JSONDecodeError, ValueError) as exc:
         result.add_error(f"LLM SpecGuard Review response could not be parsed as JSON: {exc}")
         return result
@@ -598,14 +773,33 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     minor_count = summary["minor"]
     implementation_ready = _is_implementation_ready(summary)
 
-    report_path.write_text(_build_report(artifacts, issues, review_mode), encoding="utf-8")
-    report_json_path.write_text(_build_json_report(artifacts, issues, review_mode), encoding="utf-8")
+    if not cache_hit:
+        report_path.write_text(_build_report(artifacts, issues, review_mode), encoding="utf-8")
+        report_json_path.write_text(_build_json_report(artifacts, issues, review_mode), encoding="utf-8")
+        if llm_client and cache_metadata is not None:
+            _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
     result.details.update(summary)
-    mode = "LLM" if llm_client else "heuristic"
-    result.add_info(f"Generated {mode} {review_mode} readiness report: {report_path}")
-    result.add_info(f"Generated {mode} {review_mode} machine-readable readiness report: {report_json_path}")
+    if cache_hit:
+        result.details["cache_hit"] = True
+        result.details["cache_key"] = cache_key
+        result.add_info(f"Reused cached {mode} {review_mode} readiness report: {report_path}")
+        result.add_info(f"Reused cached {mode} {review_mode} machine-readable readiness report: {report_json_path}")
+        result.add_info(f"SpecGuard Review cache hit: {cache_key[:12]} ({cache_hit.cache_dir})")
+    else:
+        result.add_info(f"Generated {mode} {review_mode} readiness report: {report_path}")
+        result.add_info(f"Generated {mode} {review_mode} machine-readable readiness report: {report_json_path}")
+        if llm_client and cache_key:
+            result.details["cache_hit"] = False
+            result.details["cache_key"] = cache_key
+            result.add_info(f"SpecGuard Review cache stored: {cache_key[:12]}")
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
     result.add_info(f"SpecGuard Review input size: {len(artifacts)} artifact(s), {total_input_characters} characters.")
+    if llm_elapsed_ms is not None:
+        result.details[f"{review_mode}_llm_review_ms"] = llm_elapsed_ms
+        result.add_info(
+            f"LLM {review_mode} SpecGuard Review call: {llm_summary}, "
+            f"{len(artifacts)} artifact(s), {total_input_characters} characters, {llm_elapsed_ms}ms."
+        )
     if implementation_ready:
         if _readiness_status(summary) == "ready_with_warnings":
             result.add_info(yellow(f"[READY_WITH_WARNINGS] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
