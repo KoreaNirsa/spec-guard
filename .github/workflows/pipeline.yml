@@ -78,12 +78,15 @@ jobs:
       - name: Install
         run: pip install -r requirements.txt
 
-      - name: Confirm todo-api is blocked
+      - name: Confirm todo-api is ready with warnings
         run: |
-          set +e
           python -m cli.specguard run examples/risk/todo-api --no-llm --no-follow-up
-          code=$?
-          if [ "$code" -ne 1 ]; then
-            echo "risk example should be blocked by Readiness Findings"
-            exit 1
-          fi
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("examples/risk/todo-api/readiness-review.json").read_text())
+          assert report["blocked"] is False
+          assert report["readiness"]["status"] == "ready_with_warnings"
+          assert report["summary"]["major"] == 1
+          PY

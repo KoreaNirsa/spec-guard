@@ -10,10 +10,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.result import CheckResult
-from tools.ux import green, red
+from tools.ux import green, red, yellow
 
 
-READINESS_MINOR_READY_LIMIT = 5
+READINESS_READY_MINOR_LIMIT = 5
+READINESS_WARNING_MAJOR_LIMIT = 2
+READINESS_WARNING_MINOR_LIMIT = 10
 READINESS_REVIEW_MODES = {"initial", "verification"}
 GENERATED_ARTIFACT_NAMES = {
     "readiness-review.md",
@@ -38,10 +40,12 @@ Use the SpecGuard Review method:
 - Convert implementation guesses into Critical or Major findings.
 - Treat style-only improvements as Minor.
 
-Implementation-ready threshold:
-- Critical: 0
-- Major: 0
-- Minor: 5 or fewer, and none may hide a requirement ambiguity.
+Readiness thresholds:
+- READY: Critical=0, Major=0, Minor<=5.
+- READY_WITH_WARNINGS: Critical=0, Major<=2, Minor<=10.
+- NOT_READY: Critical>=1, Major>=3, or Minor>10.
+
+Critical findings always block implementation. Major findings should mean the implementer cannot complete required behavior without an important product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
 """
 
 
@@ -298,7 +302,62 @@ def _parse_llm_issues(text: str) -> list[ReadinessIssue]:
             "The local heuristic checks may still be useful as a backstop.",
             "Review the artifacts manually and rerun SpecGuard Review when the spec changes.",
         ))
-    return issues
+    return _calibrate_issues(issues)
+
+
+def _calibrate_issues(issues: list[ReadinessIssue]) -> list[ReadinessIssue]:
+    calibrated: list[ReadinessIssue] = []
+    for issue in issues:
+        if issue.severity == "Major" and _major_should_downgrade(issue):
+            calibrated.append(ReadinessIssue(
+                "Minor",
+                issue.title,
+                issue.description,
+                issue.impact,
+                issue.fix,
+            ))
+            continue
+        calibrated.append(issue)
+    return calibrated
+
+
+def _major_should_downgrade(issue: ReadinessIssue) -> bool:
+    text = " ".join([issue.title, issue.description, issue.impact, issue.fix]).lower()
+    non_blocking_markers = (
+        "best practice",
+        "best-practice",
+        "optional",
+        "future",
+        "extensibility",
+        "style",
+        "naming",
+        "cleanup",
+        "polish",
+        "nice to have",
+        "could improve",
+        "recommended hardening",
+        "broad reliability",
+        "weakly evidenced",
+    )
+    blocking_markers = (
+        "cannot implement",
+        "requires guessing",
+        "must guess",
+        "missing required",
+        "contradict",
+        "unsafe",
+        "security",
+        "authorization",
+        "ownership",
+        "state transition",
+        "persistence",
+        "data loss",
+        "contract mismatch",
+        "migration",
+        "transaction",
+        "idempotency",
+    )
+    return any(marker in text for marker in non_blocking_markers) and not any(marker in text for marker in blocking_markers)
 
 
 def _initial_review_instructions() -> str:
@@ -307,8 +366,9 @@ def _initial_review_instructions() -> str:
         "Your task is NOT to approve the implementation basis. Your task is to break it before Codex or Claude Code implements from it.",
         "Analyze every provided spec artifact together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
         "Use SpecGuard Review: find contradictions, missing requirements, undefined state, security gaps, data ownership gaps, versioning gaps, weak contracts, untestable acceptance criteria, unsafe failure handling, and implementation assumptions.",
-        f"Readiness policy: implementation is allowed only when Critical=0, Major=0, and Minor<={READINESS_MINOR_READY_LIMIT}.",
-        "Severity calibration: Critical means unsafe, contradictory, or impossible to implement deterministically; Major means implementation would require guessing or would miss an important test/contract; Minor means useful cleanup that does not block implementation.",
+        _readiness_policy_prompt_line(),
+        "Severity calibration: Critical means unsafe, contradictory, or impossible to implement deterministically; Major means implementation would require guessing or would miss an important product, security, state, contract, persistence, or ownership decision; Minor means useful cleanup that does not block implementation.",
+        "Downgrade best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks to Minor or omit them.",
         "Return ONLY JSON with this shape:",
         '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
         "Do not include positive feedback. Every finding must be actionable and mapped to a spec, plan, task, checklist, technical design, test, or contract update.",
@@ -323,7 +383,7 @@ def _verification_review_instructions() -> str:
         "Add a new Critical or Major finding only when there is direct evidence in the current artifacts that implementation would be unsafe, contradictory, or would require an important guess.",
         "Do not create new blockers for best-practice improvements, optional hardening, style, naming, or future extensibility. Those are Minor or omitted.",
         "Respect explicit out-of-scope, deferred, or accepted-risk decisions when they are documented in the spec package and do not contradict safety or contract requirements.",
-        f"Readiness policy: implementation is allowed only when Critical=0, Major=0, and Minor<={READINESS_MINOR_READY_LIMIT}.",
+        _readiness_policy_prompt_line(),
         "Severity calibration: Critical means a concrete unsafe/contradictory blocker remains; Major means a concrete implementation-critical decision is still missing; Minor means non-blocking clarity or polish.",
         "Return ONLY JSON with this shape:",
         '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
@@ -378,18 +438,48 @@ def _build_summary(issues: list[ReadinessIssue]) -> dict[str, int]:
     }
 
 
+def _readiness_status(summary: dict[str, int]) -> str:
+    if summary["critical"] == 0 and summary["major"] == 0 and summary["minor"] <= READINESS_READY_MINOR_LIMIT:
+        return "ready"
+    if (
+        summary["critical"] == 0
+        and summary["major"] <= READINESS_WARNING_MAJOR_LIMIT
+        and summary["minor"] <= READINESS_WARNING_MINOR_LIMIT
+    ):
+        return "ready_with_warnings"
+    return "not_ready"
+
+
 def _is_implementation_ready(summary: dict[str, int]) -> bool:
-    return summary["critical"] == 0 and summary["major"] == 0 and summary["minor"] <= READINESS_MINOR_READY_LIMIT
+    return _readiness_status(summary) in {"ready", "ready_with_warnings"}
 
 
 def _readiness_text(summary: dict[str, int]) -> str:
-    if _is_implementation_ready(summary):
-        return f"Implementation-ready: Critical=0, Major=0, Minor<={READINESS_MINOR_READY_LIMIT}."
-    return f"Not implementation-ready: requires Critical=0, Major=0, Minor<={READINESS_MINOR_READY_LIMIT}."
+    status = _readiness_status(summary)
+    if status == "ready":
+        return f"Implementation-ready: Critical=0, Major=0, Minor<={READINESS_READY_MINOR_LIMIT}."
+    if status == "ready_with_warnings":
+        return (
+            "Implementation-ready with warnings: "
+            f"Critical=0, Major<={READINESS_WARNING_MAJOR_LIMIT}, Minor<={READINESS_WARNING_MINOR_LIMIT}."
+        )
+    return (
+        "Not implementation-ready: requires no Critical findings, "
+        f"Major<={READINESS_WARNING_MAJOR_LIMIT}, and Minor<={READINESS_WARNING_MINOR_LIMIT}."
+    )
+
+
+def _readiness_policy_prompt_line() -> str:
+    return (
+        "Readiness policy: READY when Critical=0, Major=0, Minor<=5; "
+        "READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; "
+        "NOT_READY when Critical>=1, Major>=3, or Minor>10."
+    )
 
 
 def _build_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue], review_mode: str) -> str:
     summary = _build_summary(issues)
+    status = _readiness_status(summary)
     critical = [issue for issue in issues if issue.severity == "Critical"]
     major = [issue for issue in issues if issue.severity == "Major"]
     minor = [issue for issue in issues if issue.severity == "Minor"]
@@ -401,8 +491,9 @@ def _build_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue],
         "",
         "## Readiness",
         "",
-        f"- Status: {'READY' if _is_implementation_ready(summary) else 'NOT READY'}",
-        f"- Criteria: Critical=0, Major=0, Minor<={READINESS_MINOR_READY_LIMIT}",
+        f"- Status: {status.upper()}",
+        f"- READY criteria: Critical=0, Major=0, Minor<={READINESS_READY_MINOR_LIMIT}",
+        f"- READY_WITH_WARNINGS criteria: Critical=0, Major<={READINESS_WARNING_MAJOR_LIMIT}, Minor<={READINESS_WARNING_MINOR_LIMIT}",
         f"- Current: Critical={summary['critical']}, Major={summary['major']}, Minor={summary['minor']}",
         "",
         _render_group("Critical Issues", critical),
@@ -410,7 +501,8 @@ def _build_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue],
         _render_group("Minor Issues", minor),
         "## Improvement Suggestions",
         "",
-        "- Convert every Critical and Major item into acceptance criteria before implementation.",
+        "- Convert every Critical item into acceptance criteria before implementation.",
+        "- Review Major warning items before implementation and either accept the risk or clarify the spec package.",
         "- Add tests for authorization, invalid state, retry, timeout, and duplicate request behavior.",
         "- Re-run `specguard run` after updating `spec.md` and `technical-design.md`.",
         "",
@@ -429,6 +521,7 @@ def _build_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue],
 
 def _build_json_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue], review_mode: str) -> str:
     summary = _build_summary(issues)
+    status = _readiness_status(summary)
     artifact_lengths = {artifact.path: len(artifact.content) for artifact in artifacts}
     payload = {
         "schema_version": "0.1",
@@ -437,11 +530,18 @@ def _build_json_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIs
         "readiness": {
             "implementation_ready": _is_implementation_ready(summary),
             "criteria": {
-                "critical": 0,
-                "major": 0,
-                "minor_max": READINESS_MINOR_READY_LIMIT,
+                "ready": {
+                    "critical": 0,
+                    "major": 0,
+                    "minor_max": READINESS_READY_MINOR_LIMIT,
+                },
+                "ready_with_warnings": {
+                    "critical": 0,
+                    "major_max": READINESS_WARNING_MAJOR_LIMIT,
+                    "minor_max": READINESS_WARNING_MINOR_LIMIT,
+                },
             },
-            "status": "ready" if _is_implementation_ready(summary) else "not_ready",
+            "status": status,
         },
         "summary": summary,
         "issues": [asdict(issue) for issue in issues],
@@ -502,7 +602,11 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     result.add_info(f"Generated {mode} {review_mode} machine-readable readiness report: {report_json_path}")
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
     if implementation_ready:
-        result.add_info(green(f"[READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
+        if _readiness_status(summary) == "ready_with_warnings":
+            result.add_info(yellow(f"[READY_WITH_WARNINGS] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
+            result.add_next_step(f"Review warning findings in: {report_path}")
+        else:
+            result.add_info(green(f"[READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
     else:
         result.add_error(red(f"[NOT READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
         result.add_next_step(f"Open the human report: {report_path}")

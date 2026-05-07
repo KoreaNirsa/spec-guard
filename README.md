@@ -98,7 +98,7 @@ If SpecGuard returns NOT READY, use the continuation menu:
 [q] Exit
 ```
 
-Repeat until SpecGuard reports READY.
+Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. Critical findings always require revision before implementation.
 
 Spec regeneration is guarded by an Intent Preservation Check. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, or move out-of-scope work into implementation scope, SpecGuard keeps the original `spec.md`, writes `spec.proposed.md`, and stops before Verification Review.
 
@@ -192,13 +192,13 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 
 ## Readiness Rules
 
-SpecGuard uses this readiness threshold:
+SpecGuard uses three readiness states:
 
-- Critical: 0
-- Major: 0
-- Minor: 5 or fewer
+- READY: Critical=0, Major=0, Minor<=5.
+- READY_WITH_WARNINGS: Critical=0, Major<=2, Minor<=10.
+- NOT_READY: Critical>=1, Major>=3, or Minor>10.
 
-Critical and Major findings block implementation. Minor findings are allowed only when they do not hide missing requirements or implementation ambiguity.
+Critical findings always block implementation. Major findings should represent an implementation-critical product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
 
 For API features, `contracts/openapi.yaml` must define at least one concrete path before SpecGuard can produce an implementation handoff. `paths: {}` is treated as a blocker, not a ready contract. Generated contracts include spec-derived success and error responses, request and response schemas, and `x-specguard-coverage` links back to acceptance criteria and error cases.
 
@@ -206,7 +206,7 @@ Strict E2E also requires executable verification before handoff. Add tests such 
 
 ## CI And PR Gates
 
-Pull request CI includes a stable required-check candidate named `SpecGuard Readiness Gate`. It inspects changed packages under `specs/`, fails when a changed package is NOT READY, and fails when source artifacts are stale relative to `readiness-review.json`.
+Pull request CI includes a stable required-check candidate named `SpecGuard Readiness Gate`. It inspects changed packages under `specs/`, fails when a changed package is NOT_READY, and fails when source artifacts are stale relative to `readiness-review.json`.
 
 `specguard init <feature>` installs `.github/workflows/specguard-readiness-gate.yml` by default. Use `specguard init <feature> --no-actions` to opt out, or `specguard actions install-readiness-gate` to install the workflow later.
 

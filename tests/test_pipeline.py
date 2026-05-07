@@ -228,6 +228,62 @@ class SixMinorReadinessLLM:
         return json.dumps({"issues": issues})
 
 
+class TwoMajorReadinessLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        issues = [
+            {
+                "severity": "Major",
+                "title": f"Implementation decision {index}",
+                "description": "A required state transition requires guessing.",
+                "impact": "Implementation cannot proceed without an explicit state transition decision.",
+                "fix": "Clarify the required state transition.",
+            }
+            for index in range(2)
+        ]
+        return json.dumps({"issues": issues})
+
+
+class ThreeMajorReadinessLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        issues = [
+            {
+                "severity": "Major",
+                "title": f"Missing required behavior {index}",
+                "description": "Required behavior is missing and requires guessing.",
+                "impact": "Implementation cannot proceed without a required decision.",
+                "fix": "Add the missing requirement.",
+            }
+            for index in range(3)
+        ]
+        return json.dumps({"issues": issues})
+
+
+class OptionalMajorReadinessLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        return json.dumps({
+            "issues": [{
+                "severity": "Major",
+                "title": "Optional future extensibility cleanup",
+                "description": "This is optional future extensibility and best-practice cleanup.",
+                "impact": "Could improve polish later, but does not block implementation.",
+                "fix": "Consider this optional cleanup in a future iteration.",
+            }]
+        })
+
+
+class CriticalReadinessLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        return json.dumps({
+            "issues": [{
+                "severity": "Critical",
+                "title": "Authorization contradiction",
+                "description": "The spec contradicts authorization requirements.",
+                "impact": "Implementation would be unsafe.",
+                "fix": "Resolve the authorization contradiction.",
+            }]
+        })
+
+
 class CaptureVerificationReadinessLLM:
     def __init__(self) -> None:
         self.instructions = ""
@@ -303,7 +359,7 @@ class StrictE2EConvergingLLM:
             return '{"issues":[]}'
         return json.dumps({
             "issues": [{
-                "severity": "Major",
+                "severity": "Critical",
                 "title": "Owner scope missing",
                 "description": "The spec does not state how ownership is enforced.",
                 "impact": "Implementation would need to guess authorization behavior.",
@@ -318,7 +374,7 @@ class StrictE2EAlwaysBlockingLLM(StrictE2EConvergingLLM):
             self.verification_inputs.append(input_text)
             return json.dumps({
                 "issues": [{
-                    "severity": "Major",
+                    "severity": "Critical",
                     "title": "Verification blocker remains",
                     "description": "The regenerated spec still leaves implementation-critical behavior unclear.",
                     "impact": "Implementation would still need to guess.",
@@ -507,9 +563,9 @@ def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None
 
 
 def test_blocked_pipeline_does_not_recommend_ai_implementation(tmp_path: Path) -> None:
-    feature = copy_example(tmp_path, "risk/todo-api")
+    feature = write_feature(tmp_path)
 
-    result = run_pipeline(feature)
+    result = run_pipeline(feature, llm_client=CriticalReadinessLLM())
 
     assert not result.ok
     assert not feature.joinpath("implementation-output.md").exists()
@@ -1032,20 +1088,26 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
     assert not any("safest explicit design assumption" in call for call in llm.calls)
 
 
-def test_risk_todo_example_is_blocked_by_readiness_review(tmp_path: Path) -> None:
+def test_risk_todo_example_is_ready_with_warnings(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
 
     result = run_pipeline(feature)
 
-    assert not result.ok
+    assert result.ok
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
-    assert payload["blocked"] is True
-    assert payload["readiness"]["implementation_ready"] is False
+    assert payload["blocked"] is False
+    assert payload["readiness"]["implementation_ready"] is True
+    assert payload["readiness"]["status"] == "ready_with_warnings"
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 1
     assert "Delete semantics are unsafe" in {issue["title"] for issue in payload["issues"]}
-    assert any("Open the human report" in step for step in result.next_steps)
-    assert any("specguard run" in step for step in result.next_steps)
+    assert any("Review warning findings" in step for step in result.next_steps)
+    assert feature.joinpath("implementation-output.md").exists()
+    metadata = read_handoff_metadata(feature)
+    assert metadata["readiness_status"] == "ready_with_warnings"
+    assert metadata["implementation_allowed"] is True
+    assert metadata["readiness_summary"]["major"] == 1
+    assert metadata["readiness_warnings"][0]["title"] == "Delete semantics are unsafe"
 
 
 def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
@@ -1111,17 +1173,69 @@ def test_readiness_excludes_current_and_legacy_generated_review_artifacts(tmp_pa
     assert payload["summary"]["major"] == 0
 
 
-def test_readiness_blocks_when_minor_findings_exceed_readiness_threshold(tmp_path: Path) -> None:
+def test_readiness_reports_ready_with_warnings_for_six_minor_findings(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 
     result = run_readiness_review(feature, llm_client=SixMinorReadinessLLM())
 
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["blocked"] is False
+    assert payload["readiness"]["implementation_ready"] is True
+    assert payload["readiness"]["status"] == "ready_with_warnings"
+    assert payload["summary"]["minor"] == 6
+    assert any("[READY_WITH_WARNINGS]" in message for message in result.messages)
+
+
+def test_readiness_reports_ready_with_warnings_for_two_major_findings(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_readiness_review(feature, llm_client=TwoMajorReadinessLLM())
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["blocked"] is False
+    assert payload["readiness"]["status"] == "ready_with_warnings"
+    assert payload["summary"]["major"] == 2
+
+
+def test_readiness_blocks_three_major_findings(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_readiness_review(feature, llm_client=ThreeMajorReadinessLLM())
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert not result.ok
     assert payload["blocked"] is True
     assert payload["readiness"]["implementation_ready"] is False
-    assert payload["summary"]["minor"] == 6
+    assert payload["readiness"]["status"] == "not_ready"
+    assert payload["summary"]["major"] == 3
     assert any("[NOT READY]" in message for message in result.messages)
+
+
+def test_readiness_blocks_critical_findings(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_readiness_review(feature, llm_client=CriticalReadinessLLM())
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["blocked"] is True
+    assert payload["readiness"]["status"] == "not_ready"
+    assert payload["summary"]["critical"] == 1
+
+
+def test_readiness_downgrades_non_blocking_major_findings(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_readiness_review(feature, llm_client=OptionalMajorReadinessLLM())
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["readiness"]["status"] == "ready"
+    assert payload["summary"]["major"] == 0
+    assert payload["summary"]["minor"] == 1
+    assert payload["issues"][0]["severity"] == "Minor"
 
 
 def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> None:
@@ -1225,7 +1339,8 @@ def test_post_run_readiness_review_summary_supports_review_menu(tmp_path: Path) 
     rendered = render_readiness_summary(*reports[0])
 
     assert len(reports) == 1
-    assert "blocked: True" in rendered
+    assert "blocked: False" in rendered
+    assert "status: ready_with_warnings" in rendered
     assert "Delete semantics are unsafe" in rendered
     assert "Choose hard or soft delete explicitly" in rendered
 

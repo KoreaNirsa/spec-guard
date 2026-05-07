@@ -330,7 +330,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "",
         "SpecGuard stops at an approved implementation handoff. It does not invoke Codex, Claude Code, or another coding agent as an internal pipeline stage.",
         "",
-        "Use this feature folder as external handoff context for a coding agent only after the machine-readable readiness status below is `ready`.",
+        "Use this feature folder as external handoff context for a coding agent only after the machine-readable readiness status below is `ready` or `ready_with_warnings`.",
         "",
         "## Machine-Readable Handoff",
         "",
@@ -354,7 +354,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "",
         "- `discovery.md` is for SpecGuard discovery and user refinement.",
         "- `readiness-review.md` and `readiness-review.json` are for SpecGuard adversarial validation.",
-        "- Coding agents should treat the agent input artifacts as the implementation basis only after SpecGuard reports READY.",
+        "- Coding agents should treat the agent input artifacts as the implementation basis only after SpecGuard reports READY or READY_WITH_WARNINGS.",
         "",
         "## Output Location",
         "",
@@ -392,12 +392,38 @@ def _implementation_handoff_metadata(path: Path, approved_artifacts: list[str]) 
         readiness_status = str(readiness.get("status") or "unknown")
         implementation_ready = bool(readiness.get("implementation_ready"))
 
+    readiness_summary = report.get("summary", {}) if isinstance(report.get("summary"), dict) else {}
+    warning_findings = _handoff_warning_findings(report)
+    allowed_statuses = {"ready", "ready_with_warnings"}
     return {
         "schema_version": "0.1",
         "implementation_boundary": "external_handoff",
         "readiness_status": readiness_status,
-        "implementation_allowed": implementation_ready and readiness_status == "ready",
+        "implementation_allowed": implementation_ready and readiness_status in allowed_statuses,
+        "readiness_summary": readiness_summary,
+        "readiness_warnings": warning_findings,
         "readiness_report": "readiness-review.json" if report_path.exists() else None,
         "approved_artifacts": approved_artifacts,
         "verification": verification_metadata(path),
     }
+
+
+def _handoff_warning_findings(report: dict[str, object]) -> list[dict[str, object]]:
+    issues = report.get("issues", [])
+    if not isinstance(issues, list):
+        return []
+
+    warnings: list[dict[str, object]] = []
+    for issue in issues:
+        if not isinstance(issue, dict):
+            continue
+        severity = str(issue.get("severity", ""))
+        if severity not in {"Major", "Minor"}:
+            continue
+        warnings.append({
+            "severity": severity,
+            "title": issue.get("title", "Untitled issue"),
+            "impact": issue.get("impact", "Not specified."),
+            "fix": issue.get("fix", "Not specified."),
+        })
+    return warnings

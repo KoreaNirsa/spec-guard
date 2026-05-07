@@ -154,12 +154,18 @@ SpecGuard then performs:
 Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
-SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. The implementation-ready threshold is Critical=0, Major=0, and Minor<=5. Ready results are highlighted in green in the CLI. Not-ready results are highlighted in red and block Test, Contract, and Implementation Handoff.
+SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. Readiness has three states:
+
+- READY: Critical=0, Major=0, Minor<=5.
+- READY_WITH_WARNINGS: Critical=0, Major<=2, Minor<=10.
+- NOT_READY: Critical>=1, Major>=3, or Minor>10.
+
+Critical findings always block implementation. READY results are highlighted in green, READY_WITH_WARNINGS results are highlighted as warning output, and NOT_READY results are highlighted in red and block Test, Contract, and Implementation Handoff.
 
 Interactive refinement uses this loop:
 
 ```text
-Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY or NOT READY
+Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY, READY_WITH_WARNINGS, or NOT_READY
 ```
 
 The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
