@@ -392,8 +392,8 @@ def copy_example(tmp_path: Path, example: str) -> Path:
     return target
 
 
-def copy_packaged_example(target: Path) -> None:
-    shutil.copytree(ROOT / "tools" / "resources" / "example", target)
+def _relative_files(root: Path) -> list[Path]:
+    return sorted(path.relative_to(root) for path in root.rglob("*") if path.is_file())
 
 
 def read_handoff_metadata(feature: Path) -> dict:
@@ -582,9 +582,19 @@ def test_blocked_pipeline_does_not_recommend_ai_implementation(tmp_path: Path) -
     assert not any("Hand this approved guide" in step for step in result.next_steps)
 
 
+def test_root_example_matches_packaged_example_resource() -> None:
+    root_example = ROOT / "example"
+    packaged_example = ROOT / "tools" / "resources" / "example"
+    relative_files = _relative_files(root_example)
+
+    assert relative_files == _relative_files(packaged_example)
+    for relative_path in relative_files:
+        assert root_example.joinpath(relative_path).read_bytes() == packaged_example.joinpath(relative_path).read_bytes()
+
+
 def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "team-invite"
-    copy_packaged_example(feature)
+    shutil.copytree(ROOT / "example", feature)
 
     result = run_pipeline(feature)
 
@@ -667,7 +677,7 @@ def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
 
 def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "team-invite"
-    copy_packaged_example(feature)
+    shutil.copytree(ROOT / "example", feature)
 
     completed = run_cli_smoke(
         tmp_path,
