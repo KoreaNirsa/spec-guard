@@ -716,15 +716,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     init_parser = subparsers.add_parser(
         "init",
+        help="Create draft specs and install the default readiness gate",
         description=(
             "Run Discovery and generate draft specs under specs/.\n"
-            "Interactive mode shows a default for every question. Press Enter to accept it."
+            "Interactive mode shows a default for every question. Press Enter to accept it.\n"
+            "By default, init also installs the consumer SpecGuard Readiness Gate workflow."
         ),
         epilog=(
             "Examples:\n"
             "  specguard init\n"
             "  specguard init billing-export\n"
-            "  specguard init todo-api,billing-export --non-interactive"
+            "  specguard init todo-api,billing-export --non-interactive\n"
+            "  specguard init billing-export --no-actions"
         ),
         formatter_class=SpecGuardHelpFormatter,
     )
@@ -736,12 +739,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     init_parser.add_argument("--non-interactive", action="store_true", help="Generate specs from CLI values and defaults")
     init_parser.add_argument("--force", action="store_true", help="Overwrite generated discovery and spec drafts")
-    init_parser.add_argument("--no-actions", action="store_true", help="Do not install the default SpecGuard Readiness Gate workflow")
+    init_parser.add_argument("--no-actions", action="store_true", help="Skip default readiness gate workflow installation")
     init_parser.add_argument("--force-actions", action="store_true", help="Overwrite an existing default SpecGuard Actions workflow")
-    init_parser.add_argument("--llm", action="store_true", help="Use configured LLM mode. Kept for compatibility; LLM is the default.")
-    init_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic Discovery without LLM")
-    init_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
-    init_parser.add_argument("--llm-model", help="Override SPECGUARD_LLM_MODEL for this run")
+    init_parser.add_argument("--llm", action="store_true", help="Compatibility flag; LLM Discovery is already the default")
+    init_parser.add_argument("--no-llm", action="store_true", help="Skip live LLM requests and use deterministic local Discovery")
+    init_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Use this provider for live Discovery without changing saved config")
+    init_parser.add_argument("--llm-model", help="Use this model for live Discovery without changing saved config")
     init_parser.add_argument("--problem", default=DISCOVERY_DEFAULTS["problem"], help="Default answer for the problem Discovery question")
     init_parser.add_argument("--users", default=DISCOVERY_DEFAULTS["users"], help="Default answer for the users Discovery question")
     init_parser.add_argument("--outcomes", default=DISCOVERY_DEFAULTS["outcomes"], help="Default answer for the outcomes Discovery question")
@@ -759,30 +762,25 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--acceptance", default=DISCOVERY_DEFAULTS["acceptance"], help="Default answer for the acceptance Discovery question")
     init_parser.set_defaults(func=init_project)
 
-    run_parser = subparsers.add_parser("run", formatter_class=SpecGuardHelpFormatter)
-    run_parser.add_argument("path", nargs="?", default="specs")
-    run_parser.add_argument("--force", action="store_true", help="Regenerate derived artifacts instead of reusing existing files")
-    run_parser.add_argument("--llm", action="store_true", help="Use configured LLM mode. Kept for compatibility; LLM is the default.")
-    run_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic SpecGuard Review")
-    run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
-    run_parser.add_argument("--llm-model", help="Override SPECGUARD_LLM_MODEL for this run")
-    run_parser.add_argument("--strict-e2e", action="store_true", help="Automatically regenerate blocked specs and rerun Verification Review")
-    run_parser.add_argument("--strict-max-iterations", type=int, default=3, help="Maximum strict E2E verification iterations")
-    run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu")
-    run_parser.add_argument("--no-follow-up", action="store_true", help="Do not show the interactive post-run action menu")
-    run_parser.set_defaults(func=run)
-
-    example_parser = subparsers.add_parser("example", formatter_class=SpecGuardHelpFormatter)
+    example_parser = subparsers.add_parser(
+        "example",
+        help="Copy the packaged authored example",
+        description="Work with packaged example spec packages for smoke testing the local workflow.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
     example_subparsers = example_parser.add_subparsers(dest="example_command", required=True)
 
     example_copy = example_subparsers.add_parser(
         "copy",
-        description="Copy the packaged authored example spec package into specs/<feature>.",
+        description=(
+            "Copy the packaged authored example spec package into specs/<feature>.\n"
+            "Typical sample flow: init -> copy -> run."
+        ),
         epilog=(
             "Examples:\n"
-            "  specguard example copy team-invite\n"
+            "  specguard init team-invite --no-llm\n"
             "  specguard example copy team-invite --force\n"
-            "  specguard example copy specs/team-invite --force"
+            "  specguard run specs/team-invite --no-llm --no-follow-up"
         ),
         formatter_class=SpecGuardHelpFormatter,
     )
@@ -790,12 +788,47 @@ def build_parser() -> argparse.ArgumentParser:
     example_copy.add_argument("--force", action="store_true", help="Overwrite existing files in the target package")
     example_copy.set_defaults(func=copy_example)
 
-    actions_parser = subparsers.add_parser("actions", formatter_class=SpecGuardHelpFormatter)
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Validate specs and produce implementation handoff artifacts",
+        description=(
+            "Run validation, technical design, SpecGuard Review, tests, contracts, and implementation handoff.\n"
+            "LLM review is enabled by default when a provider is configured; use --no-llm for local deterministic checks."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  specguard run specs/team-invite\n"
+            "  specguard run specs/team-invite --no-llm --no-follow-up\n"
+            "  specguard run specs/team-invite --strict-e2e --strict-max-iterations 2\n\n"
+            "Timeout recovery:\n"
+            f"  specguard auth setup --mode codex --timeout {DEFAULT_CODEX_TIMEOUT} --skip-login"
+        ),
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    run_parser.add_argument("path", nargs="?", default="specs", help="Spec package directory or specs root to process")
+    run_parser.add_argument("--force", action="store_true", help="Regenerate derived artifacts instead of reusing existing files")
+    run_parser.add_argument("--llm", action="store_true", help="Compatibility flag; LLM review is already the default")
+    run_parser.add_argument("--no-llm", action="store_true", help="Skip live LLM requests and use local generators plus heuristic SpecGuard Review")
+    run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Use this provider for live review without changing saved config")
+    run_parser.add_argument("--llm-model", help="Use this model for live review without changing saved config")
+    run_parser.add_argument("--strict-e2e", action="store_true", help="Automatically regenerate blocked specs and rerun Verification Review")
+    run_parser.add_argument("--strict-max-iterations", type=int, default=3, help="Maximum strict E2E verification iterations")
+    run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu after the run")
+    run_parser.add_argument("--no-follow-up", action="store_true", help="Never show the interactive post-run action menu")
+    run_parser.set_defaults(func=run)
+
+    actions_parser = subparsers.add_parser(
+        "actions",
+        help="Install consumer GitHub Actions workflows",
+        description="Install packaged SpecGuard GitHub Actions workflows into the current repository.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
     actions_subparsers = actions_parser.add_subparsers(dest="actions_command", required=True)
 
     actions_install_readiness = actions_subparsers.add_parser(
         "install-readiness-gate",
         description="Install the consumer SpecGuard Readiness Gate workflow.",
+        epilog="Use this workflow as the required status check for merge protection.",
         formatter_class=SpecGuardHelpFormatter,
     )
     actions_install_readiness.add_argument("--force", action="store_true", help="Overwrite an existing workflow file")
@@ -804,6 +837,7 @@ def build_parser() -> argparse.ArgumentParser:
     actions_install_pr_review = actions_subparsers.add_parser(
         "install-pr-review",
         description="Install the optional AI-assisted SpecGuard PR Review workflow.",
+        epilog="Requires the SPECGUARD_OPENAI_API_KEY GitHub Actions secret after committing the workflow.",
         formatter_class=SpecGuardHelpFormatter,
     )
     actions_install_pr_review.add_argument("--force", action="store_true", help="Overwrite an existing workflow file")
@@ -812,6 +846,7 @@ def build_parser() -> argparse.ArgumentParser:
     actions_install = actions_subparsers.add_parser(
         "install",
         description="Install selected consumer SpecGuard GitHub Actions workflows.",
+        epilog="Examples:\n  specguard actions install --readiness-gate\n  specguard actions install --pr-review",
         formatter_class=SpecGuardHelpFormatter,
     )
     actions_install.add_argument("--readiness-gate", action="store_true", help="Install the SpecGuard Readiness Gate workflow")
@@ -819,25 +854,52 @@ def build_parser() -> argparse.ArgumentParser:
     actions_install.add_argument("--force", action="store_true", help="Overwrite existing workflow files")
     actions_install.set_defaults(func=actions)
 
-    auth_parser = subparsers.add_parser("auth", formatter_class=SpecGuardHelpFormatter)
+    auth_parser = subparsers.add_parser(
+        "auth",
+        help="Configure or inspect local LLM provider settings",
+        description="Manage local SpecGuard LLM provider configuration.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
     auth_subparsers = auth_parser.add_subparsers(dest="auth_command", required=True)
 
-    auth_setup = auth_subparsers.add_parser("setup", formatter_class=SpecGuardHelpFormatter)
-    auth_setup.add_argument("--mode", choices=["codex", "openai"], help="LLM provider mode")
+    auth_setup = auth_subparsers.add_parser(
+        "setup",
+        description=(
+            "Save local SpecGuard LLM provider configuration.\n"
+            "Codex mode uses the local Codex CLI/session; OpenAI mode uses the Responses API and an API key."
+        ),
+        epilog=(
+            "Defaults:\n"
+            f"  Codex timeout: {DEFAULT_CODEX_TIMEOUT}s\n"
+            f"  OpenAI timeout: {DEFAULT_OPENAI_TIMEOUT}s\n\n"
+            "Configuration check:\n"
+            "  specguard auth status checks saved configuration and command availability, not a full live model request."
+        ),
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    auth_setup.add_argument("--mode", choices=["codex", "openai"], help="Provider to save: local Codex CLI or OpenAI Platform")
     auth_setup.add_argument("--model", help="Model name for the selected provider; Codex setup defaults to gpt-5.4")
     auth_setup.add_argument("--timeout", type=int, help="Provider request timeout in seconds; Codex defaults to 600, OpenAI defaults to 180")
     auth_setup.add_argument("--api-key", help="Store an OpenAI API key in local ignored config")
-    auth_setup.add_argument("--api-key-env", default="OPENAI_API_KEY", help="Environment variable for the OpenAI API key")
+    auth_setup.add_argument("--api-key-env", default="OPENAI_API_KEY", help="Environment variable used for the OpenAI API key")
     auth_setup.add_argument("--endpoint", default="https://api.openai.com/v1/responses", help="OpenAI Responses API endpoint")
-    auth_setup.add_argument("--codex-command", default="codex", help="Local Codex CLI command")
-    auth_setup.add_argument("--codex-profile", help="Codex CLI profile")
-    auth_setup.add_argument("--skip-login", action="store_true", help="Do not offer to run codex login during setup")
+    auth_setup.add_argument("--codex-command", default="codex", help="Local Codex CLI command used by Codex mode")
+    auth_setup.add_argument("--codex-profile", help="Optional Codex CLI profile")
+    auth_setup.add_argument("--skip-login", action="store_true", help="Save config without offering to run codex login")
     auth_setup.set_defaults(func=auth)
 
-    auth_status = auth_subparsers.add_parser("status", formatter_class=SpecGuardHelpFormatter)
+    auth_status = auth_subparsers.add_parser(
+        "status",
+        description="Check saved provider configuration and local command availability without making a live model request.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
     auth_status.set_defaults(func=auth)
 
-    auth_logout = auth_subparsers.add_parser("logout", formatter_class=SpecGuardHelpFormatter)
+    auth_logout = auth_subparsers.add_parser(
+        "logout",
+        description="Remove local SpecGuard provider configuration.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
     auth_logout.add_argument("--codex", action="store_true", help="Also run codex logout")
     auth_logout.set_defaults(func=auth)
 
