@@ -112,3 +112,17 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
     )
     assert run_result.returncode == 0
     assert "External AI implementation handoff ready" in run_result.stdout
+
+
+def test_package_metadata_supports_future_uvx_from_invocation() -> None:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert pyproject["project"]["name"] == "spec-guard"
+    assert pyproject["project"]["requires-python"] == ">=3.11"
+    assert pyproject["project"]["scripts"]["specguard"] == "cli.specguard:main"
+
+    package_data = pyproject["tool"]["setuptools"]["package-data"]["tools"]
+    assert "resources/example/*.md" in package_data
+    assert "resources/example/contracts/*.yaml" in package_data
+    assert "resources/example/tests/*.md" in package_data
+    assert "resources/workflows/*.yml" in package_data
