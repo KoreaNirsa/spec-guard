@@ -13,6 +13,30 @@ from tools.result import CheckResult
 
 SPECGUARD_STATE_DIR = ".specguard"
 SPEC_REVISION_AUDIT_DIR = "spec-revisions"
+DESIGN_REUSE_SAFE_SECTIONS = {
+    "acceptance criteria",
+    "review & acceptance checklist",
+}
+DESIGN_REFRESH_KEYWORDS = {
+    "api",
+    "architecture",
+    "auth",
+    "authorization",
+    "cache",
+    "contract",
+    "database",
+    "dependency",
+    "endpoint",
+    "idempotency",
+    "migration",
+    "ownership",
+    "persistence",
+    "queue",
+    "retry",
+    "state",
+    "timeout",
+    "transaction",
+}
 
 
 @dataclass(frozen=True)
@@ -203,6 +227,26 @@ def validate_spec_revision_intent(feature_dir: Path, revised_spec: str) -> Check
     else:
         result.add_next_step("Review the updated spec.md and SpecGuard audit diff before rerunning SpecGuard.")
     return result
+
+
+def spec_revision_design_refresh_reason(original_spec: str, revised_spec: str) -> str | None:
+    if _normalize(original_spec) == _normalize(revised_spec):
+        return None
+
+    changed_sections = _changed_sections(original_spec, revised_spec)
+    if not changed_sections:
+        return "changed content outside recognized spec sections"
+
+    design_sections = sorted(section for section in changed_sections if section.lower() not in DESIGN_REUSE_SAFE_SECTIONS)
+    if design_sections:
+        return f"changed design-significant section(s): {', '.join(design_sections)}"
+
+    diff_text = _normalized_diff_text(original_spec, revised_spec)
+    for keyword in sorted(DESIGN_REFRESH_KEYWORDS):
+        if keyword in diff_text:
+            return f"changed acceptance wording references design-sensitive term: {keyword}"
+
+    return None
 
 
 def _unique_revision_audit_dir(feature_dir: Path) -> Path:
@@ -415,6 +459,37 @@ def _section(content: str, heading: str) -> str:
     pattern = rf"^##\s+{re.escape(heading)}\s*$([\s\S]*?)(?=^##\s+|\Z)"
     match = re.search(pattern, content, flags=re.IGNORECASE | re.MULTILINE)
     return match.group(1).strip() if match else ""
+
+
+def _sections(content: str) -> dict[str, str]:
+    matches = list(re.finditer(r"^##\s+(.+?)\s*$", content, flags=re.MULTILINE))
+    sections: dict[str, str] = {}
+    for index, match in enumerate(matches):
+        heading = match.group(1).strip()
+        start = match.end()
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(content)
+        sections[heading] = content[start:end].strip()
+    return sections
+
+
+def _changed_sections(original_spec: str, revised_spec: str) -> set[str]:
+    original_sections = _sections(original_spec)
+    revised_sections = _sections(revised_spec)
+    headings = set(original_sections) | set(revised_sections)
+    return {
+        heading
+        for heading in headings
+        if _normalize(original_sections.get(heading, "")) != _normalize(revised_sections.get(heading, ""))
+    }
+
+
+def _normalized_diff_text(original_spec: str, revised_spec: str) -> str:
+    diff_lines = difflib.unified_diff(
+        original_spec.splitlines(),
+        revised_spec.splitlines(),
+        lineterm="",
+    )
+    return _normalize("\n".join(line for line in diff_lines if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))))
 
 
 def _out_of_scope_sections(content: str) -> list[str]:

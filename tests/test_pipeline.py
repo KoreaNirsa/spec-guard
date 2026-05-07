@@ -182,6 +182,28 @@ class FencedRevisionLLM(FakeRevisionLLM):
         return "```markdown\n" + super().generate_text(instructions, input_text, max_output_tokens) + "\n```"
 
 
+class AcceptanceOnlyRevisionLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        assert "spec refinement assistant" in instructions
+        return "\n".join([
+            "# Spec: feature",
+            "",
+            "## Requirements",
+            "",
+            "- The system must accept valid input.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Valid input succeeds.",
+            "- [ ] Valid input returns a success confirmation.",
+            "",
+            "## Error Cases",
+            "",
+            "- Invalid input",
+            "",
+        ])
+
+
 class TimeoutRevisionLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         from tools.llm_client import LLMRequestError
@@ -639,6 +661,33 @@ def test_pipeline_regenerates_stale_technical_design(tmp_path: Path) -> None:
     assert design_path.stat().st_mtime > spec_path.stat().st_mtime
     assert any("Generated technical design" in message for message in result.messages)
     assert not any("stale technical design" in step.lower() for step in result.next_steps)
+
+
+def test_pipeline_can_reuse_stale_technical_design_when_refresh_disabled(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    design_path = feature / "technical-design.md"
+    spec_path = feature / "spec.md"
+    old_design = design_path.read_text(encoding="utf-8")
+    spec_path.write_text(
+        spec_path.read_text(encoding="utf-8") + "\n- The system must add an acceptance-only clarification.\n",
+        encoding="utf-8",
+    )
+    os.utime(design_path, (time.time() - 20, time.time() - 20))
+    os.utime(spec_path, (time.time() - 10, time.time() - 10))
+    llm = FakeLLM()
+
+    result = run_pipeline(
+        feature,
+        llm_client=llm,
+        force=True,
+        review_mode="verification",
+        refresh_technical_design=False,
+    )
+
+    assert result.ok
+    assert design_path.read_text(encoding="utf-8") == old_design
+    assert not any("technical design generator" in call.lower() for call in llm.calls)
+    assert any("Reused technical design" in message for message in result.messages)
 
 
 def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
@@ -1515,11 +1564,19 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     feature = copy_example(tmp_path, "risk/todo-api")
     result = run_pipeline(feature)
     rerun_result = CheckResult("SpecGuard pipeline")
-    captured = {"force": False, "review_mode": ""}
+    captured = {"force": False, "review_mode": "", "refresh_technical_design": None}
 
-    def fake_rerun_pipeline(args, llm_client, *, force: bool, review_mode: str = "initial"):
+    def fake_rerun_pipeline(
+        args,
+        llm_client,
+        *,
+        force: bool,
+        review_mode: str = "initial",
+        refresh_technical_design: bool | None = None,
+    ):
         captured["force"] = force
         captured["review_mode"] = review_mode
+        captured["refresh_technical_design"] = refresh_technical_design
         return rerun_result
 
     monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
@@ -1535,7 +1592,44 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert returned is rerun_result
     assert captured["force"]
     assert captured["review_mode"] == "verification"
+    assert captured["refresh_technical_design"] is True
     assert "scope every todo read and write by owner" in spec
+
+
+def test_post_run_spec_revision_reuses_technical_design_when_revision_is_acceptance_only(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    feature = write_feature(tmp_path)
+    result = run_pipeline(feature)
+    rerun_result = CheckResult("SpecGuard pipeline")
+    captured = {"refresh_technical_design": None}
+
+    def fake_rerun_pipeline(
+        args,
+        llm_client,
+        *,
+        force: bool,
+        review_mode: str = "initial",
+        refresh_technical_design: bool | None = None,
+    ):
+        captured["refresh_technical_design"] = refresh_technical_design
+        return rerun_result
+
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(force=False),
+        AcceptanceOnlyRevisionLLM(),
+        result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is rerun_result
+    assert captured["refresh_technical_design"] is False
+    assert "Reusing existing technical-design.md" in rendered
 
 
 def test_post_run_spec_revision_applies_intent_drift_with_top_level_audit(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -1604,9 +1698,16 @@ def test_pipeline_progress_line_uses_pipeline_phase() -> None:
 def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
     captured = {"label": ""}
 
-    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_mode: str = "initial") -> CheckResult:
+    def fake_run_pipeline(
+        path: Path,
+        llm_client=None,
+        force: bool = False,
+        review_mode: str = "initial",
+        refresh_technical_design: bool | None = None,
+    ) -> CheckResult:
         assert force
         assert review_mode == "initial"
+        assert refresh_technical_design is None
         return CheckResult("SpecGuard pipeline")
 
     def fake_run_with_progress(label, operation):
