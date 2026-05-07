@@ -61,6 +61,7 @@ packages = [
   "tools.resources.example.checklists",
   "tools.resources.example.contracts",
   "tools.resources.example.tests",
+  "tools.resources.workflows",
 ]
 
 [tool.setuptools.package-data]
@@ -69,6 +70,7 @@ tools = [
   "resources/example/checklists/*.md",
   "resources/example/contracts/*.yaml",
   "resources/example/tests/*.md",
+  "resources/workflows/*.yml",
 ]
 
 [tool.pytest.ini_options]

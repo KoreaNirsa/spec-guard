@@ -10,7 +10,13 @@ import urllib.error
 import urllib.request
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
+
+
+DEFAULT_OPENAI_TIMEOUT = 180
+DEFAULT_CODEX_TIMEOUT = 600
+LEGACY_CODEX_TIMEOUT = 180
 
 
 class LLMConfigError(RuntimeError):
@@ -34,7 +40,7 @@ class LLMSettings:
     mode: str
     model: str | None = None
     endpoint: str = "https://api.openai.com/v1/responses"
-    timeout: int = 180
+    timeout: int = DEFAULT_OPENAI_TIMEOUT
     api_key: str | None = None
     api_key_env: str = "OPENAI_API_KEY"
     codex_command: str = "codex"
@@ -53,7 +59,7 @@ class OpenAIResponsesClient:
 
         resolved_model = model or os.getenv("SPECGUARD_LLM_MODEL") or "gpt-5.1"
         endpoint = os.getenv("SPECGUARD_LLM_ENDPOINT") or "https://api.openai.com/v1/responses"
-        timeout = int(os.getenv("SPECGUARD_LLM_TIMEOUT", "180"))
+        timeout = int(os.getenv("SPECGUARD_LLM_TIMEOUT", str(DEFAULT_OPENAI_TIMEOUT)))
         return cls(LLMConfig(api_key=api_key, model=resolved_model, endpoint=endpoint, timeout=timeout))
 
     @classmethod
@@ -151,9 +157,10 @@ class CodexExecClient:
             "--skip-git-repo-check",
             "--sandbox",
             "read-only",
-            "--color",
-            "never",
         ]
+        if _codex_supports_ephemeral(self.command):
+            command.append("--ephemeral")
+        command.extend(["--color", "never"])
         if self.model:
             command.extend(["--model", self.model])
         if self.settings.codex_profile:
@@ -165,7 +172,7 @@ class CodexExecClient:
             output_path = Path(output_file.name)
 
         command = self._base_command() + ["--output-last-message", str(output_path), "-"]
-        prompt = _build_prompt(instructions, input_text, max_output_tokens)
+        prompt = _build_codex_prompt(instructions, input_text, max_output_tokens)
         try:
             completed = subprocess.run(
                 command,
@@ -198,7 +205,7 @@ class CodexExecClient:
 
     def stream_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> Iterator[str]:
         command = self._base_command() + ["--json", "-"]
-        prompt = _build_prompt(instructions, input_text, max_output_tokens)
+        prompt = _build_codex_prompt(instructions, input_text, max_output_tokens)
         emitted = False
         error_message = ""
         try:
@@ -260,9 +267,11 @@ def load_llm_settings(root: Path) -> LLMSettings | None:
         else:
             return None
 
-    timeout = int(os.getenv("SPECGUARD_LLM_TIMEOUT") or data.get("timeout") or 180)
-    if mode == "codex" and not os.getenv("SPECGUARD_LLM_TIMEOUT"):
-        timeout = max(timeout, 180)
+    env_timeout = os.getenv("SPECGUARD_LLM_TIMEOUT")
+    raw_timeout = env_timeout or data.get("timeout")
+    timeout = int(raw_timeout or DEFAULT_OPENAI_TIMEOUT)
+    if mode == "codex" and not env_timeout and (raw_timeout is None or timeout <= LEGACY_CODEX_TIMEOUT):
+        timeout = DEFAULT_CODEX_TIMEOUT
 
     return LLMSettings(
         mode=mode,
@@ -428,6 +437,22 @@ def _build_prompt(instructions: str, input_text: str, max_output_tokens: int) ->
     ]).strip()
 
 
+def _build_codex_prompt(instructions: str, input_text: str, max_output_tokens: int) -> str:
+    return _build_prompt(
+        "\n".join([
+            instructions.strip(),
+            "",
+            "Provider execution constraints:",
+            "- Use only the Input section below as the review context.",
+            "- Do not inspect the repository, read files, or execute shell commands.",
+            "- Do not continue searching for extra context after the provided input is sufficient.",
+            "- Return the requested final text directly.",
+        ]),
+        input_text,
+        max_output_tokens,
+    )
+
+
 def _optional_string(value: object) -> str | None:
     if value is None:
         return None
@@ -458,6 +483,23 @@ def _settings_to_json(settings: LLMSettings) -> dict[str, object]:
 
 def _resolve_codex_command(command: str) -> str | None:
     return shutil.which(command) or shutil.which(f"{command}.cmd")
+
+
+@lru_cache(maxsize=16)
+def _codex_supports_ephemeral(command: str) -> bool:
+    try:
+        completed = subprocess.run(
+            [command, "exec", "--help"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return completed.returncode == 0 and "--ephemeral" in completed.stdout
 
 
 def _extract_codex_event_text(line: str, delta_only: bool = False) -> str:

@@ -11,8 +11,11 @@ import time
 from importlib import resources
 from pathlib import Path
 
+from tools.action_installer import WorkflowInstallResult, install_workflow
 from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
 from tools.llm_client import (
+    DEFAULT_CODEX_TIMEOUT,
+    DEFAULT_OPENAI_TIMEOUT,
     LLMConfigError,
     LLMRequestError,
     LLMSettings,
@@ -75,6 +78,9 @@ def init_project(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
+    if result.ok and hasattr(args, "no_actions") and not args.no_actions:
+        if not _install_default_readiness_gate(force=getattr(args, "force_actions", False)):
+            return 1
     return 0 if result.ok else 1
 
 
@@ -160,6 +166,34 @@ def copy_example(args: argparse.Namespace) -> int:
     return 0
 
 
+def actions(args: argparse.Namespace) -> int:
+    if args.actions_command == "install-readiness-gate":
+        return 0 if _install_default_readiness_gate(force=args.force) else 1
+    if args.actions_command == "install-pr-review":
+        return 0 if _install_pr_review(force=args.force) else 1
+    if args.actions_command == "install":
+        workflows: list[str] = []
+        if args.readiness_gate:
+            workflows.append("readiness-gate")
+        if args.pr_review:
+            workflows.append("pr-review")
+        if not workflows:
+            print_error("[FAIL] Choose at least one workflow to install.")
+            print("- Example: specguard actions install --readiness-gate")
+            print("- Example: specguard actions install --pr-review")
+            return 1
+        ok = True
+        for workflow in workflows:
+            if workflow == "readiness-gate":
+                ok = _install_default_readiness_gate(force=args.force) and ok
+            if workflow == "pr-review":
+                ok = _install_pr_review(force=args.force) and ok
+        return 0 if ok else 1
+
+    print_error("[FAIL] Unknown actions command.")
+    return 1
+
+
 def _example_target_path(feature: str) -> Path:
     target = Path(feature)
     if target.is_absolute() or target.parts[:1] == ("specs",):
@@ -196,6 +230,70 @@ def _copy_resource_tree(source, target: Path) -> int:
     return copied
 
 
+def _install_default_readiness_gate(*, force: bool) -> bool:
+    try:
+        result = install_workflow(ROOT, "readiness-gate", force=force)
+    except (OSError, ValueError) as exc:
+        print_error("[FAIL] Could not install SpecGuard Readiness Gate workflow.")
+        print(f"- {exc}")
+        return False
+
+    _print_workflow_install_result(result, force_hint="--force-actions")
+    if result.installed:
+        print("")
+        print("Merge protection:")
+        print("- Add `SpecGuard Readiness Gate` as a required status check in your GitHub branch protection or ruleset.")
+        print("")
+        print("Optional PR Review:")
+        print("- Run `specguard actions install-pr-review` to add AI-assisted PR review comments.")
+    return True
+
+
+def _install_pr_review(*, force: bool) -> bool:
+    try:
+        result = install_workflow(ROOT, "pr-review", force=force)
+    except (OSError, ValueError) as exc:
+        print_error("[FAIL] Could not install SpecGuard PR Review workflow.")
+        print(f"- {exc}")
+        return False
+
+    _print_workflow_install_result(result, force_hint="--force")
+    if result.installed:
+        print("")
+        print("Next steps:")
+        print("1. Commit and push the workflow file.")
+        print("2. Add this GitHub Actions secret in Repository Settings > Secrets and variables > Actions:")
+        print("")
+        print("SPECGUARD_OPENAI_API_KEY=sk-...")
+        print("")
+        print("Optional repository variables:")
+        print("SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano")
+        print("SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name")
+        print("")
+        print("Use SPECGUARD_REVIEW_SPEC_PATHS when a PR changes only implementation files under develop/.")
+    return True
+
+
+def _print_workflow_install_result(result: WorkflowInstallResult, *, force_hint: str) -> None:
+    display_path = _display_path(result.path)
+    if result.installed:
+        verb = "Updated" if result.overwritten else "Installed"
+        print_success(f"[PASS] {verb} {result.name} workflow:")
+        print(f"- {display_path}")
+        return
+
+    print_warning(f"[WARN] {result.name} workflow already exists; kept current file.")
+    print(f"- {display_path}")
+    print(f"- Re-run with {force_hint} to replace it.")
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return path.relative_to(ROOT).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def auth(args: argparse.Namespace) -> int:
     if args.auth_command == "status":
         print_banner("LLM provider status.")
@@ -209,6 +307,7 @@ def auth(args: argparse.Namespace) -> int:
         print(f"- Mode: {settings.mode}")
         print(f"- Model: {settings.model or '(provider default)'}")
         print(f"- Timeout: {settings.timeout}s")
+        print("- Status checks saved configuration and command availability, not a full live model request.")
         if settings.mode == "openai":
             print(f"- API key source: {settings.api_key_env if not settings.api_key else 'local config'}")
             print(f"- Endpoint: {settings.endpoint}")
@@ -259,7 +358,7 @@ def _build_llm_client(args: argparse.Namespace, *, purpose: str, allow_setup: bo
                 api_key=None,
                 api_key_env="OPENAI_API_KEY",
                 endpoint="https://api.openai.com/v1/responses",
-                timeout=180,
+                timeout=None,
                 codex_command="codex",
                 codex_profile=None,
                 skip_login=False,
@@ -288,7 +387,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
 
     if mode == "codex":
         model = args.model or _prompt("Model", "gpt-5.4")
-        timeout = args.timeout or 180
+        timeout = args.timeout or DEFAULT_CODEX_TIMEOUT
         codex_command = args.codex_command or "codex"
         if not codex_available(codex_command):
             print_error("[FAIL] Local Codex CLI was not found.")
@@ -308,7 +407,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
         return 0
 
     model = args.model or _prompt("Model", "gpt-5.1")
-    timeout = args.timeout or 180
+    timeout = args.timeout or DEFAULT_OPENAI_TIMEOUT
     api_key = args.api_key
     if api_key is None and not os.getenv(args.api_key_env):
         entered = getpass.getpass("OpenAI API key (leave empty to use environment variable): ").strip()
@@ -602,7 +701,7 @@ def _print_llm_failure(exc: Exception) -> None:
         print("- Example: specguard auth setup --mode codex --model gpt-5.1 --skip-login")
     if "timed out" in str(exc).lower():
         print("- The provider is reachable, but the request exceeded the configured timeout.")
-        print("- Retry the action, or increase timeout: specguard auth setup --mode codex --timeout 240 --skip-login")
+        print(f"- Retry the action, or increase timeout: specguard auth setup --mode codex --timeout {DEFAULT_CODEX_TIMEOUT} --skip-login")
     print("- Check provider status: specguard auth status")
     print("- Reconfigure provider: specguard auth setup")
 
@@ -637,6 +736,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     init_parser.add_argument("--non-interactive", action="store_true", help="Generate specs from CLI values and defaults")
     init_parser.add_argument("--force", action="store_true", help="Overwrite generated discovery and spec drafts")
+    init_parser.add_argument("--no-actions", action="store_true", help="Do not install the default SpecGuard Readiness Gate workflow")
+    init_parser.add_argument("--force-actions", action="store_true", help="Overwrite an existing default SpecGuard Actions workflow")
     init_parser.add_argument("--llm", action="store_true", help="Use configured LLM mode. Kept for compatibility; LLM is the default.")
     init_parser.add_argument("--no-llm", action="store_true", help="Use local deterministic Discovery without LLM")
     init_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
@@ -689,13 +790,42 @@ def build_parser() -> argparse.ArgumentParser:
     example_copy.add_argument("--force", action="store_true", help="Overwrite existing files in the target package")
     example_copy.set_defaults(func=copy_example)
 
+    actions_parser = subparsers.add_parser("actions", formatter_class=SpecGuardHelpFormatter)
+    actions_subparsers = actions_parser.add_subparsers(dest="actions_command", required=True)
+
+    actions_install_readiness = actions_subparsers.add_parser(
+        "install-readiness-gate",
+        description="Install the consumer SpecGuard Readiness Gate workflow.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    actions_install_readiness.add_argument("--force", action="store_true", help="Overwrite an existing workflow file")
+    actions_install_readiness.set_defaults(func=actions)
+
+    actions_install_pr_review = actions_subparsers.add_parser(
+        "install-pr-review",
+        description="Install the optional AI-assisted SpecGuard PR Review workflow.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    actions_install_pr_review.add_argument("--force", action="store_true", help="Overwrite an existing workflow file")
+    actions_install_pr_review.set_defaults(func=actions)
+
+    actions_install = actions_subparsers.add_parser(
+        "install",
+        description="Install selected consumer SpecGuard GitHub Actions workflows.",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    actions_install.add_argument("--readiness-gate", action="store_true", help="Install the SpecGuard Readiness Gate workflow")
+    actions_install.add_argument("--pr-review", action="store_true", help="Install the SpecGuard PR Review workflow")
+    actions_install.add_argument("--force", action="store_true", help="Overwrite existing workflow files")
+    actions_install.set_defaults(func=actions)
+
     auth_parser = subparsers.add_parser("auth", formatter_class=SpecGuardHelpFormatter)
     auth_subparsers = auth_parser.add_subparsers(dest="auth_command", required=True)
 
     auth_setup = auth_subparsers.add_parser("setup", formatter_class=SpecGuardHelpFormatter)
     auth_setup.add_argument("--mode", choices=["codex", "openai"], help="LLM provider mode")
     auth_setup.add_argument("--model", help="Model name for the selected provider; Codex setup defaults to gpt-5.4")
-    auth_setup.add_argument("--timeout", type=int, help="Provider request timeout in seconds")
+    auth_setup.add_argument("--timeout", type=int, help="Provider request timeout in seconds; Codex defaults to 600, OpenAI defaults to 180")
     auth_setup.add_argument("--api-key", help="Store an OpenAI API key in local ignored config")
     auth_setup.add_argument("--api-key-env", default="OPENAI_API_KEY", help="Environment variable for the OpenAI API key")
     auth_setup.add_argument("--endpoint", default="https://api.openai.com/v1/responses", help="OpenAI Responses API endpoint")

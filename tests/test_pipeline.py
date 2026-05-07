@@ -14,7 +14,10 @@ from tools.contract_checker import check_contracts
 from tools.discovery_engine import answers_from_args, collect_llm_answers, initialize_specs
 from tools.readiness_engine import run_readiness_review
 from tools.llm_client import (
+    DEFAULT_CODEX_TIMEOUT,
+    CodexExecClient,
     LLMSettings,
+    _build_codex_prompt,
     _extract_codex_error_text,
     _extract_codex_event_text,
     _iter_response_text_deltas,
@@ -35,6 +38,7 @@ from tools.spec_validator import validate_feature
 from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.tdd_generator import generate_tests
 import cli.specguard as specguard_cli
+import tools.llm_client as llm_client_module
 from cli.specguard import _progress_line, _should_offer_follow_up
 
 
@@ -830,7 +834,47 @@ def test_codex_settings_raise_legacy_timeout_floor(tmp_path: Path) -> None:
 
     assert settings is not None
     assert settings.mode == "codex"
-    assert settings.timeout == 180
+    assert settings.timeout == DEFAULT_CODEX_TIMEOUT
+
+
+def test_codex_settings_preserve_explicit_non_legacy_timeout(tmp_path: Path) -> None:
+    save_llm_settings(tmp_path, LLMSettings(mode="codex", model="gpt-5.4", timeout=300))
+
+    settings = load_llm_settings(tmp_path)
+
+    assert settings is not None
+    assert settings.mode == "codex"
+    assert settings.timeout == 300
+
+
+def test_codex_prompt_constrains_provider_to_supplied_input() -> None:
+    prompt = _build_codex_prompt("Return JSON.", "# Artifact: spec.md\n\nBody", 2500)
+
+    assert "Use only the Input section below as the review context." in prompt
+    assert "Do not inspect the repository, read files, or execute shell commands." in prompt
+    assert "# Input" in prompt
+    assert "# Artifact: spec.md" in prompt
+
+
+def test_codex_exec_uses_ephemeral_read_only_command(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(llm_client_module, "_codex_supports_ephemeral", lambda _command: True)
+    client = CodexExecClient(LLMSettings(mode="codex", codex_command=sys.executable), root=tmp_path)
+
+    command = client._base_command()
+
+    assert "--sandbox" in command
+    assert "read-only" in command
+    assert "--ephemeral" in command
+
+
+def test_codex_exec_omits_ephemeral_when_cli_does_not_support_it(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(llm_client_module, "_codex_supports_ephemeral", lambda _command: False)
+    client = CodexExecClient(LLMSettings(mode="codex", codex_command=sys.executable), root=tmp_path)
+
+    command = client._base_command()
+
+    assert "--ephemeral" not in command
+    assert "--color" in command
 
 
 def test_codex_setup_defaults_model_and_skips_missing_login(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -847,7 +891,7 @@ def test_codex_setup_defaults_model_and_skips_missing_login(tmp_path: Path, monk
     exit_code = specguard_cli._setup_llm(Namespace(
         mode="codex",
         model=None,
-        timeout=180,
+        timeout=None,
         codex_command="codex",
         codex_profile=None,
         skip_login=False,
@@ -859,6 +903,7 @@ def test_codex_setup_defaults_model_and_skips_missing_login(tmp_path: Path, monk
     assert settings is not None
     assert settings.mode == "codex"
     assert settings.model == "gpt-5.4"
+    assert settings.timeout == DEFAULT_CODEX_TIMEOUT
     assert "could not be launched" in rendered
     assert "provider config is still saved" in rendered
 

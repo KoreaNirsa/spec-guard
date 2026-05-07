@@ -25,7 +25,7 @@ Configure local Codex:
 specguard auth setup --mode codex --model gpt-5.4
 ```
 
-Codex mode defaults to `gpt-5.4` when setup asks for a model. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in.
+Codex mode defaults to `gpt-5.4` and a 600-second request timeout. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in. `auth status` confirms saved configuration and local Codex command availability; it does not run a full live model request.
 
 Configure OpenAI Platform:
 
@@ -66,7 +66,7 @@ You can also run deterministic local Discovery without an LLM:
 specguard init my-feature --no-llm
 ```
 
-SpecGuard creates draft specs under `specs/`:
+SpecGuard creates draft specs under `specs/` and installs the default readiness workflow:
 
 ```text
 specs/my-feature/
@@ -76,7 +76,11 @@ specs/my-feature/
 |-- tasks.md
 |-- constitution.md
 `-- checklists/
+.github/
+`-- workflows/specguard-readiness-gate.yml
 ```
+
+Use `specguard init my-feature --no-actions` when you do not want SpecGuard to write `.github/workflows`. Existing workflow files are kept unless you explicitly use the workflow force option.
 
 The generated spec package follows a Spec Kit-inspired shape:
 
@@ -197,10 +201,10 @@ For API features, OpenAPI contracts must include at least one concrete path. Gen
 
 In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If Intent Preservation Check fails, the regenerated text is saved as `spec.proposed.md` and Verification Review is skipped until the user resolves the diff. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
-If a local Codex follow-up request times out, check `specguard auth status` and increase the timeout:
+If a local Codex request times out, check `specguard auth status` and increase the timeout:
 
 ```bash
-specguard auth setup --mode codex --timeout 240 --skip-login
+specguard auth setup --mode codex --timeout 600 --skip-login
 ```
 
 Use `--no-llm` only for deterministic local checks or CI examples:
@@ -273,9 +277,34 @@ develop/react/
 develop/fastapi/
 ```
 
-## 6. Advisory PR Review
+## 6. Pull Request Gates And Advisory Review
+
+`specguard init` installs the `SpecGuard Readiness Gate` workflow by default. The gate runs on pull requests, checks changed packages under `specs/`, and fails when the package is not READY or when `readiness-review.json` is stale relative to source spec artifacts.
+
+For merge-time enforcement, add `SpecGuard Readiness Gate` as a required status check in GitHub branch protection or rulesets.
 
 After external implementation opens a pull request, the optional `SpecGuard PR Review` workflow can run a read-only Codex-compatible review against the approved spec package and PR diff.
+
+Install PR Review only when you want AI-assisted advisory comments:
+
+```bash
+specguard actions install-pr-review
+```
+
+After installing it, commit and push `.github/workflows/specguard-pr-review.yml`, then add this GitHub Actions secret:
+
+```text
+SPECGUARD_OPENAI_API_KEY=sk-...
+```
+
+Optional repository variables:
+
+```text
+SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
+SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
+```
+
+Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only files under `develop/` and does not modify files under `specs/`.
 
 The workflow:
 
