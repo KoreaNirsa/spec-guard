@@ -1,0 +1,50 @@
+## What's Changed
+
+SpecGuard v0.2.6 makes the default `specguard run` path much more practical for day-to-day use while preserving stricter review modes for teams that want them.
+
+### Default Low Review Mode
+
+- `specguard run` now defaults to `--review-level low`.
+- Low mode blocks only Critical findings.
+- Major and Minor findings are still reported, but they are warnings instead of implementation blockers.
+- Low mode uses a compact review input path and lower output token budget to reduce first-run latency.
+- To keep the stricter v0.2.5 behavior, run:
+
+```bash
+specguard run specs/your-feature-name --review-level medium
+```
+
+or set:
+
+```bash
+SPECGUARD_REVIEW_LEVEL=medium
+```
+
+### Review Level Policy
+
+- Added explicit `low`, `medium`, and `high` SpecGuard Review levels.
+- `medium` preserves the previous readiness thresholds: Critical blocks, Major findings can block when they exceed the warning budget, and Minor findings still have a warning budget.
+- `high` uses the medium gate thresholds in this release while asking for stricter review attention.
+- `--strict-e2e` defaults to `medium`.
+
+### Example And Follow-Up UX
+
+- Updated the packaged example so the default low-mode flow reaches `READY_WITH_WARNINGS` without a long manual cleanup loop.
+- Fixed the example invite token flow so tokens are not sent in API URL paths.
+- Added a lightweight generated artifact manifest so SpecGuard Review can see that referenced contracts/tests exist without sending full generated files.
+- Low-mode spec regeneration now auto-demotes obvious documented out-of-scope additions back out of implementation scope and still writes an audit diff under `.specguard/spec-revisions/`.
+
+### Performance
+
+- Low-mode SpecGuard Review now sends compact supporting context by default.
+- Low-mode technical design generation uses a shorter prompt and smaller output budget.
+- A published-style local Codex smoke run improved from about 149s to about 126s in the measured environment, with remaining time still provider-bound.
+
+### Validation
+
+- Full local test suite passed: `125 passed`.
+- Package build produced:
+  - `spec_guard-0.2.6.tar.gz`
+  - `spec_guard-0.2.6-py3-none-any.whl`
+
+**Full Changelog**: https://github.com/KoreaNirsa/spec-guard/compare/v0.2.5...v0.2.6

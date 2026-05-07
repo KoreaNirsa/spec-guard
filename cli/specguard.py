@@ -885,6 +885,7 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  specguard run specs/team-invite\n"
+            "  specguard run specs/team-invite --review-level medium\n"
             "  specguard run specs/team-invite --no-llm --no-follow-up\n"
             "  specguard run specs/team-invite --strict-e2e --strict-max-iterations 2\n\n"
             "Timeout recovery:\n"

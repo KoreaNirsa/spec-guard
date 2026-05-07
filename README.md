@@ -106,6 +106,8 @@ The example is for trying the full `run` pipeline before authoring your own prod
 specguard run specs/your-feature-name
 ```
 
+The default SpecGuard Review level is `low`. Low mode is a practical safety gate: Critical findings block, while Major and Minor findings are reported as warnings so users are not forced into long cleanup loops for non-critical improvements.
+
 `run` builds and validates the implementation basis:
 
 ```text
@@ -122,9 +124,9 @@ If SpecGuard returns NOT READY, use the continuation menu:
 [q] Exit
 ```
 
-Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. Critical findings always require revision before implementation.
+Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require revision before implementation; Major and Minor findings remain visible as warnings.
 
-Spec regeneration is guarded by an Intent Preservation Check. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, or move out-of-scope work into implementation scope, SpecGuard still updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
+Spec regeneration is guarded by an Intent Preservation Check. In low mode, obvious out-of-scope additions such as retry queues, bulk import, or cross-workspace invite variants are auto-demoted back out of implementation scope when they match documented non-goals. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, weaken safety-critical requirements, or still move out-of-scope work into implementation scope, SpecGuard updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
 
 For LLM-enabled strict automation:
 
@@ -216,11 +218,26 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 
 ## Readiness Rules
 
-SpecGuard uses three readiness states:
+SpecGuard supports three review levels:
 
-- READY: Critical=0, Major=0, Minor<=5.
-- READY_WITH_WARNINGS: Critical=0, Major<=2, Minor<=10.
-- NOT_READY: Critical>=1, Major>=3, or Minor>10.
+- `low` is the default for `specguard run`. It is optimized for first-run usability and minimum safety gating. It blocks only Critical findings. Major and Minor findings are warnings.
+- `medium` preserves the stricter v0.2.5-style readiness gate. Use it when you want deeper SpecGuard Review before implementation.
+- `high` keeps the medium gate in this release while asking for stricter review attention. It may take longer and should be used when review depth matters more than latency.
+
+Choose a level per run:
+
+```bash
+specguard run specs/your-feature-name --review-level medium
+SPECGUARD_REVIEW_LEVEL=medium specguard run specs/your-feature-name
+```
+
+Strict E2E defaults to `medium` because it is explicitly an automated refinement loop.
+
+Readiness states are interpreted by the selected review level:
+
+- Low: READY when Critical=0 and no warnings exist; READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist; NOT_READY only when Critical>=1.
+- Medium: READY when Critical=0, Major=0, Minor<=5; READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; NOT_READY when Critical>=1, Major>=3, or Minor>10.
+- High: uses the medium gate thresholds in v0.2.6 with stricter review attention.
 
 Critical findings always block implementation. Major findings should represent an implementation-critical product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
 
@@ -254,6 +271,7 @@ Useful `run` options:
 - `--follow-up`: force the interactive continuation menu.
 - `--no-follow-up`: exit immediately after the pipeline.
 - `--no-llm`: use local deterministic checks and heuristic SpecGuard Review.
+- `--review-level {low,medium,high}`: choose the SpecGuard Review depth; defaults to `low`, or `medium` for `--strict-e2e`.
 - `--strict-e2e`: use an LLM to automatically regenerate blocked specs and rerun Verification Review.
 - `--strict-max-iterations`: bound the number of strict E2E verification iterations.
 
