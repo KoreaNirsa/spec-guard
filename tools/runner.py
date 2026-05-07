@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -9,9 +10,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.artifact_generator import ensure_contract, generate_implementation_output, generate_llm_technical_design, generate_technical_design
 from tools.contract_checker import check_contracts
-from tools.readiness_engine import run_readiness_review
 from tools.llm_client import LLMConfigError, build_llm_client
 from tools.progress import progress_activity
+from tools.readiness_engine import (
+    DEFAULT_REVIEW_LEVEL,
+    READINESS_REVIEW_LEVELS,
+    normalize_review_level,
+    run_readiness_review,
+)
 from tools.result import CheckResult
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
@@ -72,9 +78,11 @@ def run_pipeline(
     llm_client: object | None = None,
     force: bool = False,
     review_mode: str = "initial",
+    review_level: str = DEFAULT_REVIEW_LEVEL,
     strict_verification: bool = False,
     refresh_technical_design: bool | None = None,
 ) -> CheckResult:
+    review_level = normalize_review_level(review_level)
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
     if not feature_dirs:
@@ -132,7 +140,12 @@ def run_pipeline(
         review = _time_stage(
             timings,
             "readiness_review",
-            lambda: run_readiness_review(feature_dir, llm_client=llm_client, review_mode=review_mode),
+            lambda: run_readiness_review(
+                feature_dir,
+                llm_client=llm_client,
+                review_mode=review_mode,
+                review_level=review_level,
+            ),
         )
         result.messages.extend(review.messages)
         result.next_steps.extend(review.next_steps)
@@ -186,7 +199,16 @@ def main() -> int:
     parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic SpecGuard Review")
     parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
     parser.add_argument("--llm-model", help="Override the configured LLM model")
+    parser.add_argument("--review-level", choices=sorted(READINESS_REVIEW_LEVELS), help="SpecGuard Review level")
     args = parser.parse_args()
+    try:
+        review_level = normalize_review_level(args.review_level or os.getenv("SPECGUARD_REVIEW_LEVEL") or DEFAULT_REVIEW_LEVEL)
+    except ValueError as exc:
+        result = CheckResult("SpecGuard pipeline")
+        result.add_error(str(exc))
+        result.add_next_step(f"Use one of: {', '.join(sorted(READINESS_REVIEW_LEVELS))}")
+        result.print()
+        return 1
 
     llm_client = None
     if not args.no_llm:
@@ -200,7 +222,7 @@ def main() -> int:
             result.print()
             return 1
 
-    result = run_pipeline(Path(args.path), llm_client=llm_client, force=args.force)
+    result = run_pipeline(Path(args.path), llm_client=llm_client, force=args.force, review_level=review_level)
     result.print()
     return 0 if result.ok else 1
 

@@ -13,6 +13,7 @@ from tools.post_run import (
     spec_revision_design_refresh_reason,
     validate_spec_revision_intent,
 )
+from tools.readiness_engine import MEDIUM_REVIEW_LEVEL, normalize_review_level
 from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.ux import green, red
@@ -24,20 +25,30 @@ def run_strict_e2e_pipeline(
     *,
     force: bool = False,
     max_iterations: int = 3,
+    review_level: str = MEDIUM_REVIEW_LEVEL,
 ) -> CheckResult:
     if max_iterations < 1:
         raise ValueError("max_iterations must be at least 1")
+    review_level = normalize_review_level(review_level)
 
     result = CheckResult("SpecGuard strict e2e pipeline")
     trace: dict[str, Any] = {
         "schema_version": "0.1",
+        "review_level": review_level,
         "max_iterations": max_iterations,
         "attempts": [],
         "regenerations": [],
         "final": {},
     }
 
-    attempt = run_pipeline(path, llm_client=llm_client, force=force, review_mode="initial", strict_verification=True)
+    attempt = run_pipeline(
+        path,
+        llm_client=llm_client,
+        force=force,
+        review_mode="initial",
+        review_level=review_level,
+        strict_verification=True,
+    )
     _merge_messages(result, attempt)
     _record_attempt(trace, path, 0, "initial", attempt)
     if attempt.ok:
@@ -103,6 +114,7 @@ def run_strict_e2e_pipeline(
             llm_client=llm_client,
             force=True,
             review_mode="verification",
+            review_level=review_level,
             strict_verification=True,
             refresh_technical_design=refresh_technical_design,
         )

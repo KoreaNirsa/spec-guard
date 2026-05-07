@@ -23,6 +23,9 @@ READINESS_READY_MINOR_LIMIT = 5
 READINESS_WARNING_MAJOR_LIMIT = 2
 READINESS_WARNING_MINOR_LIMIT = 10
 READINESS_REVIEW_MODES = {"initial", "verification"}
+DEFAULT_REVIEW_LEVEL = "low"
+MEDIUM_REVIEW_LEVEL = "medium"
+READINESS_REVIEW_LEVELS = {"low", "medium", "high"}
 DELTA_REVIEW_CORE_ARTIFACTS = {"spec.md", "technical-design.md"}
 DELTA_REVIEW_MAX_EXCERPTS_PER_ARTIFACT = 3
 DELTA_REVIEW_EXCERPT_RADIUS = 450
@@ -84,8 +87,91 @@ class CachedReview:
     payload: dict
 
 
+@dataclass(frozen=True)
+class ReadinessPolicy:
+    review_level: str
+    ready_major_limit: int
+    ready_minor_limit: int
+    warning_major_limit: int | None
+    warning_minor_limit: int | None
+    not_ready_text: str
+    prompt_line: str
+
+
+READINESS_POLICIES = {
+    "low": ReadinessPolicy(
+        review_level="low",
+        ready_major_limit=0,
+        ready_minor_limit=0,
+        warning_major_limit=None,
+        warning_minor_limit=None,
+        not_ready_text="requires no Critical findings; Major and Minor findings are warnings in low mode.",
+        prompt_line=(
+            "Readiness policy for low review level: NOT_READY only when Critical>=1. "
+            "READY when Critical=0 and there are no Major or Minor warnings. "
+            "READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist. "
+            "Major and Minor findings do not block implementation in low mode."
+        ),
+    ),
+    "medium": ReadinessPolicy(
+        review_level="medium",
+        ready_major_limit=0,
+        ready_minor_limit=READINESS_READY_MINOR_LIMIT,
+        warning_major_limit=READINESS_WARNING_MAJOR_LIMIT,
+        warning_minor_limit=READINESS_WARNING_MINOR_LIMIT,
+        not_ready_text=(
+            f"requires no Critical findings, Major<={READINESS_WARNING_MAJOR_LIMIT}, "
+            f"and Minor<={READINESS_WARNING_MINOR_LIMIT}."
+        ),
+        prompt_line=(
+            "Readiness policy for medium review level: READY when Critical=0, Major=0, Minor<=5; "
+            "READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; "
+            "NOT_READY when Critical>=1, Major>=3, or Minor>10."
+        ),
+    ),
+    "high": ReadinessPolicy(
+        review_level="high",
+        ready_major_limit=0,
+        ready_minor_limit=READINESS_READY_MINOR_LIMIT,
+        warning_major_limit=READINESS_WARNING_MAJOR_LIMIT,
+        warning_minor_limit=READINESS_WARNING_MINOR_LIMIT,
+        not_ready_text=(
+            f"requires no Critical findings, Major<={READINESS_WARNING_MAJOR_LIMIT}, "
+            f"and Minor<={READINESS_WARNING_MINOR_LIMIT}."
+        ),
+        prompt_line=(
+            "Readiness policy for high review level: use the medium gate thresholds in this release, "
+            "with stricter review attention. READY when Critical=0, Major=0, Minor<=5; "
+            "READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; "
+            "NOT_READY when Critical>=1, Major>=3, or Minor>10."
+        ),
+    ),
+}
+
+
 def _contains(text: str, *needles: str) -> bool:
     return any(needle in text for needle in needles)
+
+
+def normalize_review_level(review_level: str | None) -> str:
+    normalized = (review_level or DEFAULT_REVIEW_LEVEL).strip().lower()
+    if normalized not in READINESS_REVIEW_LEVELS:
+        raise ValueError(f"Unsupported SpecGuard Review level: {review_level}")
+    return normalized
+
+
+def review_level_gate_text(review_level: str | None) -> str:
+    policy = _readiness_policy(review_level)
+    if policy.review_level == "low":
+        return "blocks Critical findings only; Major and Minor findings are warnings"
+    return (
+        f"blocks Critical findings, Major>{policy.warning_major_limit}, "
+        f"or Minor>{policy.warning_minor_limit}"
+    )
+
+
+def _readiness_policy(review_level: str | None) -> ReadinessPolicy:
+    return READINESS_POLICIES[normalize_review_level(review_level)]
 
 
 def _section(content: str, heading: str) -> str:
@@ -237,15 +323,21 @@ def _build_llm_review_request(
     artifacts: list[ReviewArtifact],
     *,
     review_mode: str,
+    review_level: str,
     previous_report: dict | None,
 ) -> tuple[str, str, dict[str, object]]:
-    instructions = _verification_review_instructions() if review_mode == "verification" else _initial_review_instructions()
+    instructions = (
+        _verification_review_instructions(review_level)
+        if review_mode == "verification"
+        else _initial_review_instructions(review_level)
+    )
     full_input = _render_artifact_input(artifacts)
     if review_mode != "verification":
-        return instructions, full_input, _review_input_metadata("full", artifacts, len(full_input))
+        return instructions, full_input, _review_input_metadata("full", artifacts, len(full_input), review_level)
 
     delta_input, delta_metadata = _build_delta_verification_input(artifacts, previous_report)
     if delta_input:
+        delta_metadata["review_level"] = review_level
         return instructions, delta_input, delta_metadata
 
     input_text = "\n\n".join([
@@ -254,14 +346,20 @@ def _build_llm_review_request(
         "# Current Spec Package Artifacts",
         full_input,
     ])
-    metadata = _review_input_metadata("full", artifacts, len(input_text))
+    metadata = _review_input_metadata("full", artifacts, len(input_text), review_level)
     metadata["fallback_reason"] = delta_metadata.get("fallback_reason", "delta context unavailable")
     return instructions, input_text, metadata
 
 
-def _review_input_metadata(mode: str, artifacts: list[ReviewArtifact], total_characters: int) -> dict[str, object]:
+def _review_input_metadata(
+    mode: str,
+    artifacts: list[ReviewArtifact],
+    total_characters: int,
+    review_level: str,
+) -> dict[str, object]:
     return {
         "mode": mode,
+        "review_level": review_level,
         "artifact_count": len(artifacts),
         "total_characters": total_characters,
         "artifacts": [{"path": artifact.path, "characters": len(artifact.content)} for artifact in artifacts],
@@ -367,6 +465,7 @@ def _review_cache_metadata(
     artifacts: list[ReviewArtifact],
     *,
     review_mode: str,
+    review_level: str,
     instructions: str,
     input_text: str,
     llm_client: object,
@@ -378,6 +477,7 @@ def _review_cache_metadata(
         "schema_version": READINESS_CACHE_SCHEMA_VERSION,
         "prompt_version": READINESS_CACHE_PROMPT_VERSION,
         "review_mode": review_mode,
+        "review_level": review_level,
         "client": client_identity,
         "artifact_fingerprint": artifact_fingerprint,
         "input_fingerprint": _sha256_text(input_text),
@@ -631,13 +731,15 @@ def _major_should_downgrade(issue: ReadinessIssue) -> bool:
     return any(marker in text for marker in non_blocking_markers) and not any(marker in text for marker in blocking_markers)
 
 
-def _initial_review_instructions() -> str:
+def _initial_review_instructions(review_level: str) -> str:
+    policy = _readiness_policy(review_level)
     return "\n".join([
         "You are SpecGuard's readiness review board: principal architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.",
         "Your task is NOT to approve the implementation basis. Your task is to break it before Codex or Claude Code implements from it.",
+        f"Review level: {policy.review_level}.",
         "Analyze every provided spec artifact together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
         "Use SpecGuard Review: find contradictions, missing requirements, undefined state, security gaps, data ownership gaps, versioning gaps, weak contracts, untestable acceptance criteria, unsafe failure handling, and implementation assumptions.",
-        _readiness_policy_prompt_line(),
+        _readiness_policy_prompt_line(policy.review_level),
         "Severity calibration: Critical means unsafe, contradictory, or impossible to implement deterministically; Major means implementation would require guessing or would miss an important product, security, state, contract, persistence, or ownership decision; Minor means useful cleanup that does not block implementation.",
         "Downgrade best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks to Minor or omit them.",
         "Return ONLY JSON with this shape:",
@@ -646,15 +748,17 @@ def _initial_review_instructions() -> str:
     ])
 
 
-def _verification_review_instructions() -> str:
+def _verification_review_instructions(review_level: str) -> str:
+    policy = _readiness_policy(review_level)
     return "\n".join([
         "You are SpecGuard's Verification Review board.",
+        f"Review level: {policy.review_level}.",
         "This is NOT a fresh broad SpecGuard Review. Verify whether the regenerated spec package resolves the previous Readiness Findings.",
         "Your primary job is to close, downgrade, or keep previous findings based on the current artifacts.",
         "Add a new Critical or Major finding only when there is direct evidence in the current artifacts that implementation would be unsafe, contradictory, or would require an important guess.",
         "Do not create new blockers for best-practice improvements, optional hardening, style, naming, or future extensibility. Those are Minor or omitted.",
         "Respect explicit out-of-scope, deferred, or accepted-risk decisions when they are documented in the spec package and do not contradict safety or contract requirements.",
-        _readiness_policy_prompt_line(),
+        _readiness_policy_prompt_line(policy.review_level),
         "Severity calibration: Critical means a concrete unsafe/contradictory blocker remains; Major means a concrete implementation-critical decision is still missing; Minor means non-blocking clarity or polish.",
         "Return ONLY JSON with this shape:",
         '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
@@ -699,67 +803,107 @@ def _build_summary(issues: list[ReadinessIssue]) -> dict[str, int]:
     }
 
 
-def _readiness_status(summary: dict[str, int]) -> str:
-    if summary["critical"] == 0 and summary["major"] == 0 and summary["minor"] <= READINESS_READY_MINOR_LIMIT:
-        return "ready"
+def _readiness_status(summary: dict[str, int], review_level: str | None = DEFAULT_REVIEW_LEVEL) -> str:
+    policy = _readiness_policy(review_level)
     if (
         summary["critical"] == 0
-        and summary["major"] <= READINESS_WARNING_MAJOR_LIMIT
-        and summary["minor"] <= READINESS_WARNING_MINOR_LIMIT
+        and summary["major"] <= policy.ready_major_limit
+        and summary["minor"] <= policy.ready_minor_limit
+    ):
+        return "ready"
+    if policy.warning_major_limit is None or policy.warning_minor_limit is None:
+        return "ready_with_warnings" if summary["critical"] == 0 else "not_ready"
+    if (
+        summary["critical"] == 0
+        and summary["major"] <= policy.warning_major_limit
+        and summary["minor"] <= policy.warning_minor_limit
     ):
         return "ready_with_warnings"
     return "not_ready"
 
 
-def _is_implementation_ready(summary: dict[str, int]) -> bool:
-    return _readiness_status(summary) in {"ready", "ready_with_warnings"}
+def _is_implementation_ready(summary: dict[str, int], review_level: str | None = DEFAULT_REVIEW_LEVEL) -> bool:
+    return _readiness_status(summary, review_level) in {"ready", "ready_with_warnings"}
 
 
-def _readiness_text(summary: dict[str, int]) -> str:
-    status = _readiness_status(summary)
+def _readiness_text(summary: dict[str, int], review_level: str | None = DEFAULT_REVIEW_LEVEL) -> str:
+    policy = _readiness_policy(review_level)
+    status = _readiness_status(summary, policy.review_level)
     if status == "ready":
-        return f"Implementation-ready: Critical=0, Major=0, Minor<={READINESS_READY_MINOR_LIMIT}."
-    if status == "ready_with_warnings":
         return (
-            "Implementation-ready with warnings: "
-            f"Critical=0, Major<={READINESS_WARNING_MAJOR_LIMIT}, Minor<={READINESS_WARNING_MINOR_LIMIT}."
+            f"Implementation-ready ({policy.review_level}): "
+            f"Critical=0, Major<={policy.ready_major_limit}, Minor<={policy.ready_minor_limit}."
         )
-    return (
-        "Not implementation-ready: requires no Critical findings, "
-        f"Major<={READINESS_WARNING_MAJOR_LIMIT}, and Minor<={READINESS_WARNING_MINOR_LIMIT}."
-    )
+    if status == "ready_with_warnings":
+        if policy.warning_major_limit is None or policy.warning_minor_limit is None:
+            return "Implementation-ready with warnings (low): Critical=0; Major and Minor findings are warnings."
+        return (
+            f"Implementation-ready with warnings ({policy.review_level}): "
+            f"Critical=0, Major<={policy.warning_major_limit}, Minor<={policy.warning_minor_limit}."
+        )
+    return f"Not implementation-ready ({policy.review_level}): {policy.not_ready_text}"
 
 
-def _readiness_policy_prompt_line() -> str:
-    return (
-        "Readiness policy: READY when Critical=0, Major=0, Minor<=5; "
-        "READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; "
-        "NOT_READY when Critical>=1, Major>=3, or Minor>10."
-    )
+def _readiness_policy_prompt_line(review_level: str | None = DEFAULT_REVIEW_LEVEL) -> str:
+    return _readiness_policy(review_level).prompt_line
+
+
+def _readiness_criteria(policy: ReadinessPolicy) -> dict[str, object]:
+    criteria: dict[str, object] = {
+        "review_level": policy.review_level,
+        "ready": {
+            "critical": 0,
+            "major_max": policy.ready_major_limit,
+            "minor_max": policy.ready_minor_limit,
+        },
+        "not_ready": policy.not_ready_text,
+    }
+    if policy.warning_major_limit is None or policy.warning_minor_limit is None:
+        criteria["ready_with_warnings"] = {
+            "critical": 0,
+            "major_max": None,
+            "minor_max": None,
+            "note": "Major and Minor findings are warnings in low mode.",
+        }
+    else:
+        criteria["ready_with_warnings"] = {
+            "critical": 0,
+            "major_max": policy.warning_major_limit,
+            "minor_max": policy.warning_minor_limit,
+        }
+    return criteria
 
 
 def _build_report(
     artifacts: list[ReviewArtifact],
     issues: list[ReadinessIssue],
     review_mode: str,
+    review_level: str,
     review_input: dict[str, object] | None = None,
 ) -> str:
     summary = _build_summary(issues)
-    status = _readiness_status(summary)
+    policy = _readiness_policy(review_level)
+    status = _readiness_status(summary, policy.review_level)
     critical = [issue for issue in issues if issue.severity == "Critical"]
     major = [issue for issue in issues if issue.severity == "Major"]
     minor = [issue for issue in issues if issue.severity == "Minor"]
+    warning_criteria = (
+        "Critical=0; Major/Minor are warnings"
+        if policy.warning_major_limit is None or policy.warning_minor_limit is None
+        else f"Critical=0, Major<={policy.warning_major_limit}, Minor<={policy.warning_minor_limit}"
+    )
 
     return "\n".join([
         "# SpecGuard Review Result",
         "",
         f"- Review mode: {review_mode}",
+        f"- Review level: {policy.review_level}",
         "",
         "## Readiness",
         "",
         f"- Status: {status.upper()}",
-        f"- READY criteria: Critical=0, Major=0, Minor<={READINESS_READY_MINOR_LIMIT}",
-        f"- READY_WITH_WARNINGS criteria: Critical=0, Major<={READINESS_WARNING_MAJOR_LIMIT}, Minor<={READINESS_WARNING_MINOR_LIMIT}",
+        f"- READY criteria: Critical=0, Major<={policy.ready_major_limit}, Minor<={policy.ready_minor_limit}",
+        f"- READY_WITH_WARNINGS criteria: {warning_criteria}",
         f"- Current: Critical={summary['critical']}, Major={summary['major']}, Minor={summary['minor']}",
         "",
         _render_group("Critical Issues", critical),
@@ -775,7 +919,7 @@ def _build_report(
         "## Prompt Mode",
         "",
         "```text",
-        READINESS_PROMPT.strip(),
+        _readiness_policy_prompt_line(policy.review_level),
         "```",
         "",
         "## Input Summary",
@@ -795,30 +939,22 @@ def _build_json_report(
     artifacts: list[ReviewArtifact],
     issues: list[ReadinessIssue],
     review_mode: str,
+    review_level: str,
     review_input: dict[str, object] | None = None,
 ) -> str:
     summary = _build_summary(issues)
-    status = _readiness_status(summary)
+    policy = _readiness_policy(review_level)
+    status = _readiness_status(summary, policy.review_level)
     artifact_lengths = {artifact.path: len(artifact.content) for artifact in artifacts}
     total_characters = sum(artifact_lengths.values())
     payload = {
         "schema_version": "0.1",
         "review_mode": review_mode,
-        "blocked": not _is_implementation_ready(summary),
+        "review_level": policy.review_level,
+        "blocked": not _is_implementation_ready(summary, policy.review_level),
         "readiness": {
-            "implementation_ready": _is_implementation_ready(summary),
-            "criteria": {
-                "ready": {
-                    "critical": 0,
-                    "major": 0,
-                    "minor_max": READINESS_READY_MINOR_LIMIT,
-                },
-                "ready_with_warnings": {
-                    "critical": 0,
-                    "major_max": READINESS_WARNING_MAJOR_LIMIT,
-                    "minor_max": READINESS_WARNING_MINOR_LIMIT,
-                },
-            },
+            "implementation_ready": _is_implementation_ready(summary, policy.review_level),
+            "criteria": _readiness_criteria(policy),
             "status": status,
         },
         "summary": summary,
@@ -831,16 +967,22 @@ def _build_json_report(
             "technical_design_characters": artifact_lengths.get("technical-design.md", 0),
             "artifacts": [{"path": artifact.path, "characters": len(artifact.content)} for artifact in artifacts],
         },
-        "prompt_mode": READINESS_PROMPT.strip(),
+        "prompt_mode": _readiness_policy_prompt_line(policy.review_level),
     }
     if review_input is not None:
         payload["review_input"] = review_input
     return json.dumps(payload, indent=2) + "\n"
 
 
-def run_readiness_review(path: Path, llm_client: object | None = None, review_mode: str = "initial") -> CheckResult:
+def run_readiness_review(
+    path: Path,
+    llm_client: object | None = None,
+    review_mode: str = "initial",
+    review_level: str = DEFAULT_REVIEW_LEVEL,
+) -> CheckResult:
     if review_mode not in READINESS_REVIEW_MODES:
         raise ValueError(f"Unsupported SpecGuard Review mode: {review_mode}")
+    review_level = normalize_review_level(review_level)
 
     result = CheckResult("SpecGuard Review")
     discovery_path = path / "discovery.md"
@@ -874,11 +1016,13 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
             instructions, input_text, review_input = _build_llm_review_request(
                 artifacts,
                 review_mode=review_mode,
+                review_level=review_level,
                 previous_report=previous_report,
             )
             cache_key, cache_metadata = _review_cache_metadata(
                 artifacts,
                 review_mode=review_mode,
+                review_level=review_level,
                 instructions=instructions,
                 input_text=input_text,
                 llm_client=llm_client,
@@ -900,7 +1044,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
                 llm_elapsed_ms = int((time.perf_counter() - started) * 1000)
         else:
             issues = _analyze(artifacts)
-            review_input = _review_input_metadata("heuristic", artifacts, total_input_characters)
+            review_input = _review_input_metadata("heuristic", artifacts, total_input_characters, review_level)
     except (json.JSONDecodeError, ValueError) as exc:
         result.add_error(f"LLM SpecGuard Review response could not be parsed as JSON: {exc}")
         return result
@@ -908,14 +1052,15 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     critical_count = summary["critical"]
     major_count = summary["major"]
     minor_count = summary["minor"]
-    implementation_ready = _is_implementation_ready(summary)
+    implementation_ready = _is_implementation_ready(summary, review_level)
 
     if not cache_hit:
-        report_path.write_text(_build_report(artifacts, issues, review_mode, review_input), encoding="utf-8")
-        report_json_path.write_text(_build_json_report(artifacts, issues, review_mode, review_input), encoding="utf-8")
+        report_path.write_text(_build_report(artifacts, issues, review_mode, review_level, review_input), encoding="utf-8")
+        report_json_path.write_text(_build_json_report(artifacts, issues, review_mode, review_level, review_input), encoding="utf-8")
         if llm_client and cache_metadata is not None:
             _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
     result.details.update(summary)
+    result.details["review_level"] = review_level
     if cache_hit:
         result.details["cache_hit"] = True
         result.details["cache_key"] = cache_key
@@ -929,6 +1074,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
             result.details["cache_hit"] = False
             result.details["cache_key"] = cache_key
             result.add_info(f"SpecGuard Review cache stored: {cache_key[:12]}")
+    result.add_info(f"SpecGuard Review level: {review_level} ({review_level_gate_text(review_level)}).")
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
     if review_input:
         result.add_info(
@@ -948,13 +1094,13 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
             f"{review_artifact_count} artifact(s), {review_characters} characters, {llm_elapsed_ms}ms."
         )
     if implementation_ready:
-        if _readiness_status(summary) == "ready_with_warnings":
-            result.add_info(yellow(f"[READY_WITH_WARNINGS] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
+        if _readiness_status(summary, review_level) == "ready_with_warnings":
+            result.add_info(yellow(f"[READY_WITH_WARNINGS] {_readiness_text(summary, review_level)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
             result.add_next_step(f"Review warning findings in: {report_path}")
         else:
-            result.add_info(green(f"[READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
+            result.add_info(green(f"[READY] {_readiness_text(summary, review_level)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
     else:
-        result.add_error(red(f"[NOT READY] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
+        result.add_error(red(f"[NOT READY] {_readiness_text(summary, review_level)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
         result.add_next_step(f"Open the human report: {report_path}")
         result.add_next_step(f"Use the machine-readable report for automation: {report_json_path}")
         result.add_next_step(
@@ -968,8 +1114,9 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("path")
+    parser.add_argument("--review-level", choices=sorted(READINESS_REVIEW_LEVELS), default=DEFAULT_REVIEW_LEVEL)
     args = parser.parse_args()
-    result = run_readiness_review(Path(args.path))
+    result = run_readiness_review(Path(args.path), review_level=args.review_level)
     result.print()
     return 0 if result.ok else 1
 
