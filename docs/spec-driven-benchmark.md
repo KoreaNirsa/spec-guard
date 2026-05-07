@@ -81,6 +81,9 @@ Reference materials:
 | Item | Value |
 | --- | --- |
 | Run date | 2026-05-06 |
+| SpecGuard package version | `0.2.2` |
+| SpecGuard repository state | `v0.2.2` / `b680de34b8cdf1d1b2f9724585e296ad51d213f5` |
+| Benchmark result schema | `specguard-ai-benchmark/v1` |
 | Code generation command | `npx @openai/codex@0.128.0 exec -m gpt-5.5` |
 | SpecGuard weak-spec gate | `python -m cli.specguard run <temp-feature> --no-llm --no-follow-up` |
 | Model | `gpt-5.5` |
@@ -92,6 +95,8 @@ Reference materials:
 | Complete-spec evaluation | Python hidden contract runner with 12 checks |
 | Weak-spec evaluation | Python hidden contract runner with 21 checks: 10 structure/runtime checks and 11 contract checks |
 | Temporary project cleanup | Final benchmark roots reported `temp_removed=True` |
+
+New benchmark JSON emitted by `tools/spec_driven_ai_benchmark.py` includes a top-level `metadata` object with the SpecGuard package version, git commit, exact git tag when available, benchmark script schema/version, and run timestamp. If a value cannot be resolved, the script records `unknown` instead of omitting the field.
 
 ## Complete-Spec Baseline
 
