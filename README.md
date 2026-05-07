@@ -115,7 +115,7 @@ If SpecGuard returns NOT READY, use the continuation menu:
 
 Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. Critical findings always require revision before implementation.
 
-Spec regeneration is guarded by an Intent Preservation Check. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, or move out-of-scope work into implementation scope, SpecGuard keeps the original `spec.md`, writes `spec.proposed.md`, and stops before Verification Review.
+Spec regeneration is guarded by an Intent Preservation Check. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, or move out-of-scope work into implementation scope, SpecGuard still updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
 
 For LLM-enabled strict automation:
 
