@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -32,6 +33,24 @@ def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
     return any(source.exists() and source.stat().st_mtime > output_mtime for source in sources)
 
 
+def _time_stage(timings: dict[str, int], name: str, operation):
+    started = time.perf_counter()
+    try:
+        return operation()
+    finally:
+        timings[name] = int((time.perf_counter() - started) * 1000)
+
+
+def _record_timings(result: CheckResult, feature_dir: Path, timings: dict[str, int]) -> None:
+    total = sum(timings.values())
+    timings["total"] = total
+    for stage, elapsed_ms in timings.items():
+        result.details[f"{feature_dir.name}.{stage}_ms"] = elapsed_ms
+
+    rendered = ", ".join(f"{stage}={elapsed_ms}ms" for stage, elapsed_ms in timings.items())
+    result.add_info(f"Performance timings for {feature_dir}: {rendered}")
+
+
 def run_pipeline(
     path: Path,
     llm_client: object | None = None,
@@ -47,12 +66,14 @@ def run_pipeline(
         return result
 
     for feature_dir in feature_dirs:
-        validation = validate_spec_basis(feature_dir)
+        timings: dict[str, int] = {}
+        validation = _time_stage(timings, "validation", lambda: validate_spec_basis(feature_dir))
         result.messages.extend(validation.messages)
         result.next_steps.extend(validation.next_steps)
         if not validation.ok:
             result.ok = False
             result.add_next_step("Fix discovery.md or spec.md before running the pipeline again.")
+            _record_timings(result, feature_dir, timings)
             continue
 
         discovery_path = feature_dir / "discovery.md"
@@ -63,59 +84,76 @@ def run_pipeline(
 
         refresh_design = _is_stale(technical_design_path, [discovery_path, spec_path], force)
         if llm_client is None:
-            technical_design = generate_technical_design(feature_dir, force=refresh_design)
+            technical_design = _time_stage(
+                timings,
+                "technical_design",
+                lambda: generate_technical_design(feature_dir, force=refresh_design),
+            )
         else:
-            technical_design = generate_llm_technical_design(feature_dir, llm_client, force=refresh_design)
+            technical_design = _time_stage(
+                timings,
+                "technical_design",
+                lambda: generate_llm_technical_design(feature_dir, llm_client, force=refresh_design),
+            )
         action = "Generated" if technical_design.created else "Reused"
         mode = " LLM" if llm_client is not None and technical_design.created else ""
         result.add_info(f"{action}{mode} technical design: {technical_design.path}")
 
-        technical_validation = validate_technical_design(feature_dir)
+        technical_validation = _time_stage(timings, "technical_validation", lambda: validate_technical_design(feature_dir))
         result.messages.extend(technical_validation.messages)
         result.next_steps.extend(technical_validation.next_steps)
         if not technical_validation.ok:
             result.ok = False
             result.add_next_step(f"Fix technical design: {technical_design.path}")
+            _record_timings(result, feature_dir, timings)
             continue
 
-        review = run_readiness_review(feature_dir, llm_client=llm_client, review_mode=review_mode)
+        review = _time_stage(
+            timings,
+            "readiness_review",
+            lambda: run_readiness_review(feature_dir, llm_client=llm_client, review_mode=review_mode),
+        )
         result.messages.extend(review.messages)
         result.next_steps.extend(review.next_steps)
         if not review.ok:
             result.ok = False
+            _record_timings(result, feature_dir, timings)
             continue
 
         refresh_tests = _is_stale(test_path, [spec_path, technical_design_path], force)
-        test_output = generate_tests(feature_dir, force=refresh_tests)
+        test_output = _time_stage(timings, "tests", lambda: generate_tests(feature_dir, force=refresh_tests))
         result.add_info(f"TDD scenarios ready: {test_output}")
 
         if strict_verification:
-            verification = check_verification_artifacts(feature_dir)
+            verification = _time_stage(timings, "verification", lambda: check_verification_artifacts(feature_dir))
             result.messages.extend(verification.messages)
             result.next_steps.extend(verification.next_steps)
             if not verification.ok:
                 result.ok = False
+                _record_timings(result, feature_dir, timings)
                 continue
 
         refresh_contract = _is_stale(contract_path, [spec_path], force)
-        contract = ensure_contract(feature_dir, force=refresh_contract)
+        contract = _time_stage(timings, "contract_generation", lambda: ensure_contract(feature_dir, force=refresh_contract))
         contract_action = "Generated" if contract.created else "Reused"
         result.add_info(f"{contract_action} contract scaffold: {contract.path}")
 
-        contracts = check_contracts(feature_dir)
+        contracts = _time_stage(timings, "contract_validation", lambda: check_contracts(feature_dir))
         result.messages.extend(contracts.messages)
         result.next_steps.extend(contracts.next_steps)
         if not contracts.ok:
             result.ok = False
             result.add_next_step(f"Fix contract files under: {feature_dir / 'contracts'}")
+            _record_timings(result, feature_dir, timings)
             continue
 
-        implementation_output = generate_implementation_output(feature_dir)
+        implementation_output = _time_stage(timings, "implementation_handoff", lambda: generate_implementation_output(feature_dir))
         output_action = "Generated" if implementation_output.created else "Reused"
         result.add_info(f"{output_action} implementation handoff guide: {implementation_output.path}")
         result.add_info(green("External AI implementation handoff ready. SpecGuard stops here and does not invoke Codex or Claude Code as an internal pipeline stage."))
         result.add_next_step(f"Hand this approved guide to an external coding agent: {implementation_output.path}")
         result.add_next_step("Put application code under develop/<stack>/ when implementation happens outside SpecGuard.")
+        _record_timings(result, feature_dir, timings)
 
     return result
 

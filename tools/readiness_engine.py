@@ -523,6 +523,7 @@ def _build_json_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIs
     summary = _build_summary(issues)
     status = _readiness_status(summary)
     artifact_lengths = {artifact.path: len(artifact.content) for artifact in artifacts}
+    total_characters = sum(artifact_lengths.values())
     payload = {
         "schema_version": "0.1",
         "review_mode": review_mode,
@@ -546,6 +547,8 @@ def _build_json_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIs
         "summary": summary,
         "issues": [asdict(issue) for issue in issues],
         "input": {
+            "artifact_count": len(artifacts),
+            "total_characters": total_characters,
             "discovery_characters": artifact_lengths.get("discovery.md", 0),
             "spec_characters": artifact_lengths.get("spec.md", 0),
             "technical_design_characters": artifact_lengths.get("technical-design.md", 0),
@@ -578,6 +581,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
         return result
 
     artifacts = _review_artifacts(path)
+    total_input_characters = sum(len(artifact.content) for artifact in artifacts)
     previous_report = _load_previous_report(path) if review_mode == "verification" else None
     try:
         issues = (
@@ -601,6 +605,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     result.add_info(f"Generated {mode} {review_mode} readiness report: {report_path}")
     result.add_info(f"Generated {mode} {review_mode} machine-readable readiness report: {report_json_path}")
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
+    result.add_info(f"SpecGuard Review input size: {len(artifacts)} artifact(s), {total_input_characters} characters.")
     if implementation_ready:
         if _readiness_status(summary) == "ready_with_warnings":
             result.add_info(yellow(f"[READY_WITH_WARNINGS] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))

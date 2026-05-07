@@ -154,6 +154,8 @@ SpecGuard then performs:
 Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
+Each run records per-feature stage timings for validation, design generation, SpecGuard Review, test generation, contract work, and implementation handoff. The readiness report also records artifact count and total review input characters so slow reviews can be tied to concrete input size without logging secret values or artifact contents.
+
 SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. Readiness has three states:
 
 - READY: Critical=0, Major=0, Minor<=5.

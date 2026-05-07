@@ -90,6 +90,8 @@ specguard run specs/your-feature-name
 Technical Design -> Initial SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
+`run` also prints per-feature performance timings and records SpecGuard Review input size so slow stages and oversized review contexts can be diagnosed without exposing artifact contents.
+
 If SpecGuard returns NOT READY, use the continuation menu:
 
 ```text
