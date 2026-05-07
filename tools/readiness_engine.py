@@ -110,7 +110,7 @@ READINESS_POLICIES = {
             "Readiness policy for low review level: NOT_READY only when Critical>=1. "
             "READY when Critical=0 and there are no Major or Minor warnings. "
             "READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist. "
-            "Major and Minor findings do not block implementation in low mode."
+            "Major and Minor findings are warning-level findings and do not block implementation in low mode."
         ),
     ),
     "medium": ReadinessPolicy(
@@ -636,7 +636,7 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
     return issues
 
 
-def _parse_llm_issues(text: str) -> list[ReadinessIssue]:
+def _parse_llm_issues(text: str, review_level: str = DEFAULT_REVIEW_LEVEL) -> list[ReadinessIssue]:
     cleaned = text.strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
@@ -673,13 +673,13 @@ def _parse_llm_issues(text: str) -> list[ReadinessIssue]:
             "The local heuristic checks may still be useful as a backstop.",
             "Review the artifacts manually and rerun SpecGuard Review when the spec changes.",
         ))
-    return _calibrate_issues(issues)
+    return _calibrate_issues(issues, review_level)
 
 
-def _calibrate_issues(issues: list[ReadinessIssue]) -> list[ReadinessIssue]:
+def _calibrate_issues(issues: list[ReadinessIssue], review_level: str = DEFAULT_REVIEW_LEVEL) -> list[ReadinessIssue]:
     calibrated: list[ReadinessIssue] = []
     for issue in issues:
-        if issue.severity == "Major" and _major_should_downgrade(issue):
+        if issue.severity == "Major" and _major_should_downgrade(issue, review_level):
             calibrated.append(ReadinessIssue(
                 "Minor",
                 issue.title,
@@ -692,7 +692,8 @@ def _calibrate_issues(issues: list[ReadinessIssue]) -> list[ReadinessIssue]:
     return calibrated
 
 
-def _major_should_downgrade(issue: ReadinessIssue) -> bool:
+def _major_should_downgrade(issue: ReadinessIssue, review_level: str = DEFAULT_REVIEW_LEVEL) -> bool:
+    review_level = normalize_review_level(review_level)
     text = " ".join([issue.title, issue.description, issue.impact, issue.fix]).lower()
     non_blocking_markers = (
         "best practice",
@@ -710,7 +711,7 @@ def _major_should_downgrade(issue: ReadinessIssue) -> bool:
         "broad reliability",
         "weakly evidenced",
     )
-    blocking_markers = (
+    medium_blocking_markers = (
         "cannot implement",
         "requires guessing",
         "must guess",
@@ -728,11 +729,76 @@ def _major_should_downgrade(issue: ReadinessIssue) -> bool:
         "transaction",
         "idempotency",
     )
-    return any(marker in text for marker in non_blocking_markers) and not any(marker in text for marker in blocking_markers)
+    if review_level != "low":
+        return any(marker in text for marker in non_blocking_markers) and not any(marker in text for marker in medium_blocking_markers)
+
+    low_non_blocking_markers = non_blocking_markers + (
+        "automatic retry",
+        "retry queue",
+        "retry queues",
+        "failed email delivery",
+        "bulk invite import",
+        "bulk import",
+        "cross-workspace invite",
+        "cross workspace invite",
+        "future scalability",
+        "scalability",
+        "observability",
+        "monitoring",
+        "nice-to-have",
+        "could add",
+        "could support",
+        "consider adding",
+        "later iteration",
+    )
+    low_blocking_markers = (
+        "cannot implement",
+        "requires guessing",
+        "must guess",
+        "missing required",
+        "required behavior",
+        "product intent drift",
+        "out-of-scope",
+        "promoted into scope",
+        "contradict",
+        "contract contradiction",
+        "contract mismatch",
+        "impossible state",
+        "state transition",
+        "authorization gap",
+        "authorization",
+        "auth gap",
+        "ownership gap",
+        "ownership",
+        "tenant isolation",
+        "security hole",
+        "data loss",
+        "destructive",
+        "unsafe deletion",
+        "credential",
+        "secret",
+        "token lifecycle",
+    )
+    return any(marker in text for marker in low_non_blocking_markers) and not any(marker in text for marker in low_blocking_markers)
 
 
 def _initial_review_instructions(review_level: str) -> str:
     policy = _readiness_policy(review_level)
+    if policy.review_level == "low":
+        return "\n".join([
+            "You are SpecGuard's low-level readiness gate.",
+            "Your job is a minimum safety gate before Codex or Claude Code implements from the spec package.",
+            "Do not perform a broad architecture, reliability, scalability, or best-practice consulting review.",
+            f"Review level: {policy.review_level}.",
+            "Analyze the provided spec artifacts together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
+            _readiness_policy_prompt_line(policy.review_level),
+            "Critical calibration: use Critical only when direct evidence shows product intent drift, an out-of-scope item promoted into implementation scope, an authorization or ownership gap, a security hole, a contract contradiction, impossible state behavior, destructive side-effect ambiguity, or a missing required behavior that makes implementation unsafe or indeterminate.",
+            "Major and Minor calibration: Major and Minor findings are warnings in low mode. Use them for useful clarity gaps, but they must not block implementation.",
+            "Downgrade or omit best-practice suggestions, optional hardening, future scalability, retry queues, bulk import, broad reliability improvements, and weakly evidenced risks unless they directly create a Critical blocker.",
+            "Return ONLY JSON with this shape:",
+            '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
+            "Every Critical finding must cite exact evidence from the current artifacts and explain why implementation must stop now. Do not include positive feedback.",
+        ])
     return "\n".join([
         "You are SpecGuard's readiness review board: principal architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.",
         "Your task is NOT to approve the implementation basis. Your task is to break it before Codex or Claude Code implements from it.",
@@ -750,6 +816,21 @@ def _initial_review_instructions(review_level: str) -> str:
 
 def _verification_review_instructions(review_level: str) -> str:
     policy = _readiness_policy(review_level)
+    if policy.review_level == "low":
+        return "\n".join([
+            "You are SpecGuard's low-level Verification Review board.",
+            f"Review level: {policy.review_level}.",
+            "This is NOT a fresh broad review. Verify whether the regenerated spec package resolves previous Critical blockers and preserves product intent.",
+            "Your job is a minimum safety gate: keep only concrete implementation-destabilizing blockers as Critical.",
+            "Do not create new blockers for best-practice improvements, optional hardening, future scalability, retry queues, bulk import, broad reliability, style, naming, or weakly evidenced risks.",
+            "Respect explicit out-of-scope, deferred, or accepted-risk decisions when they are documented in the spec package and do not contradict safety or contract requirements.",
+            _readiness_policy_prompt_line(policy.review_level),
+            "Critical calibration: Critical means direct evidence of product intent drift, authorization or ownership gaps, security holes, contract contradictions, impossible state behavior, destructive side-effect ambiguity, or missing required behavior that makes implementation unsafe or indeterminate.",
+            "Major and Minor findings are warnings in low mode and should describe useful non-blocking cleanup only.",
+            "Return ONLY JSON with this shape:",
+            '{"issues":[{"severity":"Critical|Major|Minor","title":"...","description":"...","impact":"...","fix":"..."}]}',
+            "Every Critical finding must cite exact evidence from the current artifacts and explain why implementation must stop now.",
+        ])
     return "\n".join([
         "You are SpecGuard's Verification Review board.",
         f"Review level: {policy.review_level}.",
@@ -771,9 +852,10 @@ def _analyze_with_llm(
     *,
     instructions: str,
     input_text: str,
+    review_level: str,
 ) -> list[ReadinessIssue]:
     text = llm_client.generate_text(instructions, input_text, max_output_tokens=2500)
-    return _parse_llm_issues(text)
+    return _parse_llm_issues(text, review_level)
 
 
 def _render_group(title: str, issues: list[ReadinessIssue]) -> str:
@@ -904,6 +986,15 @@ def _build_report(
         f"- Status: {status.upper()}",
         f"- READY criteria: Critical=0, Major<={policy.ready_major_limit}, Minor<={policy.ready_minor_limit}",
         f"- READY_WITH_WARNINGS criteria: {warning_criteria}",
+        (
+            f"- Blockers: Critical={summary['critical']}; "
+            f"Warnings: Major={summary['major']}, Minor={summary['minor']} (non-blocking in low mode)"
+            if policy.review_level == "low"
+            else (
+                f"- Gate counts: Critical={summary['critical']}, Major={summary['major']}, "
+                f"Minor={summary['minor']}"
+            )
+        ),
         f"- Current: Critical={summary['critical']}, Major={summary['major']}, Minor={summary['minor']}",
         "",
         _render_group("Critical Issues", critical),
@@ -1030,7 +1121,7 @@ def run_readiness_review(
             cache_hit = _load_cached_review(path, cache_key)
             if cache_hit:
                 _copy_cached_review(cache_hit, report_path, report_json_path)
-                issues = _parse_llm_issues(json.dumps({"issues": cache_hit.payload.get("issues", [])}))
+                issues = _parse_llm_issues(json.dumps({"issues": cache_hit.payload.get("issues", [])}), review_level)
             else:
                 review_artifact_count = review_input.get("artifact_count", len(artifacts)) if review_input else len(artifacts)
                 review_characters = review_input.get("total_characters", total_input_characters) if review_input else total_input_characters
@@ -1040,7 +1131,12 @@ def run_readiness_review(
                 )
                 started = time.perf_counter()
                 with progress_activity(activity):
-                    issues = _analyze_with_llm(llm_client, instructions=instructions, input_text=input_text)
+                    issues = _analyze_with_llm(
+                        llm_client,
+                        instructions=instructions,
+                        input_text=input_text,
+                        review_level=review_level,
+                    )
                 llm_elapsed_ms = int((time.perf_counter() - started) * 1000)
         else:
             issues = _analyze(artifacts)
@@ -1075,6 +1171,11 @@ def run_readiness_review(
             result.details["cache_key"] = cache_key
             result.add_info(f"SpecGuard Review cache stored: {cache_key[:12]}")
     result.add_info(f"SpecGuard Review level: {review_level} ({review_level_gate_text(review_level)}).")
+    if review_level == "low":
+        result.add_info(
+            f"SpecGuard low gate: {critical_count} blocker(s); "
+            f"{major_count + minor_count} warning finding(s) ({major_count} Major, {minor_count} Minor)."
+        )
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
     if review_input:
         result.add_info(
@@ -1103,9 +1204,12 @@ def run_readiness_review(
         result.add_error(red(f"[NOT READY] {_readiness_text(summary, review_level)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))
         result.add_next_step(f"Open the human report: {report_path}")
         result.add_next_step(f"Use the machine-readable report for automation: {report_json_path}")
-        result.add_next_step(
-            "Fix spec package artifacts so Critical and Major issues become explicit requirements or verified constraints, and Minor findings stay within the readiness threshold."
-        )
+        if review_level == "low":
+            result.add_next_step("Fix Critical blockers so the spec package preserves product intent and implementation safety.")
+        else:
+            result.add_next_step(
+                "Fix spec package artifacts so Critical and Major issues become explicit requirements or verified constraints, and Minor findings stay within the readiness threshold."
+            )
         result.add_next_step("Do not start external AI implementation until SpecGuard reports READY and writes implementation-output.md.")
         result.add_next_step(f"Run again: specguard run {path}")
     return result

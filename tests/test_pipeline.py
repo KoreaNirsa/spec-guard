@@ -311,6 +311,39 @@ class OptionalMajorReadinessLLM:
         })
 
 
+class LowCalibrationMajorReadinessLLM:
+    def __init__(self) -> None:
+        self.instructions = ""
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.instructions = instructions
+        return json.dumps({
+            "issues": [
+                {
+                    "severity": "Major",
+                    "title": "Automatic retry queues for failed email delivery",
+                    "description": "The spec does not define retries after the email handoff.",
+                    "impact": "Implementation can ship the core invite flow without retry queues.",
+                    "fix": "Consider adding retry queue behavior in a later iteration.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk invite import is not specified",
+                    "description": "The spec covers single invites but not CSV or bulk import.",
+                    "impact": "The current feature can still be implemented without bulk import.",
+                    "fix": "Document bulk import separately when it enters scope.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Cross-workspace invites from one token are not specified",
+                    "description": "The spec only describes invites within the current workspace.",
+                    "impact": "The one-workspace invite path remains implementable.",
+                    "fix": "Keep cross-workspace invites out of scope or define them separately.",
+                },
+            ]
+        })
+
+
 class CriticalReadinessLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         return json.dumps({
@@ -1496,6 +1529,41 @@ def test_readiness_downgrades_non_blocking_major_findings(tmp_path: Path) -> Non
     assert payload["summary"]["major"] == 0
     assert payload["summary"]["minor"] == 1
     assert payload["issues"][0]["severity"] == "Minor"
+
+
+def test_low_review_level_uses_minimum_safety_gate_prompt_and_calibration(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = LowCalibrationMajorReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    report = feature.joinpath("readiness-review.md").read_text(encoding="utf-8")
+    assert result.ok
+    assert payload["review_level"] == "low"
+    assert payload["readiness"]["status"] == "ready_with_warnings"
+    assert payload["summary"]["major"] == 0
+    assert payload["summary"]["minor"] == 3
+    assert all(issue["severity"] == "Minor" for issue in payload["issues"])
+    assert "minimum safety gate" in llm.instructions
+    assert "Do not perform a broad architecture" in llm.instructions
+    assert "Warnings: Major=0, Minor=3 (non-blocking in low mode)" in report
+    assert any("SpecGuard low gate: 0 blocker(s); 3 warning finding(s)" in message for message in result.messages)
+
+
+def test_medium_review_level_preserves_deeper_major_calibration(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = LowCalibrationMajorReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm, review_level="medium")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["review_level"] == "medium"
+    assert payload["readiness"]["status"] == "not_ready"
+    assert payload["summary"]["major"] == 3
+    assert payload["summary"]["minor"] == 0
+    assert "break it before Codex" in llm.instructions
 
 
 def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> None:
