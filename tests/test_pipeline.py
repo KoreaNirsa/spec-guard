@@ -34,6 +34,7 @@ from tools.post_run import (
     generate_spec_revision,
     readiness_report_stale_reason,
     render_readiness_summary,
+    soften_low_mode_spec_revision,
     validate_spec_revision_intent,
 )
 from tools.result import CheckResult
@@ -203,6 +204,29 @@ class AcceptanceOnlyRevisionLLM:
             "",
             "- [ ] Valid input succeeds.",
             "- [ ] Valid input returns a success confirmation.",
+            "",
+            "## Error Cases",
+            "",
+            "- Invalid input",
+            "",
+        ])
+
+
+class OutOfScopePromotionRevisionLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        assert "spec refinement assistant" in instructions
+        return "\n".join([
+            "# Spec: feature",
+            "",
+            "## Requirements",
+            "",
+            "- The system must accept valid input.",
+            "- The system must implement billing automation.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Valid input succeeds.",
+            "- [ ] Billing automation succeeds.",
             "",
             "## Error Cases",
             "",
@@ -1847,6 +1871,57 @@ def test_intent_preservation_check_blocks_out_of_scope_promotion(tmp_path: Path)
     assert any("out-of-scope" in message for message in result.messages)
 
 
+def test_low_mode_softens_out_of_scope_promotions_before_intent_check(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    spec_path = feature / "spec.md"
+    spec_path.write_text(
+        spec_path.read_text(encoding="utf-8")
+        + "\n## Out of Scope\n\n- Billing automation\n",
+        encoding="utf-8",
+    )
+    revised = "\n".join([
+        "# Spec: feature",
+        "",
+        "## Requirements",
+        "",
+        "- The system must accept valid input.",
+        "- The system must implement billing automation.",
+        "",
+        "## Acceptance Criteria",
+        "",
+        "- [ ] Valid input succeeds.",
+        "- [ ] Billing automation succeeds.",
+        "",
+        "## Error Cases",
+        "",
+        "- Invalid input",
+        "",
+    ])
+
+    softened = soften_low_mode_spec_revision(feature, revised)
+    result = validate_spec_revision_intent(feature, softened.revised_spec)
+
+    assert softened.demoted_items == ("Billing automation",)
+    assert result.ok
+    assert "The system must implement billing automation" not in softened.revised_spec
+    assert "Billing automation succeeds" not in softened.revised_spec
+    assert "## Out of Scope" in softened.revised_spec
+    assert "- Billing automation" in softened.revised_spec
+
+
+def test_low_mode_softening_does_not_hide_unsafe_intent_changes(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+    revised = IntentDriftRevisionLLM().generate_text("spec refinement assistant", "")
+
+    softened = soften_low_mode_spec_revision(feature, revised)
+    result = validate_spec_revision_intent(feature, softened.revised_spec)
+
+    assert softened.demoted_items == ()
+    assert not result.ok
+    assert any("acceptance coverage" in message for message in result.messages)
+
+
 def test_post_run_strips_markdown_fences_from_spec_revision(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
     run_pipeline(feature)
@@ -1908,6 +1983,44 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert captured["review_mode"] == "verification"
     assert captured["refresh_technical_design"] is True
     assert "scope every todo read and write by owner" in spec
+
+
+def test_post_run_low_mode_revision_auto_demotes_out_of_scope_additions(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("spec.md").write_text(
+        feature.joinpath("spec.md").read_text(encoding="utf-8")
+        + "\n## Out of Scope\n\n- Billing automation\n",
+        encoding="utf-8",
+    )
+    result = run_pipeline(feature)
+    rerun_result = CheckResult("SpecGuard pipeline")
+
+    def fake_rerun_pipeline(*args, **kwargs):
+        return rerun_result
+
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(force=False, review_level="low"),
+        OutOfScopePromotionRevisionLLM(),
+        result,
+    )
+
+    rendered = capsys.readouterr().out
+    spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
+    diff_files = list(tmp_path.joinpath(".specguard", "spec-revisions").rglob("spec.diff"))
+    assert returned is rerun_result
+    assert "auto-demoted out-of-scope additions" in rendered
+    assert "Original spec and unified diff written to" in rendered
+    assert "The system must implement billing automation" not in spec
+    assert "- Billing automation" in spec
+    assert len(diff_files) == 1
+    assert diff_files[0].exists()
 
 
 def test_post_run_spec_revision_reuses_technical_design_when_revision_is_acceptance_only(

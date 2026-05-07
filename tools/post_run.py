@@ -46,6 +46,13 @@ class SpecRevisionAudit:
     original_path: Path
     diff_path: Path
 
+
+@dataclass(frozen=True)
+class SpecRevisionSoftening:
+    revised_spec: str
+    demoted_items: tuple[str, ...] = ()
+
+
 _STOPWORDS = {
     "about",
     "after",
@@ -210,6 +217,20 @@ def apply_spec_revision_with_audit(feature_dir: Path, revised_spec: str) -> Spec
     diff_path.write_text(_spec_revision_diff(feature_dir, original_spec, normalized_revised), encoding="utf-8")
     spec_path.write_text(normalized_revised, encoding="utf-8")
     return SpecRevisionAudit(spec_path=spec_path, audit_dir=audit_dir, original_path=original_path, diff_path=diff_path)
+
+
+def soften_low_mode_spec_revision(feature_dir: Path, revised_spec: str) -> SpecRevisionSoftening:
+    original_spec = _read_optional(feature_dir / "spec.md")
+    original_items = _out_of_scope_items(original_spec)
+    if not original_items:
+        return SpecRevisionSoftening(revised_spec)
+
+    revised_without_promotions, demoted_items = _remove_promoted_out_of_scope_items(revised_spec, original_items)
+    if not demoted_items:
+        return SpecRevisionSoftening(revised_spec)
+
+    revised_with_boundaries = _ensure_out_of_scope_boundaries(revised_without_promotions, demoted_items)
+    return SpecRevisionSoftening(revised_with_boundaries, tuple(demoted_items))
 
 
 def validate_spec_revision_intent(feature_dir: Path, revised_spec: str) -> CheckResult:
@@ -448,6 +469,63 @@ def _check_out_of_scope(original_spec: str, revised_spec: str, result: CheckResu
             "Intent Preservation Check blocked spec revision: revised spec appears to promote out-of-scope items into implementation scope "
             f"({preview})."
         )
+
+
+def _remove_promoted_out_of_scope_items(revised_spec: str, original_items: list[str]) -> tuple[str, list[str]]:
+    protected_headings = {"requirements", "acceptance criteria", "error cases"}
+    demoted_items: list[str] = []
+    current_heading = ""
+    kept_lines: list[str] = []
+    for line in revised_spec.splitlines():
+        heading_match = re.match(r"^##\s+(.+?)\s*$", line)
+        if heading_match:
+            current_heading = heading_match.group(1).strip().lower()
+            kept_lines.append(line)
+            continue
+
+        list_item = _list_item_text(line)
+        if current_heading in protected_headings and list_item:
+            promoted = _matching_out_of_scope_item(list_item, original_items)
+            if promoted is not None:
+                if promoted not in demoted_items:
+                    demoted_items.append(promoted)
+                continue
+        kept_lines.append(line)
+    return "\n".join(kept_lines).rstrip() + "\n", demoted_items
+
+
+def _ensure_out_of_scope_boundaries(revised_spec: str, demoted_items: list[str]) -> str:
+    revised_out_of_scope = _normalize("\n".join(_out_of_scope_sections(revised_spec)))
+    missing_items = [item for item in demoted_items if not _item_is_preserved(item, revised_out_of_scope)]
+    if not missing_items:
+        return revised_spec
+
+    lines = [revised_spec.rstrip(), "", "## Out of Scope", ""]
+    lines.extend(f"- {item}" for item in missing_items)
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _list_item_text(line: str) -> str | None:
+    stripped = line.strip()
+    checklist = re.match(r"^[-*]\s+\[[ xX]\]\s+(.+)$", stripped)
+    bullet = re.match(r"^[-*]\s+(.+)$", stripped)
+    numbered = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+    if checklist:
+        return checklist.group(1).strip()
+    if bullet:
+        return bullet.group(1).strip()
+    if numbered:
+        return numbered.group(1).strip()
+    return None
+
+
+def _matching_out_of_scope_item(candidate: str, original_items: list[str]) -> str | None:
+    candidate_tokens = set(_normalize(candidate).split())
+    for item in original_items:
+        tokens = _keywords(item)
+        if len(tokens) >= 2 and tokens.issubset(candidate_tokens):
+            return item
+    return None
 
 
 def _first_heading(text: str) -> str:

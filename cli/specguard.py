@@ -35,6 +35,7 @@ from tools.post_run import (
     readiness_report_stale_reason,
     render_readiness_summary,
     spec_revision_design_refresh_reason,
+    soften_low_mode_spec_revision,
     validate_spec_revision_intent,
 )
 from tools.progress import current_progress_activity
@@ -597,7 +598,17 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
         _print_llm_failure(exc)
         print_hint("The follow-up menu is still open. Review findings or retry after adjusting timeout/model.")
         return result
+    softened = None
+    if getattr(args, "review_level", None) == "low":
+        softened = soften_low_mode_spec_revision(feature_dir, revised_spec)
+        revised_spec = softened.revised_spec
     intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
+    if softened and softened.demoted_items:
+        demoted_preview = "; ".join(softened.demoted_items[:3])
+        intent_check.add_info(
+            "SpecGuard low mode auto-demoted out-of-scope additions before intent validation "
+            f"({demoted_preview})."
+        )
     if not intent_check.ok:
         audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
         intent_check.add_info(f"Updated working spec.md for in-place review: {audit.spec_path}")
@@ -606,9 +617,18 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
         intent_check.print()
         print_hint("SpecGuard stopped before Verification Review so you can review the applied spec diff.")
         return result
+    if softened and softened.demoted_items:
+        demoted_preview = "; ".join(softened.demoted_items[:3])
+        print_hint(f"SpecGuard low mode auto-demoted out-of-scope additions: {demoted_preview}.")
     _print_markdown_preview(revised_spec)
     refresh_reason = spec_revision_design_refresh_reason(original_spec, revised_spec)
-    spec_path = apply_spec_revision(feature_dir, revised_spec)
+    if softened and softened.demoted_items:
+        audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
+        spec_path = audit.spec_path
+        print_hint(f"Original spec and unified diff written to: {audit.audit_dir}")
+        print_hint(f"Review diff: {audit.diff_path}")
+    else:
+        spec_path = apply_spec_revision(feature_dir, revised_spec)
     print_success(f"[PASS] Updated spec: {spec_path}")
     if refresh_reason:
         print_hint(f"Technical design refresh required before Verification Review: {refresh_reason}.")
