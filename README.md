@@ -13,6 +13,13 @@ Discovery -> Spec Package -> Technical Design -> SpecGuard Review
 -> External AI Implementation -> Pull Request -> SpecGuard PR Review
 ```
 
+## Core Reviews
+
+SpecGuard centers on two review steps:
+
+- SpecGuard Review runs before code generation. It checks whether the spec package has important gaps in product behavior, contracts, data ownership, authorization, state transitions, error cases, or executable verification before an implementation agent starts coding.
+- SpecGuard PR Review runs after code is implemented. It compares the approved spec package, implementation handoff, and pull request diff, then posts an advisory PR comment when the implementation appears to drift from the spec, tests, contracts, security expectations, or operational requirements.
+
 ## Setup To User Flow
 
 This is the shortest path from installation to a reviewed implementation PR.
