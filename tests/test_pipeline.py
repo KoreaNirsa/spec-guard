@@ -244,6 +244,20 @@ class TwoMajorReadinessLLM:
         return json.dumps({"issues": issues})
 
 
+class CountingReadinessLLM(TwoMajorReadinessLLM):
+    def __init__(self, model: str = "gpt-test") -> None:
+        self.model = model
+        self.calls = 0
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.calls += 1
+        return super().generate_text(instructions, input_text, max_output_tokens)
+
+
+class AlternateCountingReadinessLLM(CountingReadinessLLM):
+    pass
+
+
 class ThreeMajorReadinessLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         issues = [
@@ -1234,6 +1248,62 @@ def test_readiness_reports_ready_with_warnings_for_two_major_findings(tmp_path: 
     assert payload["blocked"] is False
     assert payload["readiness"]["status"] == "ready_with_warnings"
     assert payload["summary"]["major"] == 2
+
+
+def test_readiness_review_reuses_cached_llm_report_for_unchanged_artifacts(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = CountingReadinessLLM()
+
+    first = run_readiness_review(feature, llm_client=llm)
+    second = run_readiness_review(feature, llm_client=llm)
+
+    cache_root = tmp_path / ".specguard" / "readiness-cache" / "feature"
+    cache_dirs = [path for path in cache_root.iterdir() if path.is_dir()]
+    assert first.ok
+    assert second.ok
+    assert llm.calls == 1
+    assert first.details["cache_hit"] is False
+    assert second.details["cache_hit"] is True
+    assert any("SpecGuard Review cache hit" in message for message in second.messages)
+    assert cache_dirs
+    assert cache_dirs[0].joinpath("readiness-review.md").exists()
+    assert cache_dirs[0].joinpath("readiness-review.json").exists()
+
+
+def test_readiness_review_cache_invalidates_when_artifact_changes(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = CountingReadinessLLM()
+
+    run_readiness_review(feature, llm_client=llm)
+    feature.joinpath("spec.md").write_text(
+        feature.joinpath("spec.md").read_text(encoding="utf-8") + "\n- The system must reject duplicate requests.\n",
+        encoding="utf-8",
+    )
+    result = run_readiness_review(feature, llm_client=llm)
+
+    assert result.details["cache_hit"] is False
+    assert llm.calls == 2
+
+
+def test_readiness_review_cache_invalidates_by_provider_model_and_review_mode(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    initial = CountingReadinessLLM(model="gpt-a")
+    different_model = CountingReadinessLLM(model="gpt-b")
+    different_provider = AlternateCountingReadinessLLM(model="gpt-a")
+    verification = CountingReadinessLLM(model="gpt-a")
+
+    run_readiness_review(feature, llm_client=initial)
+    model_result = run_readiness_review(feature, llm_client=different_model)
+    provider_result = run_readiness_review(feature, llm_client=different_provider)
+    verification_result = run_readiness_review(feature, llm_client=verification, review_mode="verification")
+
+    assert initial.calls == 1
+    assert different_model.calls == 1
+    assert different_provider.calls == 1
+    assert verification.calls == 1
+    assert model_result.details["cache_hit"] is False
+    assert provider_result.details["cache_hit"] is False
+    assert verification_result.details["cache_hit"] is False
 
 
 def test_readiness_blocks_three_major_findings(tmp_path: Path) -> None:
