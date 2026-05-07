@@ -2,6 +2,8 @@
 
 # SpecGuard
 
+**SpecGuard blocks weak specs before AI coding agents turn them into defective code.**
+
 SpecGuard is a Validation-First Workflow (VFW) for AI-assisted development.
 It turns specs into reviewed, testable, implementation-ready packages before AI coding begins.
 
