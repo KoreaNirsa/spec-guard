@@ -73,6 +73,7 @@ def run_pipeline(
     force: bool = False,
     review_mode: str = "initial",
     strict_verification: bool = False,
+    refresh_technical_design: bool | None = None,
 ) -> CheckResult:
     result = CheckResult("SpecGuard pipeline")
     feature_dirs = _feature_dirs(path)
@@ -98,7 +99,11 @@ def run_pipeline(
         test_path = feature_dir / "tests" / f"{feature_dir.name}.test.md"
         contract_path = feature_dir / "contracts" / "openapi.yaml"
 
-        refresh_design = _is_stale(technical_design_path, [discovery_path, spec_path], force)
+        refresh_design = (
+            _is_stale(technical_design_path, [discovery_path, spec_path], force)
+            if refresh_technical_design is None
+            else refresh_technical_design or not technical_design_path.exists()
+        )
         if llm_client is None:
             technical_design = _time_stage(
                 timings,
