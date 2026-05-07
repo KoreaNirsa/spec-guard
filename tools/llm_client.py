@@ -244,6 +244,23 @@ class CodexExecClient:
             yield text
 
 
+def describe_llm_client(llm_client: object) -> str:
+    settings = getattr(llm_client, "settings", None)
+    config = getattr(llm_client, "config", None)
+    mode = getattr(settings, "mode", None)
+    if not mode:
+        mode = "openai" if config is not None else llm_client.__class__.__name__
+    model = getattr(llm_client, "model", None) or getattr(settings, "model", None) or getattr(config, "model", None)
+    timeout = getattr(settings, "timeout", None) or getattr(config, "timeout", None)
+
+    parts = [str(mode)]
+    if model:
+        parts.append(f"model={model}")
+    if timeout:
+        parts.append(f"timeout={timeout}s")
+    return " ".join(parts)
+
+
 def config_path(root: Path) -> Path:
     return root / ".specguard" / "config.json"
 

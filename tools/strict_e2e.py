@@ -10,6 +10,7 @@ from tools.post_run import (
     blocked_feature_reports,
     feature_readiness_reports,
     generate_spec_revision,
+    spec_revision_design_refresh_reason,
     validate_spec_revision_intent,
 )
 from tools.result import CheckResult
@@ -54,7 +55,9 @@ def run_strict_e2e_pipeline(
             _finish_trace(path, trace, status="failed_non_readiness", iterations=iteration - 1)
             return result
 
+        refresh_technical_design = False
         for feature_dir, report in blocked_reports:
+            original_spec = feature_dir.joinpath("spec.md").read_text(encoding="utf-8")
             revised_spec = generate_spec_revision(feature_dir, llm_client)
             intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
             if not intent_check.ok:
@@ -81,11 +84,28 @@ def run_strict_e2e_pipeline(
                 return result
             spec_path = apply_spec_revision(feature_dir, revised_spec)
             trace["regenerations"].append(_regeneration_entry(feature_dir, iteration, report, spec_path))
+            refresh_reason = spec_revision_design_refresh_reason(original_spec, revised_spec)
+            if refresh_reason:
+                refresh_technical_design = True
+                result.add_info(
+                    f"Strict E2E iteration {iteration}: technical design refresh required for {feature_dir}: {refresh_reason}."
+                )
+            else:
+                result.add_info(
+                    f"Strict E2E iteration {iteration}: reusing existing technical design for {feature_dir}; spec revision did not change design-significant sections."
+                )
             result.add_info(
                 f"Strict E2E iteration {iteration}: regenerated {spec_path} from {len(report.get('issues', []))} readiness finding(s)."
             )
 
-        attempt = run_pipeline(path, llm_client=llm_client, force=True, review_mode="verification", strict_verification=True)
+        attempt = run_pipeline(
+            path,
+            llm_client=llm_client,
+            force=True,
+            review_mode="verification",
+            strict_verification=True,
+            refresh_technical_design=refresh_technical_design,
+        )
         _merge_messages(result, attempt)
         _record_attempt(trace, path, iteration, "verification", attempt)
         if attempt.ok:
