@@ -50,6 +50,15 @@ specguard auth status
 
 Codex mode uses a 600-second request timeout by default because `run` can ask Codex to review the full spec package. `auth status` confirms the saved configuration and local Codex command availability; the first full provider request happens during `init`, `run`, or follow-up regeneration.
 
+For a faster local review profile, configure an explicit Codex reasoning effort or a Codex profile:
+
+```bash
+specguard auth setup --mode codex --model gpt-5.4 --codex-reasoning-effort medium --skip-login
+specguard auth status
+```
+
+Lower reasoning effort can reduce latency, while higher effort may improve review depth. SpecGuard keeps Codex defaults unless you opt in.
+
 If Codex is already logged in and you do not want setup to offer `codex login`:
 
 ```bash

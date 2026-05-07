@@ -45,6 +45,7 @@ from tools.ux import bold, green, menu_item, print_banner, print_error, print_hi
 
 ROOT = Path.cwd()
 DISCOVERY_DEFAULTS = {key: default for key, _prompt, default in DISCOVERY_PROMPTS}
+CODEX_REASONING_EFFORT_CHOICES = ("minimal", "low", "medium", "high", "xhigh")
 
 
 class SpecGuardHelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
@@ -315,6 +316,8 @@ def auth(args: argparse.Namespace) -> int:
             print(f"- Endpoint: {settings.endpoint}")
         if settings.mode == "codex":
             print(f"- Codex command: {settings.codex_command}")
+            print(f"- Codex profile: {settings.codex_profile or '(default)'}")
+            print(f"- Codex reasoning effort: {settings.codex_reasoning_effort or '(Codex default)'}")
             print(f"- Codex available: {'yes' if codex_available(settings.codex_command) else 'no'}")
         return 0
 
@@ -363,6 +366,7 @@ def _build_llm_client(args: argparse.Namespace, *, purpose: str, allow_setup: bo
                 timeout=None,
                 codex_command="codex",
                 codex_profile=None,
+                codex_reasoning_effort=None,
                 skip_login=False,
             )
             if _setup_llm(setup_args) == 0:
@@ -401,6 +405,7 @@ def _setup_llm(args: argparse.Namespace) -> int:
             timeout=timeout,
             codex_command=codex_command,
             codex_profile=args.codex_profile,
+            codex_reasoning_effort=args.codex_reasoning_effort,
         )
         path = save_llm_settings(ROOT, settings)
         print_success(f"[PASS] Saved local Codex provider config: {path}")
@@ -917,6 +922,11 @@ def build_parser() -> argparse.ArgumentParser:
     auth_setup.add_argument("--endpoint", default="https://api.openai.com/v1/responses", help="OpenAI Responses API endpoint")
     auth_setup.add_argument("--codex-command", default="codex", help="Local Codex CLI command used by Codex mode")
     auth_setup.add_argument("--codex-profile", help="Optional Codex CLI profile")
+    auth_setup.add_argument(
+        "--codex-reasoning-effort",
+        choices=CODEX_REASONING_EFFORT_CHOICES,
+        help="Optional Codex exec reasoning effort for faster or stricter local review profiles",
+    )
     auth_setup.add_argument("--skip-login", action="store_true", help="Save config without offering to run codex login")
     auth_setup.set_defaults(func=auth)
 

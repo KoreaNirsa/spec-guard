@@ -45,6 +45,7 @@ class LLMSettings:
     api_key_env: str = "OPENAI_API_KEY"
     codex_command: str = "codex"
     codex_profile: str | None = None
+    codex_reasoning_effort: str | None = None
 
 
 class OpenAIResponsesClient:
@@ -149,6 +150,11 @@ class CodexExecClient:
         self.command = _resolve_codex_command(settings.codex_command)
         if not self.command:
             raise LLMConfigError("Local Codex CLI was not found. Install Codex or choose OpenAI Platform mode.")
+        if self.settings.codex_reasoning_effort and not _codex_supports_reasoning_effort(self.command):
+            raise LLMConfigError(
+                "Installed Codex CLI does not support `--reasoning-effort`. "
+                "Upgrade Codex, remove codex_reasoning_effort from SpecGuard config, or use --codex-profile."
+            )
 
     def _base_command(self) -> list[str]:
         command = [
@@ -165,6 +171,8 @@ class CodexExecClient:
             command.extend(["--model", self.model])
         if self.settings.codex_profile:
             command.extend(["--profile", self.settings.codex_profile])
+        if self.settings.codex_reasoning_effort:
+            command.extend(["--reasoning-effort", self.settings.codex_reasoning_effort])
         return command
 
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
@@ -299,6 +307,7 @@ def load_llm_settings(root: Path) -> LLMSettings | None:
         api_key_env=str(data.get("api_key_env") or "OPENAI_API_KEY"),
         codex_command=str(os.getenv("SPECGUARD_CODEX_COMMAND") or data.get("codex_command") or "codex"),
         codex_profile=_optional_string(data.get("codex_profile")),
+        codex_reasoning_effort=_optional_string(os.getenv("SPECGUARD_CODEX_REASONING_EFFORT") or data.get("codex_reasoning_effort")),
     )
 
 
@@ -333,6 +342,7 @@ def build_llm_client(root: Path, mode: str | None = None, model: str | None = No
             api_key_env=base.api_key_env,
             codex_command=base.codex_command,
             codex_profile=base.codex_profile,
+            codex_reasoning_effort=base.codex_reasoning_effort,
         )
     if settings is None:
         raise LLMConfigError("No LLM provider is configured.")
@@ -347,6 +357,7 @@ def build_llm_client(root: Path, mode: str | None = None, model: str | None = No
             api_key_env=settings.api_key_env,
             codex_command=settings.codex_command,
             codex_profile=settings.codex_profile,
+            codex_reasoning_effort=settings.codex_reasoning_effort,
         )
 
     if settings.mode == "openai":
@@ -495,6 +506,7 @@ def _settings_to_json(settings: LLMSettings) -> dict[str, object]:
         data.update({
             "codex_command": settings.codex_command,
             "codex_profile": settings.codex_profile,
+            "codex_reasoning_effort": settings.codex_reasoning_effort,
         })
     return {key: value for key, value in data.items() if value is not None}
 
@@ -518,6 +530,24 @@ def _codex_supports_ephemeral(command: str) -> bool:
     except (OSError, subprocess.SubprocessError):
         return False
     return completed.returncode == 0 and "--ephemeral" in completed.stdout
+
+
+@lru_cache(maxsize=16)
+def _codex_supports_reasoning_effort(command: str) -> bool:
+    try:
+        completed = subprocess.run(
+            [command, "exec", "--help"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=5,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    output = (completed.stdout or "") + (completed.stderr or "")
+    return completed.returncode == 0 and "--reasoning-effort" in output
 
 
 def _extract_codex_event_text(line: str, delta_only: bool = False) -> str:
