@@ -1,0 +1,31 @@
+name: SpecGuard Readiness Gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness-gate:
+    name: SpecGuard Readiness Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SpecGuard
+        run: python -m pip install spec-guard
+
+      - name: Fetch base branch
+        run: git fetch --no-tags origin "+refs/heads/${{ github.base_ref }}:refs/remotes/origin/${{ github.base_ref }}"
+
+      - name: Run SpecGuard readiness gate
+        run: python -m tools.pr_readiness_gate --base-ref "origin/${{ github.base_ref }}" --head-ref HEAD --spec-root specs
