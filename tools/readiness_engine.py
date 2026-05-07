@@ -23,6 +23,9 @@ READINESS_READY_MINOR_LIMIT = 5
 READINESS_WARNING_MAJOR_LIMIT = 2
 READINESS_WARNING_MINOR_LIMIT = 10
 READINESS_REVIEW_MODES = {"initial", "verification"}
+DELTA_REVIEW_CORE_ARTIFACTS = {"spec.md", "technical-design.md"}
+DELTA_REVIEW_MAX_EXCERPTS_PER_ARTIFACT = 3
+DELTA_REVIEW_EXCERPT_RADIUS = 450
 READINESS_CACHE_SCHEMA_VERSION = "0.1"
 READINESS_CACHE_PROMPT_VERSION = "readiness-review-v1"
 SPECGUARD_STATE_DIR = ".specguard"
@@ -235,17 +238,129 @@ def _build_llm_review_request(
     *,
     review_mode: str,
     previous_report: dict | None,
-) -> tuple[str, str]:
+) -> tuple[str, str, dict[str, object]]:
     instructions = _verification_review_instructions() if review_mode == "verification" else _initial_review_instructions()
-    input_text = _render_artifact_input(artifacts)
-    if review_mode == "verification":
-        input_text = "\n\n".join([
-            "# Previous SpecGuard Review Findings",
-            _previous_findings_text(previous_report),
-            "# Current Spec Package Artifacts",
-            input_text,
-        ])
-    return instructions, input_text
+    full_input = _render_artifact_input(artifacts)
+    if review_mode != "verification":
+        return instructions, full_input, _review_input_metadata("full", artifacts, len(full_input))
+
+    delta_input, delta_metadata = _build_delta_verification_input(artifacts, previous_report)
+    if delta_input:
+        return instructions, delta_input, delta_metadata
+
+    input_text = "\n\n".join([
+        "# Previous SpecGuard Review Findings",
+        _previous_findings_text(previous_report),
+        "# Current Spec Package Artifacts",
+        full_input,
+    ])
+    metadata = _review_input_metadata("full", artifacts, len(input_text))
+    metadata["fallback_reason"] = delta_metadata.get("fallback_reason", "delta context unavailable")
+    return instructions, input_text, metadata
+
+
+def _review_input_metadata(mode: str, artifacts: list[ReviewArtifact], total_characters: int) -> dict[str, object]:
+    return {
+        "mode": mode,
+        "artifact_count": len(artifacts),
+        "total_characters": total_characters,
+        "artifacts": [{"path": artifact.path, "characters": len(artifact.content)} for artifact in artifacts],
+    }
+
+
+def _build_delta_verification_input(
+    artifacts: list[ReviewArtifact],
+    previous_report: dict | None,
+) -> tuple[str | None, dict[str, object]]:
+    issues = previous_report.get("issues", []) if isinstance(previous_report, dict) else []
+    if not isinstance(issues, list) or not issues:
+        return None, {"fallback_reason": "missing previous findings"}
+
+    terms = _finding_terms(issues)
+    if not terms:
+        return None, {"fallback_reason": "previous findings did not expose searchable terms"}
+
+    evidence_blocks: list[str] = []
+    included_paths: list[str] = []
+    missing_core_evidence: list[str] = []
+    for artifact in artifacts:
+        excerpts = _artifact_excerpts(artifact.content, terms)
+        if excerpts:
+            evidence_blocks.append(f"# Artifact excerpts: {artifact.path}\n\n" + "\n\n---\n\n".join(excerpts))
+            included_paths.append(artifact.path)
+        elif artifact.path in DELTA_REVIEW_CORE_ARTIFACTS:
+            missing_core_evidence.append(artifact.path)
+
+    if missing_core_evidence:
+        return None, {"fallback_reason": f"core artifact missing finding evidence: {', '.join(missing_core_evidence)}"}
+
+    if not DELTA_REVIEW_CORE_ARTIFACTS.issubset(set(included_paths)):
+        return None, {"fallback_reason": "core spec or technical design artifact missing"}
+
+    input_text = "\n\n".join([
+        "# Previous SpecGuard Review Findings",
+        _previous_findings_text(previous_report),
+        "# Verification Review Delta Evidence",
+        "Review only whether the previous findings are resolved, downgraded, or still blocking using the compact current evidence below.",
+        *evidence_blocks,
+    ])
+    metadata: dict[str, object] = {
+        "mode": "delta",
+        "artifact_count": len(included_paths),
+        "total_characters": len(input_text),
+        "artifacts": [{"path": path} for path in included_paths],
+        "previous_finding_count": len(issues),
+    }
+    return input_text, metadata
+
+
+def _finding_terms(issues: list[object]) -> set[str]:
+    terms: set[str] = set()
+    for issue in issues:
+        if not isinstance(issue, dict):
+            continue
+        text = " ".join(
+            str(issue.get(key, ""))
+            for key in ("title", "description", "impact", "fix")
+        )
+        terms.update(
+            token
+            for token in re.findall(r"[a-zA-Z][a-zA-Z0-9_-]{3,}", text.lower())
+            if token not in {
+                "implementation",
+                "required",
+                "requires",
+                "spec",
+                "technical",
+                "design",
+                "finding",
+                "should",
+                "without",
+                "update",
+            }
+        )
+    return terms
+
+
+def _artifact_excerpts(content: str, terms: set[str]) -> list[str]:
+    lowered = content.lower()
+    excerpts: list[str] = []
+    used_ranges: list[tuple[int, int]] = []
+    for term in sorted(terms, key=len, reverse=True):
+        position = lowered.find(term)
+        if position == -1:
+            continue
+        start = max(0, position - DELTA_REVIEW_EXCERPT_RADIUS)
+        end = min(len(content), position + len(term) + DELTA_REVIEW_EXCERPT_RADIUS)
+        if any(start <= used_end and end >= used_start for used_start, used_end in used_ranges):
+            continue
+        used_ranges.append((start, end))
+        prefix = "[...]\n" if start > 0 else ""
+        suffix = "\n[...]" if end < len(content) else ""
+        excerpts.append(prefix + content[start:end].strip() + suffix)
+        if len(excerpts) >= DELTA_REVIEW_MAX_EXCERPTS_PER_ARTIFACT:
+            break
+    return excerpts
 
 
 def _review_cache_metadata(
@@ -623,7 +738,12 @@ def _readiness_policy_prompt_line() -> str:
     )
 
 
-def _build_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue], review_mode: str) -> str:
+def _build_report(
+    artifacts: list[ReviewArtifact],
+    issues: list[ReadinessIssue],
+    review_mode: str,
+    review_input: dict[str, object] | None = None,
+) -> str:
     summary = _build_summary(issues)
     status = _readiness_status(summary)
     critical = [issue for issue in issues if issue.severity == "Critical"]
@@ -662,10 +782,21 @@ def _build_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue],
         "",
         *[f"- {artifact.path}: {len(artifact.content)} characters" for artifact in artifacts],
         "",
+        "## Review Input",
+        "",
+        f"- Mode: {review_input.get('mode', 'full') if review_input else 'full'}",
+        f"- Artifacts sent to LLM: {review_input.get('artifact_count', len(artifacts)) if review_input else len(artifacts)}",
+        f"- Characters sent to LLM: {review_input.get('total_characters', sum(len(artifact.content) for artifact in artifacts)) if review_input else sum(len(artifact.content) for artifact in artifacts)}",
+        "",
     ])
 
 
-def _build_json_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIssue], review_mode: str) -> str:
+def _build_json_report(
+    artifacts: list[ReviewArtifact],
+    issues: list[ReadinessIssue],
+    review_mode: str,
+    review_input: dict[str, object] | None = None,
+) -> str:
     summary = _build_summary(issues)
     status = _readiness_status(summary)
     artifact_lengths = {artifact.path: len(artifact.content) for artifact in artifacts}
@@ -702,6 +833,8 @@ def _build_json_report(artifacts: list[ReviewArtifact], issues: list[ReadinessIs
         },
         "prompt_mode": READINESS_PROMPT.strip(),
     }
+    if review_input is not None:
+        payload["review_input"] = review_input
     return json.dumps(payload, indent=2) + "\n"
 
 
@@ -729,6 +862,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     artifacts = _review_artifacts(path)
     total_input_characters = sum(len(artifact.content) for artifact in artifacts)
     previous_report = _load_previous_report(path) if review_mode == "verification" else None
+    review_input: dict[str, object] | None = None
     mode = "LLM" if llm_client else "heuristic"
     cache_hit: CachedReview | None = None
     cache_key = ""
@@ -737,7 +871,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     llm_summary = describe_llm_client(llm_client) if llm_client else ""
     try:
         if llm_client:
-            instructions, input_text = _build_llm_review_request(
+            instructions, input_text, review_input = _build_llm_review_request(
                 artifacts,
                 review_mode=review_mode,
                 previous_report=previous_report,
@@ -754,9 +888,11 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
                 _copy_cached_review(cache_hit, report_path, report_json_path)
                 issues = _parse_llm_issues(json.dumps({"issues": cache_hit.payload.get("issues", [])}))
             else:
+                review_artifact_count = review_input.get("artifact_count", len(artifacts)) if review_input else len(artifacts)
+                review_characters = review_input.get("total_characters", total_input_characters) if review_input else total_input_characters
                 activity = (
                     f"waiting for LLM SpecGuard Review "
-                    f"({llm_summary}, {review_mode}, {len(artifacts)} artifacts, {total_input_characters} chars)"
+                    f"({llm_summary}, {review_mode}, {review_artifact_count} artifacts, {review_characters} chars)"
                 )
                 started = time.perf_counter()
                 with progress_activity(activity):
@@ -764,6 +900,7 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
                 llm_elapsed_ms = int((time.perf_counter() - started) * 1000)
         else:
             issues = _analyze(artifacts)
+            review_input = _review_input_metadata("heuristic", artifacts, total_input_characters)
     except (json.JSONDecodeError, ValueError) as exc:
         result.add_error(f"LLM SpecGuard Review response could not be parsed as JSON: {exc}")
         return result
@@ -774,8 +911,8 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     implementation_ready = _is_implementation_ready(summary)
 
     if not cache_hit:
-        report_path.write_text(_build_report(artifacts, issues, review_mode), encoding="utf-8")
-        report_json_path.write_text(_build_json_report(artifacts, issues, review_mode), encoding="utf-8")
+        report_path.write_text(_build_report(artifacts, issues, review_mode, review_input), encoding="utf-8")
+        report_json_path.write_text(_build_json_report(artifacts, issues, review_mode, review_input), encoding="utf-8")
         if llm_client and cache_metadata is not None:
             _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
     result.details.update(summary)
@@ -793,12 +930,22 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
             result.details["cache_key"] = cache_key
             result.add_info(f"SpecGuard Review cache stored: {cache_key[:12]}")
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
-    result.add_info(f"SpecGuard Review input size: {len(artifacts)} artifact(s), {total_input_characters} characters.")
+    if review_input:
+        result.add_info(
+            "SpecGuard Review input size: "
+            f"{review_input.get('artifact_count', len(artifacts))} artifact(s), "
+            f"{review_input.get('total_characters', total_input_characters)} characters "
+            f"({review_input.get('mode', 'full')} mode; full artifact set {len(artifacts)} artifact(s), {total_input_characters} characters)."
+        )
+    else:
+        result.add_info(f"SpecGuard Review input size: {len(artifacts)} artifact(s), {total_input_characters} characters.")
     if llm_elapsed_ms is not None:
         result.details[f"{review_mode}_llm_review_ms"] = llm_elapsed_ms
+        review_artifact_count = review_input.get("artifact_count", len(artifacts)) if review_input else len(artifacts)
+        review_characters = review_input.get("total_characters", total_input_characters) if review_input else total_input_characters
         result.add_info(
             f"LLM {review_mode} SpecGuard Review call: {llm_summary}, "
-            f"{len(artifacts)} artifact(s), {total_input_characters} characters, {llm_elapsed_ms}ms."
+            f"{review_artifact_count} artifact(s), {review_characters} characters, {llm_elapsed_ms}ms."
         )
     if implementation_ready:
         if _readiness_status(summary) == "ready_with_warnings":

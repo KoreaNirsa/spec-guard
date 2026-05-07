@@ -1414,9 +1414,25 @@ def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> N
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
     assert payload["review_mode"] == "verification"
+    assert payload["review_input"]["mode"] == "delta"
+    assert payload["review_input"]["total_characters"] < payload["input"]["total_characters"]
     assert "Verification Review board" in llm.instructions
     assert "Previous SpecGuard Review Findings" in llm.input_text
+    assert "Verification Review Delta Evidence" in llm.input_text
     assert "Delete semantics are unsafe" in llm.input_text
+
+
+def test_readiness_verification_mode_falls_back_without_previous_findings(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = CaptureVerificationReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm, review_mode="verification")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_input"]["mode"] == "full"
+    assert payload["review_input"]["fallback_reason"] == "missing previous findings"
+    assert "Current Spec Package Artifacts" in llm.input_text
 
 
 def test_strict_e2e_converges_after_spec_regeneration(tmp_path: Path) -> None:
