@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime, timezone
+import difflib
 import json
 import re
 from pathlib import Path
@@ -8,7 +11,16 @@ from typing import Any
 from tools.result import CheckResult
 
 
-PROPOSED_SPEC_REVISION_NAME = "spec.proposed.md"
+SPECGUARD_STATE_DIR = ".specguard"
+SPEC_REVISION_AUDIT_DIR = "spec-revisions"
+
+
+@dataclass(frozen=True)
+class SpecRevisionAudit:
+    spec_path: Path
+    audit_dir: Path
+    original_path: Path
+    diff_path: Path
 
 _STOPWORDS = {
     "about",
@@ -161,10 +173,19 @@ def apply_spec_revision(feature_dir: Path, revised_spec: str) -> Path:
     return spec_path
 
 
-def write_proposed_spec_revision(feature_dir: Path, revised_spec: str) -> Path:
-    proposal_path = feature_dir / PROPOSED_SPEC_REVISION_NAME
-    proposal_path.write_text(revised_spec.rstrip() + "\n", encoding="utf-8")
-    return proposal_path
+def apply_spec_revision_with_audit(feature_dir: Path, revised_spec: str) -> SpecRevisionAudit:
+    spec_path = feature_dir / "spec.md"
+    original_spec = spec_path.read_text(encoding="utf-8") if spec_path.exists() else ""
+    normalized_revised = revised_spec.rstrip() + "\n"
+    audit_dir = _unique_revision_audit_dir(feature_dir)
+    original_path = audit_dir / "spec.original.md"
+    diff_path = audit_dir / "spec.diff"
+
+    audit_dir.mkdir(parents=True, exist_ok=False)
+    original_path.write_text(original_spec, encoding="utf-8")
+    diff_path.write_text(_spec_revision_diff(feature_dir, original_spec, normalized_revised), encoding="utf-8")
+    spec_path.write_text(normalized_revised, encoding="utf-8")
+    return SpecRevisionAudit(spec_path=spec_path, audit_dir=audit_dir, original_path=original_path, diff_path=diff_path)
 
 
 def validate_spec_revision_intent(feature_dir: Path, revised_spec: str) -> CheckResult:
@@ -180,10 +201,61 @@ def validate_spec_revision_intent(feature_dir: Path, revised_spec: str) -> Check
     if result.ok:
         result.add_info("Revised spec preserves title/problem intent, acceptance coverage, and out-of-scope boundaries.")
     else:
-        result.add_next_step(
-            f"Review the proposed revision manually, then edit spec.md or {PROPOSED_SPEC_REVISION_NAME} before rerunning SpecGuard."
-        )
+        result.add_next_step("Review the updated spec.md and SpecGuard audit diff before rerunning SpecGuard.")
     return result
+
+
+def _unique_revision_audit_dir(feature_dir: Path) -> Path:
+    state_root, feature_slug = _specguard_state_root(feature_dir)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    base = state_root / SPEC_REVISION_AUDIT_DIR / feature_slug / timestamp
+    if not base.exists():
+        return base
+    suffix = 2
+    while True:
+        candidate = base.with_name(f"{base.name}-{suffix}")
+        if not candidate.exists():
+            return candidate
+        suffix += 1
+
+
+def _specguard_state_root(feature_dir: Path) -> tuple[Path, str]:
+    resolved = feature_dir.resolve()
+    for parent in resolved.parents:
+        if parent.name == "specs":
+            relative = resolved.relative_to(parent)
+            return parent.parent / SPECGUARD_STATE_DIR, _slugify_path(relative)
+    return resolved.parent / SPECGUARD_STATE_DIR, _slugify_path(Path(resolved.name))
+
+
+def _slugify_path(path: Path) -> str:
+    slug = re.sub(r"[^A-Za-z0-9._-]+", "-", path.as_posix()).strip("-._")
+    return slug or "feature"
+
+
+def _spec_revision_diff(feature_dir: Path, original_spec: str, revised_spec: str) -> str:
+    spec_path = feature_dir / "spec.md"
+    display_path = _display_spec_path(spec_path, feature_dir)
+    diff_lines = difflib.unified_diff(
+        original_spec.splitlines(),
+        revised_spec.splitlines(),
+        fromfile=f"{display_path} (original)",
+        tofile=f"{display_path} (updated)",
+        lineterm="",
+    )
+    rendered = "\n".join(diff_lines)
+    return rendered + "\n" if rendered else "No textual changes.\n"
+
+
+def _display_spec_path(spec_path: Path, feature_dir: Path) -> str:
+    resolved_spec = spec_path.resolve()
+    for parent in feature_dir.resolve().parents:
+        if parent.name == "specs":
+            try:
+                return resolved_spec.relative_to(parent.parent).as_posix()
+            except ValueError:
+                break
+    return spec_path.as_posix()
 
 
 def _read_optional(path: Path) -> str:

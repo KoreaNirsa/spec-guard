@@ -28,13 +28,13 @@ from tools.llm_client import (
 )
 from tools.post_run import (
     apply_spec_revision,
+    apply_spec_revision_with_audit,
     blocked_feature_reports,
     feature_readiness_reports,
     generate_spec_revision,
     readiness_report_stale_reason,
     render_readiness_summary,
     validate_spec_revision_intent,
-    write_proposed_spec_revision,
 )
 from tools.runner import run_pipeline
 from tools.strict_e2e import run_strict_e2e_pipeline
@@ -565,10 +565,12 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
         return result
     intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
     if not intent_check.ok:
-        proposal_path = write_proposed_spec_revision(feature_dir, revised_spec)
-        intent_check.add_info(f"Kept original spec.md unchanged. Proposed revision written to: {proposal_path}")
+        audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
+        intent_check.add_info(f"Updated working spec.md for in-place review: {audit.spec_path}")
+        intent_check.add_info(f"Original spec and unified diff written to: {audit.audit_dir}")
+        intent_check.add_next_step(f"Review diff: {audit.diff_path}")
         intent_check.print()
-        print_hint("SpecGuard stopped before Verification Review because the proposed revision may alter product intent.")
+        print_hint("SpecGuard stopped before Verification Review so you can review the applied spec diff.")
         return result
     _print_markdown_preview(revised_spec)
     spec_path = apply_spec_revision(feature_dir, revised_spec)

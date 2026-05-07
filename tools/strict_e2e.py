@@ -6,11 +6,11 @@ from typing import Any
 
 from tools.post_run import (
     apply_spec_revision,
+    apply_spec_revision_with_audit,
     blocked_feature_reports,
     feature_readiness_reports,
     generate_spec_revision,
     validate_spec_revision_intent,
-    write_proposed_spec_revision,
 )
 from tools.result import CheckResult
 from tools.runner import run_pipeline
@@ -58,15 +58,25 @@ def run_strict_e2e_pipeline(
             revised_spec = generate_spec_revision(feature_dir, llm_client)
             intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
             if not intent_check.ok:
-                proposal_path = write_proposed_spec_revision(feature_dir, revised_spec)
+                audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
+                trace["regenerations"].append(
+                    _regeneration_entry(
+                        feature_dir,
+                        iteration,
+                        report,
+                        audit.spec_path,
+                        intent_preservation="failed",
+                        audit_diff_path=audit.diff_path,
+                    )
+                )
                 _merge_messages(result, intent_check)
                 result.add_error(
                     red(
-                        f"Strict E2E iteration {iteration}: stopped before applying {feature_dir / 'spec.md'} because intent preservation failed."
+                        f"Strict E2E iteration {iteration}: updated {audit.spec_path} for in-place review, then stopped because intent preservation failed."
                     )
                 )
-                result.add_next_step(f"Review proposed revision: {proposal_path}")
-                result.add_next_step("Edit spec.md manually or adjust Readiness Findings before rerunning strict E2E.")
+                result.add_next_step(f"Review diff: {audit.diff_path}")
+                result.add_next_step("Edit spec.md or adjust Readiness Findings before rerunning strict E2E.")
                 _finish_trace(path, trace, status="failed_intent_preservation", iterations=iteration - 1)
                 return result
             spec_path = apply_spec_revision(feature_dir, revised_spec)
@@ -125,11 +135,20 @@ def _feature_report_entry(feature_dir: Path, report: dict[str, Any]) -> dict[str
     }
 
 
-def _regeneration_entry(feature_dir: Path, iteration: int, report: dict[str, Any], spec_path: Path) -> dict[str, Any]:
-    return {
+def _regeneration_entry(
+    feature_dir: Path,
+    iteration: int,
+    report: dict[str, Any],
+    spec_path: Path,
+    *,
+    intent_preservation: str = "passed",
+    audit_diff_path: Path | None = None,
+) -> dict[str, Any]:
+    entry = {
         "iteration": iteration,
         "feature_dir": str(feature_dir),
         "updated_artifact": str(spec_path),
+        "intent_preservation": intent_preservation,
         "source_review_mode": report.get("review_mode"),
         "source_summary": report.get("summary", {}),
         "source_findings": [
@@ -142,6 +161,9 @@ def _regeneration_entry(feature_dir: Path, iteration: int, report: dict[str, Any
             if isinstance(issue, dict)
         ],
     }
+    if audit_diff_path is not None:
+        entry["audit_diff"] = str(audit_diff_path)
+    return entry
 
 
 def _finish_trace(path: Path, trace: dict[str, Any], *, status: str, iterations: int) -> None:

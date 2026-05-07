@@ -385,6 +385,13 @@ class StrictE2EAlwaysBlockingLLM(StrictE2EConvergingLLM):
         return super().generate_text(instructions, input_text, max_output_tokens)
 
 
+class StrictE2EIntentDriftLLM(StrictE2EConvergingLLM):
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        if "spec refinement assistant" in instructions.lower():
+            return IntentDriftRevisionLLM().generate_text(instructions, input_text, max_output_tokens)
+        return super().generate_text(instructions, input_text, max_output_tokens)
+
+
 def copy_example(tmp_path: Path, example: str) -> Path:
     source = ROOT / "examples" / example
     target = tmp_path / example.replace("/", "-")
@@ -1302,6 +1309,28 @@ def test_strict_e2e_converges_after_spec_regeneration(tmp_path: Path) -> None:
     assert "scope every request to the authenticated owner" in feature.joinpath("spec.md").read_text(encoding="utf-8")
 
 
+def test_strict_e2e_intent_drift_applies_audited_revision_before_stop(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    original = feature.joinpath("spec.md").read_text(encoding="utf-8")
+    llm = StrictE2EIntentDriftLLM()
+
+    result = run_strict_e2e_pipeline(feature, llm, max_iterations=1)
+
+    trace = json.loads(feature.joinpath("strict-e2e-trace.json").read_text(encoding="utf-8"))
+    spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
+    diff_files = list(tmp_path.joinpath(".specguard", "spec-revisions").rglob("spec.diff"))
+    assert not result.ok
+    assert trace["final"] == {"status": "failed_intent_preservation", "iterations": 0}
+    assert trace["regenerations"][0]["intent_preservation"] == "failed"
+    assert "SSO Provisioning" in spec
+    assert spec != original
+    assert len(diff_files) == 1
+    assert trace["regenerations"][0]["audit_diff"] == str(diff_files[0])
+    assert diff_files[0].with_name("spec.original.md").read_text(encoding="utf-8") == original
+    assert "+# Feature Specification: SSO Provisioning" in diff_files[0].read_text(encoding="utf-8")
+    assert any("Review diff:" in step for step in result.next_steps)
+
+
 def test_strict_e2e_fails_markdown_only_verification(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 
@@ -1509,8 +1538,11 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert "scope every todo read and write by owner" in spec
 
 
-def test_post_run_spec_revision_blocks_intent_drift_before_apply(tmp_path: Path, monkeypatch, capsys) -> None:
-    feature = copy_example(tmp_path, "risk/todo-api")
+def test_post_run_spec_revision_applies_intent_drift_with_top_level_audit(tmp_path: Path, monkeypatch, capsys) -> None:
+    project = tmp_path / "repo"
+    specs_dir = project / "specs"
+    specs_dir.mkdir(parents=True)
+    feature = copy_example(specs_dir, "risk/todo-api")
     result = run_pipeline(feature)
     original = feature.joinpath("spec.md").read_text(encoding="utf-8")
 
@@ -1527,11 +1559,23 @@ def test_post_run_spec_revision_blocks_intent_drift_before_apply(tmp_path: Path,
     )
 
     rendered = capsys.readouterr().out
+    spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
+    diff_files = list(project.joinpath(".specguard", "spec-revisions").rglob("spec.diff"))
     assert returned is result
-    assert feature.joinpath("spec.md").read_text(encoding="utf-8") == original
-    assert feature.joinpath("spec.proposed.md").exists()
+    assert spec != original
+    assert "SSO Provisioning" in spec
+    assert not feature.joinpath("spec.proposed.md").exists()
+    assert not feature.joinpath(".specguard").exists()
+    assert len(diff_files) == 1
+    audit_dir = diff_files[0].parent
+    assert audit_dir.joinpath("spec.original.md").read_text(encoding="utf-8") == original
+    diff_text = diff_files[0].read_text(encoding="utf-8")
+    assert "--- specs/risk-todo-api/spec.md (original)" in diff_text
+    assert "+++ specs/risk-todo-api/spec.md (updated)" in diff_text
+    assert "+# Feature Specification: SSO Provisioning" in diff_text
     assert "Intent Preservation Check" in rendered
-    assert "Kept original spec.md unchanged" in rendered
+    assert "Updated working spec.md for in-place review" in rendered
+    assert "Original spec and unified diff written to" in rendered
 
 
 def test_progress_line_shows_elapsed_time_and_phase() -> None:
