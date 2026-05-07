@@ -69,10 +69,13 @@ def blocked_feature_reports(path: Path) -> list[tuple[Path, dict[str, Any]]]:
 
 def render_readiness_summary(feature_dir: Path, report: dict[str, Any], *, limit: int = 5) -> str:
     summary = report.get("summary", {})
+    readiness = report.get("readiness", {})
+    status = readiness.get("status", "unknown") if isinstance(readiness, dict) else "unknown"
     issues = report.get("issues", [])
     lines = [
         f"{feature_dir}",
         f"- blocked: {bool(report.get('blocked'))}",
+        f"- status: {status}",
         f"- critical: {summary.get('critical', 0)}, major: {summary.get('major', 0)}, minor: {summary.get('minor', 0)}",
     ]
     for issue in issues[:limit]:
