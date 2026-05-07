@@ -36,6 +36,7 @@ from tools.post_run import (
     render_readiness_summary,
     validate_spec_revision_intent,
 )
+from tools.progress import current_progress_activity
 from tools.runner import run_pipeline
 from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.ux import bold, green, menu_item, print_banner, print_error, print_hint, print_section, print_success, print_warning, yellow
@@ -627,7 +628,7 @@ def _run_with_progress(label: str, operation):
         tick = 0
         while not stop.wait(0.25):
             elapsed = int(time.monotonic() - started_at)
-            sys.stdout.write("\r" + _progress_line(label, elapsed, tick))
+            sys.stdout.write("\r" + _progress_line(label, elapsed, tick, activity=current_progress_activity()))
             sys.stdout.flush()
             tick += 1
 
@@ -648,12 +649,15 @@ def _run_with_progress(label: str, operation):
         print_hint(f"{label} {status} after {elapsed}s.")
 
 
-def _progress_line(label: str, elapsed_seconds: int, tick: int) -> str:
+def _progress_line(label: str, elapsed_seconds: int, tick: int, activity: str | None = None) -> str:
     width = 18
     active = tick % width
     bar = "".join("#" if index <= active else "-" for index in range(width))
-    phases = _progress_phases(label)
-    phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
+    if activity:
+        phase = activity
+    else:
+        phases = _progress_phases(label)
+        phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
     return f"> {bold(label)} {green('[' + bar + ']')} {elapsed_seconds:>3}s - {phase}"
 
 
