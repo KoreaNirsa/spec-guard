@@ -392,6 +392,10 @@ def copy_example(tmp_path: Path, example: str) -> Path:
     return target
 
 
+def copy_packaged_example(target: Path) -> None:
+    shutil.copytree(ROOT / "tools" / "resources" / "example", target)
+
+
 def read_handoff_metadata(feature: Path) -> dict:
     text = feature.joinpath("implementation-output.md").read_text(encoding="utf-8")
     start = text.index("```json") + len("```json")
@@ -580,7 +584,7 @@ def test_blocked_pipeline_does_not_recommend_ai_implementation(tmp_path: Path) -
 
 def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "team-invite"
-    shutil.copytree(ROOT / "example", feature)
+    copy_packaged_example(feature)
 
     result = run_pipeline(feature)
 
@@ -663,7 +667,7 @@ def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
 
 def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "team-invite"
-    shutil.copytree(ROOT / "example", feature)
+    copy_packaged_example(feature)
 
     completed = run_cli_smoke(
         tmp_path,
