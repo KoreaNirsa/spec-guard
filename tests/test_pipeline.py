@@ -806,6 +806,17 @@ def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> 
     assert payload["readiness"]["implementation_ready"] is True
 
 
+def test_cli_example_copy_points_to_default_low_mode_run(tmp_path: Path) -> None:
+    completed = run_cli_smoke(tmp_path, "example", "copy", "team-invite", "--force")
+    expected_run = f"Run: specguard run {tmp_path / 'specs' / 'team-invite'} --no-follow-up"
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "[PASS] Copied authored example specs." in completed.stdout
+    assert expected_run in completed.stdout
+    assert "Use --no-llm only for deterministic local smoke checks" in completed.stdout
+    assert (tmp_path / "specs" / "team-invite" / "spec.md").exists()
+
+
 def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
     result = initialize_specs(tmp_path, {
         "feature_names": "billing-export",
@@ -1344,6 +1355,8 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
     assert pipeline.ok
     assert {"discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md", "technical-design.md"} <= reviewed_paths
+    assert "generated-artifacts.md" in reviewed_paths
+    assert {"contracts/openapi.yaml", "tests/billing-export.test.md"}.isdisjoint(reviewed_paths)
     assert any("SpecGuard Review input size" in message for message in pipeline.messages)
     assert payload["input"]["artifact_count"] == len(payload["input"]["artifacts"])
     assert payload["input"]["total_characters"] == sum(artifact["characters"] for artifact in payload["input"]["artifacts"])

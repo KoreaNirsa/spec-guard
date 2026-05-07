@@ -177,7 +177,8 @@ def copy_example(args: argparse.Namespace) -> int:
     print(f"- Files copied: {copied}")
     print("")
     print("Next steps:")
-    print(f"- Run: specguard run {feature_dir} --no-llm --no-follow-up")
+    print(f"- Run: specguard run {feature_dir} --no-follow-up")
+    print("- Use --no-llm only for deterministic local smoke checks without a configured provider.")
     print("- Replace the example files with your own feature requirements before real implementation.")
     return 0
 
@@ -843,9 +844,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         epilog=(
             "Examples:\n"
-            "  specguard init team-invite --no-llm\n"
+            "  specguard auth setup --mode codex --model gpt-5.4 --skip-login\n"
+            "  specguard init team-invite --non-interactive --no-llm\n"
             "  specguard example copy team-invite --force\n"
-            "  specguard run specs/team-invite --no-llm --no-follow-up"
+            "  specguard run specs/team-invite --no-follow-up"
         ),
         formatter_class=SpecGuardHelpFormatter,
     )

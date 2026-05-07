@@ -16,10 +16,11 @@
 3. Application service creates or returns the pending invite, signs a token containing `schema_version=team_invite.v1`, invite id, token id, workspace id, email, issued-at, and expires-at.
 4. Email adapter attempts one send with a 3-second timeout and records `delivery_status=sent` or `delivery_status=failed`.
 5. System writes an audit event and returns `InviteResponse` with `schema_version=team_invite.response.v1` and `correlation_id`.
-6. Invited user follows the browser link; the UI redirects unauthenticated users to sign in or sign up.
-7. Authenticated user sends `POST /invites/{token}/accept`.
-8. API validates token signature, schema version, token id hash, expiration, invite status, workspace state, existing membership, and verified email match.
-9. Acceptance transaction serializes the invite row, creates exactly one membership, marks the invite accepted, writes an audit event, and returns `InviteAcceptResponse`.
+6. Invited user follows a browser link whose signed token is carried only in the URL fragment; React reads the fragment, immediately removes it with `history.replaceState`, and keeps the token out of path, query, referrer, CDN, and auth redirect parameters.
+7. If authentication is required, the UI carries only a random pending-invite nonce through sign-in or sign-up and keeps the token in ephemeral invite state with a 10-minute TTL.
+8. Authenticated user sends `POST /invites/accept` with the signed invite token in the JSON request body; token fields are redacted from logs and traces.
+9. API validates token signature, schema version, token id hash, expiration, persisted invite workspace match, invite status, workspace state, existing membership, and verified email match.
+10. Acceptance transaction serializes the invite row, creates exactly one membership, marks the invite accepted, writes an audit event, clears pending invite state, and returns `InviteAcceptResponse`.
 
 ## State
 
@@ -57,8 +58,11 @@
 - Reused idempotency key with a different request body returns `409 IDEMPOTENCY_KEY_REUSED`.
 - Email provider timeout returns `201 Created` with `delivery_status=failed`; no automatic retry occurs in v1.
 - Invalid token envelope, signature, token id, or schema version returns `400 INVALID_INVITE_TOKEN`.
+- Token workspace id that does not match the persisted invite workspace id returns `400 WRONG_WORKSPACE`.
 - Expired, revoked, or accepted tokens return the matching stable error code and create no membership.
 - Authenticated email mismatch returns `403 INVITEE_EMAIL_MISMATCH`.
+- Revoking an invite id not found in the path workspace returns `404 INVITE_NOT_FOUND`.
+- Revoking an accepted, revoked, or expired invite returns `409 INVITE_NOT_PENDING`.
 - Concurrent acceptance losers return `409 INVITE_ALREADY_ACCEPTED`.
 
 ## Implementation Blockers

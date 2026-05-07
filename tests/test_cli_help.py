@@ -51,6 +51,7 @@ def test_example_copy_help_shows_init_copy_run_flow(capsys: pytest.CaptureFixtur
     help_text = _help_text(capsys, "example", "copy")
 
     assert "Typical sample flow: init -> copy -> run." in help_text
-    assert "specguard init team-invite --no-llm" in help_text
+    assert "specguard auth setup --mode codex --model gpt-5.4 --skip-login" in help_text
+    assert "specguard init team-invite --non-interactive --no-llm" in help_text
     assert "specguard example copy team-invite --force" in help_text
-    assert "specguard run specs/team-invite --no-llm --no-follow-up" in help_text
+    assert "specguard run specs/team-invite --no-follow-up" in help_text

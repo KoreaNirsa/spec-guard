@@ -73,15 +73,15 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-  /invites/{token}/accept:
+  /invites/accept:
     post:
       summary: Accept a team invite for the authenticated invited user
-      parameters:
-        - name: token
-          in: path
-          required: true
-          schema:
-            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteAcceptRequest"
       responses:
         "201":
           description: Membership created and invite accepted
@@ -197,6 +197,15 @@ components:
             - failed
         audit_event_id:
           type: string
+    InviteAcceptRequest:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: Signed invite token submitted in the request body; server logs and traces must redact this field.
+      additionalProperties: false
     InviteAcceptResponse:
       type: object
       required:
@@ -249,6 +258,8 @@ components:
             - INVALID_INVITE_TOKEN
             - INVITEE_EMAIL_MISMATCH
             - WRONG_WORKSPACE
+            - INVITE_NOT_FOUND
+            - INVITE_NOT_PENDING
         message:
           type: string
         audit_event_id:
