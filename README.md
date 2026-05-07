@@ -2,6 +2,8 @@
 
 # SpecGuard
 
+**SpecGuard blocks weak specs before AI coding agents turn them into defective code.**
+
 SpecGuard is a Validation-First Workflow (VFW) for AI-assisted development.
 It turns specs into reviewed, testable, implementation-ready packages before AI coding begins.
 
@@ -19,6 +21,10 @@ SpecGuard centers on two review steps:
 
 - SpecGuard Review runs before code generation. It checks whether the spec package has important gaps in product behavior, contracts, data ownership, authorization, state transitions, error cases, or executable verification before an implementation agent starts coding.
 - SpecGuard PR Review runs after code is implemented. It compares the approved spec package, implementation handoff, and pull request diff, then posts an advisory PR comment when the implementation appears to drift from the spec, tests, contracts, security expectations, or operational requirements.
+
+## Current Support Status
+
+Currently, local Codex mode is the recommended and release-tested path for live SpecGuard Review. OpenAI Platform mode is implemented for the Responses API, including PR Review execution, but the clean end-to-end release test has not been completed yet. Treat OpenAI Platform mode as experimental until published-install validation is finished.
 
 ## Setup To User Flow
 
