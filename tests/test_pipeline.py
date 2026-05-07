@@ -52,9 +52,13 @@ ROOT = Path(__file__).resolve().parents[1]
 class FakeLLM:
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.inputs: list[str] = []
+        self.max_output_tokens: list[int] = []
 
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         self.calls.append(instructions)
+        self.inputs.append(input_text)
+        self.max_output_tokens.append(max_output_tokens)
         if "feature specification" in instructions.lower():
             return "\n".join([
                 "# Feature Specification: Billing Export",
@@ -1257,6 +1261,10 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
         ]),
         encoding="utf-8",
     )
+    feature.joinpath("plan.md").write_text(
+        "# Plan\n\n" + "\n".join(f"- Implementation planning detail {index}" for index in range(200)),
+        encoding="utf-8",
+    )
     feature.joinpath("contracts").mkdir()
     feature.joinpath("contracts", "openapi.yaml").write_text(
         "\n".join([
@@ -1285,10 +1293,45 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is False
     assert any("technical design generator" in call.lower() for call in llm.calls)
+    assert any("low-mode technical design generator" in call for call in llm.calls)
+    assert any("minimum implementation safety gating" in call for call in llm.calls)
+    assert not any("full SpecGuard spec package" in call for call in llm.calls)
+    assert payload["review_input"]["mode"] == "low_compact"
+    assert payload["review_input"]["total_characters"] < payload["review_input"]["source_total_characters"]
+    assert 1800 in llm.max_output_tokens
+    assert 1400 in llm.max_output_tokens
+    assert not any("safest explicit design assumption" in call for call in llm.calls)
+
+
+def test_medium_review_level_uses_full_llm_prompt_context(tmp_path: Path) -> None:
+    result = initialize_specs(tmp_path, {
+        "feature_names": "billing-export",
+        "problem": "Export billing records safely.",
+        "users": "Finance users",
+        "outcomes": "Exports are scoped and auditable",
+        "constraints": "CSV only for the first pass",
+        "flows": "Request export, validate ownership, create file",
+        "data": "Billing record, owner, export file",
+        "dependencies": "Billing database",
+        "risks": "Cross-tenant export",
+        "out_of_scope": "Scheduled exports",
+        "acceptance": "An authorized user can export only owned records",
+    })
+    assert result.ok
+    feature = tmp_path / "specs" / "billing-export"
+    llm = FakeLLM()
+
+    pipeline = run_pipeline(feature, llm_client=llm, review_level="medium")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert pipeline.ok
+    assert payload["review_level"] == "medium"
+    assert payload["review_input"]["mode"] == "full"
     assert any("full SpecGuard spec package" in call for call in llm.calls)
     assert any("Do not resolve contradictions by inventing behavior" in call for call in llm.calls)
     assert any("mark the item as a blocker" in call for call in llm.calls)
-    assert not any("safest explicit design assumption" in call for call in llm.calls)
+    assert 3000 in llm.max_output_tokens
+    assert 2500 in llm.max_output_tokens
 
 
 def test_risk_todo_example_is_ready_with_warnings(tmp_path: Path) -> None:

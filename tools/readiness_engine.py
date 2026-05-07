@@ -29,11 +29,21 @@ READINESS_REVIEW_LEVELS = {"low", "medium", "high"}
 DELTA_REVIEW_CORE_ARTIFACTS = {"spec.md", "technical-design.md"}
 DELTA_REVIEW_MAX_EXCERPTS_PER_ARTIFACT = 3
 DELTA_REVIEW_EXCERPT_RADIUS = 450
+GENERATED_ARTIFACT_MANIFEST_PATH = "generated-artifacts.md"
+LOW_REVIEW_FULL_ARTIFACTS = {"spec.md", "technical-design.md", GENERATED_ARTIFACT_MANIFEST_PATH}
+LOW_REVIEW_ARTIFACT_LIMITS = {
+    "discovery.md": 1200,
+    "plan.md": 1200,
+    "tasks.md": 800,
+    "constitution.md": 800,
+    "checklists/spec-readiness.md": 800,
+}
+LOW_REVIEW_MAX_OUTPUT_TOKENS = 1400
+DEFAULT_REVIEW_MAX_OUTPUT_TOKENS = 2500
 READINESS_CACHE_SCHEMA_VERSION = "0.1"
 READINESS_CACHE_PROMPT_VERSION = "readiness-review-v1"
 SPECGUARD_STATE_DIR = ".specguard"
 READINESS_CACHE_DIR = "readiness-cache"
-GENERATED_ARTIFACT_MANIFEST_PATH = "generated-artifacts.md"
 GENERATED_ARTIFACT_NAMES = {
     "readiness-review.md",
     "readiness-review.json",
@@ -268,6 +278,36 @@ def _render_artifact_input(artifacts: list[ReviewArtifact]) -> str:
     return "\n\n".join([f"# Artifact: {artifact.path}\n\n{artifact.content}" for artifact in artifacts])
 
 
+def _build_low_review_input(artifacts: list[ReviewArtifact]) -> tuple[str, dict[str, object]]:
+    compact_artifacts: list[ReviewArtifact] = []
+    for artifact in artifacts:
+        if artifact.path in LOW_REVIEW_FULL_ARTIFACTS:
+            compact_artifacts.append(artifact)
+            continue
+        compact_artifacts.append(ReviewArtifact(artifact.path, _compact_low_review_content(artifact)))
+    input_text = _render_artifact_input(compact_artifacts)
+    metadata = _review_input_metadata("low_compact", compact_artifacts, len(input_text), DEFAULT_REVIEW_LEVEL)
+    metadata["source_artifact_count"] = len(artifacts)
+    metadata["source_total_characters"] = sum(len(artifact.content) for artifact in artifacts)
+    return input_text, metadata
+
+
+def _compact_low_review_content(artifact: ReviewArtifact) -> str:
+    limit = LOW_REVIEW_ARTIFACT_LIMITS.get(artifact.path, 600)
+    if len(artifact.content) <= limit:
+        return artifact.content
+    omitted = len(artifact.content) - limit
+    return "\n".join([
+        artifact.content[:limit].rstrip(),
+        "",
+        f"[SpecGuard low-mode compact excerpt: {omitted} character(s) omitted. Use medium or high review level for full artifact context.]",
+    ])
+
+
+def _review_max_output_tokens(review_level: str) -> int:
+    return LOW_REVIEW_MAX_OUTPUT_TOKENS if normalize_review_level(review_level) == "low" else DEFAULT_REVIEW_MAX_OUTPUT_TOKENS
+
+
 def _previous_findings_text(previous_report: dict | None) -> str:
     if not previous_report:
         return "No previous SpecGuard Review report was available."
@@ -369,6 +409,9 @@ def _build_llm_review_request(
     )
     full_input = _render_artifact_input(artifacts)
     if review_mode != "verification":
+        if normalize_review_level(review_level) == "low":
+            low_input, low_metadata = _build_low_review_input(artifacts)
+            return instructions, low_input, low_metadata
         return instructions, full_input, _review_input_metadata("full", artifacts, len(full_input), review_level)
 
     delta_input, delta_metadata = _build_delta_verification_input(artifacts, previous_report)
@@ -502,6 +545,7 @@ def _review_cache_metadata(
     *,
     review_mode: str,
     review_level: str,
+    max_output_tokens: int,
     instructions: str,
     input_text: str,
     llm_client: object,
@@ -518,6 +562,7 @@ def _review_cache_metadata(
         "artifact_fingerprint": artifact_fingerprint,
         "input_fingerprint": _sha256_text(input_text),
         "instructions_fingerprint": _sha256_text(instructions),
+        "max_output_tokens": max_output_tokens,
         "artifact_count": len(artifacts),
         "total_input_characters": sum(len(artifact.content) for artifact in artifacts),
         "artifacts": artifact_manifest,
@@ -893,8 +938,9 @@ def _analyze_with_llm(
     instructions: str,
     input_text: str,
     review_level: str,
+    max_output_tokens: int = DEFAULT_REVIEW_MAX_OUTPUT_TOKENS,
 ) -> list[ReadinessIssue]:
-    text = llm_client.generate_text(instructions, input_text, max_output_tokens=2500)
+    text = llm_client.generate_text(instructions, input_text, max_output_tokens=max_output_tokens)
     return _parse_llm_issues(text, review_level)
 
 
@@ -1150,10 +1196,13 @@ def run_readiness_review(
                 review_level=review_level,
                 previous_report=previous_report,
             )
+            max_output_tokens = _review_max_output_tokens(review_level)
+            review_input["max_output_tokens"] = max_output_tokens
             cache_key, cache_metadata = _review_cache_metadata(
                 artifacts,
                 review_mode=review_mode,
                 review_level=review_level,
+                max_output_tokens=max_output_tokens,
                 instructions=instructions,
                 input_text=input_text,
                 llm_client=llm_client,
@@ -1176,6 +1225,7 @@ def run_readiness_review(
                         instructions=instructions,
                         input_text=input_text,
                         review_level=review_level,
+                        max_output_tokens=max_output_tokens,
                     )
                 llm_elapsed_ms = int((time.perf_counter() - started) * 1000)
         else:

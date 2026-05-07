@@ -122,7 +122,12 @@ def run_pipeline(
             technical_design = _time_stage(
                 timings,
                 "technical_design",
-                lambda: generate_llm_technical_design(feature_dir, llm_client, force=refresh_design),
+                lambda: generate_llm_technical_design(
+                    feature_dir,
+                    llm_client,
+                    force=refresh_design,
+                    review_level=review_level,
+                ),
             )
         action = "Generated" if technical_design.created else "Reused"
         mode = " LLM" if llm_client is not None and technical_design.created else ""
