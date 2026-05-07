@@ -18,6 +18,7 @@ from tools.llm_client import (
     CodexExecClient,
     LLMSettings,
     _build_codex_prompt,
+    _build_prompt,
     _extract_codex_error_text,
     _extract_codex_event_text,
     _iter_response_text_deltas,
@@ -541,6 +542,8 @@ def test_example_passes_and_emits_readiness_json(tmp_path: Path) -> None:
     assert payload["readiness"]["implementation_ready"] is True
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
+    assert payload["input"]["artifact_count"] >= 3
+    assert payload["input"]["total_characters"] >= payload["input"]["spec_characters"]
 
 
 def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None:
@@ -559,6 +562,8 @@ def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None
     assert "contracts/openapi.yaml" in metadata["approved_artifacts"]
     assert "SpecGuard stops at an approved implementation handoff" in output
     assert any("External AI implementation handoff ready" in message for message in result.messages)
+    assert any("Performance timings for" in message for message in result.messages)
+    assert any(key.endswith(".readiness_review_ms") for key in result.details)
     assert any("external coding agent" in step for step in result.next_steps)
 
 
@@ -1152,6 +1157,17 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
     assert pipeline.ok
     assert {"discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md", "technical-design.md"} <= reviewed_paths
+    assert any("SpecGuard Review input size" in message for message in pipeline.messages)
+    assert payload["input"]["artifact_count"] == len(payload["input"]["artifacts"])
+    assert payload["input"]["total_characters"] == sum(artifact["characters"] for artifact in payload["input"]["artifacts"])
+
+
+def test_codex_prompt_constrains_repository_exploration() -> None:
+    prompt = _build_prompt("Review this.", "Only this input.", 500)
+
+    assert "Use only the supplied input below" in prompt
+    assert "Do not inspect local repository files" in prompt
+    assert "Maximum output tokens: 500" in prompt
 
 
 def test_readiness_excludes_current_and_legacy_generated_review_artifacts(tmp_path: Path) -> None:

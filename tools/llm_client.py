@@ -432,6 +432,7 @@ def _build_prompt(instructions: str, input_text: str, max_output_tokens: int) ->
     return "\n\n".join([
         instructions.strip(),
         f"Maximum output tokens: {max_output_tokens}",
+        "Use only the supplied input below. Do not inspect local repository files, run commands, browse, or infer from unstated files.",
         "# Input",
         input_text.strip(),
     ]).strip()
