@@ -177,7 +177,7 @@ Before SpecGuard, the benchmark passed the same six defective or incomplete spec
 
 After SpecGuard, the same weak specs were checked by the local no-LLM gate before implementation. SpecGuard marked all six packages NOT READY, produced no implementation handoff, and blocked the bad inputs before an AI coding agent could turn them into code.
 
-Full methodology, case breakdown, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
+Full methodology, case breakdown, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
 ## Core Value
 

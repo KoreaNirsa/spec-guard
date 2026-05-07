@@ -11,12 +11,16 @@ import tempfile
 import textwrap
 import time
 import traceback
+import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 
 
 REPO = Path(__file__).resolve().parents[1]
 CODEX_PACKAGE = "@openai/codex@0.128.0"
 MODEL = "gpt-5.5"
+BENCHMARK_RESULT_SCHEMA = "specguard-ai-benchmark/v1"
+BENCHMARK_SCRIPT_VERSION = "1"
 
 BASE_API = """
 Implement a single Python file named task_service.py.
@@ -809,9 +813,71 @@ def build_aggregates(results: list[dict]) -> dict:
     return aggregates
 
 
+def _unknown_if_empty(value: str) -> str:
+    stripped = value.strip()
+    return stripped if stripped else "unknown"
+
+
+def _git_output(*args: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(REPO), *args],
+            check=False,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return "unknown"
+    if completed.returncode != 0:
+        return "unknown"
+    return _unknown_if_empty(completed.stdout)
+
+
+def _package_version() -> str:
+    try:
+        pyproject = tomllib.loads((REPO / "pyproject.toml").read_text(encoding="utf-8"))
+        return _unknown_if_empty(str(pyproject["project"]["version"]))
+    except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError):
+        return "unknown"
+
+
+def build_benchmark_metadata(*, run_started_at: str | None = None) -> dict:
+    started_at = run_started_at or datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    status = _git_output("status", "--short")
+    return {
+        "schema": BENCHMARK_RESULT_SCHEMA,
+        "run_started_at": started_at,
+        "benchmark_script": {
+            "path": "tools/spec_driven_ai_benchmark.py",
+            "version": BENCHMARK_SCRIPT_VERSION,
+        },
+        "specguard": {
+            "package_version": _package_version(),
+            "git_commit": _git_output("rev-parse", "HEAD"),
+            "git_tag": _git_output("describe", "--tags", "--exact-match", "HEAD"),
+            "git_dirty": "unknown" if status == "unknown" else bool(status),
+        },
+    }
+
+
+def build_benchmark_payload(root: Path, results: list[dict], metadata: dict, *, temp_removed: bool) -> dict:
+    return {
+        "metadata": metadata,
+        "temp_root": str(root),
+        "model": MODEL,
+        "codex_cli": CODEX_PACKAGE,
+        "cases": {case["id"]: {"category": case["category"], "title": case["title"]} for case in CASES},
+        "results": results,
+        "aggregates": build_aggregates(results),
+        "temp_removed": temp_removed,
+    }
+
+
 def run_benchmark() -> dict:
     root = Path(tempfile.gettempdir()) / f"specguard-ai-benchmark-55-{next(tempfile._get_candidate_names())}"
     root.mkdir(parents=True, exist_ok=False)
+    metadata = build_benchmark_metadata()
     results: list[dict] = []
     removed = False
     payload: dict | None = None
@@ -828,15 +894,7 @@ def run_benchmark() -> dict:
                     results.append(future.result())
                 except Exception:
                     results.append({"workflow": workflow, "case": case_id, "error": traceback.format_exc()})
-        payload = {
-            "temp_root": str(root),
-            "model": MODEL,
-            "codex_cli": CODEX_PACKAGE,
-            "cases": {case["id"]: {"category": case["category"], "title": case["title"]} for case in CASES},
-            "results": results,
-            "aggregates": build_aggregates(results),
-            "temp_removed": False,
-        }
+        payload = build_benchmark_payload(root, results, metadata, temp_removed=False)
     finally:
         cleanup_error = None
         try:
@@ -846,13 +904,7 @@ def run_benchmark() -> dict:
             cleanup_error = repr(exc)
             removed = False
     if payload is None:
-        payload = {
-            "temp_root": str(root),
-            "model": MODEL,
-            "codex_cli": CODEX_PACKAGE,
-            "results": results,
-            "aggregates": build_aggregates(results),
-        }
+        payload = build_benchmark_payload(root, results, metadata, temp_removed=False)
     payload["temp_removed"] = removed
     if cleanup_error:
         payload["temp_remove_error"] = cleanup_error
