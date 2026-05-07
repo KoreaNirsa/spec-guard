@@ -1236,6 +1236,16 @@ def test_readiness_reports_ready_with_warnings_for_two_major_findings(tmp_path: 
     assert payload["summary"]["major"] == 2
 
 
+def test_readiness_review_records_llm_call_timing(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_readiness_review(feature, llm_client=TwoMajorReadinessLLM())
+
+    assert result.details["initial_llm_review_ms"] >= 0
+    assert any("LLM initial SpecGuard Review call" in message for message in result.messages)
+    assert any("TwoMajorReadinessLLM" in message for message in result.messages)
+
+
 def test_readiness_blocks_three_major_findings(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 
@@ -1599,6 +1609,15 @@ def test_pipeline_progress_line_uses_pipeline_phase() -> None:
 
     assert "Running pipeline" in line
     assert "running SpecGuard Review" in line
+
+
+def test_pipeline_progress_line_prefers_active_activity() -> None:
+    activity = "waiting for LLM SpecGuard Review (codex model=gpt-5.4, initial, 7 artifacts, 27087 chars)"
+
+    line = _progress_line("Running pipeline", elapsed_seconds=615, tick=5, activity=activity)
+
+    assert activity in line
+    assert "building tests, contracts, and outputs" not in line
 
 
 def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
