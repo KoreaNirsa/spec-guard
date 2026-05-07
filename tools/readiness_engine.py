@@ -4,11 +4,14 @@ import argparse
 import json
 import re
 import sys
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from tools.llm_client import describe_llm_client
+from tools.progress import progress_activity
 from tools.result import CheckResult
 from tools.ux import green, red, yellow
 
@@ -583,12 +586,20 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     artifacts = _review_artifacts(path)
     total_input_characters = sum(len(artifact.content) for artifact in artifacts)
     previous_report = _load_previous_report(path) if review_mode == "verification" else None
+    llm_elapsed_ms: int | None = None
+    llm_summary = describe_llm_client(llm_client) if llm_client else ""
     try:
-        issues = (
-            _analyze_with_llm(artifacts, llm_client, review_mode=review_mode, previous_report=previous_report)
-            if llm_client
-            else _analyze(artifacts)
-        )
+        if llm_client:
+            activity = (
+                f"waiting for LLM SpecGuard Review "
+                f"({llm_summary}, {review_mode}, {len(artifacts)} artifacts, {total_input_characters} chars)"
+            )
+            started = time.perf_counter()
+            with progress_activity(activity):
+                issues = _analyze_with_llm(artifacts, llm_client, review_mode=review_mode, previous_report=previous_report)
+            llm_elapsed_ms = int((time.perf_counter() - started) * 1000)
+        else:
+            issues = _analyze(artifacts)
     except (json.JSONDecodeError, ValueError) as exc:
         result.add_error(f"LLM SpecGuard Review response could not be parsed as JSON: {exc}")
         return result
@@ -606,6 +617,12 @@ def run_readiness_review(path: Path, llm_client: object | None = None, review_mo
     result.add_info(f"Generated {mode} {review_mode} machine-readable readiness report: {report_json_path}")
     result.add_info(f"Reviewed spec artifacts: {', '.join(artifact.path for artifact in artifacts)}")
     result.add_info(f"SpecGuard Review input size: {len(artifacts)} artifact(s), {total_input_characters} characters.")
+    if llm_elapsed_ms is not None:
+        result.details[f"{review_mode}_llm_review_ms"] = llm_elapsed_ms
+        result.add_info(
+            f"LLM {review_mode} SpecGuard Review call: {llm_summary}, "
+            f"{len(artifacts)} artifact(s), {total_input_characters} characters, {llm_elapsed_ms}ms."
+        )
     if implementation_ready:
         if _readiness_status(summary) == "ready_with_warnings":
             result.add_info(yellow(f"[READY_WITH_WARNINGS] {_readiness_text(summary)} Current: {critical_count} critical, {major_count} major, {minor_count} minor."))

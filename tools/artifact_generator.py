@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tools.contract_checker import CONTRACT_EXEMPTION_NAME, has_contract_exemption, has_openapi_paths
+from tools.llm_client import describe_llm_client
+from tools.progress import progress_activity
 from tools.verification_checker import verification_metadata
 
 
@@ -167,7 +169,10 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
         "# Supporting Spec Package Artifacts",
         supporting_artifacts,
     ])
-    output.write_text(llm_client.generate_text(instructions, input_text, max_output_tokens=3000), encoding="utf-8")
+    activity = f"waiting for LLM technical design ({describe_llm_client(llm_client)}, {len(input_text)} chars)"
+    with progress_activity(activity):
+        content = llm_client.generate_text(instructions, input_text, max_output_tokens=3000)
+    output.write_text(content, encoding="utf-8")
     return ArtifactWrite(output, created=True)
 
 

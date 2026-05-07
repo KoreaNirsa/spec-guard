@@ -11,6 +11,7 @@ from tools.artifact_generator import ensure_contract, generate_implementation_ou
 from tools.contract_checker import check_contracts
 from tools.readiness_engine import run_readiness_review
 from tools.llm_client import LLMConfigError, build_llm_client
+from tools.progress import progress_activity
 from tools.result import CheckResult
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
@@ -33,10 +34,25 @@ def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
     return any(source.exists() and source.stat().st_mtime > output_mtime for source in sources)
 
 
-def _time_stage(timings: dict[str, int], name: str, operation):
+def _stage_activity(name: str) -> str:
+    return {
+        "validation": "validating spec artifacts",
+        "technical_design": "preparing technical design",
+        "technical_validation": "validating technical design",
+        "readiness_review": "running SpecGuard Review",
+        "tests": "building test scenarios",
+        "verification": "checking verification artifacts",
+        "contract_generation": "building contract scaffold",
+        "contract_validation": "validating contracts",
+        "implementation_handoff": "building implementation handoff",
+    }.get(name, name.replace("_", " "))
+
+
+def _time_stage(timings: dict[str, int], name: str, operation, *, activity: str | None = None):
     started = time.perf_counter()
     try:
-        return operation()
+        with progress_activity(activity or _stage_activity(name)):
+            return operation()
     finally:
         timings[name] = int((time.perf_counter() - started) * 1000)
 
