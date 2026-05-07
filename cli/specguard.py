@@ -34,8 +34,10 @@ from tools.post_run import (
     generate_spec_revision,
     readiness_report_stale_reason,
     render_readiness_summary,
+    spec_revision_design_refresh_reason,
     validate_spec_revision_intent,
 )
+from tools.progress import current_progress_activity
 from tools.runner import run_pipeline
 from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.ux import bold, green, menu_item, print_banner, print_error, print_hint, print_section, print_success, print_warning, yellow
@@ -555,6 +557,7 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
     if selected is None:
         return result
     feature_dir, _report = selected
+    original_spec = feature_dir.joinpath("spec.md").read_text(encoding="utf-8")
 
     print_section("Spec Revision")
     print_hint(f"Generating a revised spec.md from Readiness Findings: {feature_dir}")
@@ -578,11 +581,22 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
         print_hint("SpecGuard stopped before Verification Review so you can review the applied spec diff.")
         return result
     _print_markdown_preview(revised_spec)
+    refresh_reason = spec_revision_design_refresh_reason(original_spec, revised_spec)
     spec_path = apply_spec_revision(feature_dir, revised_spec)
     print_success(f"[PASS] Updated spec: {spec_path}")
+    if refresh_reason:
+        print_hint(f"Technical design refresh required before Verification Review: {refresh_reason}.")
+    else:
+        print_hint("Reusing existing technical-design.md for Verification Review because the spec revision does not change design-significant sections.")
     print_hint("Automatically running Verification Review so SpecGuard Review checks whether the regenerated spec is ready.")
     try:
-        return _rerun_pipeline(args, llm_client, force=True, review_mode="verification")
+        return _rerun_pipeline(
+            args,
+            llm_client,
+            force=True,
+            review_mode="verification",
+            refresh_technical_design=bool(refresh_reason),
+        )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         print_hint("The follow-up menu is still open. Retry after adjusting timeout/model or review Readiness Findings.")
@@ -632,7 +646,7 @@ def _run_with_progress(label: str, operation):
         tick = 0
         while not stop.wait(0.25):
             elapsed = int(time.monotonic() - started_at)
-            sys.stdout.write("\r" + _progress_line(label, elapsed, tick))
+            sys.stdout.write("\r" + _progress_line(label, elapsed, tick, activity=current_progress_activity()))
             sys.stdout.flush()
             tick += 1
 
@@ -653,12 +667,15 @@ def _run_with_progress(label: str, operation):
         print_hint(f"{label} {status} after {elapsed}s.")
 
 
-def _progress_line(label: str, elapsed_seconds: int, tick: int) -> str:
+def _progress_line(label: str, elapsed_seconds: int, tick: int, activity: str | None = None) -> str:
     width = 18
     active = tick % width
     bar = "".join("#" if index <= active else "-" for index in range(width))
-    phases = _progress_phases(label)
-    phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
+    if activity:
+        phase = activity
+    else:
+        phases = _progress_phases(label)
+        phase = phases[min(elapsed_seconds // 20, len(phases) - 1)]
     return f"> {bold(label)} {green('[' + bar + ']')} {elapsed_seconds:>3}s - {phase}"
 
 
@@ -686,7 +703,14 @@ def _progress_phases(label: str) -> tuple[str, ...]:
     )
 
 
-def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, force: bool, review_mode: str = "initial") -> object:
+def _rerun_pipeline(
+    args: argparse.Namespace,
+    llm_client: object | None,
+    *,
+    force: bool,
+    review_mode: str = "initial",
+    refresh_technical_design: bool | None = None,
+) -> object:
     print_section("Pipeline")
     if review_mode == "verification":
         print_hint("Re-running SpecGuard in Verification Review mode from the regenerated specs.")
@@ -694,7 +718,13 @@ def _rerun_pipeline(args: argparse.Namespace, llm_client: object | None, *, forc
         print_hint("Re-running SpecGuard from the current specs.")
     result = _run_with_progress(
         "Running pipeline",
-        lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=force, review_mode=review_mode),
+        lambda: run_pipeline(
+            Path(args.path),
+            llm_client=llm_client,
+            force=force,
+            review_mode=review_mode,
+            refresh_technical_design=refresh_technical_design,
+        ),
     )
     result.print()
     return result

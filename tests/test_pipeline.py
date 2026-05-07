@@ -185,6 +185,28 @@ class FencedRevisionLLM(FakeRevisionLLM):
         return "```markdown\n" + super().generate_text(instructions, input_text, max_output_tokens) + "\n```"
 
 
+class AcceptanceOnlyRevisionLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        assert "spec refinement assistant" in instructions
+        return "\n".join([
+            "# Spec: feature",
+            "",
+            "## Requirements",
+            "",
+            "- The system must accept valid input.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Valid input succeeds.",
+            "- [ ] Valid input returns a success confirmation.",
+            "",
+            "## Error Cases",
+            "",
+            "- Invalid input",
+            "",
+        ])
+
+
 class TimeoutRevisionLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         from tools.llm_client import LLMRequestError
@@ -245,6 +267,20 @@ class TwoMajorReadinessLLM:
             for index in range(2)
         ]
         return json.dumps({"issues": issues})
+
+
+class CountingReadinessLLM(TwoMajorReadinessLLM):
+    def __init__(self, model: str = "gpt-test") -> None:
+        self.model = model
+        self.calls = 0
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.calls += 1
+        return super().generate_text(instructions, input_text, max_output_tokens)
+
+
+class AlternateCountingReadinessLLM(CountingReadinessLLM):
+    pass
 
 
 class ThreeMajorReadinessLLM:
@@ -642,6 +678,33 @@ def test_pipeline_regenerates_stale_technical_design(tmp_path: Path) -> None:
     assert design_path.stat().st_mtime > spec_path.stat().st_mtime
     assert any("Generated technical design" in message for message in result.messages)
     assert not any("stale technical design" in step.lower() for step in result.next_steps)
+
+
+def test_pipeline_can_reuse_stale_technical_design_when_refresh_disabled(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    design_path = feature / "technical-design.md"
+    spec_path = feature / "spec.md"
+    old_design = design_path.read_text(encoding="utf-8")
+    spec_path.write_text(
+        spec_path.read_text(encoding="utf-8") + "\n- The system must add an acceptance-only clarification.\n",
+        encoding="utf-8",
+    )
+    os.utime(design_path, (time.time() - 20, time.time() - 20))
+    os.utime(spec_path, (time.time() - 10, time.time() - 10))
+    llm = FakeLLM()
+
+    result = run_pipeline(
+        feature,
+        llm_client=llm,
+        force=True,
+        review_mode="verification",
+        refresh_technical_design=False,
+    )
+
+    assert result.ok
+    assert design_path.read_text(encoding="utf-8") == old_design
+    assert not any("technical design generator" in call.lower() for call in llm.calls)
+    assert any("Reused technical design" in message for message in result.messages)
 
 
 def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
@@ -1306,6 +1369,72 @@ def test_readiness_reports_ready_with_warnings_for_two_major_findings(tmp_path: 
     assert payload["summary"]["major"] == 2
 
 
+def test_readiness_review_reuses_cached_llm_report_for_unchanged_artifacts(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = CountingReadinessLLM()
+
+    first = run_readiness_review(feature, llm_client=llm)
+    second = run_readiness_review(feature, llm_client=llm)
+
+    cache_root = tmp_path / ".specguard" / "readiness-cache" / "feature"
+    cache_dirs = [path for path in cache_root.iterdir() if path.is_dir()]
+    assert first.ok
+    assert second.ok
+    assert llm.calls == 1
+    assert first.details["cache_hit"] is False
+    assert second.details["cache_hit"] is True
+    assert any("SpecGuard Review cache hit" in message for message in second.messages)
+    assert cache_dirs
+    assert cache_dirs[0].joinpath("readiness-review.md").exists()
+    assert cache_dirs[0].joinpath("readiness-review.json").exists()
+
+
+def test_readiness_review_cache_invalidates_when_artifact_changes(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = CountingReadinessLLM()
+
+    run_readiness_review(feature, llm_client=llm)
+    feature.joinpath("spec.md").write_text(
+        feature.joinpath("spec.md").read_text(encoding="utf-8") + "\n- The system must reject duplicate requests.\n",
+        encoding="utf-8",
+    )
+    result = run_readiness_review(feature, llm_client=llm)
+
+    assert result.details["cache_hit"] is False
+    assert llm.calls == 2
+
+
+def test_readiness_review_cache_invalidates_by_provider_model_and_review_mode(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    initial = CountingReadinessLLM(model="gpt-a")
+    different_model = CountingReadinessLLM(model="gpt-b")
+    different_provider = AlternateCountingReadinessLLM(model="gpt-a")
+    verification = CountingReadinessLLM(model="gpt-a")
+
+    run_readiness_review(feature, llm_client=initial)
+    model_result = run_readiness_review(feature, llm_client=different_model)
+    provider_result = run_readiness_review(feature, llm_client=different_provider)
+    verification_result = run_readiness_review(feature, llm_client=verification, review_mode="verification")
+
+    assert initial.calls == 1
+    assert different_model.calls == 1
+    assert different_provider.calls == 1
+    assert verification.calls == 1
+    assert model_result.details["cache_hit"] is False
+    assert provider_result.details["cache_hit"] is False
+    assert verification_result.details["cache_hit"] is False
+
+
+def test_readiness_review_records_llm_call_timing(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_readiness_review(feature, llm_client=TwoMajorReadinessLLM())
+
+    assert result.details["initial_llm_review_ms"] >= 0
+    assert any("LLM initial SpecGuard Review call" in message for message in result.messages)
+    assert any("TwoMajorReadinessLLM" in message for message in result.messages)
+
+
 def test_readiness_blocks_three_major_findings(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 
@@ -1355,9 +1484,25 @@ def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> N
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
     assert payload["review_mode"] == "verification"
+    assert payload["review_input"]["mode"] == "delta"
+    assert payload["review_input"]["total_characters"] < payload["input"]["total_characters"]
     assert "Verification Review board" in llm.instructions
     assert "Previous SpecGuard Review Findings" in llm.input_text
+    assert "Verification Review Delta Evidence" in llm.input_text
     assert "Delete semantics are unsafe" in llm.input_text
+
+
+def test_readiness_verification_mode_falls_back_without_previous_findings(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = CaptureVerificationReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm, review_mode="verification")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_input"]["mode"] == "full"
+    assert payload["review_input"]["fallback_reason"] == "missing previous findings"
+    assert "Current Spec Package Artifacts" in llm.input_text
 
 
 def test_strict_e2e_converges_after_spec_regeneration(tmp_path: Path) -> None:
@@ -1585,11 +1730,19 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     feature = copy_example(tmp_path, "risk/todo-api")
     result = run_pipeline(feature)
     rerun_result = CheckResult("SpecGuard pipeline")
-    captured = {"force": False, "review_mode": ""}
+    captured = {"force": False, "review_mode": "", "refresh_technical_design": None}
 
-    def fake_rerun_pipeline(args, llm_client, *, force: bool, review_mode: str = "initial"):
+    def fake_rerun_pipeline(
+        args,
+        llm_client,
+        *,
+        force: bool,
+        review_mode: str = "initial",
+        refresh_technical_design: bool | None = None,
+    ):
         captured["force"] = force
         captured["review_mode"] = review_mode
+        captured["refresh_technical_design"] = refresh_technical_design
         return rerun_result
 
     monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
@@ -1605,7 +1758,44 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert returned is rerun_result
     assert captured["force"]
     assert captured["review_mode"] == "verification"
+    assert captured["refresh_technical_design"] is True
     assert "scope every todo read and write by owner" in spec
+
+
+def test_post_run_spec_revision_reuses_technical_design_when_revision_is_acceptance_only(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    feature = write_feature(tmp_path)
+    result = run_pipeline(feature)
+    rerun_result = CheckResult("SpecGuard pipeline")
+    captured = {"refresh_technical_design": None}
+
+    def fake_rerun_pipeline(
+        args,
+        llm_client,
+        *,
+        force: bool,
+        review_mode: str = "initial",
+        refresh_technical_design: bool | None = None,
+    ):
+        captured["refresh_technical_design"] = refresh_technical_design
+        return rerun_result
+
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(force=False),
+        AcceptanceOnlyRevisionLLM(),
+        result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is rerun_result
+    assert captured["refresh_technical_design"] is False
+    assert "Reusing existing technical-design.md" in rendered
 
 
 def test_post_run_spec_revision_applies_intent_drift_with_top_level_audit(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -1671,12 +1861,28 @@ def test_pipeline_progress_line_uses_pipeline_phase() -> None:
     assert "running SpecGuard Review" in line
 
 
+def test_pipeline_progress_line_prefers_active_activity() -> None:
+    activity = "waiting for LLM SpecGuard Review (codex model=gpt-5.4, initial, 7 artifacts, 27087 chars)"
+
+    line = _progress_line("Running pipeline", elapsed_seconds=615, tick=5, activity=activity)
+
+    assert activity in line
+    assert "building tests, contracts, and outputs" not in line
+
+
 def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
     captured = {"label": ""}
 
-    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_mode: str = "initial") -> CheckResult:
+    def fake_run_pipeline(
+        path: Path,
+        llm_client=None,
+        force: bool = False,
+        review_mode: str = "initial",
+        refresh_technical_design: bool | None = None,
+    ) -> CheckResult:
         assert force
         assert review_mode == "initial"
+        assert refresh_technical_design is None
         return CheckResult("SpecGuard pipeline")
 
     def fake_run_with_progress(label, operation):
