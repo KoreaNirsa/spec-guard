@@ -25,7 +25,7 @@ Configure local Codex:
 specguard auth setup --mode codex --model gpt-5.4
 ```
 
-Codex mode defaults to `gpt-5.4` when setup asks for a model. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in.
+Codex mode defaults to `gpt-5.4` and a 600-second request timeout. Use `--model` to make the choice explicit, and use `--skip-login` when Codex is already logged in. `auth status` confirms saved configuration and local Codex command availability; it does not run a full live model request.
 
 Configure OpenAI Platform:
 
@@ -195,10 +195,10 @@ For API features, OpenAPI contracts must include at least one concrete path. Gen
 
 In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If Intent Preservation Check fails, the regenerated text is saved as `spec.proposed.md` and Verification Review is skipped until the user resolves the diff. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
-If a local Codex follow-up request times out, check `specguard auth status` and increase the timeout:
+If a local Codex request times out, check `specguard auth status` and increase the timeout:
 
 ```bash
-specguard auth setup --mode codex --timeout 240 --skip-login
+specguard auth setup --mode codex --timeout 600 --skip-login
 ```
 
 Use `--no-llm` only for deterministic local checks or CI examples:
