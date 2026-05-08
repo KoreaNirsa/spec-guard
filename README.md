@@ -11,9 +11,9 @@ It is not a prompt-to-code generator. SpecGuard helps you prepare an approved sp
 
 ## Demo Video
 
-<video src="assets/specguard-demo-v0.3.0.mp4" controls width="100%"></video>
+![SpecGuard demo walkthrough](assets/specguard-demo-v0.3.0.gif)
 
-[Watch the demo video](assets/specguard-demo-v0.3.0.mp4)
+[Watch the full-resolution MP4 demo](assets/specguard-demo-v0.3.0.mp4)
 
 The demo follows this flow:
 
