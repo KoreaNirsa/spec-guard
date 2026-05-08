@@ -2179,10 +2179,10 @@ def test_follow_up_empty_input_keeps_menu_open(monkeypatch, capsys) -> None:
 
     rendered = capsys.readouterr().out
     assert returned is result
-    assert "No action selected" in rendered
+    assert "Choose 1 to view findings, or q to exit." in rendered
 
 
-def test_follow_up_menu_uses_readiness_review_actions(monkeypatch, capsys) -> None:
+def test_follow_up_menu_hides_spec_regeneration_without_blocked_findings(monkeypatch, capsys) -> None:
     result = CheckResult("SpecGuard pipeline")
 
     monkeypatch.setattr("builtins.input", lambda _prompt: "q")
@@ -2196,8 +2196,45 @@ def test_follow_up_menu_uses_readiness_review_actions(monkeypatch, capsys) -> No
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
+    assert "[2] Regenerate spec from Readiness Findings" not in rendered
+    assert "Spec regeneration is hidden because no blocked Readiness Findings were found." in rendered
+    assert "[q] Exit" in rendered
+
+
+def test_follow_up_menu_shows_spec_regeneration_with_blocked_findings(monkeypatch, capsys) -> None:
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
+    monkeypatch.setattr("builtins.input", lambda _prompt: "q")
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "[1] View Readiness Findings" in rendered
     assert "[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)" in rendered
     assert "[q] Exit" in rendered
+
+
+def test_follow_up_menu_rejects_spec_regeneration_without_blocked_findings(monkeypatch, capsys) -> None:
+    choices = iter(["2", "q"])
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "Spec regeneration is available only when SpecGuard Review is blocked." in rendered
 
 
 def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:

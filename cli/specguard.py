@@ -527,9 +527,13 @@ def _has_terminal_environment_hint() -> bool:
 def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, result: object) -> object:
     path = Path(args.path)
     while True:
+        can_regenerate = bool(blocked_feature_reports(path))
         print_section("Continue")
         print(menu_item("[1] View Readiness Findings"))
-        print(menu_item("[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)"))
+        if can_regenerate:
+            print(menu_item("[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)"))
+        else:
+            print_hint("Spec regeneration is hidden because no blocked Readiness Findings were found.")
         print(menu_item("[q] Exit"))
         try:
             choice = input("Choose action: ").strip().lower()
@@ -539,7 +543,7 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             return result
 
         if choice == "":
-            print_hint("No action selected. Choose 1, 2, or q to exit.")
+            print_hint(_follow_up_choice_hint(can_regenerate))
             continue
         if choice in {"q", "quit", "exit"}:
             return result
@@ -547,10 +551,19 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             _print_readiness_review(path)
             continue
         if choice in {"2", "f", "fix", "revise"}:
+            if not can_regenerate:
+                print_warning("[WARN] Spec regeneration is available only when SpecGuard Review is blocked.")
+                continue
             result = _revise_spec_from_readiness(path, args, llm_client, result)
             continue
 
-        print_warning("[WARN] Choose 1, 2, or q to exit.")
+        print_warning(f"[WARN] {_follow_up_choice_hint(can_regenerate)}")
+
+
+def _follow_up_choice_hint(can_regenerate: bool) -> str:
+    if can_regenerate:
+        return "Choose 1 to view findings, 2 to regenerate the spec, or q to exit."
+    return "Choose 1 to view findings, or q to exit."
 
 
 def _print_readiness_review(path: Path) -> None:
