@@ -26,6 +26,8 @@ The demo follows this flow:
 
 Step 2 is for testing the example package. In real development, write your own product spec under `specs/<your-feature-name>/` instead of relying on the example package.
 
+After your real spec passes, give `implementation-output.md` to your AI coding agent to start spec-based implementation.
+
 ## Workflow At A Glance
 
 ```text
