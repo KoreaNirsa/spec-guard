@@ -33,8 +33,10 @@ Current default behavior:
 - `READY` means SpecGuard generated Test, Contract, and Implementation Handoff artifacts. Start external implementation from `implementation-output.md`.
 - `READY_WITH_WARNINGS` means implementation can proceed, but warning findings are available in `readiness-review.md` if the user wants to strengthen the spec first.
 - `NOT READY` means implementation is blocked. Review the findings, edit `spec.md` intentionally, and rerun `specguard run`.
-- Default low-mode `specguard run` uses fast heuristic SpecGuard Review first. Run `specguard run <path> --llm` or choose `SpecGuard Review (Detail)` from the forced follow-up menu when you want live LLM review.
-- Live LLM review checks the SpecGuard Review cache before waiting on a provider. Cache hit/miss status and concise miss reasons are printed and written to `readiness-review.json`.
+- Default low-mode `specguard run` uses fast heuristic SpecGuard Review first, even when a provider is configured. Run `specguard run <path> --llm` when you want provider-backed review in the main pipeline, or choose the detailed LLM spec review action from the follow-up menu when you want an on-demand review after the fast result.
+- SpecGuard Review reads authored Markdown under the feature package, including `discovery.md` and additional `.md` spec notes, while excluding generated SpecGuard artifacts.
+- In low mode, the first live LLM review may compact supporting authored Markdown for speed. The follow-up detailed LLM spec review sends full authored Markdown and writes `readiness-review-detail.md/json` without rewriting `spec.md`.
+- Live LLM review checks the SpecGuard Review cache before waiting on a provider. Cache hit/miss status and concise miss reasons are printed and written to the review JSON.
 - Default `specguard run` does not rewrite `spec.md`. Automatic Spec Revision is experimental opt-in with `--experimental-auto-revise --follow-up`.
 
 When experimental Spec Revision is enabled, low mode focuses the revision and Verification Review backlog on Critical blockers so warning cleanup does not create a long pre-implementation loop. The CLI prints Spec Revision step messages for context assembly, provider wait, intent preservation, file writes, and Verification Review reruns.
@@ -62,7 +64,9 @@ specguard --help
 
 ### 2. Configure Codex
 
-Then configure SpecGuard to use local Codex:
+Configure Codex only when you want LLM-backed steps such as LLM Discovery, LLM Technical Design, `specguard run --llm`, follow-up detailed LLM SpecGuard Review, experimental Spec Revision, Strict E2E, or SpecGuard PR Review setup. The default low `specguard run` still works without a provider by using deterministic generation and fast heuristic SpecGuard Review.
+
+To use local Codex:
 
 ```bash
 specguard auth setup --mode codex --model gpt-5.4
@@ -135,18 +139,20 @@ The default SpecGuard Review level is `low`. Low mode is a practical safety gate
 Technical Design -> Initial SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
-`run` also prints per-feature performance timings and records SpecGuard Review input size so slow stages and oversized review contexts can be diagnosed without exposing artifact contents. For live LLM review, `readiness-review.json` includes cache diagnostics such as hit/miss, miss reason, provider/model, prompt version, token budget, and non-sensitive input fingerprints.
+SpecGuard Review reads authored Markdown under the feature package: `discovery.md`, `spec.md`, `plan.md`, `tasks.md`, `constitution.md`, checklists, `technical-design.md`, and any additional user-authored `.md` spec notes. It excludes generated SpecGuard artifacts such as readiness reports, implementation handoff output, generated tests, generated contracts, and `.specguard/` cache or audit files.
+
+`run` also prints per-feature performance timings and records SpecGuard Review input size so slow stages and oversized review contexts can be diagnosed without exposing artifact contents. For live LLM review, review JSON includes cache diagnostics such as hit/miss, miss reason, provider/model, prompt version, token budget, and non-sensitive input fingerprints.
 
 If SpecGuard returns NOT READY, review the findings, edit the spec intentionally, and rerun `specguard run`:
 
 ```text
 [1] View Readiness Findings
-[2] Run SpecGuard Review (Detail) with the configured LLM
+[2] Run the LLM for a detailed spec review. This can take a few minutes.
 [u] I updated spec.md; rerun SpecGuard
 [q] Exit
 ```
 
-Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require user revision before implementation; Major and Minor findings remain visible as warnings. After an implementation-ready result, the default CLI prints a short Next Action guide instead of opening another cleanup loop.
+Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require user revision before implementation; Major and Minor findings remain visible as warnings. The follow-up detailed LLM review is review-only: it writes `readiness-review-detail.md/json` and does not rewrite `spec.md`. After an implementation-ready result, the default CLI prints a short Next Action guide instead of opening another cleanup loop.
 
 Automatic Spec Revision is experimental and disabled by default. To opt in, run with `--experimental-auto-revise --follow-up`; SpecGuard can then generate a revised `spec.md` from blocked Readiness Findings and rerun Verification Review. Spec revision is guarded by an Intent Preservation Check. In low mode, obvious out-of-scope additions such as retry queues, bulk import, or cross-workspace invite variants are auto-demoted back out of implementation scope when they match documented non-goals. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, weaken safety-critical requirements, or still move out-of-scope work into implementation scope, SpecGuard updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
 
@@ -169,6 +175,14 @@ specs/your-feature-name/implementation-output.md
 SpecGuard stops here. It does not invoke Codex, Claude Code, or another coding agent as an internal implementation stage.
 
 Give the approved spec package and `implementation-output.md` to your external coding agent. The generated application code should live under `develop/<stack>/`, for example:
+
+`implementation-output.md` lists the Agent Input Artifacts. It includes every authored Markdown spec artifact reviewed by SpecGuard, including `discovery.md` and additional `.md` notes, then adds generated tests and contracts as implementation and verification inputs. It excludes SpecGuard review reports, cache files, revision audit files, and other generated validation outputs.
+
+Artifact priority in the handoff:
+
+- Primary implementation basis: `spec.md`, `technical-design.md`, `tests/`, and `contracts/`.
+- Intent context: `discovery.md`, `plan.md`, `tasks.md`, `constitution.md`, `checklists/`, and additional authored Markdown notes.
+- If artifacts conflict or required behavior is missing, stop implementation, update the spec package, and rerun SpecGuard.
 
 ```text
 develop/spring/
@@ -292,7 +306,7 @@ Useful `run` options:
 - `--force`: regenerate derived artifacts such as technical design.
 - `--follow-up`: force the interactive continuation menu.
 - `--no-follow-up`: exit immediately after the pipeline.
-- `--llm`: run live LLM SpecGuard Review instead of the default fast heuristic low-mode review.
+- `--llm`: run live LLM SpecGuard Review in the main pipeline instead of the default fast heuristic low-mode review.
 - `--no-llm`: force local deterministic checks and heuristic SpecGuard Review.
 - `--review-level {low,medium,high}`: choose the SpecGuard Review depth; defaults to `low`, or `medium` for `--strict-e2e`.
 - `--experimental-auto-revise`: allow the follow-up menu to rewrite blocked specs and rerun Verification Review.
