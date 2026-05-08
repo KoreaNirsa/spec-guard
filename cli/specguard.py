@@ -141,10 +141,10 @@ def run(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
-    if not strict_e2e and not result.ok and not _experimental_auto_revise_enabled(args):
-        _print_manual_spec_revision_guidance(args)
+    if not strict_e2e:
+        _print_post_review_guidance(args, result)
 
-    if not strict_e2e and _should_offer_follow_up(args):
+    if not strict_e2e and _should_offer_follow_up(args, result):
         try:
             result = _run_follow_up_loop(args, llm_client, result)
         except LLMRequestError as exc:
@@ -503,11 +503,13 @@ def _resolve_local_command(command: str) -> str | None:
     return shutil.which(command) or shutil.which(f"{command}.cmd")
 
 
-def _should_offer_follow_up(args: argparse.Namespace) -> bool:
+def _should_offer_follow_up(args: argparse.Namespace, result: object | None = None) -> bool:
     if getattr(args, "no_follow_up", False):
         return False
     if getattr(args, "follow_up", False):
         return True
+    if result is not None and getattr(result, "ok", False):
+        return False
     if _is_ci_environment():
         return False
     if sys.stdin.isatty() and sys.stdout.isatty():
@@ -580,6 +582,144 @@ def _follow_up_choice_hint(can_regenerate: bool) -> str:
 
 def _experimental_auto_revise_enabled(args: argparse.Namespace) -> bool:
     return bool(getattr(args, "experimental_auto_revise", False))
+
+
+def _print_post_review_guidance(args: argparse.Namespace, result: object) -> None:
+    reports = feature_readiness_reports(Path(args.path))
+    if not reports:
+        if not getattr(result, "ok", False):
+            _print_manual_spec_revision_guidance(args)
+        return
+
+    status = _combined_readiness_status(reports)
+    if status != "not_ready" and not getattr(result, "ok", False):
+        print_section("Next Action")
+        print_hint("Summary: SpecGuard Review passed, but a later pipeline gate failed.")
+        print(f"- Fix the pipeline issue shown above, then rerun: specguard run {args.path}")
+        print("- Do not start external implementation until tests, contracts, and implementation handoff are ready.")
+        return
+
+    if status == "not_ready":
+        _print_not_ready_guidance(args, reports)
+        return
+    if status == "ready_with_warnings":
+        _print_ready_with_warnings_guidance(args, reports)
+        return
+    _print_ready_guidance(reports)
+
+
+def _combined_readiness_status(reports: list[tuple[Path, dict]]) -> str:
+    statuses = [_readiness_status_from_report(report) for _feature_dir, report in reports]
+    if "not_ready" in statuses:
+        return "not_ready"
+    if "ready_with_warnings" in statuses:
+        return "ready_with_warnings"
+    return "ready"
+
+
+def _readiness_status_from_report(report: dict) -> str:
+    readiness = report.get("readiness", {})
+    status = readiness.get("status") if isinstance(readiness, dict) else None
+    if report.get("blocked") or status == "not_ready":
+        return "not_ready"
+    if status == "ready_with_warnings":
+        return "ready_with_warnings"
+    return "ready"
+
+
+def _print_not_ready_guidance(args: argparse.Namespace, reports: list[tuple[Path, dict]]) -> None:
+    summary = _readiness_counts(reports)
+    issue = _top_readiness_issue(reports, ("Critical", "Major", "Minor"))
+    print_section("Next Action")
+    print_hint(f"Summary: Spec has blocking readiness gaps{_issue_suffix(issue)}.")
+    print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print("- Edit spec.md directly, or give SpecGuard Review (Detail) to an AI assistant to strengthen the spec.")
+    print(f"- Detail: {_review_detail_target(reports)}")
+    print(f"- Rerun after edits: specguard run {args.path}")
+    if not _experimental_auto_revise_enabled(args):
+        print_hint("SpecGuard did not rewrite spec.md automatically. Experimental auto-revision requires --experimental-auto-revise.")
+
+
+def _print_ready_with_warnings_guidance(args: argparse.Namespace, reports: list[tuple[Path, dict]]) -> None:
+    summary = _readiness_counts(reports)
+    issue = _top_readiness_issue(reports, ("Major", "Minor"))
+    print_section("Next Action")
+    print_hint(f"Summary: Spec is implementation-ready with warnings{_issue_suffix(issue)}.")
+    print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print("- You can proceed now; warnings are not blocking at this review level.")
+    print(f"- To strengthen the spec first, edit warning items from: {_review_detail_target(reports)}")
+    print(f"- Implementation handoff: {_implementation_handoff_target(reports)}")
+
+
+def _print_ready_guidance(reports: list[tuple[Path, dict]]) -> None:
+    print_section("Next Action")
+    print_hint("Summary: Spec is ready for implementation.")
+    print("- Test, Contract, and Implementation Handoff artifacts are generated.")
+    print(f"- Implementation handoff: {_implementation_handoff_target(reports)}")
+    print("- Give the approved spec package and handoff to your coding agent.")
+    print("- Keep application code under develop/<stack>/, then run the verification command named in the handoff.")
+
+
+def _readiness_counts(reports: list[tuple[Path, dict]]) -> dict[str, int]:
+    counts = {"critical": 0, "major": 0, "minor": 0}
+    for _feature_dir, report in reports:
+        summary = report.get("summary", {})
+        if not isinstance(summary, dict):
+            continue
+        for key in counts:
+            counts[key] += _int_count(summary.get(key))
+    return counts
+
+
+def _int_count(value: object) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _top_readiness_issue(reports: list[tuple[Path, dict]], severities: tuple[str, ...]) -> dict | None:
+    for severity in severities:
+        for _feature_dir, report in reports:
+            issues = report.get("issues", [])
+            if not isinstance(issues, list):
+                continue
+            for issue in issues:
+                if isinstance(issue, dict) and str(issue.get("severity")) == severity:
+                    return issue
+    return None
+
+
+def _issue_suffix(issue: dict | None) -> str:
+    if not issue:
+        return ""
+    title = str(issue.get("title") or "").strip()
+    if not title:
+        return ""
+    return f": {_short_text(title)}"
+
+
+def _short_text(text: str, limit: int = 84) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 3].rstrip() + "..."
+
+
+def _review_detail_target(reports: list[tuple[Path, dict]]) -> str:
+    if len(reports) == 1:
+        return _display_path(reports[0][0] / "readiness-review.md")
+    return "each feature's readiness-review.md"
+
+
+def _implementation_handoff_target(reports: list[tuple[Path, dict]]) -> str:
+    if len(reports) == 1:
+        return _display_path(reports[0][0] / "implementation-output.md")
+    return "each feature's implementation-output.md"
+
+
+def _display_path(path: Path) -> str:
+    return path.as_posix()
 
 
 def _print_manual_spec_revision_guidance(args: argparse.Namespace) -> None:

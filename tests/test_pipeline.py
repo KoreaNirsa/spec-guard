@@ -2293,6 +2293,13 @@ def test_follow_up_menu_can_be_forced_or_disabled(monkeypatch) -> None:
     assert not _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=False))
 
 
+def test_follow_up_menu_is_not_default_after_ready_result(monkeypatch) -> None:
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+
+    assert not _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=False), CheckResult("SpecGuard pipeline"))
+
+
 def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
     called = {"value": False}
 
@@ -2318,6 +2325,32 @@ def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
 
     assert exit_code == 0
     assert called["value"]
+
+
+def test_run_ready_result_does_not_open_default_follow_up_menu(monkeypatch) -> None:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        return CheckResult("SpecGuard pipeline")
+
+    def fail_follow_up(args, llm_client, result):
+        raise AssertionError("READY results should not open the default follow-up menu")
+
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+    monkeypatch.setattr(specguard_cli, "_run_follow_up_loop", fail_follow_up)
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=False,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    assert exit_code == 0
 
 
 def test_run_not_ready_guides_manual_spec_revision(monkeypatch, capsys) -> None:
@@ -2346,6 +2379,72 @@ def test_run_not_ready_guides_manual_spec_revision(monkeypatch, capsys) -> None:
     assert "SpecGuard did not rewrite spec.md automatically." in rendered
     assert "specguard run specs/example" in rendered
     assert "--experimental-auto-revise" in rendered
+
+
+def test_post_review_guidance_for_not_ready_report(monkeypatch, capsys) -> None:
+    report = {
+        "blocked": True,
+        "readiness": {"status": "not_ready", "implementation_ready": False},
+        "summary": {"critical": 1, "major": 2, "minor": 3},
+        "issues": [
+            {"severity": "Major", "title": "Minor ordering should not win"},
+            {"severity": "Critical", "title": "Missing rollback and failure handling details"},
+        ],
+    }
+    result = CheckResult("SpecGuard pipeline")
+    result.add_error("SpecGuard Review found blockers.")
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+
+    specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), result)
+
+    rendered = capsys.readouterr().out
+    assert "Next Action" in rendered
+    assert "blocking readiness gaps: Missing rollback and failure handling details" in rendered
+    assert "Current findings: Critical 1, Major 2, Minor 3." in rendered
+    assert "SpecGuard Review (Detail)" in rendered
+    assert "specs/example/readiness-review.md" in rendered
+    assert "specguard run specs/example" in rendered
+    assert "--experimental-auto-revise" in rendered
+
+
+def test_post_review_guidance_for_ready_with_warnings(monkeypatch, capsys) -> None:
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready_with_warnings", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 1, "minor": 1},
+        "issues": [
+            {"severity": "Minor", "title": "Observability signal names can be tighter"},
+            {"severity": "Major", "title": "Contract examples are incomplete"},
+        ],
+    }
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+
+    specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), CheckResult("SpecGuard pipeline"))
+
+    rendered = capsys.readouterr().out
+    assert "Next Action" in rendered
+    assert "implementation-ready with warnings: Contract examples are incomplete" in rendered
+    assert "You can proceed now; warnings are not blocking at this review level." in rendered
+    assert "specs/example/readiness-review.md" in rendered
+    assert "specs/example/implementation-output.md" in rendered
+
+
+def test_post_review_guidance_for_ready(monkeypatch, capsys) -> None:
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 0, "minor": 0},
+        "issues": [],
+    }
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+
+    specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), CheckResult("SpecGuard pipeline"))
+
+    rendered = capsys.readouterr().out
+    assert "Summary: Spec is ready for implementation." in rendered
+    assert "Test, Contract, and Implementation Handoff artifacts are generated." in rendered
+    assert "specs/example/implementation-output.md" in rendered
+    assert "develop/<stack>" in rendered
 
 
 def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:
