@@ -37,6 +37,7 @@ from tools.post_run import (
     soften_low_mode_spec_revision,
     validate_spec_revision_intent,
 )
+from tools.progress import current_progress_activity, progress_activity
 from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
@@ -406,6 +407,16 @@ class CaptureSpecRevisionLLM:
         self.instructions = instructions
         self.input_text = input_text
         return self.revised_spec
+
+
+class ActivityCaptureSpecRevisionLLM(CaptureSpecRevisionLLM):
+    def __init__(self, revised_spec: str) -> None:
+        super().__init__(revised_spec)
+        self.activity_during_generate: str | None = None
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.activity_during_generate = current_progress_activity()
+        return super().generate_text(instructions, input_text, max_output_tokens)
 
 
 class LowModeConvergingWarningLLM:
@@ -2166,7 +2177,16 @@ def test_post_run_low_mode_revision_prompt_uses_critical_backlog_only(tmp_path: 
     assert "Major and Minor findings are intentionally omitted" in llm.input_text
 
 
-def test_post_run_low_mode_revision_converges_to_ready_with_warnings(tmp_path: Path) -> None:
+def test_generate_spec_revision_marks_provider_wait_activity(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = ActivityCaptureSpecRevisionLLM(feature.joinpath("spec.md").read_text(encoding="utf-8"))
+
+    generate_spec_revision(feature, llm, review_level="low")
+
+    assert llm.activity_during_generate == "waiting for LLM Spec Revision response"
+
+
+def test_post_run_low_mode_revision_converges_to_ready_with_warnings(tmp_path: Path, capsys) -> None:
     feature = write_feature(tmp_path)
     llm = LowModeConvergingWarningLLM()
     result = run_pipeline(feature, llm_client=llm, review_level="low")
@@ -2189,6 +2209,11 @@ def test_post_run_low_mode_revision_converges_to_ready_with_warnings(tmp_path: P
     assert "Bulk import missing" not in llm.revision_inputs[0]
     assert "Owner scope missing" in llm.verification_inputs[0]
     assert "Bulk import missing" not in llm.verification_inputs[0]
+    rendered = capsys.readouterr().out
+    assert "Spec Revision step" in rendered
+    assert "checking intent preservation" in rendered
+    assert "writing updated spec.md" in rendered
+    assert "starting Verification Review rerun" in rendered
 
 
 def test_post_run_low_mode_revision_auto_demotes_out_of_scope_additions(
@@ -2335,6 +2360,23 @@ def test_pipeline_progress_line_prefers_active_activity() -> None:
 
     assert activity in line
     assert "building tests, contracts, and outputs" not in line
+
+
+def test_run_with_progress_announces_activity_changes(capsys) -> None:
+    def operation() -> str:
+        with progress_activity("assembling Spec Revision context"):
+            time.sleep(0.35)
+        with progress_activity("waiting for LLM Spec Revision response"):
+            time.sleep(0.35)
+        return "done"
+
+    result = specguard_cli._run_with_progress("Revising spec.md", operation, announce_activity=True)
+
+    rendered = capsys.readouterr().out
+    assert result == "done"
+    assert "Current step: assembling Spec Revision context." in rendered
+    assert "Current step: waiting for LLM Spec Revision response." in rendered
+    assert "Revising spec.md completed" in rendered
 
 
 def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:

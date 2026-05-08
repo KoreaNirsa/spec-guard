@@ -761,15 +761,19 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
     if selected is None:
         return result
     feature_dir, _report = selected
+    revision_steps = _StepLogger("Spec Revision")
+    revision_steps.step("loading current spec and Readiness Findings")
     original_spec = feature_dir.joinpath("spec.md").read_text(encoding="utf-8")
 
     print_section("Spec Revision")
     print_hint(f"Generating a revised spec.md from Readiness Findings: {feature_dir}")
     print_hint("Local Codex can take a minute or two here. Keep this terminal open.")
+    revision_steps.step("requesting revised spec from the configured LLM provider")
     try:
         revised_spec = _run_with_progress(
             "Revising spec.md",
             lambda: generate_spec_revision(feature_dir, llm_client, review_level=getattr(args, "review_level", None)),
+            announce_activity=True,
         )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
@@ -777,8 +781,10 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
         return result
     softened = None
     if getattr(args, "review_level", None) == "low":
+        revision_steps.step("applying low-mode scope safeguards")
         softened = soften_low_mode_spec_revision(feature_dir, revised_spec)
         revised_spec = softened.revised_spec
+    revision_steps.step("checking intent preservation")
     intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
     if softened and softened.demoted_items:
         demoted_preview = "; ".join(softened.demoted_items[:3])
@@ -787,6 +793,7 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
             f"({demoted_preview})."
         )
     if not intent_check.ok:
+        revision_steps.step("writing audit diff for manual review")
         audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
         intent_check.add_info(f"Updated working spec.md for in-place review: {audit.spec_path}")
         intent_check.add_info(f"Original spec and unified diff written to: {audit.audit_dir}")
@@ -798,13 +805,16 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
         demoted_preview = "; ".join(softened.demoted_items[:3])
         print_hint(f"SpecGuard low mode auto-demoted out-of-scope additions: {demoted_preview}.")
     _print_markdown_preview(revised_spec)
+    revision_steps.step("checking whether technical design must refresh")
     refresh_reason = spec_revision_design_refresh_reason(original_spec, revised_spec)
     if softened and softened.demoted_items:
+        revision_steps.step("writing updated spec.md and audit diff")
         audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
         spec_path = audit.spec_path
         print_hint(f"Original spec and unified diff written to: {audit.audit_dir}")
         print_hint(f"Review diff: {audit.diff_path}")
     else:
+        revision_steps.step("writing updated spec.md")
         spec_path = apply_spec_revision(feature_dir, revised_spec)
     print_success(f"[PASS] Updated spec: {spec_path}")
     if refresh_reason:
@@ -812,6 +822,7 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
     else:
         print_hint("Reusing existing technical-design.md for Verification Review because the spec revision does not change design-significant sections.")
     print_hint("Automatically running Verification Review so SpecGuard Review checks whether the regenerated spec is ready.")
+    revision_steps.step("starting Verification Review rerun")
     try:
         return _rerun_pipeline(
             args,
@@ -860,17 +871,40 @@ def _print_markdown_preview(markdown: str, *, max_lines: int = 22) -> None:
     print("")
 
 
-def _run_with_progress(label: str, operation):
+class _StepLogger:
+    def __init__(self, label: str) -> None:
+        self.label = label
+        self.started_at = time.monotonic()
+
+    def step(self, message: str) -> None:
+        elapsed = int(time.monotonic() - self.started_at)
+        print_hint(f"{self.label} step ({elapsed}s): {message}.")
+
+
+def _run_with_progress(label: str, operation, *, announce_activity: bool = False):
     stop = threading.Event()
     started_at = time.monotonic()
     failed = False
+    last_line_len = 0
+    last_activity: str | None = None
 
     def render() -> None:
+        nonlocal last_activity, last_line_len
         tick = 0
         while not stop.wait(0.25):
             elapsed = int(time.monotonic() - started_at)
-            sys.stdout.write("\r" + _progress_line(label, elapsed, tick, activity=current_progress_activity()))
+            activity = current_progress_activity()
+            if announce_activity and activity and activity != last_activity:
+                sys.stdout.write("\r" + (" " * last_line_len) + "\r")
+                sys.stdout.flush()
+                print_hint(f"Current step: {activity}.")
+                last_activity = activity
+                last_line_len = 0
+            line = _progress_line(label, elapsed, tick, activity=activity)
+            padding = " " * max(0, last_line_len - len(line))
+            sys.stdout.write("\r" + line + padding)
             sys.stdout.flush()
+            last_line_len = len(line)
             tick += 1
 
     thread = threading.Thread(target=render, daemon=True)
@@ -884,7 +918,7 @@ def _run_with_progress(label: str, operation):
         stop.set()
         thread.join(timeout=1)
         elapsed = int(time.monotonic() - started_at)
-        sys.stdout.write("\r" + (" " * 100) + "\r")
+        sys.stdout.write("\r" + (" " * max(100, last_line_len)) + "\r")
         sys.stdout.flush()
         status = "stopped" if failed else "completed"
         print_hint(f"{label} {status} after {elapsed}s.")

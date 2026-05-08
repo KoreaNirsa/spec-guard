@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from tools.progress import progress_activity
 from tools.result import CheckResult
 
 
@@ -154,55 +155,59 @@ def readiness_report_stale_reason(feature_dir: Path) -> str | None:
 
 
 def generate_spec_revision(feature_dir: Path, llm_client: object, review_level: str | None = None) -> str:
-    discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
-    spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
-    plan = _compact_text(_read_optional(feature_dir / "plan.md"), 2500)
-    tasks = _compact_text(_read_optional(feature_dir / "tasks.md"), 2500)
-    constitution = _compact_text(_read_optional(feature_dir / "constitution.md"), 2500)
-    checklist = _compact_text(_read_optional(feature_dir / "checklists" / "spec-readiness.md"), 2500)
-    technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
-    readiness_findings = _compact_readiness_findings(feature_dir, review_level=review_level)
-    low_mode = (review_level or _readiness_report_level(feature_dir)).lower() == "low"
-    priority_instruction = (
-        "Prioritize Critical Readiness Findings. Treat Major and Minor findings as optional warning cleanup only; "
-        "do not expand implementation scope to satisfy them."
-        if low_mode
-        else "Prioritize Critical and Major Readiness Findings."
-    )
-    instructions = "\n".join([
-        "You are SpecGuard's spec refinement assistant and implementation-readiness editor.",
-        "Revise spec.md so the Readiness Findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
-        "Maintain consistency with plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, and technical-design.md.",
-        "SpecGuard is not prompt-to-code. Do not write application code.",
-        "Return ONLY the full replacement Markdown for spec.md.",
-        "Preserve the feature intent, user goal, existing acceptance coverage, and explicit out-of-scope decisions.",
-        "Do not delete, weaken, or replace existing acceptance criteria unless the Readiness Findings directly require that change.",
-        "Do not promote any documented out-of-scope or non-goal item into Requirements, Acceptance Criteria, or Error Cases.",
-        "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
-        "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
-        "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
-        priority_instruction,
-        "Do not include commentary, patch markers, or code fences.",
-    ])
-    input_text = "\n\n".join([
-        "# Discovery excerpt",
-        discovery,
-        "# Current spec.md",
-        spec,
-        "# plan.md excerpt",
-        plan,
-        "# tasks.md excerpt",
-        tasks,
-        "# constitution.md excerpt",
-        constitution,
-        "# checklists/spec-readiness.md excerpt",
-        checklist,
-        "# technical-design.md excerpt",
-        technical_design,
-        "# Readiness Findings",
-        readiness_findings,
-    ])
-    return _strip_markdown_fence(llm_client.generate_text(instructions, input_text, max_output_tokens=3000))
+    with progress_activity("assembling Spec Revision context"):
+        discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
+        spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
+        plan = _compact_text(_read_optional(feature_dir / "plan.md"), 2500)
+        tasks = _compact_text(_read_optional(feature_dir / "tasks.md"), 2500)
+        constitution = _compact_text(_read_optional(feature_dir / "constitution.md"), 2500)
+        checklist = _compact_text(_read_optional(feature_dir / "checklists" / "spec-readiness.md"), 2500)
+        technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
+        readiness_findings = _compact_readiness_findings(feature_dir, review_level=review_level)
+        low_mode = (review_level or _readiness_report_level(feature_dir)).lower() == "low"
+        priority_instruction = (
+            "Prioritize Critical Readiness Findings. Treat Major and Minor findings as optional warning cleanup only; "
+            "do not expand implementation scope to satisfy them."
+            if low_mode
+            else "Prioritize Critical and Major Readiness Findings."
+        )
+        instructions = "\n".join([
+            "You are SpecGuard's spec refinement assistant and implementation-readiness editor.",
+            "Revise spec.md so the Readiness Findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
+            "Maintain consistency with plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, and technical-design.md.",
+            "SpecGuard is not prompt-to-code. Do not write application code.",
+            "Return ONLY the full replacement Markdown for spec.md.",
+            "Preserve the feature intent, user goal, existing acceptance coverage, and explicit out-of-scope decisions.",
+            "Do not delete, weaken, or replace existing acceptance criteria unless the Readiness Findings directly require that change.",
+            "Do not promote any documented out-of-scope or non-goal item into Requirements, Acceptance Criteria, or Error Cases.",
+            "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
+            "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
+            "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
+            priority_instruction,
+            "Do not include commentary, patch markers, or code fences.",
+        ])
+        input_text = "\n\n".join([
+            "# Discovery excerpt",
+            discovery,
+            "# Current spec.md",
+            spec,
+            "# plan.md excerpt",
+            plan,
+            "# tasks.md excerpt",
+            tasks,
+            "# constitution.md excerpt",
+            constitution,
+            "# checklists/spec-readiness.md excerpt",
+            checklist,
+            "# technical-design.md excerpt",
+            technical_design,
+            "# Readiness Findings",
+            readiness_findings,
+        ])
+    with progress_activity("waiting for LLM Spec Revision response"):
+        generated = llm_client.generate_text(instructions, input_text, max_output_tokens=3000)
+    with progress_activity("parsing revised spec markdown"):
+        return _strip_markdown_fence(generated)
 
 
 def apply_spec_revision(feature_dir: Path, revised_spec: str) -> Path:
