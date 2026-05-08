@@ -102,16 +102,20 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
     assert "Copied authored example specs" in copy_result.stdout
     assert (tmp_path / "specs" / "pip-smoke" / "contracts" / "openapi.yaml").exists()
     assert (tmp_path / "specs" / "pip-smoke" / "tests" / "team-invite.test.md").exists()
-    assert "Feature Specification: Team Invite" in (
-        tmp_path / "specs" / "pip-smoke" / "spec.md"
-    ).read_text(encoding="utf-8")
+    spec_text = (tmp_path / "specs" / "pip-smoke" / "spec.md").read_text(encoding="utf-8")
+    assert "# Spec: Todo Privacy API" in spec_text
+    assert "The server does not need to check which user created the todo." in spec_text
 
     run_result = _run(
         [str(specguard), "run", "specs/pip-smoke", "--no-llm", "--no-follow-up"],
         cwd=tmp_path,
+        check=False,
     )
-    assert run_result.returncode == 0
-    assert "External AI implementation handoff ready" in run_result.stdout
+    assert run_result.returncode == 1
+    assert "[FAIL] SpecGuard pipeline" in run_result.stdout
+    assert "[NOT READY]" in run_result.stdout
+    assert "Todo ownership boundary is unclear" in run_result.stdout
+    assert not (tmp_path / "specs" / "pip-smoke" / "implementation-output.md").exists()
 
 
 def test_package_metadata_supports_future_uvx_from_invocation() -> None:
