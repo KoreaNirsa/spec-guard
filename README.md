@@ -196,6 +196,8 @@ After implementation, open a PR in your GitHub repository with the completed cod
 
 The optional `SpecGuard PR Review` workflow compares the approved spec package to the PR diff and posts one advisory PR comment headed `SpecGuard PR Reviewer`.
 
+A live SpecGuard PR Review example is available in [PR #32](https://github.com/KoreaNirsa/spec-guard/pull/32).
+
 Install it explicitly when you want AI-assisted review comments:
 
 ```bash
@@ -273,7 +275,7 @@ Readiness states are interpreted by the selected review level:
 
 - Low: READY when Critical=0 and no warnings exist; READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist; NOT_READY only when Critical>=1.
 - Medium: READY when Critical=0, Major=0, Minor<=5; READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; NOT_READY when Critical>=1, Major>=3, or Minor>10.
-- High: uses the medium gate thresholds in v0.2.7 with stricter review attention.
+- High: uses the medium gate thresholds introduced in v0.2.7 with stricter review attention.
 
 Critical findings always block implementation. Major findings should represent an implementation-critical product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
 
