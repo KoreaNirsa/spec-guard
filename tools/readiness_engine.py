@@ -1181,6 +1181,7 @@ def run_readiness_review(
     llm_client: object | None = None,
     review_mode: str = "initial",
     review_level: str = DEFAULT_REVIEW_LEVEL,
+    report_stem: str = "readiness-review",
 ) -> CheckResult:
     if review_mode not in READINESS_REVIEW_MODES:
         raise ValueError(f"Unsupported SpecGuard Review mode: {review_mode}")
@@ -1190,8 +1191,8 @@ def run_readiness_review(
     discovery_path = path / "discovery.md"
     spec_path = path / "spec.md"
     technical_design_path = path / "technical-design.md"
-    report_path = path / "readiness-review.md"
-    report_json_path = path / "readiness-review.json"
+    report_path = path / f"{report_stem}.md"
+    report_json_path = path / f"{report_stem}.json"
 
     if not discovery_path.exists():
         result.add_error(f"Missing discovery file: {discovery_path}")

@@ -33,6 +33,7 @@ Current default behavior:
 - `READY` means SpecGuard generated Test, Contract, and Implementation Handoff artifacts. Start external implementation from `implementation-output.md`.
 - `READY_WITH_WARNINGS` means implementation can proceed, but warning findings are available in `readiness-review.md` if the user wants to strengthen the spec first.
 - `NOT READY` means implementation is blocked. Review the findings, edit `spec.md` intentionally, and rerun `specguard run`.
+- Default low-mode `specguard run` uses fast heuristic SpecGuard Review first. Run `specguard run <path> --llm` or choose `SpecGuard Review (Detail)` from the forced follow-up menu when you want live LLM review.
 - Default `specguard run` does not rewrite `spec.md`. Automatic Spec Revision is experimental opt-in with `--experimental-auto-revise --follow-up`.
 
 When experimental Spec Revision is enabled, low mode focuses the revision and Verification Review backlog on Critical blockers so warning cleanup does not create a long pre-implementation loop. The CLI prints Spec Revision step messages for context assembly, provider wait, intent preservation, file writes, and Verification Review reruns.
@@ -125,7 +126,7 @@ The example is for trying the full `run` pipeline before authoring your own prod
 specguard run specs/your-feature-name
 ```
 
-The default SpecGuard Review level is `low`. Low mode is a practical safety gate: Critical findings block, while Major and Minor findings are reported as warnings so users are not forced into long cleanup loops for non-critical improvements.
+The default SpecGuard Review level is `low`. Low mode is a practical safety gate: Critical findings block, while Major and Minor findings are reported as warnings so users are not forced into long cleanup loops for non-critical improvements. In the default low path, SpecGuard uses fast heuristic review first so the first run is not blocked on a live LLM provider.
 
 `run` builds and validates the implementation basis:
 
@@ -139,6 +140,8 @@ If SpecGuard returns NOT READY, review the findings, edit the spec intentionally
 
 ```text
 [1] View Readiness Findings
+[2] Run SpecGuard Review (Detail) with the configured LLM
+[u] I updated spec.md; rerun SpecGuard
 [q] Exit
 ```
 
@@ -288,7 +291,8 @@ Useful `run` options:
 - `--force`: regenerate derived artifacts such as technical design.
 - `--follow-up`: force the interactive continuation menu.
 - `--no-follow-up`: exit immediately after the pipeline.
-- `--no-llm`: use local deterministic checks and heuristic SpecGuard Review.
+- `--llm`: run live LLM SpecGuard Review instead of the default fast heuristic low-mode review.
+- `--no-llm`: force local deterministic checks and heuristic SpecGuard Review.
 - `--review-level {low,medium,high}`: choose the SpecGuard Review depth; defaults to `low`, or `medium` for `--strict-e2e`.
 - `--experimental-auto-revise`: allow the follow-up menu to rewrite blocked specs and rerun Verification Review.
 - `--strict-e2e`: experimental strict automation that uses an LLM to regenerate blocked specs and rerun Verification Review.

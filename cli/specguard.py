@@ -44,6 +44,7 @@ from tools.readiness_engine import (
     MEDIUM_REVIEW_LEVEL,
     READINESS_REVIEW_LEVELS,
     normalize_review_level,
+    run_readiness_review,
     review_level_gate_text,
 )
 from tools.runner import run_pipeline
@@ -97,25 +98,28 @@ def init_project(args: argparse.Namespace) -> int:
 
 def run(args: argparse.Namespace) -> int:
     print_banner("Run Technical Design, SpecGuard Review, Test, Contract, and Implementation Handoff.")
-    llm_client = _build_llm_client(args, purpose="run", allow_setup=False)
-    if _requires_llm(args) and llm_client is None:
-        return 1
     strict_e2e = getattr(args, "strict_e2e", False)
     strict_max_iterations = getattr(args, "strict_max_iterations", 3)
-    if strict_e2e and llm_client is None:
-        print_error("[FAIL] Strict E2E requires an LLM provider.")
-        print("- Re-run without --no-llm, or configure one: specguard auth setup")
-        return 1
     review_level = _resolve_review_level(args, strict_e2e=strict_e2e)
     if review_level is None:
         return 1
     args.review_level = review_level
+    live_review = _uses_live_review(args, review_level=review_level, strict_e2e=strict_e2e)
+    llm_client = _build_llm_client(args, purpose="run", allow_setup=False) if live_review else None
+    if live_review and llm_client is None:
+        return 1
+    if strict_e2e and llm_client is None:
+        print_error("[FAIL] Strict E2E requires an LLM provider.")
+        print("- Re-run without --no-llm, or configure one: specguard auth setup")
+        return 1
 
     print_section("Pipeline")
     if args.force:
         print_hint("Regenerating derived artifacts where SpecGuard owns the output.")
     elif strict_e2e:
         print_hint(f"Running strict E2E with at most {strict_max_iterations} verification iteration(s).")
+    elif _is_default_fast_low_run(args, review_level):
+        print_hint("Default low mode uses fast heuristic SpecGuard Review first; run Detail review on demand with --llm or the follow-up menu.")
     else:
         print_hint("Missing artifacts are generated; stale tests and contracts are refreshed from the spec.")
     print_hint(f"SpecGuard Review level: {review_level} ({review_level_gate_text(review_level)}).")
@@ -365,6 +369,20 @@ def _requires_llm(args: argparse.Namespace) -> bool:
     return not getattr(args, "no_llm", False)
 
 
+def _uses_live_review(args: argparse.Namespace, *, review_level: str, strict_e2e: bool) -> bool:
+    if getattr(args, "no_llm", False):
+        return False
+    if strict_e2e:
+        return True
+    if getattr(args, "llm", False) or getattr(args, "llm_mode", None) or getattr(args, "llm_model", None):
+        return True
+    return review_level != DEFAULT_REVIEW_LEVEL
+
+
+def _is_default_fast_low_run(args: argparse.Namespace, review_level: str) -> bool:
+    return review_level == DEFAULT_REVIEW_LEVEL and not _uses_live_review(args, review_level=review_level, strict_e2e=False)
+
+
 def _resolve_review_level(args: argparse.Namespace, *, strict_e2e: bool = False) -> str | None:
     default = MEDIUM_REVIEW_LEVEL if strict_e2e else DEFAULT_REVIEW_LEVEL
     configured = getattr(args, "review_level", None) or os.getenv("SPECGUARD_REVIEW_LEVEL") or default
@@ -534,10 +552,15 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
         has_blocked_findings = bool(blocked_feature_reports(path))
         auto_revise_enabled = _experimental_auto_revise_enabled(args)
         can_regenerate = has_blocked_findings and auto_revise_enabled
+        can_detail_review = not getattr(args, "no_llm", False)
         print_section("Continue")
         print(menu_item("[1] View Readiness Findings"))
+        if can_detail_review:
+            print(menu_item("[2] Run SpecGuard Review (Detail) with the configured LLM"))
+        print(menu_item("[u] I updated spec.md; rerun SpecGuard"))
         if can_regenerate:
-            print(menu_item("[2] Experimental auto-revise spec from Readiness Findings"))
+            revise_choice = "3" if can_detail_review else "2"
+            print(menu_item(f"[{revise_choice}] Experimental auto-revise spec from Readiness Findings"))
         elif has_blocked_findings:
             print_hint("Automatic Spec Revision is experimental and disabled by default.")
             print_hint("Edit spec.md using the findings, then rerun SpecGuard.")
@@ -552,14 +575,20 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             return result
 
         if choice == "":
-            print_hint(_follow_up_choice_hint(can_regenerate))
+            print_hint(_follow_up_choice_hint(can_regenerate, can_detail_review))
             continue
         if choice in {"q", "quit", "exit"}:
             return result
         if choice in {"1", "r", "review"}:
             _print_readiness_review(path)
             continue
-        if choice in {"2", "f", "fix", "revise"}:
+        if choice in {"2", "d", "detail"} and can_detail_review:
+            result = _run_detail_review(path, args, result, llm_client)
+            continue
+        if choice in {"u", "updated", "rerun"}:
+            result = _rerun_after_user_edit(args, llm_client)
+            continue
+        if choice in {"3", "f", "fix", "revise"} or (choice == "2" and not can_detail_review):
             if has_blocked_findings and not auto_revise_enabled:
                 print_warning("[WARN] Automatic Spec Revision is experimental and disabled by default.")
                 print("- Edit spec.md using the Readiness Findings, then rerun SpecGuard.")
@@ -571,13 +600,17 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             result = _revise_spec_from_readiness(path, args, llm_client, result)
             continue
 
-        print_warning(f"[WARN] {_follow_up_choice_hint(can_regenerate)}")
+        print_warning(f"[WARN] {_follow_up_choice_hint(can_regenerate, can_detail_review)}")
 
 
-def _follow_up_choice_hint(can_regenerate: bool) -> str:
+def _follow_up_choice_hint(can_regenerate: bool, can_detail_review: bool = False) -> str:
+    choices = ["1 to view findings"]
+    if can_detail_review:
+        choices.append("2 for SpecGuard Review (Detail)")
+    choices.append("u after editing spec.md")
     if can_regenerate:
-        return "Choose 1 to view findings, 2 for experimental auto-revision, or q to exit."
-    return "Choose 1 to view findings, or q to exit."
+        choices.append(("3" if can_detail_review else "2") + " for experimental auto-revision")
+    return "Choose " + ", ".join(choices) + ", or q to exit."
 
 
 def _experimental_auto_revise_enabled(args: argparse.Namespace) -> bool:
@@ -746,10 +779,62 @@ def _print_readiness_review(path: Path) -> None:
             print(yellow("- rerun did not update SpecGuard Review if validation failed before the SpecGuard Review step."))
 
 
-def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:
-    if llm_client is None:
-        print_warning("[WARN] LLM spec revision requires a configured provider.")
+def _follow_up_llm_client(args: argparse.Namespace, llm_client: object | None, *, action_name: str) -> object | None:
+    if llm_client is not None:
+        return llm_client
+    if getattr(args, "no_llm", False):
+        print_warning(f"[WARN] {action_name} requires a configured LLM provider.")
         print("- Re-run without --no-llm, or configure one: specguard auth setup")
+        return None
+    follow_up_args = argparse.Namespace(**vars(args))
+    follow_up_args.no_llm = False
+    client = _build_llm_client(follow_up_args, purpose="run", allow_setup=False)
+    if client is None:
+        print_warning(f"[WARN] {action_name} requires a configured LLM provider.")
+        print("- Configure one: specguard auth setup")
+    return client
+
+
+def _run_detail_review(path: Path, args: argparse.Namespace, result: object, llm_client: object | None = None) -> object:
+    reports = feature_readiness_reports(path)
+    if not reports:
+        print_warning("[WARN] No SpecGuard Review report found. Run the pipeline first.")
+        return result
+    selected = _select_feature_report(reports)
+    if selected is None:
+        return result
+    feature_dir, _report = selected
+    detail_client = _follow_up_llm_client(args, llm_client, action_name="SpecGuard Review (Detail)")
+    if detail_client is None:
+        print("- Or continue with the fast heuristic review already generated.")
+        return result
+    review_level = normalize_review_level(getattr(args, "review_level", None) or os.getenv("SPECGUARD_REVIEW_LEVEL") or DEFAULT_REVIEW_LEVEL)
+    print_section("SpecGuard Review (Detail)")
+    print_hint(f"Running detailed LLM review for: {feature_dir}")
+    print_hint("This writes readiness-review-detail.md/json and does not replace the fast readiness review.")
+    detail_result = _run_with_progress(
+        "Running SpecGuard Review (Detail)",
+        lambda: run_readiness_review(
+            feature_dir,
+            llm_client=detail_client,
+            review_mode="initial",
+            review_level=review_level,
+            report_stem="readiness-review-detail",
+        ),
+    )
+    detail_result.print()
+    return result
+
+
+def _rerun_after_user_edit(args: argparse.Namespace, llm_client: object | None) -> object:
+    print_section("Rerun")
+    print_hint("Spec was updated. Re-running SpecGuard from the current spec package.")
+    return _rerun_pipeline(args, llm_client, force=False)
+
+
+def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client: object | None, result: object) -> object:
+    llm_client = _follow_up_llm_client(args, llm_client, action_name="LLM spec revision")
+    if llm_client is None:
         return result
 
     reports = blocked_feature_reports(path) or feature_readiness_reports(path)
@@ -1091,11 +1176,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate specs and produce implementation handoff artifacts",
         description=(
             "Run validation, technical design, SpecGuard Review, tests, contracts, and implementation handoff.\n"
-            "LLM review is enabled by default when a provider is configured; use --no-llm for local deterministic checks."
+            "Default low mode uses fast heuristic review first; use --llm for live SpecGuard Review (Detail)."
         ),
         epilog=(
             "Examples:\n"
             "  specguard run specs/team-invite\n"
+            "  specguard run specs/team-invite --llm\n"
             "  specguard run specs/team-invite --review-level medium\n"
             "  specguard run specs/team-invite --no-llm --no-follow-up\n"
             "  specguard run specs/team-invite --experimental-auto-revise --follow-up\n"
@@ -1107,7 +1193,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_parser.add_argument("path", nargs="?", default="specs", help="Spec package directory or specs root to process")
     run_parser.add_argument("--force", action="store_true", help="Regenerate derived artifacts instead of reusing existing files")
-    run_parser.add_argument("--llm", action="store_true", help="Compatibility flag; LLM review is already the default")
+    run_parser.add_argument("--llm", action="store_true", help="Run live LLM SpecGuard Review instead of the default fast heuristic low-mode review")
     run_parser.add_argument("--no-llm", action="store_true", help="Skip live LLM requests and use local generators plus heuristic SpecGuard Review")
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Use this provider for live review without changing saved config")
     run_parser.add_argument("--llm-model", help="Use this model for live review without changing saved config")

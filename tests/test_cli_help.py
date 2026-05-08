@@ -27,13 +27,15 @@ def test_top_level_help_lists_user_workflow_order(capsys: pytest.CaptureFixture[
 def test_run_help_explains_llm_follow_up_and_strict_modes(capsys: pytest.CaptureFixture[str]) -> None:
     help_text = _help_text(capsys, "run")
 
-    assert "LLM review is enabled by default when a provider is configured" in help_text
+    assert "Default low mode uses fast heuristic review first" in help_text
+    assert "Run live LLM SpecGuard Review" in help_text
     assert "Skip live LLM requests and use local generators plus" in help_text
     assert "--no-follow-up" in help_text
     assert "--follow-up" in help_text
     assert "--experimental-auto-revise" in help_text
     assert "--strict-e2e" in help_text
     assert "--review-level {high,low,medium}" in help_text
+    assert "specguard run specs/team-invite --llm" in help_text
     assert "specguard run specs/team-invite --review-level medium" in help_text
     assert "specguard run specs/team-invite --experimental-auto-revise --follow-up" in help_text
     assert "specguard auth setup --mode codex --timeout 600 --skip-login" in help_text
