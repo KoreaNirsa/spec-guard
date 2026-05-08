@@ -21,6 +21,8 @@ SpecGuard supports two LLM provider modes today:
 
 Claude Code provider integration is planned later. For now, Claude Code should be used separately after SpecGuard produces an approved implementation handoff.
 
+Provider setup is optional for the default low `specguard run` path because the first review uses fast heuristic SpecGuard Review. Configure a provider when you want LLM Discovery, LLM Technical Design, `specguard run --llm`, the follow-up detailed LLM spec review action, experimental Spec Revision, Strict E2E, or the optional SpecGuard PR Review workflow.
+
 Configure local Codex:
 
 ```bash
@@ -144,10 +146,11 @@ Run:
 specguard run specs/my-feature
 ```
 
-`run` uses the configured LLM provider for Technical Design and SpecGuard Review. Use `--force` when regenerated derived artifacts are needed:
+By default, `run` uses deterministic local artifact generation and fast heuristic SpecGuard Review in low mode. Use `--llm` when you want provider-backed Technical Design and SpecGuard Review in the main pipeline. Use `--force` when regenerated derived artifacts are needed:
 
 ```bash
 specguard run specs/my-feature --force
+specguard run specs/my-feature --llm
 ```
 
 SpecGuard then performs:
@@ -218,7 +221,7 @@ specs/my-feature/
 `-- implementation-output.md
 ```
 
-`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, the approved artifact list, and the expected verification command or accepted verification artifact for coding agents.
+`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, the approved artifact list, artifact priority guidance, and the expected verification command or accepted verification artifact for coding agents. The approved artifact list includes every authored Markdown artifact reviewed by SpecGuard, then appends generated tests and contracts as implementation and verification inputs. Generated SpecGuard review reports, cache files, and revision audit files are excluded.
 
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
@@ -250,6 +253,7 @@ tasks.md
 constitution.md
 checklists/spec-readiness.md
 technical-design.md
+additional authored .md notes
 ```
 
 Then run:
@@ -264,29 +268,39 @@ Repeat until the SpecGuard Readiness Gate threshold is met. Automatic Spec Revis
 
 After SpecGuard reports READY or READY_WITH_WARNINGS, hand the implementation basis to Codex, Claude Code, or another coding agent outside the SpecGuard pipeline. SpecGuard does not invoke or supervise implementation while the package is NOT_READY.
 
-Coding agents should focus on:
+Coding agents should read every Agent Input Artifact listed in `implementation-output.md`. The handoff includes authored Markdown reviewed by SpecGuard plus generated tests and contracts:
 
 ```text
+discovery.md
 spec.md
 plan.md
 tasks.md
 constitution.md
 checklists/spec-readiness.md
 technical-design.md
+additional authored .md notes
 tests/
 contracts/
 implementation-output.md
 ```
 
-Coding agents should not treat these as implementation input:
+Use this priority when instructing a coding agent:
+
+- Primary implementation basis: `spec.md`, `technical-design.md`, `tests/`, and `contracts/`.
+- Intent context: `discovery.md`, `plan.md`, `tasks.md`, `constitution.md`, `checklists/`, and additional authored Markdown notes.
+- If artifacts conflict or required behavior is missing, stop implementation, update the spec package, and rerun SpecGuard.
+
+Coding agents should not treat these generated SpecGuard outputs as implementation requirements:
 
 ```text
-discovery.md
 readiness-review.md
 readiness-review.json
+readiness-review-detail.md
+readiness-review-detail.json
+.specguard/
 ```
 
-Those files are SpecGuard validation artifacts.
+Those files are validation outputs or operational records.
 
 Generated application code should go under:
 
