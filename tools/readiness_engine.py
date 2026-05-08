@@ -30,7 +30,7 @@ DELTA_REVIEW_CORE_ARTIFACTS = {"spec.md", "technical-design.md"}
 DELTA_REVIEW_MAX_EXCERPTS_PER_ARTIFACT = 3
 DELTA_REVIEW_EXCERPT_RADIUS = 450
 GENERATED_ARTIFACT_MANIFEST_PATH = "generated-artifacts.md"
-LOW_REVIEW_FULL_ARTIFACTS = {"spec.md", "technical-design.md", GENERATED_ARTIFACT_MANIFEST_PATH}
+LOW_REVIEW_FULL_ARTIFACTS = {"spec.md", "technical-design.md"}
 LOW_REVIEW_ARTIFACT_LIMITS = {
     "discovery.md": 1200,
     "plan.md": 1200,
@@ -45,12 +45,20 @@ READINESS_CACHE_PROMPT_VERSION = "readiness-review-v1"
 SPECGUARD_STATE_DIR = ".specguard"
 READINESS_CACHE_DIR = "readiness-cache"
 GENERATED_ARTIFACT_NAMES = {
+    GENERATED_ARTIFACT_MANIFEST_PATH,
     "readiness-review.md",
     "readiness-review.json",
+    "readiness-review-detail.md",
+    "readiness-review-detail.json",
     "implementation-output.md",
     "spec.proposed.md",
     "grill.md",
     "grill.json",
+}
+GENERATED_ARTIFACT_DIRS = {
+    SPECGUARD_STATE_DIR,
+    "contracts",
+    "tests",
 }
 
 
@@ -208,6 +216,13 @@ def _is_placeholder(text: str) -> bool:
 
 
 def _review_artifacts(path: Path) -> list[ReviewArtifact]:
+    return [
+        ReviewArtifact(relative_path.as_posix(), (path / relative_path).read_text(encoding="utf-8"))
+        for relative_path in review_artifact_paths(path)
+    ]
+
+
+def review_artifact_paths(path: Path) -> list[Path]:
     preferred = [
         path / "discovery.md",
         path / "spec.md",
@@ -219,49 +234,24 @@ def _review_artifacts(path: Path) -> list[ReviewArtifact]:
     preferred.extend(sorted((path / "checklists").glob("*.md")) if (path / "checklists").exists() else [])
 
     seen: set[Path] = set()
-    artifacts: list[ReviewArtifact] = []
+    artifacts: list[Path] = []
     for candidate in preferred + sorted(path.rglob("*.md")):
         if candidate in seen or not candidate.exists() or not candidate.is_file():
             continue
         seen.add(candidate)
         relative = candidate.relative_to(path)
-        if candidate.name in GENERATED_ARTIFACT_NAMES:
+        if _is_generated_review_artifact(relative):
             continue
-        if relative.parts and relative.parts[0] == "tests":
-            continue
-        artifacts.append(ReviewArtifact(str(relative).replace("\\", "/"), candidate.read_text(encoding="utf-8")))
-    manifest = _generated_artifact_manifest(path)
-    if manifest is not None:
-        artifacts.append(manifest)
+        artifacts.append(relative)
     return artifacts
 
 
-def _generated_artifact_manifest(path: Path) -> ReviewArtifact | None:
-    generated_roots = [path / "contracts", path / "tests"]
-    manifest_entries: list[str] = []
-    for root in generated_roots:
-        if not root.exists():
-            continue
-        for candidate in sorted(item for item in root.rglob("*") if item.is_file()):
-            relative = candidate.relative_to(path)
-            relative_path = str(relative).replace("\\", "/")
-            if candidate.name in GENERATED_ARTIFACT_NAMES:
-                continue
-            manifest_entries.append(f"- {relative_path}: present")
-
-    if not manifest_entries:
-        return None
-
-    content = "\n".join([
-        "# Generated Artifact Manifest",
-        "",
-        "These generated verification artifacts exist on disk but are not included in full to keep SpecGuard Review input small.",
-        "Use this manifest only as availability evidence for referenced tests and contracts; do not infer additional requirements from it.",
-        "",
-        *manifest_entries,
-        "",
-    ])
-    return ReviewArtifact(GENERATED_ARTIFACT_MANIFEST_PATH, content)
+def _is_generated_review_artifact(relative: Path) -> bool:
+    if not relative.parts:
+        return False
+    if relative.parts[0] in GENERATED_ARTIFACT_DIRS:
+        return True
+    return relative.name in GENERATED_ARTIFACT_NAMES
 
 
 def _artifact_content(artifacts: list[ReviewArtifact], name: str) -> str:
@@ -404,6 +394,7 @@ def _build_llm_review_request(
     review_mode: str,
     review_level: str,
     previous_report: dict | None,
+    compact_low_input: bool = True,
 ) -> tuple[str, str, dict[str, object]]:
     instructions = (
         _verification_review_instructions(review_level)
@@ -412,7 +403,7 @@ def _build_llm_review_request(
     )
     full_input = _render_artifact_input(artifacts)
     if review_mode != "verification":
-        if normalize_review_level(review_level) == "low":
+        if normalize_review_level(review_level) == "low" and compact_low_input:
             low_input, low_metadata = _build_low_review_input(artifacts)
             return instructions, low_input, low_metadata
         return instructions, full_input, _review_input_metadata("full", artifacts, len(full_input), review_level)
@@ -1068,8 +1059,8 @@ def _initial_review_instructions(review_level: str) -> str:
             "Your job is a minimum safety gate before Codex or Claude Code implements from the spec package.",
             "Do not perform a broad architecture, reliability, scalability, or best-practice consulting review.",
             f"Review level: {policy.review_level}.",
-            "Analyze the provided spec artifacts together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
-            "If generated-artifacts.md is supplied, treat it only as evidence that referenced tests and contracts exist on disk; do not infer extra requirements from the manifest.",
+            "Analyze every provided authored Markdown spec artifact under the spec package together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
+            "Ignore SpecGuard-generated artifacts such as readiness reports, implementation handoff output, generated tests, generated contracts, and cache/audit files.",
             _readiness_policy_prompt_line(policy.review_level),
             "Critical calibration: use Critical only when direct evidence shows product intent drift, an out-of-scope item promoted into implementation scope, an authorization or ownership gap, a security hole, a contract contradiction, impossible state behavior, destructive side-effect ambiguity, or a missing required behavior that makes implementation unsafe or indeterminate.",
             "Major and Minor calibration: Major and Minor findings are warnings in low mode. Use them for useful clarity gaps, but they must not block implementation.",
@@ -1082,8 +1073,8 @@ def _initial_review_instructions(review_level: str) -> str:
         "You are SpecGuard's readiness review board: principal architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.",
         "Your task is NOT to approve the implementation basis. Your task is to break it before Codex or Claude Code implements from it.",
         f"Review level: {policy.review_level}.",
-        "Analyze every provided spec artifact together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
-        "If generated-artifacts.md is supplied, treat it only as evidence that referenced tests and contracts exist on disk; do not infer extra requirements from the manifest.",
+        "Analyze every provided authored Markdown spec artifact under the spec package together, including Discovery, spec.md, plan.md, tasks.md, constitution.md, checklists, technical-design.md, and any additional authored spec document.",
+        "Ignore SpecGuard-generated artifacts such as readiness reports, implementation handoff output, generated tests, generated contracts, and cache/audit files.",
         "Use SpecGuard Review: find contradictions, missing requirements, undefined state, security gaps, data ownership gaps, versioning gaps, weak contracts, untestable acceptance criteria, unsafe failure handling, and implementation assumptions.",
         _readiness_policy_prompt_line(policy.review_level),
         "Severity calibration: Critical means unsafe, contradictory, or impossible to implement deterministically; Major means implementation would require guessing or would miss an important product, security, state, contract, persistence, or ownership decision; Minor means useful cleanup that does not block implementation.",
@@ -1102,7 +1093,7 @@ def _verification_review_instructions(review_level: str) -> str:
             f"Review level: {policy.review_level}.",
             "This is NOT a fresh broad review. Verify whether the regenerated spec package resolves previous Critical blockers and preserves product intent.",
             "Your job is a minimum safety gate: keep only concrete implementation-destabilizing blockers as Critical.",
-            "If generated-artifacts.md is supplied, treat it only as evidence that referenced tests and contracts exist on disk; do not infer extra requirements from the manifest.",
+            "Analyze authored Markdown spec artifacts under the spec package and ignore SpecGuard-generated reports, handoff output, generated tests, generated contracts, and cache/audit files.",
             "Do not create new blockers for best-practice improvements, optional hardening, future scalability, retry queues, bulk import, broad reliability, style, naming, or weakly evidenced risks.",
             "Respect explicit out-of-scope, deferred, or accepted-risk decisions when they are documented in the spec package and do not contradict safety or contract requirements.",
             _readiness_policy_prompt_line(policy.review_level),
@@ -1117,7 +1108,7 @@ def _verification_review_instructions(review_level: str) -> str:
         f"Review level: {policy.review_level}.",
         "This is NOT a fresh broad SpecGuard Review. Verify whether the regenerated spec package resolves the previous Readiness Findings.",
         "Your primary job is to close, downgrade, or keep previous findings based on the current artifacts.",
-        "If generated-artifacts.md is supplied, treat it only as evidence that referenced tests and contracts exist on disk; do not infer extra requirements from the manifest.",
+        "Analyze authored Markdown spec artifacts under the spec package and ignore SpecGuard-generated reports, handoff output, generated tests, generated contracts, and cache/audit files.",
         "Add a new Critical or Major finding only when there is direct evidence in the current artifacts that implementation would be unsafe, contradictory, or would require an important guess.",
         "Do not create new blockers for best-practice improvements, optional hardening, style, naming, or future extensibility. Those are Minor or omitted.",
         "Respect explicit out-of-scope, deferred, or accepted-risk decisions when they are documented in the spec package and do not contradict safety or contract requirements.",
@@ -1379,6 +1370,7 @@ def run_readiness_review(
     review_mode: str = "initial",
     review_level: str = DEFAULT_REVIEW_LEVEL,
     report_stem: str = "readiness-review",
+    compact_low_input: bool = True,
 ) -> CheckResult:
     if review_mode not in READINESS_REVIEW_MODES:
         raise ValueError(f"Unsupported SpecGuard Review mode: {review_mode}")
@@ -1420,6 +1412,7 @@ def run_readiness_review(
                 review_mode=review_mode,
                 review_level=review_level,
                 previous_report=previous_report,
+                compact_low_input=compact_low_input,
             )
             max_output_tokens = _review_max_output_tokens(review_level)
             review_input["max_output_tokens"] = max_output_tokens
@@ -1497,6 +1490,10 @@ def run_readiness_review(
             result.add_info(f"SpecGuard Review cache check: miss {cache_key[:12]} ({cache_miss_reason})")
             result.add_info(f"SpecGuard Review cache stored: {cache_key[:12]}")
     result.add_info(f"SpecGuard Review level: {review_level} ({review_level_gate_text(review_level)}).")
+    result.add_info(
+        "SpecGuard Review source rule: reads authored Markdown under the spec package; "
+        "excludes generated SpecGuard artifacts from heuristic and LLM review input."
+    )
     if review_level == "low":
         result.add_info(
             f"SpecGuard low gate: {critical_count} blocker(s); "
