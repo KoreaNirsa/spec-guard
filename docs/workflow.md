@@ -339,7 +339,7 @@ SPECGUARD_OPENAI_API_KEY=sk-...
 Optional repository variables:
 
 ```text
-SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
+SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-mini
 SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
 ```
 
