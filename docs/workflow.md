@@ -158,9 +158,10 @@ Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Hando
 
 Each run records per-feature stage timings for validation, design generation, SpecGuard Review, test generation, contract work, and implementation handoff. The readiness report also records artifact count and total review input characters so slow reviews can be tied to concrete input size without logging secret values or artifact contents.
 
-SpecGuard Review inspects the feature package according to the selected review level. The default `low` level focuses on minimum safety gating and uses compact review context. `medium` preserves the stricter v0.2.5-style gate. `high` uses the medium gate thresholds in this release while asking for stricter review attention.
+SpecGuard Review inspects the feature package according to the selected review level. The default `low` level focuses on minimum safety gating and uses fast heuristic review first, even when a provider is configured. Use `--llm` or the follow-up `SpecGuard Review (Detail)` action when the user wants live LLM review. `medium` preserves the stricter v0.2.5-style gate. `high` uses the medium gate thresholds in this release while asking for stricter review attention.
 
 ```bash
+specguard run specs/my-feature --llm
 specguard run specs/my-feature --review-level medium
 SPECGUARD_REVIEW_LEVEL=medium specguard run specs/my-feature
 ```
@@ -185,7 +186,7 @@ Default interactive refinement is review-only:
 Initial SpecGuard Review -> user edits spec.md -> rerun -> READY, READY_WITH_WARNINGS, or NOT_READY
 ```
 
-In low mode, the initial review is a practical safety gate and does not try to perform a complete architecture or security audit. In medium/high, the review is broader and more adversarial. When the default run is NOT READY, SpecGuard reports actionable Readiness Findings and stops. The user owns the spec edits, then reruns `specguard run`.
+In low mode, the initial review is a practical heuristic safety gate and does not try to perform a complete architecture or security audit. In medium/high, or when `--llm` is explicitly requested, the review is broader and provider-backed. When the default run is NOT READY, SpecGuard reports actionable Readiness Findings and stops. The user owns the spec edits, then reruns `specguard run`.
 
 Automatic Spec Revision is experimental and disabled by default. Users can opt in with `--experimental-auto-revise --follow-up`. In that explicit path, SpecGuard can regenerate `spec.md` from blocked findings and run Verification Review. In low mode, the revision prompt and Verification Review backlog focus on previous Critical blockers so Major and Minor warnings do not expand implementation scope. In medium/high, Verification Review remains broader and can keep or introduce Critical/Major blockers only when there is direct implementation-blocking evidence.
 
@@ -220,7 +221,7 @@ specs/my-feature/
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
 
-In an interactive terminal, `run` opens the default continuation menu only when the result still needs user attention, or when the user explicitly passes `--follow-up`. The default menu lets the user inspect the latest Readiness Findings and then exit to edit `spec.md` manually. It does not rewrite user specs unless `--experimental-auto-revise` is set. With that opt-in, blocked Critical findings expose an experimental auto-revision action that regenerates `spec.md` and automatically runs Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If low mode auto-demotes documented out-of-scope additions, the CLI says so and saves the original/diff under `.specguard/spec-revisions/`. If Intent Preservation Check fails, the regenerated text is applied to `spec.md`, the original and diff are saved under `.specguard/spec-revisions/`, and Verification Review is skipped until the user reviews the applied diff. Initial pipeline, experimental LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+In an interactive terminal, `run` opens the default continuation menu only when the result still needs user attention, or when the user explicitly passes `--follow-up`. The default menu lets the user inspect the latest Readiness Findings, run `SpecGuard Review (Detail)` with the configured LLM on demand, or choose `[u] I updated spec.md; rerun SpecGuard` after editing the spec in another editor. Detail review writes `readiness-review-detail.md` and `readiness-review-detail.json` so it does not replace the fast review report. The menu does not rewrite user specs unless `--experimental-auto-revise` is set. With that opt-in, blocked Critical findings expose an experimental auto-revision action that regenerates `spec.md` and automatically runs Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If low mode auto-demotes documented out-of-scope additions, the CLI says so and saves the original/diff under `.specguard/spec-revisions/`. If Intent Preservation Check fails, the regenerated text is applied to `spec.md`, the original and diff are saved under `.specguard/spec-revisions/`, and Verification Review is skipped until the user reviews the applied diff. Initial pipeline, experimental LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
 If a local Codex request times out, check `specguard auth status` and increase the timeout:
 
@@ -228,9 +229,10 @@ If a local Codex request times out, check `specguard auth status` and increase t
 specguard auth setup --mode codex --timeout 600 --skip-login
 ```
 
-Use `--no-llm` only for deterministic local checks or CI examples:
+Use `--llm` for live LLM detail review. Use `--no-llm` to force deterministic local checks or CI examples:
 
 ```bash
+specguard run specs/my-feature --llm
 specguard run specs/my-feature --no-llm
 ```
 

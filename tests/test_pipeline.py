@@ -2139,6 +2139,43 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert "scope every todo read and write by owner" in spec
 
 
+def test_post_run_spec_revision_builds_llm_lazily_after_fast_initial_review(tmp_path: Path, monkeypatch) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    result = run_pipeline(feature)
+    rerun_result = CheckResult("SpecGuard pipeline")
+    revision_llm = FakeRevisionLLM()
+    captured = {"built": False, "llm_client": None}
+
+    def fake_build_llm(*_args, **_kwargs):
+        captured["built"] = True
+        return revision_llm
+
+    def fake_rerun_pipeline(
+        args,
+        llm_client,
+        *,
+        force: bool,
+        review_mode: str = "initial",
+        refresh_technical_design: bool | None = None,
+    ):
+        captured["llm_client"] = llm_client
+        return rerun_result
+
+    monkeypatch.setattr(specguard_cli, "_build_llm_client", fake_build_llm)
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(path=str(feature), force=False, no_llm=False),
+        None,
+        result,
+    )
+
+    assert returned is rerun_result
+    assert captured["built"] is True
+    assert captured["llm_client"] is revision_llm
+
+
 def test_post_run_low_mode_revision_prompt_uses_critical_backlog_only(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
     feature.joinpath("readiness-review.json").write_text(
@@ -2420,14 +2457,14 @@ def test_follow_up_empty_input_keeps_menu_open(monkeypatch, capsys) -> None:
     monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
 
     returned = specguard_cli._run_follow_up_loop(
-        Namespace(path="specs/example", force=False),
+        Namespace(path="specs/example", force=False, no_llm=True),
         llm_client=None,
         result=result,
     )
 
     rendered = capsys.readouterr().out
     assert returned is result
-    assert "Choose 1 to view findings, or q to exit." in rendered
+    assert "Choose 1 to view findings, u after editing spec.md, or q to exit." in rendered
 
 
 def test_follow_up_menu_hides_spec_regeneration_without_blocked_findings(monkeypatch, capsys) -> None:
@@ -2436,7 +2473,7 @@ def test_follow_up_menu_hides_spec_regeneration_without_blocked_findings(monkeyp
     monkeypatch.setattr("builtins.input", lambda _prompt: "q")
 
     returned = specguard_cli._run_follow_up_loop(
-        Namespace(path="specs/example", force=False),
+        Namespace(path="specs/example", force=False, no_llm=True),
         llm_client=None,
         result=result,
     )
@@ -2444,6 +2481,7 @@ def test_follow_up_menu_hides_spec_regeneration_without_blocked_findings(monkeyp
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
+    assert "[u] I updated spec.md; rerun SpecGuard" in rendered
     assert "[2] Regenerate spec from Readiness Findings" not in rendered
     assert "Spec regeneration is hidden because no blocked Readiness Findings were found." in rendered
     assert "[q] Exit" in rendered
@@ -2456,7 +2494,7 @@ def test_follow_up_menu_hides_spec_regeneration_by_default_with_blocked_findings
     monkeypatch.setattr("builtins.input", lambda _prompt: "q")
 
     returned = specguard_cli._run_follow_up_loop(
-        Namespace(path="specs/example", force=False),
+        Namespace(path="specs/example", force=False, no_llm=True),
         llm_client=None,
         result=result,
     )
@@ -2485,19 +2523,88 @@ def test_follow_up_menu_shows_experimental_spec_regeneration_when_enabled(monkey
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
-    assert "[2] Experimental auto-revise spec from Readiness Findings" in rendered
+    assert "[2] Run SpecGuard Review (Detail) with the configured LLM" in rendered
+    assert "[3] Experimental auto-revise spec from Readiness Findings" in rendered
     assert "[q] Exit" in rendered
 
 
-def test_follow_up_menu_rejects_spec_regeneration_when_experimental_flag_is_missing(monkeypatch, capsys) -> None:
+def test_follow_up_menu_runs_detail_review_without_replacing_fast_report(monkeypatch, capsys) -> None:
     choices = iter(["2", "q"])
+    result = CheckResult("SpecGuard pipeline")
+    detail_result = CheckResult("SpecGuard Review")
+    detail_client = object()
+    captured = {"report_stem": "", "llm_client": None}
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready_with_warnings", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 0, "minor": 1},
+        "issues": [],
+    }
+
+    def fake_detail_review(path: Path, *, llm_client=None, review_mode: str = "initial", review_level: str = "low", report_stem: str = "readiness-review"):
+        captured["report_stem"] = report_stem
+        captured["llm_client"] = llm_client
+        assert path == Path("specs/example")
+        assert review_mode == "initial"
+        assert review_level == "low"
+        return detail_result
+
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+    monkeypatch.setattr(specguard_cli, "_build_llm_client", lambda *_args, **_kwargs: detail_client)
+    monkeypatch.setattr(specguard_cli, "run_readiness_review", fake_detail_review)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False, review_level="low"),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "SpecGuard Review (Detail)" in rendered
+    assert "does not replace the fast readiness review" in rendered
+    assert captured["report_stem"] == "readiness-review-detail"
+    assert captured["llm_client"] is detail_client
+
+
+def test_follow_up_menu_reruns_after_user_edits_spec(monkeypatch, capsys) -> None:
+    choices = iter(["u", "q"])
+    result = CheckResult("SpecGuard pipeline")
+    rerun_result = CheckResult("SpecGuard pipeline")
+    captured = {"force": None, "llm_client": object()}
+
+    def fake_rerun(args, llm_client, *, force: bool, review_mode: str = "initial", refresh_technical_design=None):
+        captured["force"] = force
+        captured["llm_client"] = llm_client
+        return rerun_result
+
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun)
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False, no_llm=True),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is rerun_result
+    assert "Spec was updated. Re-running SpecGuard from the current spec package." in rendered
+    assert captured["force"] is False
+    assert captured["llm_client"] is None
+
+
+def test_follow_up_menu_rejects_spec_regeneration_when_experimental_flag_is_missing(monkeypatch, capsys) -> None:
+    choices = iter(["3", "q"])
     result = CheckResult("SpecGuard pipeline")
 
     monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
     monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
 
     returned = specguard_cli._run_follow_up_loop(
-        Namespace(path="specs/example", force=False),
+        Namespace(path="specs/example", force=False, no_llm=True),
         llm_client=None,
         result=result,
     )
@@ -2509,7 +2616,7 @@ def test_follow_up_menu_rejects_spec_regeneration_when_experimental_flag_is_miss
 
 
 def test_follow_up_menu_rejects_spec_regeneration_without_blocked_findings(monkeypatch, capsys) -> None:
-    choices = iter(["2", "q"])
+    choices = iter(["3", "q"])
     result = CheckResult("SpecGuard pipeline")
 
     monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
@@ -2599,6 +2706,69 @@ def test_run_ready_result_does_not_open_default_follow_up_menu(monkeypatch) -> N
     ))
 
     assert exit_code == 0
+
+
+def test_default_low_run_uses_fast_heuristic_review_even_with_provider_configured(monkeypatch) -> None:
+    captured = {"llm_client": object()}
+
+    def fail_build_llm(*_args, **_kwargs):
+        raise AssertionError("default low run should not build a live LLM client")
+
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        captured["llm_client"] = llm_client
+        assert review_level == "low"
+        return CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "_build_llm_client", fail_build_llm)
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        llm=False,
+        llm_mode=None,
+        llm_model=None,
+        no_llm=False,
+        no_follow_up=True,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    assert exit_code == 0
+    assert captured["llm_client"] is None
+
+
+def test_run_llm_flag_requests_live_initial_review(monkeypatch) -> None:
+    live_client = object()
+    captured = {"llm_client": None}
+
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        captured["llm_client"] = llm_client
+        return CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "_build_llm_client", lambda *_args, **_kwargs: live_client)
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        llm=True,
+        llm_mode=None,
+        llm_model=None,
+        no_llm=False,
+        no_follow_up=True,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    assert exit_code == 0
+    assert captured["llm_client"] is live_client
 
 
 def test_run_not_ready_guides_manual_spec_revision(monkeypatch, capsys) -> None:
