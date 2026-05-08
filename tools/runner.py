@@ -97,6 +97,8 @@ def run_pipeline(
         result.next_steps.extend(validation.next_steps)
         if not validation.ok:
             result.ok = False
+            result.details[f"{feature_dir.name}.failed_stage"] = "validation"
+            result.details["failed_before_readiness_review"] = True
             result.add_next_step("Fix discovery.md or spec.md before running the pipeline again.")
             _record_timings(result, feature_dir, timings)
             continue
@@ -138,6 +140,8 @@ def run_pipeline(
         result.next_steps.extend(technical_validation.next_steps)
         if not technical_validation.ok:
             result.ok = False
+            result.details[f"{feature_dir.name}.failed_stage"] = "technical_validation"
+            result.details["failed_before_readiness_review"] = True
             result.add_next_step(f"Fix technical design: {technical_design.path}")
             _record_timings(result, feature_dir, timings)
             continue
