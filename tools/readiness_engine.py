@@ -308,17 +308,23 @@ def _review_max_output_tokens(review_level: str) -> int:
     return LOW_REVIEW_MAX_OUTPUT_TOKENS if normalize_review_level(review_level) == "low" else DEFAULT_REVIEW_MAX_OUTPUT_TOKENS
 
 
-def _previous_findings_text(previous_report: dict | None) -> str:
+def _previous_findings_text(previous_report: dict | None, review_level: str) -> str:
     if not previous_report:
         return "No previous SpecGuard Review report was available."
 
-    issues = previous_report.get("issues", [])
-    if not isinstance(issues, list) or not issues:
+    issues = _verification_backlog_issues(previous_report, review_level)
+    if not issues:
+        if normalize_review_level(review_level) == "low":
+            return "Previous SpecGuard Review had no Critical blockers to verify."
         return "Previous SpecGuard Review had no findings."
 
     lines = [
-        "Use these previous findings as the verification backlog.",
-        f"Previous summary: {json.dumps(previous_report.get('summary', {}), ensure_ascii=False)}",
+        (
+            "Use these previous Critical blockers as the verification backlog."
+            if normalize_review_level(review_level) == "low"
+            else "Use these previous findings as the verification backlog."
+        ),
+        f"Previous backlog summary: {json.dumps(_verification_backlog_summary(issues), ensure_ascii=False)}",
         "",
     ]
     for index, issue in enumerate(issues, start=1):
@@ -414,14 +420,14 @@ def _build_llm_review_request(
             return instructions, low_input, low_metadata
         return instructions, full_input, _review_input_metadata("full", artifacts, len(full_input), review_level)
 
-    delta_input, delta_metadata = _build_delta_verification_input(artifacts, previous_report)
+    delta_input, delta_metadata = _build_delta_verification_input(artifacts, previous_report, review_level)
     if delta_input:
         delta_metadata["review_level"] = review_level
         return instructions, delta_input, delta_metadata
 
     input_text = "\n\n".join([
         "# Previous SpecGuard Review Findings",
-        _previous_findings_text(previous_report),
+        _previous_findings_text(previous_report, review_level),
         "# Current Spec Package Artifacts",
         full_input,
     ])
@@ -448,9 +454,10 @@ def _review_input_metadata(
 def _build_delta_verification_input(
     artifacts: list[ReviewArtifact],
     previous_report: dict | None,
+    review_level: str,
 ) -> tuple[str | None, dict[str, object]]:
-    issues = previous_report.get("issues", []) if isinstance(previous_report, dict) else []
-    if not isinstance(issues, list) or not issues:
+    issues = _verification_backlog_issues(previous_report, review_level)
+    if not issues:
         return None, {"fallback_reason": "missing previous findings"}
 
     terms = _finding_terms(issues)
@@ -476,7 +483,7 @@ def _build_delta_verification_input(
 
     input_text = "\n\n".join([
         "# Previous SpecGuard Review Findings",
-        _previous_findings_text(previous_report),
+        _previous_findings_text(previous_report, review_level),
         "# Verification Review Delta Evidence",
         "Review only whether the previous findings are resolved, downgraded, or still blocking using the compact current evidence below.",
         *evidence_blocks,
@@ -489,6 +496,24 @@ def _build_delta_verification_input(
         "previous_finding_count": len(issues),
     }
     return input_text, metadata
+
+
+def _verification_backlog_issues(previous_report: dict | None, review_level: str) -> list[object]:
+    issues = previous_report.get("issues", []) if isinstance(previous_report, dict) else []
+    if not isinstance(issues, list):
+        return []
+    dict_issues = [issue for issue in issues if isinstance(issue, dict)]
+    if normalize_review_level(review_level) == "low":
+        return [issue for issue in dict_issues if issue.get("severity") == "Critical"]
+    return dict_issues
+
+
+def _verification_backlog_summary(issues: list[object]) -> dict[str, int]:
+    return {
+        "critical": sum(1 for issue in issues if isinstance(issue, dict) and issue.get("severity") == "Critical"),
+        "major": sum(1 for issue in issues if isinstance(issue, dict) and issue.get("severity") == "Major"),
+        "minor": sum(1 for issue in issues if isinstance(issue, dict) and issue.get("severity") == "Minor"),
+    }
 
 
 def _finding_terms(issues: list[object]) -> set[str]:

@@ -153,7 +153,7 @@ def readiness_report_stale_reason(feature_dir: Path) -> str | None:
     return f"SpecGuard Review report may be stale; newer source file(s): {', '.join(newer_sources)}"
 
 
-def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
+def generate_spec_revision(feature_dir: Path, llm_client: object, review_level: str | None = None) -> str:
     discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
     spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
     plan = _compact_text(_read_optional(feature_dir / "plan.md"), 2500)
@@ -161,7 +161,14 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
     constitution = _compact_text(_read_optional(feature_dir / "constitution.md"), 2500)
     checklist = _compact_text(_read_optional(feature_dir / "checklists" / "spec-readiness.md"), 2500)
     technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
-    readiness_findings = _compact_readiness_findings(feature_dir)
+    readiness_findings = _compact_readiness_findings(feature_dir, review_level=review_level)
+    low_mode = (review_level or _readiness_report_level(feature_dir)).lower() == "low"
+    priority_instruction = (
+        "Prioritize Critical Readiness Findings. Treat Major and Minor findings as optional warning cleanup only; "
+        "do not expand implementation scope to satisfy them."
+        if low_mode
+        else "Prioritize Critical and Major Readiness Findings."
+    )
     instructions = "\n".join([
         "You are SpecGuard's spec refinement assistant and implementation-readiness editor.",
         "Revise spec.md so the Readiness Findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
@@ -174,7 +181,7 @@ def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
         "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
         "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
         "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
-        "Prioritize Critical and Major Readiness Findings.",
+        priority_instruction,
         "Do not include commentary, patch markers, or code fences.",
     ])
     input_text = "\n\n".join([
@@ -329,7 +336,7 @@ def _read_optional(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _compact_readiness_findings(feature_dir: Path) -> str:
+def _compact_readiness_findings(feature_dir: Path, review_level: str | None = None) -> str:
     report = load_readiness_report(feature_dir)
     if not report:
         return _compact_text(_read_optional(feature_dir / "readiness-review.md"), 3000)
@@ -338,16 +345,28 @@ def _compact_readiness_findings(feature_dir: Path) -> str:
     if not isinstance(issues, list):
         return json.dumps(report, indent=2)
 
+    low_mode = (review_level or str(report.get("review_level") or "")).lower() == "low"
     severity_rank = {"Critical": 0, "Major": 1, "Minor": 2}
+    all_dict_issues = [issue for issue in issues if isinstance(issue, dict)]
+    candidate_issues = all_dict_issues
+    if low_mode:
+        candidate_issues = [issue for issue in candidate_issues if issue.get("severity") == "Critical"]
     sorted_issues = sorted(
-        [issue for issue in issues if isinstance(issue, dict)],
+        candidate_issues,
         key=lambda issue: severity_rank.get(str(issue.get("severity")), 9),
     )
     lines = [
-        "Use these Readiness Findings as the required revision backlog.",
+        (
+            "Use these Critical Readiness Findings as the required revision backlog."
+            if low_mode
+            else "Use these Readiness Findings as the required revision backlog."
+        ),
         f"Summary: {json.dumps(report.get('summary', {}), ensure_ascii=False)}",
         "",
     ]
+    if low_mode and not sorted_issues:
+        lines.append("No Critical blocker findings are present; Major and Minor findings are non-blocking warnings in low mode.")
+        return "\n".join(lines)
     for index, issue in enumerate(sorted_issues[:12], start=1):
         lines.extend([
             f"{index}. [{issue.get('severity', 'Unknown')}] {issue.get('title', 'Untitled issue')}",
@@ -356,7 +375,16 @@ def _compact_readiness_findings(feature_dir: Path) -> str:
         ])
     if len(sorted_issues) > 12:
         lines.append(f"... {len(sorted_issues) - 12} additional minor/detail findings omitted from the prompt.")
+    if low_mode and len(candidate_issues) < len(all_dict_issues):
+        lines.append("Major and Minor findings are intentionally omitted from the low-mode required revision backlog.")
     return "\n".join(lines)
+
+
+def _readiness_report_level(feature_dir: Path) -> str:
+    report = load_readiness_report(feature_dir)
+    if not report:
+        return ""
+    return str(report.get("review_level") or "")
 
 
 def _compact_text(text: str, max_characters: int) -> str:

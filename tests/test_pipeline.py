@@ -396,6 +396,102 @@ class CaptureVerificationReadinessLLM:
         return '{"issues":[]}'
 
 
+class CaptureSpecRevisionLLM:
+    def __init__(self, revised_spec: str) -> None:
+        self.revised_spec = revised_spec
+        self.instructions = ""
+        self.input_text = ""
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.instructions = instructions
+        self.input_text = input_text
+        return self.revised_spec
+
+
+class LowModeConvergingWarningLLM:
+    def __init__(self) -> None:
+        self.revision_inputs: list[str] = []
+        self.verification_inputs: list[str] = []
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        lowered = instructions.lower()
+        if "technical design generator" in lowered:
+            return "\n".join([
+                "# Technical Design: feature",
+                "",
+                "## Architecture",
+                "",
+                "- API layer calls a service layer with owner-scoped validation.",
+                "",
+                "## Data Flow",
+                "",
+                "1. Request arrives.",
+                "2. Service validates owner scope and input.",
+                "3. Response is returned.",
+                "",
+                "## State",
+                "",
+                "- Initial state: request received but not validated.",
+                "- Terminal state: completed or rejected.",
+                "",
+                "## Failure Handling",
+                "",
+                "- Unauthorized owner access returns 403.",
+                "- Invalid input returns 400.",
+                "",
+            ])
+        if "spec refinement assistant" in lowered:
+            self.revision_inputs.append(input_text)
+            return "\n".join([
+                "# Spec: feature",
+                "",
+                "## Requirements",
+                "",
+                "- The system must accept valid input.",
+                "- The system must scope every request to the authenticated owner.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] Valid input succeeds.",
+                "- [ ] Cross-owner access is rejected.",
+                "",
+                "## Error Cases",
+                "",
+                "- Invalid input",
+                "- Unauthorized owner access",
+                "",
+            ])
+        if "verification review board" in lowered:
+            self.verification_inputs.append(input_text)
+            return json.dumps({
+                "issues": [{
+                    "severity": "Major",
+                    "title": "Contract examples can be more explicit",
+                    "description": "The regenerated spec is implementable, but examples could be clearer.",
+                    "impact": "Implementation can proceed in low mode.",
+                    "fix": "Add richer examples later if desired.",
+                }]
+            })
+        return json.dumps({
+            "issues": [
+                {
+                    "severity": "Critical",
+                    "title": "Owner scope missing",
+                    "description": "The spec does not state how owner scope is enforced.",
+                    "impact": "Implementation would need to guess authorization behavior.",
+                    "fix": "Add owner-scoped requirements and acceptance criteria.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk import missing",
+                    "description": "Bulk import behavior is not specified.",
+                    "impact": "This is useful follow-up but not required for the current implementation.",
+                    "fix": "Define bulk import later if it enters scope.",
+                },
+            ]
+        })
+
+
 class StrictE2EConvergingLLM:
     def __init__(self) -> None:
         self.verification_inputs: list[str] = []
@@ -1648,10 +1744,10 @@ def test_medium_review_level_preserves_deeper_major_calibration(tmp_path: Path) 
 
 def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
-    run_pipeline(feature)
+    run_pipeline(feature, review_level="medium")
     llm = CaptureVerificationReadinessLLM()
 
-    result = run_readiness_review(feature, llm_client=llm, review_mode="verification")
+    result = run_readiness_review(feature, llm_client=llm, review_mode="verification", review_level="medium")
 
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
@@ -1662,6 +1758,53 @@ def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> N
     assert "Previous SpecGuard Review Findings" in llm.input_text
     assert "Verification Review Delta Evidence" in llm.input_text
     assert "Delete semantics are unsafe" in llm.input_text
+
+
+def test_low_verification_mode_uses_previous_critical_backlog_only(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    for name in ("spec.md", "technical-design.md"):
+        path = feature / name
+        path.write_text(
+            path.read_text(encoding="utf-8")
+            + "\nOwner scope missing closure: owner scope is now required for authorization behavior.\n",
+            encoding="utf-8",
+        )
+    feature.joinpath("readiness-review.json").write_text(
+        json.dumps({
+            "review_level": "low",
+            "blocked": True,
+            "readiness": {"status": "not_ready", "implementation_ready": False},
+            "summary": {"critical": 1, "major": 1, "minor": 0},
+            "issues": [
+                {
+                    "severity": "Critical",
+                    "title": "Owner scope missing",
+                    "description": "The spec does not state how owner scope is enforced.",
+                    "impact": "Implementation would need to guess authorization behavior.",
+                    "fix": "Add owner-scoped requirements and acceptance criteria.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk import missing",
+                    "description": "Bulk import behavior is not specified.",
+                    "impact": "This warning should not drive low-mode verification.",
+                    "fix": "Define bulk import later if it enters scope.",
+                },
+            ],
+        }),
+        encoding="utf-8",
+    )
+    llm = CaptureVerificationReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm, review_mode="verification", review_level="low")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_input"]["mode"] == "delta"
+    assert payload["review_input"]["previous_finding_count"] == 1
+    assert "Use these previous Critical blockers as the verification backlog." in llm.input_text
+    assert "Owner scope missing" in llm.input_text
+    assert "Bulk import missing" not in llm.input_text
 
 
 def test_readiness_verification_mode_falls_back_without_previous_findings(tmp_path: Path) -> None:
@@ -1983,6 +2126,69 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert captured["review_mode"] == "verification"
     assert captured["refresh_technical_design"] is True
     assert "scope every todo read and write by owner" in spec
+
+
+def test_post_run_low_mode_revision_prompt_uses_critical_backlog_only(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("readiness-review.json").write_text(
+        json.dumps({
+            "review_level": "low",
+            "blocked": True,
+            "readiness": {"status": "not_ready", "implementation_ready": False},
+            "summary": {"critical": 1, "major": 1, "minor": 0},
+            "issues": [
+                {
+                    "severity": "Critical",
+                    "title": "Owner scope missing",
+                    "description": "The spec does not state how owner scope is enforced.",
+                    "impact": "Implementation would need to guess authorization behavior.",
+                    "fix": "Add owner-scoped requirements and acceptance criteria.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk import missing",
+                    "description": "Bulk import behavior is not specified.",
+                    "impact": "This warning should not drive low-mode revision.",
+                    "fix": "Define bulk import later if it enters scope.",
+                },
+            ],
+        }),
+        encoding="utf-8",
+    )
+    llm = CaptureSpecRevisionLLM(feature.joinpath("spec.md").read_text(encoding="utf-8"))
+
+    generate_spec_revision(feature, llm, review_level="low")
+
+    assert "Prioritize Critical Readiness Findings." in llm.instructions
+    assert "Use these Critical Readiness Findings as the required revision backlog." in llm.input_text
+    assert "Owner scope missing" in llm.input_text
+    assert "Bulk import missing" not in llm.input_text
+    assert "Major and Minor findings are intentionally omitted" in llm.input_text
+
+
+def test_post_run_low_mode_revision_converges_to_ready_with_warnings(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = LowModeConvergingWarningLLM()
+    result = run_pipeline(feature, llm_client=llm, review_level="low")
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(path=str(feature), force=False, review_level="low"),
+        llm,
+        result,
+    )
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert returned.ok
+    assert payload["review_mode"] == "verification"
+    assert payload["readiness"]["status"] == "ready_with_warnings"
+    assert payload["summary"] == {"critical": 0, "major": 1, "minor": 0}
+    assert feature.joinpath("implementation-output.md").exists()
+    assert "Owner scope missing" in llm.revision_inputs[0]
+    assert "Bulk import missing" not in llm.revision_inputs[0]
+    assert "Owner scope missing" in llm.verification_inputs[0]
+    assert "Bulk import missing" not in llm.verification_inputs[0]
 
 
 def test_post_run_low_mode_revision_auto_demotes_out_of_scope_additions(

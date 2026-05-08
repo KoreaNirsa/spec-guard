@@ -769,7 +769,7 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
     try:
         revised_spec = _run_with_progress(
             "Revising spec.md",
-            lambda: generate_spec_revision(feature_dir, llm_client),
+            lambda: generate_spec_revision(feature_dir, llm_client, review_level=getattr(args, "review_level", None)),
         )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
