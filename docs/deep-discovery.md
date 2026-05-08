@@ -14,7 +14,7 @@ Why:
 
 - It is simple enough for contributors to understand without learning a new branded method first.
 - It leaves room for multiple discovery techniques later.
-- It keeps the workflow readable: `Discovery -> Draft Spec -> User Refinement -> Technical Design -> SpecGuard Review`.
+- It keeps the workflow readable: `Discovery -> Spec Package -> Technical Design -> SpecGuard Review -> Implementation Handoff`.
 
 Other terms considered:
 
@@ -27,12 +27,15 @@ Other terms considered:
 
 ```text
 Discovery
-  -> Draft Spec
-  -> User Refinement
+  -> Spec Package
   -> Technical Design
   -> SpecGuard Review
-  -> TDD
-  -> Contract Check
+  -> Test
+  -> Contract
+  -> Implementation Handoff
+  -> External AI Implementation
+  -> Pull Request
+  -> SpecGuard PR Review
 ```
 
 Discovery asks what should be understood before a spec and technical design harden. `specguard init` uses the answers to generate draft specs under `specs/`. SpecGuard Review later challenges the spec and technical design before tests, contracts, and implementation outputs are produced.
