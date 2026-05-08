@@ -259,7 +259,7 @@ Readiness states are interpreted by the selected review level:
 
 - Low: READY when Critical=0 and no warnings exist; READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist; NOT_READY only when Critical>=1.
 - Medium: READY when Critical=0, Major=0, Minor<=5; READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; NOT_READY when Critical>=1, Major>=3, or Minor>10.
-- High: uses the medium gate thresholds in v0.2.6 with stricter review attention.
+- High: uses the medium gate thresholds in v0.2.7 with stricter review attention.
 
 Critical findings always block implementation. Major findings should represent an implementation-critical product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
 
