@@ -38,6 +38,13 @@ from tools.post_run import (
     validate_spec_revision_intent,
 )
 from tools.progress import current_progress_activity
+from tools.readiness_engine import (
+    DEFAULT_REVIEW_LEVEL,
+    MEDIUM_REVIEW_LEVEL,
+    READINESS_REVIEW_LEVELS,
+    normalize_review_level,
+    review_level_gate_text,
+)
 from tools.runner import run_pipeline
 from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.ux import bold, green, menu_item, print_banner, print_error, print_hint, print_section, print_success, print_warning, yellow
@@ -98,6 +105,10 @@ def run(args: argparse.Namespace) -> int:
         print_error("[FAIL] Strict E2E requires an LLM provider.")
         print("- Re-run without --no-llm, or configure one: specguard auth setup")
         return 1
+    review_level = _resolve_review_level(args, strict_e2e=strict_e2e)
+    if review_level is None:
+        return 1
+    args.review_level = review_level
 
     print_section("Pipeline")
     if args.force:
@@ -106,6 +117,7 @@ def run(args: argparse.Namespace) -> int:
         print_hint(f"Running strict E2E with at most {strict_max_iterations} verification iteration(s).")
     else:
         print_hint("Missing artifacts are generated; stale tests and contracts are refreshed from the spec.")
+    print_hint(f"SpecGuard Review level: {review_level} ({review_level_gate_text(review_level)}).")
 
     try:
         if strict_e2e:
@@ -116,12 +128,13 @@ def run(args: argparse.Namespace) -> int:
                     llm_client,
                     force=args.force,
                     max_iterations=strict_max_iterations,
+                    review_level=review_level,
                 ),
             )
         else:
             result = _run_with_progress(
                 "Running pipeline",
-                lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=args.force),
+                lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=args.force, review_level=review_level),
             )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
@@ -346,6 +359,18 @@ def auth(args: argparse.Namespace) -> int:
 
 def _requires_llm(args: argparse.Namespace) -> bool:
     return not getattr(args, "no_llm", False)
+
+
+def _resolve_review_level(args: argparse.Namespace, *, strict_e2e: bool = False) -> str | None:
+    default = MEDIUM_REVIEW_LEVEL if strict_e2e else DEFAULT_REVIEW_LEVEL
+    configured = getattr(args, "review_level", None) or os.getenv("SPECGUARD_REVIEW_LEVEL") or default
+    try:
+        return normalize_review_level(configured)
+    except ValueError:
+        print_error("[FAIL] Unsupported SpecGuard Review level.")
+        print(f"- Received: {configured}")
+        print(f"- Supported levels: {', '.join(sorted(READINESS_REVIEW_LEVELS))}")
+        return None
 
 
 def _build_llm_client(args: argparse.Namespace, *, purpose: str, allow_setup: bool) -> object | None:
@@ -711,11 +736,13 @@ def _rerun_pipeline(
     review_mode: str = "initial",
     refresh_technical_design: bool | None = None,
 ) -> object:
+    review_level = normalize_review_level(getattr(args, "review_level", None) or os.getenv("SPECGUARD_REVIEW_LEVEL") or DEFAULT_REVIEW_LEVEL)
     print_section("Pipeline")
     if review_mode == "verification":
         print_hint("Re-running SpecGuard in Verification Review mode from the regenerated specs.")
     else:
         print_hint("Re-running SpecGuard from the current specs.")
+    print_hint(f"SpecGuard Review level: {review_level} ({review_level_gate_text(review_level)}).")
     result = _run_with_progress(
         "Running pipeline",
         lambda: run_pipeline(
@@ -723,6 +750,7 @@ def _rerun_pipeline(
             llm_client=llm_client,
             force=force,
             review_mode=review_mode,
+            review_level=review_level,
             refresh_technical_design=refresh_technical_design,
         ),
     )
@@ -848,6 +876,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--no-llm", action="store_true", help="Skip live LLM requests and use local generators plus heuristic SpecGuard Review")
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Use this provider for live review without changing saved config")
     run_parser.add_argument("--llm-model", help="Use this model for live review without changing saved config")
+    run_parser.add_argument(
+        "--review-level",
+        choices=sorted(READINESS_REVIEW_LEVELS),
+        help="SpecGuard Review level; defaults to low, or medium for strict E2E unless SPECGUARD_REVIEW_LEVEL is set",
+    )
     run_parser.add_argument("--strict-e2e", action="store_true", help="Automatically regenerate blocked specs and rerun Verification Review")
     run_parser.add_argument("--strict-max-iterations", type=int, default=3, help="Maximum strict E2E verification iterations")
     run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu after the run")

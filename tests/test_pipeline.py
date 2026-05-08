@@ -605,7 +605,7 @@ def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None
     metadata = read_handoff_metadata(feature)
     assert result.ok
     assert metadata["implementation_boundary"] == "external_handoff"
-    assert metadata["readiness_status"] == "ready"
+    assert metadata["readiness_status"] == "ready_with_warnings"
     assert metadata["implementation_allowed"] is True
     assert "spec.md" in metadata["approved_artifacts"]
     assert "technical-design.md" in metadata["approved_artifacts"]
@@ -1365,8 +1365,26 @@ def test_readiness_reports_ready_with_warnings_for_two_major_findings(tmp_path: 
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
     assert payload["blocked"] is False
+    assert payload["review_level"] == "low"
     assert payload["readiness"]["status"] == "ready_with_warnings"
     assert payload["summary"]["major"] == 2
+
+
+def test_readiness_defaults_to_low_review_level(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+
+    result = run_readiness_review(feature, llm_client=ThreeMajorReadinessLLM())
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["blocked"] is False
+    assert payload["review_level"] == "low"
+    assert payload["readiness"]["implementation_ready"] is True
+    assert payload["readiness"]["status"] == "ready_with_warnings"
+    assert payload["readiness"]["criteria"]["review_level"] == "low"
+    assert payload["readiness"]["criteria"]["ready_with_warnings"]["major_max"] is None
+    assert payload["summary"]["major"] == 3
+    assert any("SpecGuard Review level: low" in message for message in result.messages)
 
 
 def test_readiness_review_reuses_cached_llm_report_for_unchanged_artifacts(tmp_path: Path) -> None:
@@ -1410,19 +1428,24 @@ def test_readiness_review_cache_invalidates_by_provider_model_and_review_mode(tm
     different_model = CountingReadinessLLM(model="gpt-b")
     different_provider = AlternateCountingReadinessLLM(model="gpt-a")
     verification = CountingReadinessLLM(model="gpt-a")
+    medium = CountingReadinessLLM(model="gpt-a")
 
     run_readiness_review(feature, llm_client=initial)
     model_result = run_readiness_review(feature, llm_client=different_model)
     provider_result = run_readiness_review(feature, llm_client=different_provider)
     verification_result = run_readiness_review(feature, llm_client=verification, review_mode="verification")
+    medium_result = run_readiness_review(feature, llm_client=medium, review_level="medium")
 
     assert initial.calls == 1
     assert different_model.calls == 1
     assert different_provider.calls == 1
     assert verification.calls == 1
+    assert medium.calls == 1
     assert model_result.details["cache_hit"] is False
     assert provider_result.details["cache_hit"] is False
     assert verification_result.details["cache_hit"] is False
+    assert medium_result.details["cache_hit"] is False
+    assert medium_result.details["review_level"] == "medium"
 
 
 def test_readiness_review_records_llm_call_timing(tmp_path: Path) -> None:
@@ -1438,11 +1461,12 @@ def test_readiness_review_records_llm_call_timing(tmp_path: Path) -> None:
 def test_readiness_blocks_three_major_findings(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 
-    result = run_readiness_review(feature, llm_client=ThreeMajorReadinessLLM())
+    result = run_readiness_review(feature, llm_client=ThreeMajorReadinessLLM(), review_level="medium")
 
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert not result.ok
     assert payload["blocked"] is True
+    assert payload["review_level"] == "medium"
     assert payload["readiness"]["implementation_ready"] is False
     assert payload["readiness"]["status"] == "not_ready"
     assert payload["summary"]["major"] == 3
@@ -1468,7 +1492,7 @@ def test_readiness_downgrades_non_blocking_major_findings(tmp_path: Path) -> Non
 
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
-    assert payload["readiness"]["status"] == "ready"
+    assert payload["readiness"]["status"] == "ready_with_warnings"
     assert payload["summary"]["major"] == 0
     assert payload["summary"]["minor"] == 1
     assert payload["issues"][0]["severity"] == "Minor"
@@ -1878,10 +1902,12 @@ def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
         llm_client=None,
         force: bool = False,
         review_mode: str = "initial",
+        review_level: str = "low",
         refresh_technical_design: bool | None = None,
     ) -> CheckResult:
         assert force
         assert review_mode == "initial"
+        assert review_level == "low"
         assert refresh_technical_design is None
         return CheckResult("SpecGuard pipeline")
 
@@ -1956,7 +1982,8 @@ def test_follow_up_menu_can_be_forced_or_disabled(monkeypatch) -> None:
 def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
     called = {"value": False}
 
-    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False) -> CheckResult:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        assert review_level == "low"
         return CheckResult("SpecGuard pipeline")
 
     def fake_follow_up(args, llm_client, result):
@@ -1972,6 +1999,7 @@ def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
         no_llm=True,
         no_follow_up=False,
         follow_up=True,
+        review_level=None,
     ))
 
     assert exit_code == 0
@@ -1981,7 +2009,8 @@ def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
 def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:
     captured = {"label": ""}
 
-    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False) -> CheckResult:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        assert review_level == "low"
         return CheckResult("SpecGuard pipeline")
 
     def fake_run_with_progress(label, operation):
@@ -1997,10 +2026,88 @@ def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:
         no_llm=True,
         no_follow_up=True,
         follow_up=False,
+        review_level=None,
     ))
 
     assert exit_code == 0
     assert captured["label"] == "Running pipeline"
+
+
+def test_run_passes_review_level_override(monkeypatch) -> None:
+    captured = {"review_level": ""}
+
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        captured["review_level"] = review_level
+        return CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=True,
+        follow_up=False,
+        review_level="medium",
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    assert exit_code == 0
+    assert captured["review_level"] == "medium"
+
+
+def test_run_uses_env_review_level(monkeypatch) -> None:
+    captured = {"review_level": ""}
+
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        captured["review_level"] = review_level
+        return CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setenv("SPECGUARD_REVIEW_LEVEL", "high")
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=True,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    assert exit_code == 0
+    assert captured["review_level"] == "high"
+
+
+def test_strict_e2e_defaults_to_medium_review_level(monkeypatch) -> None:
+    captured = {"review_level": ""}
+
+    def fake_strict(path: Path, llm_client, *, force: bool = False, max_iterations: int = 3, review_level: str = "medium") -> CheckResult:
+        captured["review_level"] = review_level
+        return CheckResult("SpecGuard strict e2e pipeline")
+
+    monkeypatch.setattr(specguard_cli, "_build_llm_client", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(specguard_cli, "run_strict_e2e_pipeline", fake_strict)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=False,
+        no_follow_up=True,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=True,
+        strict_max_iterations=2,
+    ))
+
+    assert exit_code == 0
+    assert captured["review_level"] == "medium"
 
 
 def test_init_uses_activity_progress_for_spec_draft(monkeypatch) -> None:
