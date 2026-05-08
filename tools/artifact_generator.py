@@ -8,6 +8,7 @@ from pathlib import Path
 from tools.contract_checker import CONTRACT_EXEMPTION_NAME, has_contract_exemption, has_openapi_paths
 from tools.llm_client import describe_llm_client
 from tools.progress import progress_activity
+from tools.readiness_engine import review_artifact_paths
 from tools.verification_checker import verification_metadata
 
 LOW_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 1800
@@ -370,19 +371,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
     if output.exists() and not force:
         return ArtifactWrite(output, created=False)
 
-    test_files = sorted((path / "tests").glob("*.md")) if (path / "tests").exists() else []
-    contract_files = sorted((path / "contracts").glob("*")) if (path / "contracts").exists() else []
-    agent_artifacts = [
-        "spec.md",
-        "plan.md",
-        "tasks.md",
-        "constitution.md",
-        "checklists/spec-readiness.md",
-        "technical-design.md",
-    ]
-    approved_artifacts = [artifact for artifact in agent_artifacts if (path / artifact).exists()]
-    approved_artifacts.extend(f"tests/{test.name}" for test in test_files)
-    approved_artifacts.extend(f"contracts/{contract.name}" for contract in contract_files if contract.is_file())
+    approved_artifacts = _implementation_agent_artifacts(path)
     handoff_metadata = _implementation_handoff_metadata(path, approved_artifacts)
     lines = [
         f"# Implementation Output: {path.name}",
@@ -403,6 +392,12 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
     lines.extend(f"- `{artifact}`" for artifact in approved_artifacts)
     lines.extend([
         "",
+        "## Artifact Priority",
+        "",
+        "- Primary implementation basis: `spec.md`, `technical-design.md`, `tests/`, and `contracts/`.",
+        "- Intent context: `discovery.md`, `plan.md`, `tasks.md`, `constitution.md`, `checklists/`, and additional authored Markdown notes.",
+        "- If input artifacts conflict or required behavior is missing, stop implementation, update the spec package, and rerun SpecGuard.",
+        "",
         "## Verification",
         "",
         f"- Kind: `{handoff_metadata['verification']['kind']}`",
@@ -411,8 +406,9 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "",
         "## SpecGuard-Only Artifacts",
         "",
-        "- `discovery.md` is for SpecGuard discovery and user refinement.",
-        "- `readiness-review.md` and `readiness-review.json` are for SpecGuard adversarial validation.",
+        "- `readiness-review.md` and `readiness-review.json` are SpecGuard validation outputs, not implementation requirements.",
+        "- `readiness-review-detail.md` and `readiness-review-detail.json` are optional detailed review outputs, not implementation requirements.",
+        "- `.specguard/` cache and revision audit files are SpecGuard operational records.",
         "- Coding agents should treat the agent input artifacts as the implementation basis only after SpecGuard reports READY or READY_WITH_WARNINGS.",
         "",
         "## Output Location",
@@ -422,7 +418,9 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "",
         "## Implementation Rules",
         "",
-        "- Keep code aligned with `spec.md` and `technical-design.md`.",
+        "- Read every Agent Input Artifact before implementation.",
+        "- Keep code aligned with `spec.md`, `technical-design.md`, `tests/`, and `contracts/`.",
+        "- Use discovery and additional authored Markdown as intent context; do not override explicit spec or contract behavior with assumptions.",
         "- Implement or preserve the behavior described in `tests/`.",
         "- Keep API shape compatible with files under `contracts/`.",
         "- When implementation reveals missing behavior, update the spec and rerun SpecGuard.",
@@ -431,6 +429,32 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
     ])
     output.write_text("\n".join(lines), encoding="utf-8")
     return ArtifactWrite(output, created=True)
+
+
+def _implementation_agent_artifacts(path: Path) -> list[str]:
+    artifacts: list[str] = []
+    seen: set[str] = set()
+
+    def add(relative: Path) -> None:
+        rendered = relative.as_posix()
+        if rendered not in seen:
+            seen.add(rendered)
+            artifacts.append(rendered)
+
+    for relative in review_artifact_paths(path):
+        add(relative)
+
+    tests_dir = path / "tests"
+    if tests_dir.exists():
+        for test in sorted(test for test in tests_dir.rglob("*.md") if test.is_file()):
+            add(test.relative_to(path))
+
+    contracts_dir = path / "contracts"
+    if contracts_dir.exists():
+        for contract in sorted(contract for contract in contracts_dir.rglob("*") if contract.is_file()):
+            add(contract.relative_to(path))
+
+    return artifacts
 
 
 def _implementation_handoff_metadata(path: Path, approved_artifacts: list[str]) -> dict[str, object]:

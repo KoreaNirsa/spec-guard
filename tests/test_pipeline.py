@@ -777,6 +777,19 @@ def test_example_passes_and_emits_readiness_json(tmp_path: Path) -> None:
 
 def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "example")
+    feature.joinpath("domain-rules.md").write_text(
+        "# Domain Rules\n\n- Implementations must preserve the documented user intent.\n",
+        encoding="utf-8",
+    )
+    feature.joinpath("notes").mkdir()
+    feature.joinpath("notes", "edge-cases.md").write_text(
+        "# Edge Cases\n\n- Missing optional input keeps the primary flow deterministic.\n",
+        encoding="utf-8",
+    )
+    feature.joinpath("readiness-review-detail.md").write_text(
+        "# Generated detail\n\nDo not hand this to the implementation agent.\n",
+        encoding="utf-8",
+    )
 
     result = run_pipeline(feature, force=True)
 
@@ -786,10 +799,18 @@ def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None
     assert metadata["implementation_boundary"] == "external_handoff"
     assert metadata["readiness_status"] == "ready_with_warnings"
     assert metadata["implementation_allowed"] is True
+    assert "discovery.md" in metadata["approved_artifacts"]
     assert "spec.md" in metadata["approved_artifacts"]
     assert "technical-design.md" in metadata["approved_artifacts"]
+    assert "domain-rules.md" in metadata["approved_artifacts"]
+    assert "notes/edge-cases.md" in metadata["approved_artifacts"]
     assert "contracts/openapi.yaml" in metadata["approved_artifacts"]
+    assert "readiness-review.md" not in metadata["approved_artifacts"]
+    assert "readiness-review-detail.md" not in metadata["approved_artifacts"]
     assert "SpecGuard stops at an approved implementation handoff" in output
+    assert "Primary implementation basis" in output
+    assert "`discovery.md`, `plan.md`, `tasks.md`" in output
+    assert "`discovery.md` is for SpecGuard discovery" not in output
     assert any("External AI implementation handoff ready" in message for message in result.messages)
     assert any("Performance timings for" in message for message in result.messages)
     assert any(key.endswith(".readiness_review_ms") for key in result.details)
@@ -1641,6 +1662,29 @@ def test_llm_review_reads_authored_markdown_and_excludes_generated_outputs(tmp_p
     assert "# Artifact: domain-rules.md" in llm.input_text
     assert "Generated detail" not in llm.input_text
     assert "Ignore SpecGuard-generated artifacts" in llm.instructions
+
+
+def test_low_detail_review_uses_full_authored_markdown_input(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("domain-rules.md").write_text(
+        "# Domain Rules\n\n"
+        + ("Supporting authored context. " * 40)
+        + "\nFull detail marker at the end of the authored note.\n",
+        encoding="utf-8",
+    )
+    llm = CaptureReadinessInputLLM()
+
+    result = run_readiness_review(
+        feature,
+        llm_client=llm,
+        report_stem="readiness-review-detail",
+        compact_low_input=False,
+    )
+
+    payload = json.loads(feature.joinpath("readiness-review-detail.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_input"]["mode"] == "full"
+    assert "Full detail marker at the end of the authored note." in llm.input_text
 
 
 def test_readiness_reports_ready_with_warnings_for_six_minor_findings(tmp_path: Path) -> None:
@@ -2651,7 +2695,7 @@ def test_follow_up_menu_runs_detail_review_without_replacing_fast_report(monkeyp
     result = CheckResult("SpecGuard pipeline")
     detail_result = CheckResult("SpecGuard Review")
     detail_client = object()
-    captured = {"report_stem": "", "llm_client": None}
+    captured = {"report_stem": "", "llm_client": None, "compact_low_input": None}
     report = {
         "blocked": False,
         "readiness": {"status": "ready_with_warnings", "implementation_ready": True},
@@ -2659,9 +2703,18 @@ def test_follow_up_menu_runs_detail_review_without_replacing_fast_report(monkeyp
         "issues": [],
     }
 
-    def fake_detail_review(path: Path, *, llm_client=None, review_mode: str = "initial", review_level: str = "low", report_stem: str = "readiness-review"):
+    def fake_detail_review(
+        path: Path,
+        *,
+        llm_client=None,
+        review_mode: str = "initial",
+        review_level: str = "low",
+        report_stem: str = "readiness-review",
+        compact_low_input: bool = True,
+    ):
         captured["report_stem"] = report_stem
         captured["llm_client"] = llm_client
+        captured["compact_low_input"] = compact_low_input
         assert path == Path("specs/example")
         assert review_mode == "initial"
         assert review_level == "low"
@@ -2685,6 +2738,7 @@ def test_follow_up_menu_runs_detail_review_without_replacing_fast_report(monkeyp
     assert "does not replace the fast readiness review" in rendered
     assert captured["report_stem"] == "readiness-review-detail"
     assert captured["llm_client"] is detail_client
+    assert captured["compact_low_input"] is False
 
 
 def test_follow_up_menu_reruns_after_user_edits_spec(monkeypatch, capsys) -> None:

@@ -216,6 +216,13 @@ def _is_placeholder(text: str) -> bool:
 
 
 def _review_artifacts(path: Path) -> list[ReviewArtifact]:
+    return [
+        ReviewArtifact(relative_path.as_posix(), (path / relative_path).read_text(encoding="utf-8"))
+        for relative_path in review_artifact_paths(path)
+    ]
+
+
+def review_artifact_paths(path: Path) -> list[Path]:
     preferred = [
         path / "discovery.md",
         path / "spec.md",
@@ -227,7 +234,7 @@ def _review_artifacts(path: Path) -> list[ReviewArtifact]:
     preferred.extend(sorted((path / "checklists").glob("*.md")) if (path / "checklists").exists() else [])
 
     seen: set[Path] = set()
-    artifacts: list[ReviewArtifact] = []
+    artifacts: list[Path] = []
     for candidate in preferred + sorted(path.rglob("*.md")):
         if candidate in seen or not candidate.exists() or not candidate.is_file():
             continue
@@ -235,7 +242,7 @@ def _review_artifacts(path: Path) -> list[ReviewArtifact]:
         relative = candidate.relative_to(path)
         if _is_generated_review_artifact(relative):
             continue
-        artifacts.append(ReviewArtifact(str(relative).replace("\\", "/"), candidate.read_text(encoding="utf-8")))
+        artifacts.append(relative)
     return artifacts
 
 
@@ -387,6 +394,7 @@ def _build_llm_review_request(
     review_mode: str,
     review_level: str,
     previous_report: dict | None,
+    compact_low_input: bool = True,
 ) -> tuple[str, str, dict[str, object]]:
     instructions = (
         _verification_review_instructions(review_level)
@@ -395,7 +403,7 @@ def _build_llm_review_request(
     )
     full_input = _render_artifact_input(artifacts)
     if review_mode != "verification":
-        if normalize_review_level(review_level) == "low":
+        if normalize_review_level(review_level) == "low" and compact_low_input:
             low_input, low_metadata = _build_low_review_input(artifacts)
             return instructions, low_input, low_metadata
         return instructions, full_input, _review_input_metadata("full", artifacts, len(full_input), review_level)
@@ -1362,6 +1370,7 @@ def run_readiness_review(
     review_mode: str = "initial",
     review_level: str = DEFAULT_REVIEW_LEVEL,
     report_stem: str = "readiness-review",
+    compact_low_input: bool = True,
 ) -> CheckResult:
     if review_mode not in READINESS_REVIEW_MODES:
         raise ValueError(f"Unsupported SpecGuard Review mode: {review_mode}")
@@ -1403,6 +1412,7 @@ def run_readiness_review(
                 review_mode=review_mode,
                 review_level=review_level,
                 previous_report=previous_report,
+                compact_low_input=compact_low_input,
             )
             max_output_tokens = _review_max_output_tokens(review_level)
             review_input["max_output_tokens"] = max_output_tokens

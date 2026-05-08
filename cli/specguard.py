@@ -821,6 +821,7 @@ def _run_detail_review(path: Path, args: argparse.Namespace, result: object, llm
             review_mode="initial",
             review_level=review_level,
             report_stem="readiness-review-detail",
+            compact_low_input=False,
         ),
     )
     detail_result.print()
