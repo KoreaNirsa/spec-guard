@@ -31,9 +31,11 @@ def test_run_help_explains_llm_follow_up_and_strict_modes(capsys: pytest.Capture
     assert "Skip live LLM requests and use local generators plus" in help_text
     assert "--no-follow-up" in help_text
     assert "--follow-up" in help_text
+    assert "--experimental-auto-revise" in help_text
     assert "--strict-e2e" in help_text
     assert "--review-level {high,low,medium}" in help_text
     assert "specguard run specs/team-invite --review-level medium" in help_text
+    assert "specguard run specs/team-invite --experimental-auto-revise --follow-up" in help_text
     assert "specguard auth setup --mode codex --timeout 600 --skip-login" in help_text
 
 

@@ -171,17 +171,19 @@ Readiness has three states, interpreted by review level:
 
 Critical findings always block implementation. READY results are highlighted in green, READY_WITH_WARNINGS results are highlighted as warning output, and NOT_READY results are highlighted in red and block Test, Contract, and Implementation Handoff.
 
-Interactive refinement uses this loop:
+Default interactive refinement is review-only:
 
 ```text
-Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY, READY_WITH_WARNINGS, or NOT_READY
+Initial SpecGuard Review -> user edits spec.md -> rerun -> READY, READY_WITH_WARNINGS, or NOT_READY
 ```
 
-In low mode, the initial review is a practical safety gate and does not try to perform a complete architecture or security audit. In medium/high, the review is broader and more adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
+In low mode, the initial review is a practical safety gate and does not try to perform a complete architecture or security audit. In medium/high, the review is broader and more adversarial. When the default run is NOT READY, SpecGuard reports actionable Readiness Findings and stops. The user owns the spec edits, then reruns `specguard run`.
+
+Automatic Spec Revision is experimental and disabled by default. Users can opt in with `--experimental-auto-revise --follow-up`. In that explicit path, SpecGuard can regenerate `spec.md` from blocked findings and run Verification Review. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
 
 Before a regenerated `spec.md` proceeds to Verification Review, SpecGuard runs an Intent Preservation Check. In low mode, obvious out-of-scope additions are removed from implementation sections and preserved under Out of Scope when they match documented non-goals. The check still blocks obvious intent drift: a changed feature title/problem, dropped acceptance coverage, removed out-of-scope boundaries, weakened safety requirements, or out-of-scope items that still remain promoted into Requirements, Acceptance Criteria, or Error Cases. When it blocks, SpecGuard still updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and asks the user to review the applied diff before rerunning.
 
-Strict E2E mode automates that loop for LLM-enabled runs:
+Experimental Strict E2E mode automates that loop for LLM-enabled runs:
 
 ```bash
 specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
@@ -208,7 +210,7 @@ specs/my-feature/
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
 
-In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If low mode auto-demotes documented out-of-scope additions, the CLI says so and saves the original/diff under `.specguard/spec-revisions/`. If Intent Preservation Check fails, the regenerated text is applied to `spec.md`, the original and diff are saved under `.specguard/spec-revisions/`, and Verification Review is skipped until the user reviews the applied diff. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+In an interactive terminal, `run` opens a continuation menu after the pipeline. The default menu lets the user inspect the latest Readiness Findings and then exit to edit `spec.md` manually. It does not rewrite user specs unless `--experimental-auto-revise` is set. With that opt-in, blocked findings expose an experimental auto-revision action that regenerates `spec.md` and automatically runs Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If low mode auto-demotes documented out-of-scope additions, the CLI says so and saves the original/diff under `.specguard/spec-revisions/`. If Intent Preservation Check fails, the regenerated text is applied to `spec.md`, the original and diff are saved under `.specguard/spec-revisions/`, and Verification Review is skipped until the user reviews the applied diff. Initial pipeline, experimental LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
 If a local Codex request times out, check `specguard auth status` and increase the timeout:
 
@@ -242,7 +244,7 @@ Then run:
 specguard run specs/my-feature
 ```
 
-Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the SpecGuard Readiness Gate threshold is met.
+Repeat until the SpecGuard Readiness Gate threshold is met. Automatic Spec Revision remains available only as an experimental opt-in with `--experimental-auto-revise --follow-up`; the default flow keeps spec editing under user control.
 
 ## 5. Coding Agents Implement Later
 
