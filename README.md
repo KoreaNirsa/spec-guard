@@ -9,18 +9,37 @@ It turns specs into reviewed, testable, implementation-ready packages before AI 
 
 It is not a prompt-to-code generator. SpecGuard helps you prepare an approved spec package before an external Codex, Claude Code, or another coding agent writes application code.
 
+## Workflow At A Glance
+
 ```text
 Discovery -> Spec Package -> Technical Design -> SpecGuard Review
 -> Test -> Contract -> Implementation Handoff
 -> External AI Implementation -> Pull Request -> SpecGuard PR Review
 ```
 
+SpecGuard owns the validation path through Implementation Handoff. The user or an external coding agent owns implementation after the handoff, then SpecGuard PR Review can compare the pull request back to the approved spec package.
+
 ## Core Reviews
 
 SpecGuard centers on two review steps:
 
-- SpecGuard Review runs before code generation. It checks whether the spec package has important gaps in product behavior, contracts, data ownership, authorization, state transitions, error cases, or executable verification before an implementation agent starts coding.
-- SpecGuard PR Review runs after code is implemented. It compares the approved spec package, implementation handoff, and pull request diff, then posts an advisory PR comment when the implementation appears to drift from the spec, tests, contracts, security expectations, or operational requirements.
+### SpecGuard Review
+
+SpecGuard Review runs before code generation. It checks whether the spec package has important gaps in product behavior, contracts, data ownership, authorization, state transitions, error cases, or executable verification before an implementation agent starts coding.
+
+Current default behavior:
+
+- `low` is the default review level. It blocks Critical findings only; Major and Minor findings remain visible as warnings.
+- `READY` means SpecGuard generated Test, Contract, and Implementation Handoff artifacts. Start external implementation from `implementation-output.md`.
+- `READY_WITH_WARNINGS` means implementation can proceed, but warning findings are available in `readiness-review.md` if the user wants to strengthen the spec first.
+- `NOT READY` means implementation is blocked. Review the findings, edit `spec.md` intentionally, and rerun `specguard run`.
+- Default `specguard run` does not rewrite `spec.md`. Automatic Spec Revision is experimental opt-in with `--experimental-auto-revise --follow-up`.
+
+When experimental Spec Revision is enabled, low mode focuses the revision and Verification Review backlog on Critical blockers so warning cleanup does not create a long pre-implementation loop. The CLI prints Spec Revision step messages for context assembly, provider wait, intent preservation, file writes, and Verification Review reruns.
+
+### SpecGuard PR Review
+
+SpecGuard PR Review runs after code is implemented. It compares the approved spec package, implementation handoff, and pull request diff, then posts an advisory PR comment when the implementation appears to drift from the spec, tests, contracts, security expectations, or operational requirements.
 
 ## Current Support Status
 
@@ -100,7 +119,7 @@ specguard example copy your-feature-name --force
 
 The example is for trying the full `run` pipeline before authoring your own production spec. It replaces the init draft with a complete sample package under `specs/your-feature-name/`.
 
-### 5. Run And Iterate Until READY
+### 5. Run And Iterate Until READY Or READY_WITH_WARNINGS
 
 ```bash
 specguard run specs/your-feature-name
@@ -123,7 +142,7 @@ If SpecGuard returns NOT READY, review the findings, edit the spec intentionally
 [q] Exit
 ```
 
-Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require user revision before implementation; Major and Minor findings remain visible as warnings.
+Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require user revision before implementation; Major and Minor findings remain visible as warnings. After an implementation-ready result, the default CLI prints a short Next Action guide instead of opening another cleanup loop.
 
 Automatic Spec Revision is experimental and disabled by default. To opt in, run with `--experimental-auto-revise --follow-up`; SpecGuard can then generate a revised `spec.md` from blocked Readiness Findings and rerun Verification Review. Spec revision is guarded by an Intent Preservation Check. In low mode, obvious out-of-scope additions such as retry queues, bulk import, or cross-workspace invite variants are auto-demoted back out of implementation scope when they match documented non-goals. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, weaken safety-critical requirements, or still move out-of-scope work into implementation scope, SpecGuard updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
 
