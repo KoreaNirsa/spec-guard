@@ -34,6 +34,7 @@ Current default behavior:
 - `READY_WITH_WARNINGS` means implementation can proceed, but warning findings are available in `readiness-review.md` if the user wants to strengthen the spec first.
 - `NOT READY` means implementation is blocked. Review the findings, edit `spec.md` intentionally, and rerun `specguard run`.
 - Default low-mode `specguard run` uses fast heuristic SpecGuard Review first. Run `specguard run <path> --llm` or choose `SpecGuard Review (Detail)` from the forced follow-up menu when you want live LLM review.
+- Live LLM review checks the SpecGuard Review cache before waiting on a provider. Cache hit/miss status and concise miss reasons are printed and written to `readiness-review.json`.
 - Default `specguard run` does not rewrite `spec.md`. Automatic Spec Revision is experimental opt-in with `--experimental-auto-revise --follow-up`.
 
 When experimental Spec Revision is enabled, low mode focuses the revision and Verification Review backlog on Critical blockers so warning cleanup does not create a long pre-implementation loop. The CLI prints Spec Revision step messages for context assembly, provider wait, intent preservation, file writes, and Verification Review reruns.
@@ -134,7 +135,7 @@ The default SpecGuard Review level is `low`. Low mode is a practical safety gate
 Technical Design -> Initial SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
 
-`run` also prints per-feature performance timings and records SpecGuard Review input size so slow stages and oversized review contexts can be diagnosed without exposing artifact contents.
+`run` also prints per-feature performance timings and records SpecGuard Review input size so slow stages and oversized review contexts can be diagnosed without exposing artifact contents. For live LLM review, `readiness-review.json` includes cache diagnostics such as hit/miss, miss reason, provider/model, prompt version, token budget, and non-sensitive input fingerprints.
 
 If SpecGuard returns NOT READY, review the findings, edit the spec intentionally, and rerun `specguard run`:
 

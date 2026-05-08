@@ -1621,7 +1621,15 @@ def test_readiness_review_reuses_cached_llm_report_for_unchanged_artifacts(tmp_p
     assert llm.calls == 1
     assert first.details["cache_hit"] is False
     assert second.details["cache_hit"] is True
+    assert first.details["cache_miss_reason"] == "no cache entry for this feature"
+    assert any("SpecGuard Review cache check: miss" in message for message in first.messages)
+    assert any("no cache entry for this feature" in message for message in first.messages)
+    assert any("SpecGuard Review cache check: hit" in message for message in second.messages)
     assert any("SpecGuard Review cache hit" in message for message in second.messages)
+    first_payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert first_payload["cache"]["hit"] is True
+    assert first_payload["cache"]["cache_key_prefix"] == second.details["cache_key"][:12]
+    assert "input_fingerprint" in first_payload["cache"]
     assert cache_dirs
     assert cache_dirs[0].joinpath("readiness-review.md").exists()
     assert cache_dirs[0].joinpath("readiness-review.json").exists()
@@ -1639,7 +1647,32 @@ def test_readiness_review_cache_invalidates_when_artifact_changes(tmp_path: Path
     result = run_readiness_review(feature, llm_client=llm)
 
     assert result.details["cache_hit"] is False
+    assert result.details["cache_miss_reason"] == "artifact hash changed: spec.md"
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert payload["cache"]["miss_reason"] == "artifact hash changed: spec.md"
     assert llm.calls == 2
+
+
+def test_readiness_review_cache_ignores_generated_artifact_content_changes(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = CountingReadinessLLM()
+
+    run_readiness_review(feature, llm_client=llm)
+    feature.joinpath("tests", "feature.test.md").write_text(
+        "# Existing tests\n\n- Generated test details changed after review.\n",
+        encoding="utf-8",
+    )
+    feature.joinpath("contracts", "openapi.yaml").write_text(
+        feature.joinpath("contracts", "openapi.yaml").read_text(encoding="utf-8")
+        + "\ncomponents:\n  schemas:\n    Extra:\n      type: object\n",
+        encoding="utf-8",
+    )
+    result = run_readiness_review(feature, llm_client=llm)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.details["cache_hit"] is True
+    assert payload["cache"]["hit"] is True
+    assert llm.calls == 1
 
 
 def test_readiness_review_cache_invalidates_by_provider_model_and_review_mode(tmp_path: Path) -> None:
@@ -1662,9 +1695,13 @@ def test_readiness_review_cache_invalidates_by_provider_model_and_review_mode(tm
     assert verification.calls == 1
     assert medium.calls == 1
     assert model_result.details["cache_hit"] is False
+    assert model_result.details["cache_miss_reason"] == "model changed: gpt-a -> gpt-b"
     assert provider_result.details["cache_hit"] is False
+    assert provider_result.details["cache_miss_reason"] == "provider changed: CountingReadinessLLM -> AlternateCountingReadinessLLM"
     assert verification_result.details["cache_hit"] is False
+    assert verification_result.details["cache_miss_reason"] == "review mode changed: initial -> verification"
     assert medium_result.details["cache_hit"] is False
+    assert medium_result.details["cache_miss_reason"] == "review level changed: low -> medium"
     assert medium_result.details["review_level"] == "medium"
 
 

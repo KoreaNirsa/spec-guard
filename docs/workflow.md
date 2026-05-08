@@ -160,6 +160,8 @@ Each run records per-feature stage timings for validation, design generation, Sp
 
 SpecGuard Review inspects the feature package according to the selected review level. The default `low` level focuses on minimum safety gating and uses fast heuristic review first, even when a provider is configured. Use `--llm` or the follow-up `SpecGuard Review (Detail)` action when the user wants live LLM review. `medium` preserves the stricter v0.2.5-style gate. `high` uses the medium gate thresholds in this release while asking for stricter review attention.
 
+For live LLM review, SpecGuard checks `.specguard/readiness-cache/` before waiting on the provider. CLI output reports whether the review hit, missed, or stored cache output. Misses include a concise reason such as changed spec artifact hash, review level, provider, model, prompt version, or token budget. `readiness-review.json` records the same cache diagnostics with non-sensitive fingerprints, not raw prompts or artifact contents. Generated test and contract content changes do not invalidate the cache by themselves; the review input only records their availability.
+
 ```bash
 specguard run specs/my-feature --llm
 specguard run specs/my-feature --review-level medium

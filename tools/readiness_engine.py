@@ -40,7 +40,7 @@ LOW_REVIEW_ARTIFACT_LIMITS = {
 }
 LOW_REVIEW_MAX_OUTPUT_TOKENS = 1400
 DEFAULT_REVIEW_MAX_OUTPUT_TOKENS = 2500
-READINESS_CACHE_SCHEMA_VERSION = "0.1"
+READINESS_CACHE_SCHEMA_VERSION = "0.2"
 READINESS_CACHE_PROMPT_VERSION = "readiness-review-v1"
 SPECGUARD_STATE_DIR = ".specguard"
 READINESS_CACHE_DIR = "readiness-cache"
@@ -96,6 +96,7 @@ class CachedReview:
     cache_dir: Path
     cache_key: str
     payload: dict
+    metadata: dict[str, object]
 
 
 @dataclass(frozen=True)
@@ -246,11 +247,7 @@ def _generated_artifact_manifest(path: Path) -> ReviewArtifact | None:
             relative_path = str(relative).replace("\\", "/")
             if candidate.name in GENERATED_ARTIFACT_NAMES:
                 continue
-            try:
-                characters = len(candidate.read_text(encoding="utf-8"))
-            except UnicodeDecodeError:
-                characters = candidate.stat().st_size
-            manifest_entries.append(f"- {relative_path}: present, {characters} characters")
+            manifest_entries.append(f"- {relative_path}: present")
 
     if not manifest_entries:
         return None
@@ -578,28 +575,50 @@ def _review_cache_metadata(
     artifact_manifest = _review_artifact_manifest(artifacts)
     artifact_fingerprint = hashlib.sha256(_stable_json(artifact_manifest).encode("utf-8")).hexdigest()
     client_identity = _client_cache_identity(llm_client)
-    metadata: dict[str, object] = {
+    input_fingerprint = _sha256_text(input_text)
+    instructions_fingerprint = _sha256_text(instructions)
+    cache_basis: dict[str, object] = {
         "schema_version": READINESS_CACHE_SCHEMA_VERSION,
         "prompt_version": READINESS_CACHE_PROMPT_VERSION,
         "review_mode": review_mode,
         "review_level": review_level,
         "client": client_identity,
-        "artifact_fingerprint": artifact_fingerprint,
-        "input_fingerprint": _sha256_text(input_text),
-        "instructions_fingerprint": _sha256_text(instructions),
+        "input_fingerprint": input_fingerprint,
+        "instructions_fingerprint": instructions_fingerprint,
         "max_output_tokens": max_output_tokens,
+    }
+    cache_key = hashlib.sha256(_stable_json(cache_basis).encode("utf-8")).hexdigest()
+    metadata: dict[str, object] = {
+        **cache_basis,
+        "cache_key": cache_key,
+        "cache_key_fields": [
+            "schema_version",
+            "prompt_version",
+            "review_mode",
+            "review_level",
+            "client.mode",
+            "client.model",
+            "client.codex_profile",
+            "client.client_class",
+            "input_fingerprint",
+            "instructions_fingerprint",
+            "max_output_tokens",
+        ],
+        "artifact_fingerprint": artifact_fingerprint,
         "artifact_count": len(artifacts),
         "total_input_characters": sum(len(artifact.content) for artifact in artifacts),
         "artifacts": artifact_manifest,
     }
-    cache_key = hashlib.sha256(_stable_json(metadata).encode("utf-8")).hexdigest()
-    metadata["cache_key"] = cache_key
     return cache_key, metadata
 
 
-def _load_cached_review(feature_dir: Path, cache_key: str) -> CachedReview | None:
+def _cache_entry_dir(feature_dir: Path, cache_key: str) -> Path:
     cache_root, feature_slug = _readiness_cache_root(feature_dir)
-    cache_dir = cache_root / feature_slug / cache_key
+    return cache_root / feature_slug / cache_key
+
+
+def _load_cached_review(feature_dir: Path, cache_key: str) -> CachedReview | None:
+    cache_dir = _cache_entry_dir(feature_dir, cache_key)
     report_path = cache_dir / "readiness-review.md"
     report_json_path = cache_dir / "readiness-review.json"
     metadata_path = cache_dir / "metadata.json"
@@ -612,12 +631,165 @@ def _load_cached_review(feature_dir: Path, cache_key: str) -> CachedReview | Non
         return None
     if not isinstance(metadata, dict) or metadata.get("cache_key") != cache_key or not isinstance(payload, dict):
         return None
-    return CachedReview(cache_dir=cache_dir, cache_key=cache_key, payload=payload)
+    return CachedReview(cache_dir=cache_dir, cache_key=cache_key, payload=payload, metadata=metadata)
 
 
-def _copy_cached_review(cached: CachedReview, report_path: Path, report_json_path: Path) -> None:
-    shutil.copyfile(cached.cache_dir / "readiness-review.md", report_path)
-    shutil.copyfile(cached.cache_dir / "readiness-review.json", report_json_path)
+def _cache_metadata_candidates(feature_dir: Path) -> list[tuple[float, Path, dict[str, object]]]:
+    cache_root, feature_slug = _readiness_cache_root(feature_dir)
+    feature_cache_root = cache_root / feature_slug
+    if not feature_cache_root.exists():
+        return []
+
+    candidates: list[tuple[float, Path, dict[str, object]]] = []
+    for cache_dir in feature_cache_root.iterdir():
+        metadata_path = cache_dir / "metadata.json"
+        if not cache_dir.is_dir() or not metadata_path.exists():
+            continue
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(metadata, dict):
+            candidates.append((metadata_path.stat().st_mtime, cache_dir, metadata))
+    return candidates
+
+
+def _closest_cache_metadata(feature_dir: Path, metadata: dict[str, object]) -> tuple[Path, dict[str, object]] | None:
+    candidates = _cache_metadata_candidates(feature_dir)
+    if not candidates:
+        return None
+
+    comparison_fields = [
+        "schema_version",
+        "prompt_version",
+        "review_mode",
+        "review_level",
+        "client.mode",
+        "client.client_class",
+        "client.model",
+        "client.codex_profile",
+        "max_output_tokens",
+        "instructions_fingerprint",
+        "input_fingerprint",
+    ]
+
+    def score(item: tuple[float, Path, dict[str, object]]) -> tuple[int, float]:
+        mtime, _cache_dir, candidate = item
+        matches = sum(
+            1
+            for field in comparison_fields
+            if _cache_metadata_value(candidate, field) == _cache_metadata_value(metadata, field)
+        )
+        return matches, mtime
+
+    _mtime, cache_dir, closest = max(candidates, key=score)
+    return cache_dir, closest
+
+
+def _cache_metadata_value(metadata: dict[str, object], field: str) -> object:
+    current: object = metadata
+    for part in field.split("."):
+        if not isinstance(current, dict):
+            return None
+        current = current.get(part)
+    return current
+
+
+def _artifact_cache_map(value: object) -> dict[str, object]:
+    if not isinstance(value, list):
+        return {}
+    mapped: dict[str, object] = {}
+    for item in value:
+        if isinstance(item, dict) and isinstance(item.get("path"), str):
+            mapped[item["path"]] = item.get("sha256") or item.get("characters")
+    return mapped
+
+
+def _artifact_manifest_change_reason(previous: object, current: object) -> str:
+    previous_map = _artifact_cache_map(previous)
+    current_map = _artifact_cache_map(current)
+    if not previous_map and not current_map:
+        return ""
+
+    added = sorted(set(current_map) - set(previous_map))
+    removed = sorted(set(previous_map) - set(current_map))
+    changed = sorted(path for path in set(previous_map) & set(current_map) if previous_map[path] != current_map[path])
+    if changed:
+        return "artifact hash changed: " + ", ".join(changed[:3])
+    if added:
+        return "artifact set changed: added " + ", ".join(added[:3])
+    if removed:
+        return "artifact set changed: removed " + ", ".join(removed[:3])
+    return ""
+
+
+def _cache_miss_reason(feature_dir: Path, metadata: dict[str, object]) -> str:
+    closest = _closest_cache_metadata(feature_dir, metadata)
+    if closest is None:
+        return "no cache entry for this feature"
+    _cache_dir, previous = closest
+
+    comparisons = [
+        ("schema_version", "cache schema version changed"),
+        ("prompt_version", "prompt version changed"),
+        ("review_mode", "review mode changed"),
+        ("review_level", "review level changed"),
+        ("client.mode", "provider changed"),
+        ("client.client_class", "provider client changed"),
+        ("client.model", "model changed"),
+        ("client.codex_profile", "Codex profile changed"),
+        ("max_output_tokens", "max output token budget changed"),
+        ("instructions_fingerprint", "review instructions changed"),
+    ]
+    for field, label in comparisons:
+        previous_value = _cache_metadata_value(previous, field)
+        current_value = _cache_metadata_value(metadata, field)
+        if previous_value != current_value:
+            return f"{label}: {previous_value or '<empty>'} -> {current_value or '<empty>'}"
+
+    artifact_reason = _artifact_manifest_change_reason(previous.get("artifacts"), metadata.get("artifacts"))
+    if artifact_reason:
+        return artifact_reason
+    if previous.get("input_fingerprint") != metadata.get("input_fingerprint"):
+        return "review input changed"
+    return "cache key changed"
+
+
+def _cache_report_info(
+    metadata: dict[str, object],
+    *,
+    hit: bool,
+    miss_reason: str = "",
+    cache_dir: Path | None = None,
+    stored: bool = False,
+) -> dict[str, object]:
+    client = metadata.get("client", {})
+    if not isinstance(client, dict):
+        client = {}
+    cache_key = str(metadata.get("cache_key", ""))
+    info: dict[str, object] = {
+        "enabled": True,
+        "hit": hit,
+        "cache_key": cache_key,
+        "cache_key_prefix": cache_key[:12],
+        "stored": stored,
+        "schema_version": metadata.get("schema_version"),
+        "prompt_version": metadata.get("prompt_version"),
+        "review_mode": metadata.get("review_mode"),
+        "review_level": metadata.get("review_level"),
+        "provider": client.get("mode"),
+        "model": client.get("model"),
+        "client_class": client.get("client_class"),
+        "input_fingerprint": metadata.get("input_fingerprint"),
+        "instructions_fingerprint": metadata.get("instructions_fingerprint"),
+        "artifact_fingerprint": metadata.get("artifact_fingerprint"),
+        "max_output_tokens": metadata.get("max_output_tokens"),
+    }
+    if miss_reason:
+        info["miss_reason"] = miss_reason
+    if cache_dir is not None:
+        info["cache_dir"] = str(cache_dir)
+    return info
 
 
 def _store_cached_review(
@@ -1073,6 +1245,7 @@ def _build_report(
     review_mode: str,
     review_level: str,
     review_input: dict[str, object] | None = None,
+    cache_info: dict[str, object] | None = None,
 ) -> str:
     summary = _build_summary(issues)
     policy = _readiness_policy(review_level)
@@ -1134,7 +1307,28 @@ def _build_report(
         f"- Artifacts sent to LLM: {review_input.get('artifact_count', len(artifacts)) if review_input else len(artifacts)}",
         f"- Characters sent to LLM: {review_input.get('total_characters', sum(len(artifact.content) for artifact in artifacts)) if review_input else sum(len(artifact.content) for artifact in artifacts)}",
         "",
+        *_render_cache_report_lines(cache_info),
     ])
+
+
+def _render_cache_report_lines(cache_info: dict[str, object] | None) -> list[str]:
+    if not cache_info:
+        return []
+    status = "hit" if cache_info.get("hit") else "miss"
+    lines = [
+        "## Cache",
+        "",
+        f"- Status: {status}",
+        f"- Key: {cache_info.get('cache_key_prefix', '')}",
+    ]
+    if cache_info.get("miss_reason"):
+        lines.append(f"- Miss reason: {cache_info['miss_reason']}")
+    if cache_info.get("stored"):
+        lines.append("- Stored: true")
+    if cache_info.get("provider") or cache_info.get("model"):
+        lines.append(f"- Provider: {cache_info.get('provider') or '<unknown>'}; model: {cache_info.get('model') or '<default>'}")
+    lines.append("")
+    return lines
 
 
 def _build_json_report(
@@ -1143,6 +1337,7 @@ def _build_json_report(
     review_mode: str,
     review_level: str,
     review_input: dict[str, object] | None = None,
+    cache_info: dict[str, object] | None = None,
 ) -> str:
     summary = _build_summary(issues)
     policy = _readiness_policy(review_level)
@@ -1173,6 +1368,8 @@ def _build_json_report(
     }
     if review_input is not None:
         payload["review_input"] = review_input
+    if cache_info is not None:
+        payload["cache"] = cache_info
     return json.dumps(payload, indent=2) + "\n"
 
 
@@ -1212,6 +1409,8 @@ def run_readiness_review(
     cache_hit: CachedReview | None = None
     cache_key = ""
     cache_metadata: dict[str, object] | None = None
+    cache_miss_reason = ""
+    cache_info: dict[str, object] | None = None
     llm_elapsed_ms: int | None = None
     llm_summary = describe_llm_client(llm_client) if llm_client else ""
     try:
@@ -1235,13 +1434,21 @@ def run_readiness_review(
             )
             cache_hit = _load_cached_review(path, cache_key)
             if cache_hit:
-                _copy_cached_review(cache_hit, report_path, report_json_path)
                 issues = _parse_llm_issues(json.dumps({"issues": cache_hit.payload.get("issues", [])}), review_level)
+                cache_info = _cache_report_info(cache_metadata, hit=True, cache_dir=cache_hit.cache_dir)
             else:
+                cache_miss_reason = _cache_miss_reason(path, cache_metadata)
+                cache_info = _cache_report_info(
+                    cache_metadata,
+                    hit=False,
+                    miss_reason=cache_miss_reason,
+                    cache_dir=_cache_entry_dir(path, cache_key),
+                    stored=True,
+                )
                 review_artifact_count = review_input.get("artifact_count", len(artifacts)) if review_input else len(artifacts)
                 review_characters = review_input.get("total_characters", total_input_characters) if review_input else total_input_characters
                 activity = (
-                    f"waiting for LLM SpecGuard Review "
+                    f"cache miss: {cache_miss_reason}; waiting for LLM SpecGuard Review "
                     f"({llm_summary}, {review_mode}, {review_artifact_count} artifacts, {review_characters} chars)"
                 )
                 started = time.perf_counter()
@@ -1266,16 +1473,17 @@ def run_readiness_review(
     minor_count = summary["minor"]
     implementation_ready = _is_implementation_ready(summary, review_level)
 
-    if not cache_hit:
-        report_path.write_text(_build_report(artifacts, issues, review_mode, review_level, review_input), encoding="utf-8")
-        report_json_path.write_text(_build_json_report(artifacts, issues, review_mode, review_level, review_input), encoding="utf-8")
-        if llm_client and cache_metadata is not None:
-            _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
+    report_path.write_text(_build_report(artifacts, issues, review_mode, review_level, review_input, cache_info), encoding="utf-8")
+    report_json_path.write_text(_build_json_report(artifacts, issues, review_mode, review_level, review_input, cache_info), encoding="utf-8")
+    if llm_client and cache_metadata is not None and not cache_hit:
+        _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
     result.details.update(summary)
     result.details["review_level"] = review_level
     if cache_hit:
         result.details["cache_hit"] = True
         result.details["cache_key"] = cache_key
+        result.details["cache_dir"] = str(cache_hit.cache_dir)
+        result.add_info(f"SpecGuard Review cache check: hit {cache_key[:12]}")
         result.add_info(f"Reused cached {mode} {review_mode} readiness report: {report_path}")
         result.add_info(f"Reused cached {mode} {review_mode} machine-readable readiness report: {report_json_path}")
         result.add_info(f"SpecGuard Review cache hit: {cache_key[:12]} ({cache_hit.cache_dir})")
@@ -1285,6 +1493,8 @@ def run_readiness_review(
         if llm_client and cache_key:
             result.details["cache_hit"] = False
             result.details["cache_key"] = cache_key
+            result.details["cache_miss_reason"] = cache_miss_reason
+            result.add_info(f"SpecGuard Review cache check: miss {cache_key[:12]} ({cache_miss_reason})")
             result.add_info(f"SpecGuard Review cache stored: {cache_key[:12]}")
     result.add_info(f"SpecGuard Review level: {review_level} ({review_level_gate_text(review_level)}).")
     if review_level == "low":
