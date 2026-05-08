@@ -838,21 +838,25 @@ def test_root_example_matches_packaged_example_resource() -> None:
         assert root_example.joinpath(relative_path).read_bytes() == packaged_example.joinpath(relative_path).read_bytes()
 
 
-def test_authored_example_specs_can_be_copied_and_run(tmp_path: Path) -> None:
-    feature = tmp_path / "specs" / "team-invite"
+def test_vulnerable_authored_example_specs_are_not_ready(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "todo-privacy"
     shutil.copytree(ROOT / "example", feature)
 
     result = run_pipeline(feature)
 
-    assert result.ok
+    assert not result.ok
     assert feature.joinpath("technical-design.md").exists()
     assert feature.joinpath("tests", "team-invite.test.md").exists()
     assert feature.joinpath("contracts", "openapi.yaml").exists()
-    assert feature.joinpath("implementation-output.md").exists()
+    assert feature.joinpath("readiness-review.json").exists()
+    assert not feature.joinpath("implementation-output.md").exists()
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
-    assert payload["readiness"]["implementation_ready"] is True
-    assert payload["summary"]["critical"] == 0
-    assert payload["summary"]["major"] == 0
+    assert payload["blocked"] is True
+    assert payload["readiness"]["implementation_ready"] is False
+    assert payload["readiness"]["status"] == "not_ready"
+    assert payload["summary"]["critical"] >= 1
+    assert "Todo ownership boundary is unclear" in {issue["title"] for issue in payload["issues"]}
+    assert any("Do not start external AI implementation" in step for step in result.next_steps)
 
 
 def test_pipeline_regenerates_stale_technical_design(tmp_path: Path) -> None:
@@ -948,29 +952,30 @@ def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
     assert feature.joinpath("checklists", "spec-readiness.md").exists()
 
 
-def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> None:
-    feature = tmp_path / "specs" / "team-invite"
+def test_cli_run_smoke_blocks_vulnerable_authored_example_specs(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "todo-privacy"
     shutil.copytree(ROOT / "example", feature)
 
     completed = run_cli_smoke(
         tmp_path,
         "run",
-        "specs/team-invite",
+        "specs/todo-privacy",
         "--no-llm",
         "--no-follow-up",
-        "--force",
     )
 
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert "[PASS] SpecGuard pipeline" in completed.stdout
+    assert completed.returncode == 1, completed.stdout + completed.stderr
+    assert "[FAIL] SpecGuard pipeline" in completed.stdout
     assert "Running pipeline completed" in completed.stdout
-    assert "External AI implementation handoff ready" in completed.stdout
+    assert "[NOT READY]" in completed.stdout
+    assert "Todo ownership boundary is unclear" in completed.stdout
     assert feature.joinpath("technical-design.md").exists()
     assert feature.joinpath("tests", "team-invite.test.md").exists()
     assert feature.joinpath("contracts", "openapi.yaml").exists()
-    assert feature.joinpath("implementation-output.md").exists()
+    assert not feature.joinpath("implementation-output.md").exists()
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
-    assert payload["readiness"]["implementation_ready"] is True
+    assert payload["blocked"] is True
+    assert payload["readiness"]["implementation_ready"] is False
 
 
 def test_cli_example_copy_points_to_default_low_mode_run(tmp_path: Path) -> None:
