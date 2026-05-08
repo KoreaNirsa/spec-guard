@@ -21,29 +21,12 @@ SpecGuard owns the validation path through Implementation Handoff. The user or a
 
 ## Core Reviews
 
-SpecGuard centers on two review steps:
+SpecGuard has two review checkpoints:
 
-### SpecGuard Review
+- `SpecGuard Review` runs before implementation. Default low mode uses a fast heuristic review, blocks Critical findings, and reports Major or Minor findings as warnings.
+- `SpecGuard PR Review` runs after implementation. It compares the approved spec package and implementation handoff against a pull request diff, then posts an advisory review comment.
 
-SpecGuard Review runs before code generation. It checks whether the spec package has important gaps in product behavior, contracts, data ownership, authorization, state transitions, error cases, or executable verification before an implementation agent starts coding.
-
-Current default behavior:
-
-- `low` is the default review level. It blocks Critical findings only; Major and Minor findings remain visible as warnings.
-- `READY` means SpecGuard generated Test, Contract, and Implementation Handoff artifacts. Start external implementation from `implementation-output.md`.
-- `READY_WITH_WARNINGS` means implementation can proceed, but warning findings are available in `readiness-review.md` if the user wants to strengthen the spec first.
-- `NOT READY` means implementation is blocked. Review the findings, edit `spec.md` intentionally, and rerun `specguard run`.
-- Default low-mode `specguard run` uses fast heuristic SpecGuard Review first, even when a provider is configured. Run `specguard run <path> --llm` when you want provider-backed review in the main pipeline, or choose the detailed LLM spec review action from the follow-up menu when you want an on-demand review after the fast result.
-- SpecGuard Review reads authored Markdown under the feature package, including `discovery.md` and additional `.md` spec notes, while excluding generated SpecGuard artifacts.
-- In low mode, the first live LLM review may compact supporting authored Markdown for speed. The follow-up detailed LLM spec review sends full authored Markdown and writes `readiness-review-detail.md/json` without rewriting `spec.md`.
-- Live LLM review checks the SpecGuard Review cache before waiting on a provider. Cache hit/miss status and concise miss reasons are printed and written to the review JSON.
-- Default `specguard run` does not rewrite `spec.md`. Automatic Spec Revision is experimental opt-in with `--experimental-auto-revise --follow-up`.
-
-When experimental Spec Revision is enabled, low mode focuses the revision and Verification Review backlog on Critical blockers so warning cleanup does not create a long pre-implementation loop. The CLI prints Spec Revision step messages for context assembly, provider wait, intent preservation, file writes, and Verification Review reruns.
-
-### SpecGuard PR Review
-
-SpecGuard PR Review runs after code is implemented. It compares the approved spec package, implementation handoff, and pull request diff, then posts an advisory PR comment when the implementation appears to drift from the spec, tests, contracts, security expectations, or operational requirements.
+For review levels, LLM detail review, cache behavior, and experimental Spec Revision, see [Core Reviews](docs/core-reviews.md).
 
 ## Current Support Status
 
@@ -51,175 +34,17 @@ Currently, local Codex mode is the recommended and release-tested path for live 
 
 ## Setup To User Flow
 
-This is the shortest path from installation to a reviewed implementation PR.
-
-### 1. Install
-
-SpecGuard expects Python 3.11 or newer.
+This is the shortest path from installation to a reviewed implementation PR:
 
 ```bash
 pip install spec-guard
-specguard --help
-```
-
-### 2. Configure Codex
-
-Configure Codex only when you want LLM-backed steps such as LLM Discovery, LLM Technical Design, `specguard run --llm`, follow-up detailed LLM SpecGuard Review, experimental Spec Revision, Strict E2E, or SpecGuard PR Review setup. The default low `specguard run` still works without a provider by using deterministic generation and fast heuristic SpecGuard Review.
-
-To use local Codex:
-
-```bash
-specguard auth setup --mode codex --model gpt-5.4
-specguard auth status
-```
-
-Codex mode uses a 600-second request timeout by default because `run` can ask Codex to review the full spec package. `auth status` confirms the saved configuration and local Codex command availability; the first full provider request happens during `init`, `run`, or experimental follow-up regeneration.
-
-For a faster local review profile, configure an explicit Codex reasoning effort or a Codex profile:
-
-```bash
-specguard auth setup --mode codex --model gpt-5.4 --codex-reasoning-effort medium --skip-login
-specguard auth status
-```
-
-Lower reasoning effort can reduce latency, while higher effort may improve review depth. SpecGuard keeps Codex defaults unless you opt in.
-
-If Codex is already logged in and you do not want setup to offer `codex login`:
-
-```bash
-specguard auth setup --mode codex --model gpt-5.4 --skip-login
-```
-
-
-### 3. Create A Feature Spec
-
-```bash
 specguard init your-feature-name
-```
-
-SpecGuard writes draft artifacts and the default readiness workflow:
-
-```text
-specs/your-feature-name/
-|-- discovery.md
-|-- spec.md
-|-- plan.md
-|-- tasks.md
-|-- constitution.md
-`-- checklists/spec-readiness.md
-.github/
-`-- workflows/specguard-readiness-gate.yml
-```
-
-For real work, this is where the user writes the actual development spec. Strengthen `specs/your-feature-name/` with product behavior, API or UI expectations, data ownership, authorization rules, state transitions, error cases, and acceptance criteria before running validation.
-
-`init` installs the default `SpecGuard Readiness Gate` GitHub Actions workflow so changed spec packages can be checked on pull requests. Use `--no-actions` when you do not want SpecGuard to write `.github/workflows`.
-
-### 4. Write Specs Or Try The Example Package
-
-After `init`, either replace the draft with your real feature spec or copy the packaged authored example into the same feature package:
-
-```bash
-specguard example copy your-feature-name --force
-```
-
-The example is for trying the full `run` pipeline before authoring your own production spec. It replaces the init draft with a complete sample package under `specs/your-feature-name/`.
-
-### 5. Run And Iterate Until READY Or READY_WITH_WARNINGS
-
-```bash
 specguard run specs/your-feature-name
 ```
 
-The default SpecGuard Review level is `low`. Low mode is a practical safety gate: Critical findings block, while Major and Minor findings are reported as warnings so users are not forced into long cleanup loops for non-critical improvements. In the default low path, SpecGuard uses fast heuristic review first so the first run is not blocked on a live LLM provider.
+Write or replace the draft spec under `specs/your-feature-name/`, rerun until SpecGuard reports READY or READY_WITH_WARNINGS, then give `implementation-output.md` to an external coding agent for implementation. After implementation, open a PR and optionally run SpecGuard PR Review.
 
-`run` builds and validates the implementation basis:
-
-```text
-Technical Design -> Initial SpecGuard Review -> Test -> Contract -> Implementation Handoff
-```
-
-SpecGuard Review reads authored Markdown under the feature package: `discovery.md`, `spec.md`, `plan.md`, `tasks.md`, `constitution.md`, checklists, `technical-design.md`, and any additional user-authored `.md` spec notes. It excludes generated SpecGuard artifacts such as readiness reports, implementation handoff output, generated tests, generated contracts, and `.specguard/` cache or audit files.
-
-`run` also prints per-feature performance timings and records SpecGuard Review input size so slow stages and oversized review contexts can be diagnosed without exposing artifact contents. For live LLM review, review JSON includes cache diagnostics such as hit/miss, miss reason, provider/model, prompt version, token budget, and non-sensitive input fingerprints.
-
-If SpecGuard returns NOT READY, review the findings, edit the spec intentionally, and rerun `specguard run`:
-
-```text
-[1] View Readiness Findings
-[2] Run the LLM for a detailed spec review. This can take a few minutes.
-[u] I updated spec.md; rerun SpecGuard
-[q] Exit
-```
-
-Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require user revision before implementation; Major and Minor findings remain visible as warnings. The follow-up detailed LLM review is review-only: it writes `readiness-review-detail.md/json` and does not rewrite `spec.md`. After an implementation-ready result, the default CLI prints a short Next Action guide instead of opening another cleanup loop.
-
-Automatic Spec Revision is experimental and disabled by default. To opt in, run with `--experimental-auto-revise --follow-up`; SpecGuard can then generate a revised `spec.md` from blocked Readiness Findings and rerun Verification Review. Spec revision is guarded by an Intent Preservation Check. In low mode, obvious out-of-scope additions such as retry queues, bulk import, or cross-workspace invite variants are auto-demoted back out of implementation scope when they match documented non-goals. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, weaken safety-critical requirements, or still move out-of-scope work into implementation scope, SpecGuard updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
-
-For experimental LLM-enabled strict automation:
-
-```bash
-specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
-```
-
-Strict E2E runs Initial SpecGuard Review first, regenerates `spec.md` from blockers, runs the same Intent Preservation Check, reruns Verification Review, and stops only when READY or when the iteration limit is exhausted. It writes `strict-e2e-trace.json` for traceability.
-
-### 6. Implement With An External AI Coding Agent
-
-When READY, SpecGuard writes:
-
-```text
-specs/your-feature-name/implementation-output.md
-```
-
-SpecGuard stops here. It does not invoke Codex, Claude Code, or another coding agent as an internal implementation stage.
-
-Give the approved spec package and `implementation-output.md` to your external coding agent. The generated application code should live under `develop/<stack>/`, for example:
-
-`implementation-output.md` lists the Agent Input Artifacts. It includes every authored Markdown spec artifact reviewed by SpecGuard, including `discovery.md` and additional `.md` notes, then adds generated tests and contracts as implementation and verification inputs. It excludes SpecGuard review reports, cache files, revision audit files, and other generated validation outputs.
-
-Artifact priority in the handoff:
-
-- Primary implementation basis: `spec.md`, `technical-design.md`, `tests/`, and `contracts/`.
-- Intent context: `discovery.md`, `plan.md`, `tasks.md`, `constitution.md`, `checklists/`, and additional authored Markdown notes.
-- If artifacts conflict or required behavior is missing, stop implementation, update the spec package, and rerun SpecGuard.
-
-```text
-develop/spring/
-develop/react/
-develop/fastapi/
-```
-
-### 7. Open A Pull Request And Run SpecGuard PR Review
-
-After implementation, open a PR in your GitHub repository with the completed code.
-
-The optional `SpecGuard PR Review` workflow compares the approved spec package to the PR diff and posts one advisory PR comment headed `SpecGuard PR Reviewer`.
-
-A live SpecGuard PR Review example is available in [PR #32](https://github.com/KoreaNirsa/spec-guard/pull/32).
-
-Install it explicitly when you want AI-assisted review comments:
-
-```bash
-specguard actions install-pr-review
-```
-
-After the command completes, commit and push the workflow file, then add this repository secret in GitHub repository settings:
-
-```text
-SPECGUARD_OPENAI_API_KEY=sk-...
-```
-
-Add optional repository variables when you want to choose the review model or force the reviewer to use a specific spec package:
-
-```text
-SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
-SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
-```
-
-`SPECGUARD_OPENAI_API_KEY` must be stored as a GitHub Actions secret, not committed to the repository. Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only `develop/<stack>/` files and does not modify files under `specs/`.
-
-The workflow is advisory by default. If credentials are unavailable, if the selected spec package is NOT READY, or if the readiness report is stale, the workflow skips or reports the blocker instead of invoking the reviewer.
+For Codex setup, example packages, LLM review options, follow-up menus, implementation handoff, and PR review setup, see [Setup To User Flow](docs/setup-to-user-flow.md).
 
 ## Benchmark Summary
 
@@ -254,101 +79,14 @@ AI coding works best when the implementation input is explicit. SpecGuard focuse
 
 The user owns the spec. SpecGuard drafts, challenges, and validates the implementation basis around it.
 
-## Readiness Rules
-
-SpecGuard supports three review levels:
-
-- `low` is the default for `specguard run`. It is optimized for first-run usability and minimum safety gating. It blocks only Critical findings. Major and Minor findings are warnings.
-- `medium` preserves the stricter v0.2.5-style readiness gate. Use it when you want deeper SpecGuard Review before implementation.
-- `high` keeps the medium gate in this release while asking for stricter review attention. It may take longer and should be used when review depth matters more than latency.
-
-Choose a level per run:
-
-```bash
-specguard run specs/your-feature-name --review-level medium
-SPECGUARD_REVIEW_LEVEL=medium specguard run specs/your-feature-name
-```
-
-Strict E2E defaults to `medium` because it is explicitly an automated refinement loop.
-
-Readiness states are interpreted by the selected review level:
-
-- Low: READY when Critical=0 and no warnings exist; READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist; NOT_READY only when Critical>=1.
-- Medium: READY when Critical=0, Major=0, Minor<=5; READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; NOT_READY when Critical>=1, Major>=3, or Minor>10.
-- High: uses the medium gate thresholds introduced in v0.2.7 with stricter review attention.
-
-Critical findings always block implementation. Major findings should represent an implementation-critical product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
-
-For API features, `contracts/openapi.yaml` must define at least one concrete path before SpecGuard can produce an implementation handoff. `paths: {}` is treated as a blocker, not a ready contract. Generated contracts include spec-derived success and error responses, request and response schemas, and `x-specguard-coverage` links back to acceptance criteria and error cases.
-
-Strict E2E also requires executable verification before handoff. Add tests such as `tests/test_*.py`, or document an accepted `tests/verification-contract.md` with the command or artifact that a coding agent must preserve.
-
-## CI And PR Gates
-
-Pull request CI includes a stable required-check candidate named `SpecGuard Readiness Gate`. It inspects changed packages under `specs/`, fails when a changed package is NOT_READY, and fails when source artifacts are stale relative to `readiness-review.json`.
-
-`specguard init <feature>` installs `.github/workflows/specguard-readiness-gate.yml` by default. Use `specguard init <feature> --no-actions` to opt out, or `specguard actions install-readiness-gate` to install the workflow later.
-
-Repositories that want merge-time enforcement should add `SpecGuard Readiness Gate` to branch protection or ruleset required status checks.
-
-`SpecGuard PR Review` is separate from the readiness gate. It is a post-implementation advisory review that checks whether code appears aligned with the approved spec package.
-
-## CLI Reference
-
-```bash
-specguard init <spec-name>
-specguard example copy <spec-name> --force
-specguard actions install-pr-review
-specguard run specs/<spec-name>
-specguard auth status
-```
-
-Useful `run` options:
-
-- `--force`: regenerate derived artifacts such as technical design.
-- `--follow-up`: force the interactive continuation menu.
-- `--no-follow-up`: exit immediately after the pipeline.
-- `--llm`: run live LLM SpecGuard Review in the main pipeline instead of the default fast heuristic low-mode review.
-- `--no-llm`: force local deterministic checks and heuristic SpecGuard Review.
-- `--review-level {low,medium,high}`: choose the SpecGuard Review depth; defaults to `low`, or `medium` for `--strict-e2e`.
-- `--experimental-auto-revise`: allow the follow-up menu to rewrite blocked specs and rerun Verification Review.
-- `--strict-e2e`: experimental strict automation that uses an LLM to regenerate blocked specs and rerun Verification Review.
-- `--strict-max-iterations`: bound the number of strict E2E verification iterations.
-
-CI or scripted example:
-
-```bash
-specguard init billing-export --non-interactive --no-llm
-specguard example copy billing-export --force
-specguard run specs/billing-export --no-llm --no-follow-up
-```
-
-## Development
-
-For contributors or local source testing:
-
-```bash
-git clone https://github.com/KoreaNirsa/spec-guard.git
-cd spec-guard
-python -m pip install -e ".[test]"
-```
-
-Run tests:
-
-```bash
-python -m pytest
-```
-
-Use the packaged example when you want to exercise SpecGuard without authoring a new spec first:
-
-```bash
-specguard init sample-run --non-interactive --no-llm
-specguard example copy sample-run --force
-specguard run specs/sample-run --no-llm --no-follow-up
-```
-
 ## Documentation
 
+- [Setup To User Flow](docs/setup-to-user-flow.md): installation, Codex setup, example packages, validation loops, implementation handoff, and PR review setup.
+- [Core Reviews](docs/core-reviews.md): SpecGuard Review, SpecGuard PR Review, LLM detail review, cache behavior, and experimental Spec Revision.
+- [Readiness Rules](docs/readiness-rules.md): review levels, READY thresholds, contract requirements, and Strict E2E verification rules.
+- [CI And PR Gates](docs/ci-and-pr-gates.md): readiness gate installation, required-check guidance, and PR review separation.
+- [CLI Reference](docs/cli-reference.md): common commands, `run` options, and CI-friendly examples.
+- [Development](docs/development.md): local source setup, tests, and packaged-example smoke testing.
 - [Workflow Guide](docs/workflow.md)
 - [Discovery Guide](docs/deep-discovery.md)
 - [Spec-Driven Benchmark](docs/spec-driven-benchmark.md)
