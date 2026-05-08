@@ -2633,6 +2633,28 @@ def test_follow_up_menu_reruns_after_user_edits_spec(monkeypatch, capsys) -> Non
     assert captured["llm_client"] is None
 
 
+def test_follow_up_menu_for_pre_review_validation_failure_hides_stale_review(monkeypatch, capsys) -> None:
+    choices = iter(["q"])
+    result = CheckResult("SpecGuard pipeline")
+    result.add_error("spec.md must include section: Requirements")
+    result.details["failed_before_readiness_review"] = True
+
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False, no_llm=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "Pipeline stopped before SpecGuard Review" in rendered
+    assert "[u] I updated spec.md; rerun SpecGuard" in rendered
+    assert "View Readiness Findings" not in rendered
+    assert "SpecGuard Review (Detail)" not in rendered
+
+
 def test_follow_up_menu_rejects_spec_regeneration_when_experimental_flag_is_missing(monkeypatch, capsys) -> None:
     choices = iter(["3", "q"])
     result = CheckResult("SpecGuard pipeline")
@@ -2743,6 +2765,42 @@ def test_run_ready_result_does_not_open_default_follow_up_menu(monkeypatch) -> N
     ))
 
     assert exit_code == 0
+
+
+def test_run_validation_failure_does_not_open_default_follow_up_menu(monkeypatch, capsys) -> None:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        result = CheckResult("SpecGuard pipeline")
+        result.add_error("spec.md must include section: Requirements")
+        result.details["failed_before_readiness_review"] = True
+        return result
+
+    def fail_follow_up(args, llm_client, result):
+        raise AssertionError("Validation failures before SpecGuard Review should not show the default follow-up menu")
+
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+    monkeypatch.setattr(specguard_cli, "_run_follow_up_loop", fail_follow_up)
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        llm=False,
+        llm_mode=None,
+        llm_model=None,
+        no_llm=True,
+        no_follow_up=False,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    rendered = capsys.readouterr().out
+    assert exit_code == 1
+    assert "Spec package validation failed before SpecGuard Review" in rendered
+    assert "Existing readiness-review.md/json may be stale" in rendered
+    assert "SpecGuard Review passed, but a later pipeline gate failed" not in rendered
 
 
 def test_default_low_run_uses_fast_heuristic_review_even_with_provider_configured(monkeypatch) -> None:

@@ -528,6 +528,8 @@ def _should_offer_follow_up(args: argparse.Namespace, result: object | None = No
         return True
     if result is not None and getattr(result, "ok", False):
         return False
+    if result is not None and _failed_before_readiness_review(result):
+        return False
     if _is_ci_environment():
         return False
     if sys.stdin.isatty() and sys.stdout.isatty():
@@ -548,6 +550,8 @@ def _has_terminal_environment_hint() -> bool:
 
 def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, result: object) -> object:
     path = Path(args.path)
+    if _failed_before_readiness_review(result):
+        return _run_pre_review_failure_follow_up(args, llm_client, result)
     while True:
         has_blocked_findings = bool(blocked_feature_reports(path))
         auto_revise_enabled = _experimental_auto_revise_enabled(args)
@@ -603,6 +607,23 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
         print_warning(f"[WARN] {_follow_up_choice_hint(can_regenerate, can_detail_review)}")
 
 
+def _run_pre_review_failure_follow_up(args: argparse.Namespace, llm_client: object | None, result: object) -> object:
+    while True:
+        print_section("Continue")
+        print_hint("Pipeline stopped before SpecGuard Review. Fix the validation errors shown above first.")
+        print(menu_item("[u] I updated spec.md; rerun SpecGuard"))
+        print(menu_item("[q] Exit"))
+        try:
+            choice = input("Choose action: ").strip().lower()
+        except EOFError:
+            return result
+        if choice in {"q", "quit", "exit"}:
+            return result
+        if choice in {"u", "updated", "rerun", ""}:
+            return _rerun_after_user_edit(args, llm_client)
+        print_warning("[WARN] Choose u after editing spec.md, or q to exit.")
+
+
 def _follow_up_choice_hint(can_regenerate: bool, can_detail_review: bool = False) -> str:
     choices = ["1 to view findings"]
     if can_detail_review:
@@ -618,6 +639,10 @@ def _experimental_auto_revise_enabled(args: argparse.Namespace) -> bool:
 
 
 def _print_post_review_guidance(args: argparse.Namespace, result: object) -> None:
+    if _failed_before_readiness_review(result):
+        _print_pre_review_failure_guidance(args)
+        return
+
     reports = feature_readiness_reports(Path(args.path))
     if not reports:
         if not getattr(result, "ok", False):
@@ -639,6 +664,19 @@ def _print_post_review_guidance(args: argparse.Namespace, result: object) -> Non
         _print_ready_with_warnings_guidance(args, reports)
         return
     _print_ready_guidance(reports)
+
+
+def _failed_before_readiness_review(result: object) -> bool:
+    details = getattr(result, "details", {})
+    return isinstance(details, dict) and bool(details.get("failed_before_readiness_review"))
+
+
+def _print_pre_review_failure_guidance(args: argparse.Namespace) -> None:
+    print_section("Next Action")
+    print_hint("Summary: Spec package validation failed before SpecGuard Review.")
+    print("- Fix the validation errors shown above in discovery.md, spec.md, or technical-design.md.")
+    print(f"- Rerun after edits: specguard run {args.path}")
+    print("- Existing readiness-review.md/json may be stale and was not used as the current result.")
 
 
 def _combined_readiness_status(reports: list[tuple[Path, dict]]) -> str:
