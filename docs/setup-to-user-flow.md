@@ -161,7 +161,7 @@ SPECGUARD_OPENAI_API_KEY=sk-...
 Add optional repository variables when you want to choose the review model or force the reviewer to use a specific spec package:
 
 ```text
-SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
+SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-mini
 SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
 ```
 

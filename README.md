@@ -76,10 +76,11 @@ After implementation, SpecGuard PR Review can compare GitHub PR code against the
 specguard actions install-pr-review
 ```
 
-Then configure the GitHub Actions secret:
+Then configure the GitHub Actions secret and repository variable:
 
 ```text
 SPECGUARD_OPENAI_API_KEY=sk-...
+SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-mini
 ```
 
 For Codex setup, example packages, LLM review options, follow-up menus, implementation handoff, and PR review setup, see [Setup To User Flow](docs/setup-to-user-flow.md).
