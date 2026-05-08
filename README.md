@@ -9,6 +9,25 @@ It turns specs into reviewed, testable, implementation-ready packages before AI 
 
 It is not a prompt-to-code generator. SpecGuard helps you prepare an approved spec package before an external Codex, Claude Code, or another coding agent writes application code.
 
+## Demo Video
+
+![SpecGuard demo walkthrough](assets/specguard-demo-v0.3.0.gif)
+
+[Watch the full-resolution MP4 demo](assets/specguard-demo-v0.3.0.mp4)
+
+The demo follows this flow:
+
+1. Install SpecGuard with `pip install spec-guard`.
+2. Copy the example spec with `specguard example copy your-feature-name --force`.
+3. Insert a vulnerable spec. In v0.3.0, the packaged example intentionally includes a vulnerable spec by default so users can see a blocking SpecGuard Review.
+4. Review the SpecGuard findings.
+5. Fix the weak areas directly, or ask an AI assistant to strengthen the spec by giving it the SpecGuard Review findings.
+6. Run SpecGuard Review again and confirm it reaches READY or READY_WITH_WARNINGS before implementation handoff.
+
+Step 2 is for testing the example package. In real development, write your own product spec under `specs/<your-feature-name>/` instead of relying on the example package.
+
+After your real spec passes, give `implementation-output.md` to your AI coding agent to start spec-based implementation.
+
 ## Workflow At A Glance
 
 ```text
