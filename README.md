@@ -58,10 +58,28 @@ This is the shortest path from installation to a reviewed implementation PR:
 ```bash
 pip install spec-guard
 specguard init your-feature-name
+
+# Optional: test with the packaged example spec before writing your own.
+specguard example copy your-feature-name --force
+
 specguard run specs/your-feature-name
 ```
 
-Write or replace the draft spec under `specs/your-feature-name/`, rerun until SpecGuard reports READY or READY_WITH_WARNINGS, then give `implementation-output.md` to an external coding agent for implementation. After implementation, open a PR and optionally run SpecGuard PR Review.
+Write or replace the draft spec under `specs/your-feature-name/`. If you want to test with the packaged sample first, copy the example spec with `specguard example copy your-feature-name --force`, then run SpecGuard.
+
+SpecGuard guards spec validation. When the spec is safe enough, `specguard run` exits with PASS and reports READY or READY_WITH_WARNINGS. At that point, give `implementation-output.md` to an external AI coding agent to start spec-based implementation.
+
+After implementation, SpecGuard PR Review can compare GitHub PR code against the approved spec requirements and leave a comment when the PR appears to drift from the spec. To install it, run:
+
+```bash
+specguard actions install-pr-review
+```
+
+Then configure the GitHub Actions secret:
+
+```text
+SPECGUARD_OPENAI_API_KEY=sk-...
+```
 
 For Codex setup, example packages, LLM review options, follow-up menus, implementation handoff, and PR review setup, see [Setup To User Flow](docs/setup-to-user-flow.md).
 
