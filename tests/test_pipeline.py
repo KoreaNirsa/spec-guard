@@ -312,6 +312,17 @@ class AlternateCountingReadinessLLM(CountingReadinessLLM):
     pass
 
 
+class CaptureReadinessInputLLM:
+    def __init__(self) -> None:
+        self.instructions = ""
+        self.input_text = ""
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.instructions = instructions
+        self.input_text = input_text
+        return '{"issues":[]}'
+
+
 class ThreeMajorReadinessLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         issues = [
@@ -766,6 +777,19 @@ def test_example_passes_and_emits_readiness_json(tmp_path: Path) -> None:
 
 def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "example")
+    feature.joinpath("domain-rules.md").write_text(
+        "# Domain Rules\n\n- Implementations must preserve the documented user intent.\n",
+        encoding="utf-8",
+    )
+    feature.joinpath("notes").mkdir()
+    feature.joinpath("notes", "edge-cases.md").write_text(
+        "# Edge Cases\n\n- Missing optional input keeps the primary flow deterministic.\n",
+        encoding="utf-8",
+    )
+    feature.joinpath("readiness-review-detail.md").write_text(
+        "# Generated detail\n\nDo not hand this to the implementation agent.\n",
+        encoding="utf-8",
+    )
 
     result = run_pipeline(feature, force=True)
 
@@ -775,10 +799,18 @@ def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None
     assert metadata["implementation_boundary"] == "external_handoff"
     assert metadata["readiness_status"] == "ready_with_warnings"
     assert metadata["implementation_allowed"] is True
+    assert "discovery.md" in metadata["approved_artifacts"]
     assert "spec.md" in metadata["approved_artifacts"]
     assert "technical-design.md" in metadata["approved_artifacts"]
+    assert "domain-rules.md" in metadata["approved_artifacts"]
+    assert "notes/edge-cases.md" in metadata["approved_artifacts"]
     assert "contracts/openapi.yaml" in metadata["approved_artifacts"]
+    assert "readiness-review.md" not in metadata["approved_artifacts"]
+    assert "readiness-review-detail.md" not in metadata["approved_artifacts"]
     assert "SpecGuard stops at an approved implementation handoff" in output
+    assert "Primary implementation basis" in output
+    assert "`discovery.md`, `plan.md`, `tasks.md`" in output
+    assert "`discovery.md` is for SpecGuard discovery" not in output
     assert any("External AI implementation handoff ready" in message for message in result.messages)
     assert any("Performance timings for" in message for message in result.messages)
     assert any(key.endswith(".readiness_review_ms") for key in result.details)
@@ -1503,6 +1535,15 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     })
     assert result.ok
     feature = tmp_path / "specs" / "billing-export"
+    feature.joinpath("domain-rules.md").write_text(
+        "# Domain Rules\n\n- Exports must preserve audit evidence for owned records.\n",
+        encoding="utf-8",
+    )
+    feature.joinpath("notes").mkdir()
+    feature.joinpath("notes", "edge-cases.md").write_text(
+        "# Edge Cases\n\n- Empty export result returns a documented empty file response.\n",
+        encoding="utf-8",
+    )
     feature.joinpath("contracts").mkdir()
     feature.joinpath("contracts", "openapi.yaml").write_text(
         "\n".join([
@@ -1528,9 +1569,18 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
     assert pipeline.ok
-    assert {"discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md", "technical-design.md"} <= reviewed_paths
-    assert "generated-artifacts.md" in reviewed_paths
-    assert {"contracts/openapi.yaml", "tests/billing-export.test.md"}.isdisjoint(reviewed_paths)
+    assert {
+        "discovery.md",
+        "spec.md",
+        "plan.md",
+        "tasks.md",
+        "constitution.md",
+        "checklists/spec-readiness.md",
+        "technical-design.md",
+        "domain-rules.md",
+        "notes/edge-cases.md",
+    } <= reviewed_paths
+    assert {"generated-artifacts.md", "contracts/openapi.yaml", "tests/billing-export.test.md"}.isdisjoint(reviewed_paths)
     assert any("SpecGuard Review input size" in message for message in pipeline.messages)
     assert payload["input"]["artifact_count"] == len(payload["input"]["artifacts"])
     assert payload["input"]["total_characters"] == sum(artifact["characters"] for artifact in payload["input"]["artifacts"])
@@ -1548,8 +1598,10 @@ def test_readiness_excludes_current_and_legacy_generated_review_artifacts(tmp_pa
     feature = write_feature(tmp_path)
     stale_generated_text = "# Generated report\n\nStale todo delete finding from an older run.\n"
     feature.joinpath("readiness-review.md").write_text(stale_generated_text, encoding="utf-8")
+    feature.joinpath("readiness-review-detail.md").write_text(stale_generated_text, encoding="utf-8")
     feature.joinpath("implementation-output.md").write_text(stale_generated_text, encoding="utf-8")
     feature.joinpath("spec.proposed.md").write_text(stale_generated_text, encoding="utf-8")
+    feature.joinpath("generated-artifacts.md").write_text(stale_generated_text, encoding="utf-8")
     feature.joinpath("grill.md").write_text(stale_generated_text, encoding="utf-8")
     feature.joinpath("grill.json").write_text('{"issues": ["stale todo delete finding"]}\n', encoding="utf-8")
 
@@ -1558,9 +1610,81 @@ def test_readiness_excludes_current_and_legacy_generated_review_artifacts(tmp_pa
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
     assert result.ok
-    assert {"readiness-review.md", "implementation-output.md", "spec.proposed.md", "grill.md", "grill.json"}.isdisjoint(reviewed_paths)
+    assert {
+        "readiness-review.md",
+        "readiness-review-detail.md",
+        "implementation-output.md",
+        "spec.proposed.md",
+        "generated-artifacts.md",
+        "grill.md",
+        "grill.json",
+    }.isdisjoint(reviewed_paths)
+    assert "Stale todo delete finding" not in feature.joinpath("readiness-review.md").read_text(encoding="utf-8")
     assert payload["summary"]["critical"] == 0
     assert payload["summary"]["major"] == 0
+
+
+def test_heuristic_review_reads_additional_authored_markdown_specs(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("security-notes.md").write_text(
+        "# Security Notes\n\n- Login with password issues access tokens.\n",
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
+    assert not result.ok
+    assert "security-notes.md" in reviewed_paths
+    assert "Token lifecycle is missing" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_llm_review_reads_authored_markdown_and_excludes_generated_outputs(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("domain-rules.md").write_text(
+        "# Domain Rules\n\n- Authored rules belong in the review context.\n",
+        encoding="utf-8",
+    )
+    feature.joinpath("readiness-review-detail.md").write_text(
+        "# Generated detail\n\nThis generated detail must not become review input.\n",
+        encoding="utf-8",
+    )
+    llm = CaptureReadinessInputLLM()
+
+    result = run_readiness_review(feature, llm_client=llm)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
+    assert result.ok
+    assert "domain-rules.md" in reviewed_paths
+    assert "readiness-review-detail.md" not in reviewed_paths
+    assert "# Artifact: domain-rules.md" in llm.input_text
+    assert "Generated detail" not in llm.input_text
+    assert "Ignore SpecGuard-generated artifacts" in llm.instructions
+
+
+def test_low_detail_review_uses_full_authored_markdown_input(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("domain-rules.md").write_text(
+        "# Domain Rules\n\n"
+        + ("Supporting authored context. " * 40)
+        + "\nFull detail marker at the end of the authored note.\n",
+        encoding="utf-8",
+    )
+    llm = CaptureReadinessInputLLM()
+
+    result = run_readiness_review(
+        feature,
+        llm_client=llm,
+        report_stem="readiness-review-detail",
+        compact_low_input=False,
+    )
+
+    payload = json.loads(feature.joinpath("readiness-review-detail.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_input"]["mode"] == "full"
+    assert "Full detail marker at the end of the authored note." in llm.input_text
 
 
 def test_readiness_reports_ready_with_warnings_for_six_minor_findings(tmp_path: Path) -> None:
@@ -2520,7 +2644,8 @@ def test_follow_up_menu_hides_spec_regeneration_without_blocked_findings(monkeyp
     assert "[1] View Readiness Findings" in rendered
     assert "[u] I updated spec.md; rerun SpecGuard" in rendered
     assert "[2] Regenerate spec from Readiness Findings" not in rendered
-    assert "Spec regeneration is hidden because no blocked Readiness Findings were found." in rendered
+    assert "Fix weak spec areas manually" in rendered
+    assert "reads authored Markdown under the spec package" in rendered
     assert "[q] Exit" in rendered
 
 
@@ -2560,7 +2685,7 @@ def test_follow_up_menu_shows_experimental_spec_regeneration_when_enabled(monkey
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
-    assert "[2] Run SpecGuard Review (Detail) with the configured LLM" in rendered
+    assert "[2] Run the LLM for a detailed spec review. This can take a few minutes." in rendered
     assert "[3] Experimental auto-revise spec from Readiness Findings" in rendered
     assert "[q] Exit" in rendered
 
@@ -2570,7 +2695,7 @@ def test_follow_up_menu_runs_detail_review_without_replacing_fast_report(monkeyp
     result = CheckResult("SpecGuard pipeline")
     detail_result = CheckResult("SpecGuard Review")
     detail_client = object()
-    captured = {"report_stem": "", "llm_client": None}
+    captured = {"report_stem": "", "llm_client": None, "compact_low_input": None}
     report = {
         "blocked": False,
         "readiness": {"status": "ready_with_warnings", "implementation_ready": True},
@@ -2578,9 +2703,18 @@ def test_follow_up_menu_runs_detail_review_without_replacing_fast_report(monkeyp
         "issues": [],
     }
 
-    def fake_detail_review(path: Path, *, llm_client=None, review_mode: str = "initial", review_level: str = "low", report_stem: str = "readiness-review"):
+    def fake_detail_review(
+        path: Path,
+        *,
+        llm_client=None,
+        review_mode: str = "initial",
+        review_level: str = "low",
+        report_stem: str = "readiness-review",
+        compact_low_input: bool = True,
+    ):
         captured["report_stem"] = report_stem
         captured["llm_client"] = llm_client
+        captured["compact_low_input"] = compact_low_input
         assert path == Path("specs/example")
         assert review_mode == "initial"
         assert review_level == "low"
@@ -2604,6 +2738,7 @@ def test_follow_up_menu_runs_detail_review_without_replacing_fast_report(monkeyp
     assert "does not replace the fast readiness review" in rendered
     assert captured["report_stem"] == "readiness-review-detail"
     assert captured["llm_client"] is detail_client
+    assert captured["compact_low_input"] is False
 
 
 def test_follow_up_menu_reruns_after_user_edits_spec(monkeypatch, capsys) -> None:

@@ -560,7 +560,7 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
         print_section("Continue")
         print(menu_item("[1] View Readiness Findings"))
         if can_detail_review:
-            print(menu_item("[2] Run SpecGuard Review (Detail) with the configured LLM"))
+            print(menu_item("[2] Run the LLM for a detailed spec review. This can take a few minutes."))
         print(menu_item("[u] I updated spec.md; rerun SpecGuard"))
         if can_regenerate:
             revise_choice = "3" if can_detail_review else "2"
@@ -569,7 +569,8 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             print_hint("Automatic Spec Revision is experimental and disabled by default.")
             print_hint("Edit spec.md using the findings, then rerun SpecGuard.")
         else:
-            print_hint("Spec regeneration is hidden because no blocked Readiness Findings were found.")
+            print_hint("Fix weak spec areas manually, or give the SpecGuard Review findings to an AI assistant to improve the spec, then rerun SpecGuard.")
+        print_hint("SpecGuard Review reads authored Markdown under the spec package and excludes generated SpecGuard artifacts.")
         print(menu_item("[q] Exit"))
         try:
             choice = input("Choose action: ").strip().lower()
@@ -627,7 +628,7 @@ def _run_pre_review_failure_follow_up(args: argparse.Namespace, llm_client: obje
 def _follow_up_choice_hint(can_regenerate: bool, can_detail_review: bool = False) -> str:
     choices = ["1 to view findings"]
     if can_detail_review:
-        choices.append("2 for SpecGuard Review (Detail)")
+        choices.append("2 for detailed LLM spec review")
     choices.append("u after editing spec.md")
     if can_regenerate:
         choices.append(("3" if can_detail_review else "2") + " for experimental auto-revision")
@@ -858,6 +859,7 @@ def _run_detail_review(path: Path, args: argparse.Namespace, result: object, llm
             review_mode="initial",
             review_level=review_level,
             report_stem="readiness-review-detail",
+            compact_low_input=False,
         ),
     )
     detail_result.print()
