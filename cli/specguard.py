@@ -141,6 +141,8 @@ def run(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
+    if not strict_e2e and not result.ok and not _experimental_auto_revise_enabled(args):
+        _print_manual_spec_revision_guidance(args)
 
     if not strict_e2e and _should_offer_follow_up(args):
         try:
@@ -527,11 +529,16 @@ def _has_terminal_environment_hint() -> bool:
 def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, result: object) -> object:
     path = Path(args.path)
     while True:
-        can_regenerate = bool(blocked_feature_reports(path))
+        has_blocked_findings = bool(blocked_feature_reports(path))
+        auto_revise_enabled = _experimental_auto_revise_enabled(args)
+        can_regenerate = has_blocked_findings and auto_revise_enabled
         print_section("Continue")
         print(menu_item("[1] View Readiness Findings"))
         if can_regenerate:
-            print(menu_item("[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)"))
+            print(menu_item("[2] Experimental auto-revise spec from Readiness Findings"))
+        elif has_blocked_findings:
+            print_hint("Automatic Spec Revision is experimental and disabled by default.")
+            print_hint("Edit spec.md using the findings, then rerun SpecGuard.")
         else:
             print_hint("Spec regeneration is hidden because no blocked Readiness Findings were found.")
         print(menu_item("[q] Exit"))
@@ -551,6 +558,11 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             _print_readiness_review(path)
             continue
         if choice in {"2", "f", "fix", "revise"}:
+            if has_blocked_findings and not auto_revise_enabled:
+                print_warning("[WARN] Automatic Spec Revision is experimental and disabled by default.")
+                print("- Edit spec.md using the Readiness Findings, then rerun SpecGuard.")
+                print("- To opt in, rerun with --experimental-auto-revise.")
+                continue
             if not can_regenerate:
                 print_warning("[WARN] Spec regeneration is available only when SpecGuard Review is blocked.")
                 continue
@@ -562,8 +574,20 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
 
 def _follow_up_choice_hint(can_regenerate: bool) -> str:
     if can_regenerate:
-        return "Choose 1 to view findings, 2 to regenerate the spec, or q to exit."
+        return "Choose 1 to view findings, 2 for experimental auto-revision, or q to exit."
     return "Choose 1 to view findings, or q to exit."
+
+
+def _experimental_auto_revise_enabled(args: argparse.Namespace) -> bool:
+    return bool(getattr(args, "experimental_auto_revise", False))
+
+
+def _print_manual_spec_revision_guidance(args: argparse.Namespace) -> None:
+    print_section("Manual Spec Revision")
+    print_hint("SpecGuard did not rewrite spec.md automatically.")
+    print("- Review the Readiness Findings above, edit the spec intentionally, then rerun:")
+    print(f"  specguard run {args.path}")
+    print_hint("Automatic Spec Revision is experimental; opt in with --experimental-auto-revise.")
 
 
 def _print_readiness_review(path: Path) -> None:
@@ -900,6 +924,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  specguard run specs/team-invite\n"
             "  specguard run specs/team-invite --review-level medium\n"
             "  specguard run specs/team-invite --no-llm --no-follow-up\n"
+            "  specguard run specs/team-invite --experimental-auto-revise --follow-up\n"
             "  specguard run specs/team-invite --strict-e2e --strict-max-iterations 2\n\n"
             "Timeout recovery:\n"
             f"  specguard auth setup --mode codex --timeout {DEFAULT_CODEX_TIMEOUT} --skip-login"
@@ -917,8 +942,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=sorted(READINESS_REVIEW_LEVELS),
         help="SpecGuard Review level; defaults to low, or medium for strict E2E unless SPECGUARD_REVIEW_LEVEL is set",
     )
-    run_parser.add_argument("--strict-e2e", action="store_true", help="Automatically regenerate blocked specs and rerun Verification Review")
+    run_parser.add_argument("--strict-e2e", action="store_true", help="Experimental: automatically regenerate blocked specs and rerun Verification Review")
     run_parser.add_argument("--strict-max-iterations", type=int, default=3, help="Maximum strict E2E verification iterations")
+    run_parser.add_argument(
+        "--experimental-auto-revise",
+        action="store_true",
+        help="Experimental: allow the follow-up menu to rewrite blocked specs and rerun Verification Review",
+    )
     run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu after the run")
     run_parser.add_argument("--no-follow-up", action="store_true", help="Never show the interactive post-run action menu")
     run_parser.set_defaults(func=run)

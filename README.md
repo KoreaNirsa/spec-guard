@@ -48,7 +48,7 @@ specguard auth setup --mode codex --model gpt-5.4
 specguard auth status
 ```
 
-Codex mode uses a 600-second request timeout by default because `run` can ask Codex to review the full spec package. `auth status` confirms the saved configuration and local Codex command availability; the first full provider request happens during `init`, `run`, or follow-up regeneration.
+Codex mode uses a 600-second request timeout by default because `run` can ask Codex to review the full spec package. `auth status` confirms the saved configuration and local Codex command availability; the first full provider request happens during `init`, `run`, or experimental follow-up regeneration.
 
 For a faster local review profile, configure an explicit Codex reasoning effort or a Codex profile:
 
@@ -116,19 +116,18 @@ Technical Design -> Initial SpecGuard Review -> Test -> Contract -> Implementati
 
 `run` also prints per-feature performance timings and records SpecGuard Review input size so slow stages and oversized review contexts can be diagnosed without exposing artifact contents.
 
-If SpecGuard returns NOT READY, use the continuation menu:
+If SpecGuard returns NOT READY, review the findings, edit the spec intentionally, and rerun `specguard run`:
 
 ```text
 [1] View Readiness Findings
-[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)
 [q] Exit
 ```
 
-Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require revision before implementation; Major and Minor findings remain visible as warnings.
+Repeat until SpecGuard reports READY or READY_WITH_WARNINGS. In the default low mode, Critical findings require user revision before implementation; Major and Minor findings remain visible as warnings.
 
-Spec regeneration is guarded by an Intent Preservation Check. In low mode, obvious out-of-scope additions such as retry queues, bulk import, or cross-workspace invite variants are auto-demoted back out of implementation scope when they match documented non-goals. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, weaken safety-critical requirements, or still move out-of-scope work into implementation scope, SpecGuard updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
+Automatic Spec Revision is experimental and disabled by default. To opt in, run with `--experimental-auto-revise --follow-up`; SpecGuard can then generate a revised `spec.md` from blocked Readiness Findings and rerun Verification Review. Spec revision is guarded by an Intent Preservation Check. In low mode, obvious out-of-scope additions such as retry queues, bulk import, or cross-workspace invite variants are auto-demoted back out of implementation scope when they match documented non-goals. If the proposed `spec.md` appears to drop existing acceptance coverage, change the original problem intent, weaken safety-critical requirements, or still move out-of-scope work into implementation scope, SpecGuard updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and stops before Verification Review.
 
-For LLM-enabled strict automation:
+For experimental LLM-enabled strict automation:
 
 ```bash
 specguard run specs/your-feature-name --strict-e2e --strict-max-iterations 3
@@ -272,7 +271,8 @@ Useful `run` options:
 - `--no-follow-up`: exit immediately after the pipeline.
 - `--no-llm`: use local deterministic checks and heuristic SpecGuard Review.
 - `--review-level {low,medium,high}`: choose the SpecGuard Review depth; defaults to `low`, or `medium` for `--strict-e2e`.
-- `--strict-e2e`: use an LLM to automatically regenerate blocked specs and rerun Verification Review.
+- `--experimental-auto-revise`: allow the follow-up menu to rewrite blocked specs and rerun Verification Review.
+- `--strict-e2e`: experimental strict automation that uses an LLM to regenerate blocked specs and rerun Verification Review.
 - `--strict-max-iterations`: bound the number of strict E2E verification iterations.
 
 CI or scripted example:

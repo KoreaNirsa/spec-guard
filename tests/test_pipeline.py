@@ -2201,7 +2201,7 @@ def test_follow_up_menu_hides_spec_regeneration_without_blocked_findings(monkeyp
     assert "[q] Exit" in rendered
 
 
-def test_follow_up_menu_shows_spec_regeneration_with_blocked_findings(monkeypatch, capsys) -> None:
+def test_follow_up_menu_hides_spec_regeneration_by_default_with_blocked_findings(monkeypatch, capsys) -> None:
     result = CheckResult("SpecGuard pipeline")
 
     monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
@@ -2216,8 +2216,48 @@ def test_follow_up_menu_shows_spec_regeneration_with_blocked_findings(monkeypatc
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
-    assert "[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)" in rendered
+    assert "[2] Experimental auto-revise spec from Readiness Findings" not in rendered
+    assert "Automatic Spec Revision is experimental and disabled by default." in rendered
+    assert "Edit spec.md using the findings, then rerun SpecGuard." in rendered
     assert "[q] Exit" in rendered
+
+
+def test_follow_up_menu_shows_experimental_spec_regeneration_when_enabled(monkeypatch, capsys) -> None:
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
+    monkeypatch.setattr("builtins.input", lambda _prompt: "q")
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False, experimental_auto_revise=True),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "[1] View Readiness Findings" in rendered
+    assert "[2] Experimental auto-revise spec from Readiness Findings" in rendered
+    assert "[q] Exit" in rendered
+
+
+def test_follow_up_menu_rejects_spec_regeneration_when_experimental_flag_is_missing(monkeypatch, capsys) -> None:
+    choices = iter(["2", "q"])
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "Automatic Spec Revision is experimental and disabled by default." in rendered
+    assert "To opt in, rerun with --experimental-auto-revise." in rendered
 
 
 def test_follow_up_menu_rejects_spec_regeneration_without_blocked_findings(monkeypatch, capsys) -> None:
@@ -2278,6 +2318,34 @@ def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
 
     assert exit_code == 0
     assert called["value"]
+
+
+def test_run_not_ready_guides_manual_spec_revision(monkeypatch, capsys) -> None:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        result = CheckResult("SpecGuard pipeline")
+        result.add_error("SpecGuard Review found Critical readiness blockers.")
+        return result
+
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=True,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    rendered = capsys.readouterr().out
+    assert exit_code == 1
+    assert "Manual Spec Revision" in rendered
+    assert "SpecGuard did not rewrite spec.md automatically." in rendered
+    assert "specguard run specs/example" in rendered
+    assert "--experimental-auto-revise" in rendered
 
 
 def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:
