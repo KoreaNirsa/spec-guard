@@ -57,6 +57,7 @@ This is the shortest path from installation to a reviewed implementation PR:
 
 ```bash
 pip install spec-guard
+specguard auth setup --mode codex --model gpt-5.4
 specguard init your-feature-name
 
 # Optional: test with the packaged example spec before writing your own.
