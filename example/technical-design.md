@@ -1,70 +1,29 @@
-# Technical Design: Team Invite
+# Technical Design: Todo Privacy API
 
 ## Architecture
 
-- Feature boundary: Team invite APIs create, revoke, and accept workspace-scoped email invites.
-- Frontend boundary: React screens collect invite email, display delivery status, route invite links, and redirect unauthenticated invitees to sign in or sign up before API acceptance.
-- Backend boundary: Spring Boot controllers validate requests, delegate invite lifecycle decisions to an application service, and return OpenAPI-compatible responses.
-- Security boundary: Spring Security authenticates actors, verifies workspace admin permission for create/revoke, and verifies invited-email ownership for acceptance.
-- Persistence boundary: PostgreSQL stores invites, token id hashes, memberships, idempotency records, and audit events.
-- Contract boundary: `contracts/openapi.yaml` is the API contract for create, revoke, accept, success responses, and error responses.
+- API layer accepts create, list, update, and delete todo requests.
+- TodoService validates input fields and calls TodoRepository.
+- TodoRepository reads and writes todos by `todo_id`.
+- Data model fields: `todo_id`, `title`, `status`, `created_at`, `updated_at`.
 
 ## Data Flow
 
-1. Admin sends `POST /workspaces/{workspaceId}/invites` with an email and optional `Idempotency-Key`.
-2. API validates authentication, admin permission, workspace active state, email shape, normalized email, duplicate membership, duplicate pending invite, and idempotency record.
-3. Application service creates or returns the pending invite, signs a token containing `schema_version=team_invite.v1`, invite id, token id, workspace id, email, issued-at, and expires-at.
-4. Email adapter attempts one send with a 3-second timeout and records `delivery_status=sent` or `delivery_status=failed`.
-5. System writes an audit event and returns `InviteResponse` with `schema_version=team_invite.response.v1` and `correlation_id`.
-6. Invited user follows a browser link whose signed token is carried only in the URL fragment; React reads the fragment, immediately removes it with `history.replaceState`, and keeps the token out of path, query, referrer, CDN, and auth redirect parameters.
-7. If authentication is required, the UI carries only a random pending-invite nonce through sign-in or sign-up and keeps the token in ephemeral invite state with a 10-minute TTL.
-8. Authenticated user sends `POST /invites/accept` with the signed invite token in the JSON request body; token fields are redacted from logs and traces.
-9. API validates token signature, schema version, token id hash, expiration, persisted invite workspace match, invite status, workspace state, existing membership, and verified email match.
-10. Acceptance transaction serializes the invite row, creates exactly one membership, marks the invite accepted, writes an audit event, clears pending invite state, and returns `InviteAcceptResponse`.
+1. Caller sends a todo request with an access token.
+2. The service validates that the token exists.
+3. The service reads or writes todos using `todo_id`.
+4. The service returns the todo response or a documented error.
 
 ## State
 
-- Invite states: `pending`, `accepted`, `revoked`, `expired`.
-- Delivery states: `sent`, `failed`.
-- Valid transitions:
-  - none -> `pending` during create.
-  - `pending` -> `accepted` during successful acceptance.
-  - `pending` -> `revoked` during admin revocation.
-  - `pending` -> `expired` when server clock passes `expires_at`.
-- Invalid transitions:
-  - `accepted`, `revoked`, or `expired` cannot return to `pending`.
-  - `accepted`, `revoked`, or `expired` cannot create membership.
-  - A token for one workspace cannot create membership in another workspace.
-- Concurrency rule: acceptance uses row locking or compare-and-set on `pending` so exactly one concurrent request can transition to `accepted`.
-
-## Dependencies
-
-- User directory: supplies authenticated user id and verified email.
-- Workspace membership store: verifies admin permission, existing membership, and creates membership.
-- Email provider: sends invite email once with a 3-second timeout; failure sets `delivery_status=failed`.
-- Token signing service: signs and verifies HMAC-SHA256 invite tokens.
-- Clock source: calculates `issued_at`, `expires_at`, and expiration using UTC.
-- Audit log: records every successful and rejected write path with actor id when authenticated, workspace id when known, invite id when known, outcome, error code when rejected, and correlation id.
-- Idempotency store: keeps 24-hour response records keyed by workspace, requester, endpoint, and `Idempotency-Key`.
+- Initial state: request received.
+- Valid states: created, active, completed, deleted.
+- Invalid states: missing token, empty title, unknown todo id.
+- Terminal state: success response or documented error.
 
 ## Failure Handling
 
-- Invalid email returns `400 INVALID_EMAIL` before invite persistence.
-- Missing authentication returns `401 UNAUTHENTICATED` before state changes.
-- Non-admin create or revoke returns `403 FORBIDDEN`.
-- Archived or deleted workspace returns `409 WORKSPACE_NOT_ACTIVE`.
-- Existing membership returns `409 ALREADY_MEMBER`.
-- Duplicate pending invite returns `200 OK` with the existing invite and writes a duplicate-returned audit event.
-- Reused idempotency key with a different request body returns `409 IDEMPOTENCY_KEY_REUSED`.
-- Email provider timeout returns `201 Created` with `delivery_status=failed`; no automatic retry occurs in v1.
-- Invalid token envelope, signature, token id, or schema version returns `400 INVALID_INVITE_TOKEN`.
-- Token workspace id that does not match the persisted invite workspace id returns `400 WRONG_WORKSPACE`.
-- Expired, revoked, or accepted tokens return the matching stable error code and create no membership.
-- Authenticated email mismatch returns `403 INVITEE_EMAIL_MISMATCH`.
-- Revoking an invite id not found in the path workspace returns `404 INVITE_NOT_FOUND`.
-- Revoking an accepted, revoked, or expired invite returns `409 INVITE_NOT_PENDING`.
-- Concurrent acceptance losers return `409 INVITE_ALREADY_ACCEPTED`.
-
-## Implementation Blockers
-
-- None for the sample package. If implementation changes token shape, idempotency, email timeout, ownership checks, or concurrency behavior, update `spec.md`, `contracts/openapi.yaml`, and verification artifacts before coding.
+- Missing access token returns `401 UNAUTHENTICATED`.
+- Unknown `todo_id` returns `404 TODO_NOT_FOUND`.
+- Empty title returns `400 INVALID_TITLE`.
+- Repository write failure returns `500 TODO_WRITE_FAILED`.
