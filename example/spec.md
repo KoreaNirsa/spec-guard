@@ -37,8 +37,12 @@ As a workspace admin, I want to invite a teammate by email so that the teammate 
 - The system must create invites with status `pending`, `accepted`, `revoked`, or `expired`.
 - The system must issue a signed invite token with `schema_version=team_invite.v1`, invite id, token id, workspace id, normalized invitee email, issued-at timestamp, and expires-at timestamp.
 - The system must store only a hash of the token id for replay detection and must never store the full token after returning or sending it.
+- Invite email links must carry the signed invite token only in the URL fragment, for example `/invites/accept#invite_token=...`, so servers, CDNs, access logs, and referrer headers do not receive the token.
+- The browser acceptance route must read the fragment, immediately remove it with `history.replaceState`, keep the token out of all path, query, and auth redirect parameters, and submit it to the HTTPS acceptance API request body only after authentication.
+- If sign-in or sign-up is required, the redirect state may contain only a random pending-invite nonce; the token itself must remain in client-side ephemeral invite state with a 10-minute TTL and must be cleared after acceptance or rejection.
+- The acceptance API must not carry the full invite token in a URL path or query string; clients submit it in the HTTPS request body and server logs/traces must redact fields named `token`.
 - The system must expire invite tokens exactly 7 days after creation using the server clock in UTC.
-- The system must enforce one active pending invite per workspace and normalized email with a durable uniqueness rule.
+- The system must treat invites with `expires_at <= now` as expired before duplicate pending invite checks and must enforce one active pending invite per workspace and normalized email with a durable uniqueness rule.
 - The system must make invite creation idempotent for the same workspace, normalized email, requester, and optional `Idempotency-Key` within a 24-hour window.
 - The system must reject reused idempotency keys with a different request body using `IDEMPOTENCY_KEY_REUSED`.
 - The system must call the email provider at most once in v1 with a 3-second timeout.
@@ -53,7 +57,7 @@ As a workspace admin, I want to invite a teammate by email so that the teammate 
 
 - `POST /workspaces/{workspaceId}/invites` creates or returns a pending invite.
 - `DELETE /workspaces/{workspaceId}/invites/{inviteId}` revokes a pending invite.
-- `POST /invites/{token}/accept` accepts an invite for the authenticated invited user.
+- `POST /invites/accept` accepts an invite for the authenticated invited user using a JSON body with `token`.
 - All write responses must include `schema_version=team_invite.response.v1` and `correlation_id`.
 - Error responses must use the shared `ErrorResponse` schema in `contracts/openapi.yaml`.
 
@@ -68,7 +72,7 @@ As a workspace admin, I want to invite a teammate by email so that the teammate 
 - [ ] Unauthenticated acceptance returns `401 UNAUTHENTICATED`; authenticated email mismatch returns `403 INVITEE_EMAIL_MISMATCH`; both create no membership.
 - [ ] Expired, revoked, accepted, malformed, or wrong-workspace tokens return stable error codes and create no membership.
 - [ ] Concurrent acceptance attempts for the same pending token result in one `201 Created` response and all other attempts returning `409 INVITE_ALREADY_ACCEPTED`.
-- [ ] Invite revocation by an admin returns `200 OK`, changes only pending invites to revoked, invalidates the token, and writes an audit event.
+- [ ] Invite revocation by an admin returns `200 OK`, changes only pending invites to revoked, invalidates the token, and writes an audit event; missing, wrong-workspace, accepted, revoked, or expired invites return stable error codes and do not change membership.
 - [ ] Every successful and rejected write path emits a correlation id and audit event containing actor id when authenticated, workspace id when known, invite id when known, outcome, and error code when rejected.
 
 ## Error Cases
@@ -85,7 +89,9 @@ As a workspace admin, I want to invite a teammate by email so that the teammate 
 - Accepted token reuse returns `INVITE_ALREADY_ACCEPTED`.
 - Token signature, token id, or schema version mismatch returns `INVALID_INVITE_TOKEN`.
 - Authenticated user email mismatch returns `INVITEE_EMAIL_MISMATCH`.
-- Workspace id in token does not match the target workspace returns `WRONG_WORKSPACE`.
+- Workspace id in token does not match the persisted invite workspace id returns `WRONG_WORKSPACE`.
+- Revoking an unknown invite id or an invite outside the path workspace returns `INVITE_NOT_FOUND`.
+- Revoking an accepted, revoked, or expired invite returns `INVITE_NOT_PENDING`.
 - Email provider timeout returns success for invite creation with `delivery_status=failed`; no automatic retry occurs in v1.
 
 ## Key Entities

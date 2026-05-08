@@ -10,6 +10,15 @@ from tools.llm_client import describe_llm_client
 from tools.progress import progress_activity
 from tools.verification_checker import verification_metadata
 
+LOW_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 1800
+DEFAULT_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 3000
+LOW_SUPPORTING_ARTIFACT_LIMITS = {
+    "plan.md": 1200,
+    "tasks.md": 800,
+    "constitution.md": 800,
+    "checklists/spec-readiness.md": 800,
+}
+
 
 @dataclass(frozen=True)
 class ArtifactWrite:
@@ -53,7 +62,7 @@ def _title(path: Path, spec: str) -> str:
     return " ".join(part.capitalize() for part in path.name.split("-"))
 
 
-def _supporting_spec_artifacts(path: Path) -> str:
+def _supporting_spec_artifacts(path: Path, *, compact: bool = False) -> str:
     candidates = [
         path / "plan.md",
         path / "tasks.md",
@@ -65,8 +74,23 @@ def _supporting_spec_artifacts(path: Path) -> str:
         if candidate.exists():
             relative = candidate.relative_to(path)
             relative_path = str(relative).replace("\\", "/")
-            sections.append(f"# {relative_path}\n\n{candidate.read_text(encoding='utf-8')}")
+            content = candidate.read_text(encoding="utf-8")
+            if compact:
+                content = _compact_supporting_artifact(relative_path, content)
+            sections.append(f"# {relative_path}\n\n{content}")
     return "\n\n".join(sections) if sections else "No supporting spec package artifacts were provided."
+
+
+def _compact_supporting_artifact(relative_path: str, content: str) -> str:
+    limit = LOW_SUPPORTING_ARTIFACT_LIMITS.get(relative_path, 600)
+    if len(content) <= limit:
+        return content
+    omitted = len(content) - limit
+    return "\n".join([
+        content[:limit].rstrip(),
+        "",
+        f"[SpecGuard low-mode technical design excerpt: {omitted} character(s) omitted. Use medium or high review level for full supporting context.]",
+    ])
 
 
 def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
@@ -135,32 +159,59 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
     return ArtifactWrite(output, created=True)
 
 
-def generate_llm_technical_design(path: Path, llm_client: object, force: bool = False) -> ArtifactWrite:
+def generate_llm_technical_design(
+    path: Path,
+    llm_client: object,
+    force: bool = False,
+    review_level: str = "low",
+) -> ArtifactWrite:
     output = path / "technical-design.md"
     if output.exists() and not force:
         return ArtifactWrite(output, created=False)
 
     discovery = (path / "discovery.md").read_text(encoding="utf-8")
     spec = (path / "spec.md").read_text(encoding="utf-8")
-    supporting_artifacts = _supporting_spec_artifacts(path)
-    instructions = "\n".join([
-        "You are SpecGuard's technical design generator.",
-        "Generate a technical design from the full SpecGuard spec package.",
-        "SpecGuard is not a code generator. Do not write application code.",
-        "Return ONLY Markdown.",
-        "Do not resolve contradictions by inventing behavior or filling gaps with assumptions.",
-        "When discovery.md, spec.md, plan.md, tasks.md, constitution.md, or checklists conflict or omit implementation-critical details, mark the item as a blocker that must be clarified in the spec package before implementation.",
-        "Use TODO or Blocker language only for unresolved clarification needs, and do not present unresolved blockers as implementation-ready design decisions.",
-        "Use this exact section structure:",
-        f"# Technical Design: {path.name}",
-        "## Architecture",
-        "## Data Flow",
-        "## State",
-        "## Dependencies",
-        "## Failure Handling",
-        "## Implementation Blockers",
-        "Keep the design implementation-ready, testable, and explicit about ownership, state, and failure boundaries.",
-    ])
+    low_mode = review_level.strip().lower() == "low"
+    supporting_artifacts = _supporting_spec_artifacts(path, compact=low_mode)
+    if low_mode:
+        instructions = "\n".join([
+            "You are SpecGuard's low-mode technical design generator.",
+            "Generate a concise technical design for minimum implementation safety gating.",
+            "SpecGuard is not a code generator. Do not write application code.",
+            "Return ONLY Markdown.",
+            "Do not perform broad architecture consulting or add future-scope design work.",
+            "Only mark a blocker when the supplied spec package contains a concrete contradiction, missing ownership/auth decision, impossible state behavior, destructive side-effect ambiguity, or security hole that prevents safe implementation.",
+            "Use this exact section structure:",
+            f"# Technical Design: {path.name}",
+            "## Architecture",
+            "## Data Flow",
+            "## State",
+            "## Dependencies",
+            "## Failure Handling",
+            "## Implementation Blockers",
+            "Keep the design compact, testable, and explicit about ownership, state, and failure boundaries.",
+        ])
+        max_output_tokens = LOW_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS
+    else:
+        instructions = "\n".join([
+            "You are SpecGuard's technical design generator.",
+            "Generate a technical design from the full SpecGuard spec package.",
+            "SpecGuard is not a code generator. Do not write application code.",
+            "Return ONLY Markdown.",
+            "Do not resolve contradictions by inventing behavior or filling gaps with assumptions.",
+            "When discovery.md, spec.md, plan.md, tasks.md, constitution.md, or checklists conflict or omit implementation-critical details, mark the item as a blocker that must be clarified in the spec package before implementation.",
+            "Use TODO or Blocker language only for unresolved clarification needs, and do not present unresolved blockers as implementation-ready design decisions.",
+            "Use this exact section structure:",
+            f"# Technical Design: {path.name}",
+            "## Architecture",
+            "## Data Flow",
+            "## State",
+            "## Dependencies",
+            "## Failure Handling",
+            "## Implementation Blockers",
+            "Keep the design implementation-ready, testable, and explicit about ownership, state, and failure boundaries.",
+        ])
+        max_output_tokens = DEFAULT_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS
     input_text = "\n\n".join([
         "# Discovery",
         discovery,
@@ -169,9 +220,12 @@ def generate_llm_technical_design(path: Path, llm_client: object, force: bool = 
         "# Supporting Spec Package Artifacts",
         supporting_artifacts,
     ])
-    activity = f"waiting for LLM technical design ({describe_llm_client(llm_client)}, {len(input_text)} chars)"
+    activity = (
+        f"waiting for LLM technical design "
+        f"({describe_llm_client(llm_client)}, {review_level.strip().lower() or 'low'}, {len(input_text)} chars)"
+    )
     with progress_activity(activity):
-        content = llm_client.generate_text(instructions, input_text, max_output_tokens=3000)
+        content = llm_client.generate_text(instructions, input_text, max_output_tokens=max_output_tokens)
     output.write_text(content, encoding="utf-8")
     return ArtifactWrite(output, created=True)
 

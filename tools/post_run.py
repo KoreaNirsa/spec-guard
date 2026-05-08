@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from tools.progress import progress_activity
 from tools.result import CheckResult
 
 
@@ -45,6 +46,13 @@ class SpecRevisionAudit:
     audit_dir: Path
     original_path: Path
     diff_path: Path
+
+
+@dataclass(frozen=True)
+class SpecRevisionSoftening:
+    revised_spec: str
+    demoted_items: tuple[str, ...] = ()
+
 
 _STOPWORDS = {
     "about",
@@ -146,49 +154,60 @@ def readiness_report_stale_reason(feature_dir: Path) -> str | None:
     return f"SpecGuard Review report may be stale; newer source file(s): {', '.join(newer_sources)}"
 
 
-def generate_spec_revision(feature_dir: Path, llm_client: object) -> str:
-    discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
-    spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
-    plan = _compact_text(_read_optional(feature_dir / "plan.md"), 2500)
-    tasks = _compact_text(_read_optional(feature_dir / "tasks.md"), 2500)
-    constitution = _compact_text(_read_optional(feature_dir / "constitution.md"), 2500)
-    checklist = _compact_text(_read_optional(feature_dir / "checklists" / "spec-readiness.md"), 2500)
-    technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
-    readiness_findings = _compact_readiness_findings(feature_dir)
-    instructions = "\n".join([
-        "You are SpecGuard's spec refinement assistant and implementation-readiness editor.",
-        "Revise spec.md so the Readiness Findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
-        "Maintain consistency with plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, and technical-design.md.",
-        "SpecGuard is not prompt-to-code. Do not write application code.",
-        "Return ONLY the full replacement Markdown for spec.md.",
-        "Preserve the feature intent, user goal, existing acceptance coverage, and explicit out-of-scope decisions.",
-        "Do not delete, weaken, or replace existing acceptance criteria unless the Readiness Findings directly require that change.",
-        "Do not promote any documented out-of-scope or non-goal item into Requirements, Acceptance Criteria, or Error Cases.",
-        "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
-        "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
-        "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
-        "Prioritize Critical and Major Readiness Findings.",
-        "Do not include commentary, patch markers, or code fences.",
-    ])
-    input_text = "\n\n".join([
-        "# Discovery excerpt",
-        discovery,
-        "# Current spec.md",
-        spec,
-        "# plan.md excerpt",
-        plan,
-        "# tasks.md excerpt",
-        tasks,
-        "# constitution.md excerpt",
-        constitution,
-        "# checklists/spec-readiness.md excerpt",
-        checklist,
-        "# technical-design.md excerpt",
-        technical_design,
-        "# Readiness Findings",
-        readiness_findings,
-    ])
-    return _strip_markdown_fence(llm_client.generate_text(instructions, input_text, max_output_tokens=3000))
+def generate_spec_revision(feature_dir: Path, llm_client: object, review_level: str | None = None) -> str:
+    with progress_activity("assembling Spec Revision context"):
+        discovery = _compact_text(_read_optional(feature_dir / "discovery.md"), 2500)
+        spec = _compact_text(_read_optional(feature_dir / "spec.md"), 6000)
+        plan = _compact_text(_read_optional(feature_dir / "plan.md"), 2500)
+        tasks = _compact_text(_read_optional(feature_dir / "tasks.md"), 2500)
+        constitution = _compact_text(_read_optional(feature_dir / "constitution.md"), 2500)
+        checklist = _compact_text(_read_optional(feature_dir / "checklists" / "spec-readiness.md"), 2500)
+        technical_design = _compact_text(_read_optional(feature_dir / "technical-design.md"), 3500)
+        readiness_findings = _compact_readiness_findings(feature_dir, review_level=review_level)
+        low_mode = (review_level or _readiness_report_level(feature_dir)).lower() == "low"
+        priority_instruction = (
+            "Prioritize Critical Readiness Findings. Treat Major and Minor findings as optional warning cleanup only; "
+            "do not expand implementation scope to satisfy them."
+            if low_mode
+            else "Prioritize Critical and Major Readiness Findings."
+        )
+        instructions = "\n".join([
+            "You are SpecGuard's spec refinement assistant and implementation-readiness editor.",
+            "Revise spec.md so the Readiness Findings become explicit requirements, acceptance criteria, error cases, constraints, state rules, ownership rules, and contract expectations.",
+            "Maintain consistency with plan.md, tasks.md, constitution.md, checklists/spec-readiness.md, and technical-design.md.",
+            "SpecGuard is not prompt-to-code. Do not write application code.",
+            "Return ONLY the full replacement Markdown for spec.md.",
+            "Preserve the feature intent, user goal, existing acceptance coverage, and explicit out-of-scope decisions.",
+            "Do not delete, weaken, or replace existing acceptance criteria unless the Readiness Findings directly require that change.",
+            "Do not promote any documented out-of-scope or non-goal item into Requirements, Acceptance Criteria, or Error Cases.",
+            "Preserve these exact level-2 headings because SpecGuard validates them: ## Requirements, ## Acceptance Criteria, ## Error Cases.",
+            "Put at least one Markdown checklist or bullet item under ## Acceptance Criteria and at least one bullet item under ## Error Cases.",
+            "Do not rename ## Acceptance Criteria to Acceptance Scenarios or place all criteria under another heading.",
+            priority_instruction,
+            "Do not include commentary, patch markers, or code fences.",
+        ])
+        input_text = "\n\n".join([
+            "# Discovery excerpt",
+            discovery,
+            "# Current spec.md",
+            spec,
+            "# plan.md excerpt",
+            plan,
+            "# tasks.md excerpt",
+            tasks,
+            "# constitution.md excerpt",
+            constitution,
+            "# checklists/spec-readiness.md excerpt",
+            checklist,
+            "# technical-design.md excerpt",
+            technical_design,
+            "# Readiness Findings",
+            readiness_findings,
+        ])
+    with progress_activity("waiting for LLM Spec Revision response"):
+        generated = llm_client.generate_text(instructions, input_text, max_output_tokens=3000)
+    with progress_activity("parsing revised spec markdown"):
+        return _strip_markdown_fence(generated)
 
 
 def apply_spec_revision(feature_dir: Path, revised_spec: str) -> Path:
@@ -210,6 +229,20 @@ def apply_spec_revision_with_audit(feature_dir: Path, revised_spec: str) -> Spec
     diff_path.write_text(_spec_revision_diff(feature_dir, original_spec, normalized_revised), encoding="utf-8")
     spec_path.write_text(normalized_revised, encoding="utf-8")
     return SpecRevisionAudit(spec_path=spec_path, audit_dir=audit_dir, original_path=original_path, diff_path=diff_path)
+
+
+def soften_low_mode_spec_revision(feature_dir: Path, revised_spec: str) -> SpecRevisionSoftening:
+    original_spec = _read_optional(feature_dir / "spec.md")
+    original_items = _out_of_scope_items(original_spec)
+    if not original_items:
+        return SpecRevisionSoftening(revised_spec)
+
+    revised_without_promotions, demoted_items = _remove_promoted_out_of_scope_items(revised_spec, original_items)
+    if not demoted_items:
+        return SpecRevisionSoftening(revised_spec)
+
+    revised_with_boundaries = _ensure_out_of_scope_boundaries(revised_without_promotions, demoted_items)
+    return SpecRevisionSoftening(revised_with_boundaries, tuple(demoted_items))
 
 
 def validate_spec_revision_intent(feature_dir: Path, revised_spec: str) -> CheckResult:
@@ -308,7 +341,7 @@ def _read_optional(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _compact_readiness_findings(feature_dir: Path) -> str:
+def _compact_readiness_findings(feature_dir: Path, review_level: str | None = None) -> str:
     report = load_readiness_report(feature_dir)
     if not report:
         return _compact_text(_read_optional(feature_dir / "readiness-review.md"), 3000)
@@ -317,16 +350,28 @@ def _compact_readiness_findings(feature_dir: Path) -> str:
     if not isinstance(issues, list):
         return json.dumps(report, indent=2)
 
+    low_mode = (review_level or str(report.get("review_level") or "")).lower() == "low"
     severity_rank = {"Critical": 0, "Major": 1, "Minor": 2}
+    all_dict_issues = [issue for issue in issues if isinstance(issue, dict)]
+    candidate_issues = all_dict_issues
+    if low_mode:
+        candidate_issues = [issue for issue in candidate_issues if issue.get("severity") == "Critical"]
     sorted_issues = sorted(
-        [issue for issue in issues if isinstance(issue, dict)],
+        candidate_issues,
         key=lambda issue: severity_rank.get(str(issue.get("severity")), 9),
     )
     lines = [
-        "Use these Readiness Findings as the required revision backlog.",
+        (
+            "Use these Critical Readiness Findings as the required revision backlog."
+            if low_mode
+            else "Use these Readiness Findings as the required revision backlog."
+        ),
         f"Summary: {json.dumps(report.get('summary', {}), ensure_ascii=False)}",
         "",
     ]
+    if low_mode and not sorted_issues:
+        lines.append("No Critical blocker findings are present; Major and Minor findings are non-blocking warnings in low mode.")
+        return "\n".join(lines)
     for index, issue in enumerate(sorted_issues[:12], start=1):
         lines.extend([
             f"{index}. [{issue.get('severity', 'Unknown')}] {issue.get('title', 'Untitled issue')}",
@@ -335,7 +380,16 @@ def _compact_readiness_findings(feature_dir: Path) -> str:
         ])
     if len(sorted_issues) > 12:
         lines.append(f"... {len(sorted_issues) - 12} additional minor/detail findings omitted from the prompt.")
+    if low_mode and len(candidate_issues) < len(all_dict_issues):
+        lines.append("Major and Minor findings are intentionally omitted from the low-mode required revision backlog.")
     return "\n".join(lines)
+
+
+def _readiness_report_level(feature_dir: Path) -> str:
+    report = load_readiness_report(feature_dir)
+    if not report:
+        return ""
+    return str(report.get("review_level") or "")
 
 
 def _compact_text(text: str, max_characters: int) -> str:
@@ -448,6 +502,63 @@ def _check_out_of_scope(original_spec: str, revised_spec: str, result: CheckResu
             "Intent Preservation Check blocked spec revision: revised spec appears to promote out-of-scope items into implementation scope "
             f"({preview})."
         )
+
+
+def _remove_promoted_out_of_scope_items(revised_spec: str, original_items: list[str]) -> tuple[str, list[str]]:
+    protected_headings = {"requirements", "acceptance criteria", "error cases"}
+    demoted_items: list[str] = []
+    current_heading = ""
+    kept_lines: list[str] = []
+    for line in revised_spec.splitlines():
+        heading_match = re.match(r"^##\s+(.+?)\s*$", line)
+        if heading_match:
+            current_heading = heading_match.group(1).strip().lower()
+            kept_lines.append(line)
+            continue
+
+        list_item = _list_item_text(line)
+        if current_heading in protected_headings and list_item:
+            promoted = _matching_out_of_scope_item(list_item, original_items)
+            if promoted is not None:
+                if promoted not in demoted_items:
+                    demoted_items.append(promoted)
+                continue
+        kept_lines.append(line)
+    return "\n".join(kept_lines).rstrip() + "\n", demoted_items
+
+
+def _ensure_out_of_scope_boundaries(revised_spec: str, demoted_items: list[str]) -> str:
+    revised_out_of_scope = _normalize("\n".join(_out_of_scope_sections(revised_spec)))
+    missing_items = [item for item in demoted_items if not _item_is_preserved(item, revised_out_of_scope)]
+    if not missing_items:
+        return revised_spec
+
+    lines = [revised_spec.rstrip(), "", "## Out of Scope", ""]
+    lines.extend(f"- {item}" for item in missing_items)
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _list_item_text(line: str) -> str | None:
+    stripped = line.strip()
+    checklist = re.match(r"^[-*]\s+\[[ xX]\]\s+(.+)$", stripped)
+    bullet = re.match(r"^[-*]\s+(.+)$", stripped)
+    numbered = re.match(r"^\d+[.)]\s+(.+)$", stripped)
+    if checklist:
+        return checklist.group(1).strip()
+    if bullet:
+        return bullet.group(1).strip()
+    if numbered:
+        return numbered.group(1).strip()
+    return None
+
+
+def _matching_out_of_scope_item(candidate: str, original_items: list[str]) -> str | None:
+    candidate_tokens = set(_normalize(candidate).split())
+    for item in original_items:
+        tokens = _keywords(item)
+        if len(tokens) >= 2 and tokens.issubset(candidate_tokens):
+            return item
+    return None
 
 
 def _first_heading(text: str) -> str:

@@ -5,10 +5,12 @@ SpecGuard is not a code generator. It is a spec refinement and validation workfl
 The intended user experience is:
 
 ```text
-Discovery -> Draft Specs -> User Refinement -> Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
+Discovery -> Spec Package -> Technical Design -> SpecGuard Review
+-> Test -> Contract -> Implementation Handoff
+-> External AI Implementation -> Pull Request -> SpecGuard PR Review
 ```
 
-After that, the user can run Codex, Claude Code, or another coding agent outside the SpecGuard pipeline against the approved handoff package.
+SpecGuard owns the validation path through Implementation Handoff. After that, the user can run Codex, Claude Code, or another coding agent outside the SpecGuard pipeline against the approved handoff package, then optionally run SpecGuard PR Review on the pull request.
 
 ## 0. Configure LLM Provider
 
@@ -156,25 +158,42 @@ Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Hando
 
 Each run records per-feature stage timings for validation, design generation, SpecGuard Review, test generation, contract work, and implementation handoff. The readiness report also records artifact count and total review input characters so slow reviews can be tied to concrete input size without logging secret values or artifact contents.
 
-SpecGuard Review inspects every authored spec document in the feature folder, excluding generated SpecGuard Review reports, implementation-output handoffs, and test scenario files. Readiness has three states:
+SpecGuard Review inspects the feature package according to the selected review level. The default `low` level focuses on minimum safety gating and uses compact review context. `medium` preserves the stricter v0.2.5-style gate. `high` uses the medium gate thresholds in this release while asking for stricter review attention.
 
-- READY: Critical=0, Major=0, Minor<=5.
-- READY_WITH_WARNINGS: Critical=0, Major<=2, Minor<=10.
-- NOT_READY: Critical>=1, Major>=3, or Minor>10.
+```bash
+specguard run specs/my-feature --review-level medium
+SPECGUARD_REVIEW_LEVEL=medium specguard run specs/my-feature
+```
+
+Readiness has three states, interpreted by review level:
+
+- Low: READY when Critical=0 and no warnings exist; READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist; NOT_READY only when Critical>=1.
+- Medium: READY when Critical=0, Major=0, Minor<=5; READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; NOT_READY when Critical>=1, Major>=3, or Minor>10.
+- High: uses the medium gate thresholds in v0.2.6 with stricter review attention.
 
 Critical findings always block implementation. READY results are highlighted in green, READY_WITH_WARNINGS results are highlighted as warning output, and NOT_READY results are highlighted in red and block Test, Contract, and Implementation Handoff.
 
-Interactive refinement uses this loop:
+After review, the CLI prints a concise Next Action guide:
+
+- READY: Test, Contract, and Implementation Handoff artifacts are ready. Hand `implementation-output.md` and the approved spec package to the external coding agent.
+- READY_WITH_WARNINGS: implementation can proceed at the active review level. Warning findings remain available in `readiness-review.md` if the user wants to strengthen the spec first.
+- NOT_READY: implementation is blocked. Edit `spec.md` using the Readiness Findings, then rerun `specguard run`.
+
+Default interactive refinement is review-only:
 
 ```text
-Initial SpecGuard Review -> Spec Regeneration -> Verification Review -> READY, READY_WITH_WARNINGS, or NOT_READY
+Initial SpecGuard Review -> user edits spec.md -> rerun -> READY, READY_WITH_WARNINGS, or NOT_READY
 ```
 
-The initial review is broad and adversarial. The verification review is narrower: it checks previous findings against the regenerated spec package and only introduces new Critical or Major findings when there is direct implementation-blocking evidence.
+In low mode, the initial review is a practical safety gate and does not try to perform a complete architecture or security audit. In medium/high, the review is broader and more adversarial. When the default run is NOT READY, SpecGuard reports actionable Readiness Findings and stops. The user owns the spec edits, then reruns `specguard run`.
 
-Before a regenerated `spec.md` proceeds to Verification Review, SpecGuard runs an Intent Preservation Check. The check blocks obvious intent drift: a changed feature title/problem, dropped acceptance coverage, removed out-of-scope boundaries, or out-of-scope items promoted into Requirements, Acceptance Criteria, or Error Cases. When it blocks, SpecGuard still updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and asks the user to review the applied diff before rerunning.
+Automatic Spec Revision is experimental and disabled by default. Users can opt in with `--experimental-auto-revise --follow-up`. In that explicit path, SpecGuard can regenerate `spec.md` from blocked findings and run Verification Review. In low mode, the revision prompt and Verification Review backlog focus on previous Critical blockers so Major and Minor warnings do not expand implementation scope. In medium/high, Verification Review remains broader and can keep or introduce Critical/Major blockers only when there is direct implementation-blocking evidence.
 
-Strict E2E mode automates that loop for LLM-enabled runs:
+Before a regenerated `spec.md` proceeds to Verification Review, SpecGuard runs an Intent Preservation Check. In low mode, obvious out-of-scope additions are removed from implementation sections and preserved under Out of Scope when they match documented non-goals. The check still blocks obvious intent drift: a changed feature title/problem, dropped acceptance coverage, removed out-of-scope boundaries, weakened safety requirements, or out-of-scope items that still remain promoted into Requirements, Acceptance Criteria, or Error Cases. When it blocks, SpecGuard still updates the working `spec.md` for in-place review, writes the original spec and unified diff under `.specguard/spec-revisions/`, and asks the user to review the applied diff before rerunning.
+
+During experimental Spec Revision, the CLI prints stable step messages for context loading, LLM revision request, intent preservation, audit/spec writes, design refresh checks, and Verification Review reruns. The live progress line also announces current activities such as context assembly, provider wait, and revised-spec parsing without printing prompts, generated specs, secrets, or environment values.
+
+Experimental Strict E2E mode automates that loop for LLM-enabled runs:
 
 ```bash
 specguard run specs/my-feature --strict-e2e --strict-max-iterations 3
@@ -201,7 +220,7 @@ specs/my-feature/
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
 
-In an interactive terminal, `run` opens a continuation menu after the pipeline. The user can inspect the latest Readiness Findings or ask the configured LLM to regenerate `spec.md` from the findings and automatically run Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If Intent Preservation Check fails, the regenerated text is applied to `spec.md`, the original and diff are saved under `.specguard/spec-revisions/`, and Verification Review is skipped until the user reviews the applied diff. Initial pipeline, LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
+In an interactive terminal, `run` opens the default continuation menu only when the result still needs user attention, or when the user explicitly passes `--follow-up`. The default menu lets the user inspect the latest Readiness Findings and then exit to edit `spec.md` manually. It does not rewrite user specs unless `--experimental-auto-revise` is set. With that opt-in, blocked Critical findings expose an experimental auto-revision action that regenerates `spec.md` and automatically runs Verification Review so SpecGuard Review checks whether the regenerated spec is ready. If low mode auto-demotes documented out-of-scope additions, the CLI says so and saves the original/diff under `.specguard/spec-revisions/`. If Intent Preservation Check fails, the regenerated text is applied to `spec.md`, the original and diff are saved under `.specguard/spec-revisions/`, and Verification Review is skipped until the user reviews the applied diff. Initial pipeline, experimental LLM follow-up, and rerun requests show an activity bar with elapsed time. Press `q` to exit the menu. Use `--follow-up` to force this menu when terminal detection fails. Scripts can disable it with `--no-follow-up`.
 
 If a local Codex request times out, check `specguard auth status` and increase the timeout:
 
@@ -235,11 +254,11 @@ Then run:
 specguard run specs/my-feature
 ```
 
-Or stay in the post-run menu and choose the LLM spec revision action. Repeat until the SpecGuard Readiness Gate threshold is met.
+Repeat until the SpecGuard Readiness Gate threshold is met. Automatic Spec Revision remains available only as an experimental opt-in with `--experimental-auto-revise --follow-up`; the default flow keeps spec editing under user control.
 
 ## 5. Coding Agents Implement Later
 
-After SpecGuard passes, hand the implementation basis to Codex, Claude Code, or another coding agent outside the SpecGuard pipeline. SpecGuard does not invoke or supervise implementation while Critical or Major blockers remain.
+After SpecGuard reports READY or READY_WITH_WARNINGS, hand the implementation basis to Codex, Claude Code, or another coding agent outside the SpecGuard pipeline. SpecGuard does not invoke or supervise implementation while the package is NOT_READY.
 
 Coding agents should focus on:
 

@@ -21,7 +21,7 @@
 ## Technology Stack
 
 - Frontend: React 19 with TypeScript and Vite for the admin invite form, invite acceptance screen, sign-in redirect state, and status feedback.
-- Frontend routing: React Router with route-level handling for invite token acceptance links.
+- Frontend routing: React Router handles invite links using a URL fragment token, immediately removes the fragment from the visible URL, carries only a random pending-invite nonce through sign-in redirects, and submits the token to `POST /invites/accept` in the request body so servers never receive the token in URL path, query, or redirect parameters.
 - Frontend testing: Vitest and React Testing Library for form validation, success states, rejected token states, email mismatch states, and duplicate-submit handling.
 - Backend: Java 21 with Spring Boot 3.x.
 - API layer: Spring Web MVC REST controllers with request validation through Jakarta Bean Validation.

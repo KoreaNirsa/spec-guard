@@ -35,6 +35,7 @@ from tools.post_run import (
     readiness_report_stale_reason,
     render_readiness_summary,
     spec_revision_design_refresh_reason,
+    soften_low_mode_spec_revision,
     validate_spec_revision_intent,
 )
 from tools.progress import current_progress_activity
@@ -140,8 +141,10 @@ def run(args: argparse.Namespace) -> int:
         _print_llm_failure(exc)
         return 1
     result.print()
+    if not strict_e2e:
+        _print_post_review_guidance(args, result)
 
-    if not strict_e2e and _should_offer_follow_up(args):
+    if not strict_e2e and _should_offer_follow_up(args, result):
         try:
             result = _run_follow_up_loop(args, llm_client, result)
         except LLMRequestError as exc:
@@ -177,7 +180,8 @@ def copy_example(args: argparse.Namespace) -> int:
     print(f"- Files copied: {copied}")
     print("")
     print("Next steps:")
-    print(f"- Run: specguard run {feature_dir} --no-llm --no-follow-up")
+    print(f"- Run: specguard run {feature_dir} --no-follow-up")
+    print("- Use --no-llm only for deterministic local smoke checks without a configured provider.")
     print("- Replace the example files with your own feature requirements before real implementation.")
     return 0
 
@@ -499,11 +503,13 @@ def _resolve_local_command(command: str) -> str | None:
     return shutil.which(command) or shutil.which(f"{command}.cmd")
 
 
-def _should_offer_follow_up(args: argparse.Namespace) -> bool:
+def _should_offer_follow_up(args: argparse.Namespace, result: object | None = None) -> bool:
     if getattr(args, "no_follow_up", False):
         return False
     if getattr(args, "follow_up", False):
         return True
+    if result is not None and getattr(result, "ok", False):
+        return False
     if _is_ci_environment():
         return False
     if sys.stdin.isatty() and sys.stdout.isatty():
@@ -525,9 +531,18 @@ def _has_terminal_environment_hint() -> bool:
 def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, result: object) -> object:
     path = Path(args.path)
     while True:
+        has_blocked_findings = bool(blocked_feature_reports(path))
+        auto_revise_enabled = _experimental_auto_revise_enabled(args)
+        can_regenerate = has_blocked_findings and auto_revise_enabled
         print_section("Continue")
         print(menu_item("[1] View Readiness Findings"))
-        print(menu_item("[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)"))
+        if can_regenerate:
+            print(menu_item("[2] Experimental auto-revise spec from Readiness Findings"))
+        elif has_blocked_findings:
+            print_hint("Automatic Spec Revision is experimental and disabled by default.")
+            print_hint("Edit spec.md using the findings, then rerun SpecGuard.")
+        else:
+            print_hint("Spec regeneration is hidden because no blocked Readiness Findings were found.")
         print(menu_item("[q] Exit"))
         try:
             choice = input("Choose action: ").strip().lower()
@@ -537,7 +552,7 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             return result
 
         if choice == "":
-            print_hint("No action selected. Choose 1, 2, or q to exit.")
+            print_hint(_follow_up_choice_hint(can_regenerate))
             continue
         if choice in {"q", "quit", "exit"}:
             return result
@@ -545,10 +560,174 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
             _print_readiness_review(path)
             continue
         if choice in {"2", "f", "fix", "revise"}:
+            if has_blocked_findings and not auto_revise_enabled:
+                print_warning("[WARN] Automatic Spec Revision is experimental and disabled by default.")
+                print("- Edit spec.md using the Readiness Findings, then rerun SpecGuard.")
+                print("- To opt in, rerun with --experimental-auto-revise.")
+                continue
+            if not can_regenerate:
+                print_warning("[WARN] Spec regeneration is available only when SpecGuard Review is blocked.")
+                continue
             result = _revise_spec_from_readiness(path, args, llm_client, result)
             continue
 
-        print_warning("[WARN] Choose 1, 2, or q to exit.")
+        print_warning(f"[WARN] {_follow_up_choice_hint(can_regenerate)}")
+
+
+def _follow_up_choice_hint(can_regenerate: bool) -> str:
+    if can_regenerate:
+        return "Choose 1 to view findings, 2 for experimental auto-revision, or q to exit."
+    return "Choose 1 to view findings, or q to exit."
+
+
+def _experimental_auto_revise_enabled(args: argparse.Namespace) -> bool:
+    return bool(getattr(args, "experimental_auto_revise", False))
+
+
+def _print_post_review_guidance(args: argparse.Namespace, result: object) -> None:
+    reports = feature_readiness_reports(Path(args.path))
+    if not reports:
+        if not getattr(result, "ok", False):
+            _print_manual_spec_revision_guidance(args)
+        return
+
+    status = _combined_readiness_status(reports)
+    if status != "not_ready" and not getattr(result, "ok", False):
+        print_section("Next Action")
+        print_hint("Summary: SpecGuard Review passed, but a later pipeline gate failed.")
+        print(f"- Fix the pipeline issue shown above, then rerun: specguard run {args.path}")
+        print("- Do not start external implementation until tests, contracts, and implementation handoff are ready.")
+        return
+
+    if status == "not_ready":
+        _print_not_ready_guidance(args, reports)
+        return
+    if status == "ready_with_warnings":
+        _print_ready_with_warnings_guidance(args, reports)
+        return
+    _print_ready_guidance(reports)
+
+
+def _combined_readiness_status(reports: list[tuple[Path, dict]]) -> str:
+    statuses = [_readiness_status_from_report(report) for _feature_dir, report in reports]
+    if "not_ready" in statuses:
+        return "not_ready"
+    if "ready_with_warnings" in statuses:
+        return "ready_with_warnings"
+    return "ready"
+
+
+def _readiness_status_from_report(report: dict) -> str:
+    readiness = report.get("readiness", {})
+    status = readiness.get("status") if isinstance(readiness, dict) else None
+    if report.get("blocked") or status == "not_ready":
+        return "not_ready"
+    if status == "ready_with_warnings":
+        return "ready_with_warnings"
+    return "ready"
+
+
+def _print_not_ready_guidance(args: argparse.Namespace, reports: list[tuple[Path, dict]]) -> None:
+    summary = _readiness_counts(reports)
+    issue = _top_readiness_issue(reports, ("Critical", "Major", "Minor"))
+    print_section("Next Action")
+    print_hint(f"Summary: Spec has blocking readiness gaps{_issue_suffix(issue)}.")
+    print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print("- Edit spec.md directly, or give SpecGuard Review (Detail) to an AI assistant to strengthen the spec.")
+    print(f"- Detail: {_review_detail_target(reports)}")
+    print(f"- Rerun after edits: specguard run {args.path}")
+    if not _experimental_auto_revise_enabled(args):
+        print_hint("SpecGuard did not rewrite spec.md automatically. Experimental auto-revision requires --experimental-auto-revise.")
+
+
+def _print_ready_with_warnings_guidance(args: argparse.Namespace, reports: list[tuple[Path, dict]]) -> None:
+    summary = _readiness_counts(reports)
+    issue = _top_readiness_issue(reports, ("Major", "Minor"))
+    print_section("Next Action")
+    print_hint(f"Summary: Spec is implementation-ready with warnings{_issue_suffix(issue)}.")
+    print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print("- You can proceed now; warnings are not blocking at this review level.")
+    print(f"- To strengthen the spec first, edit warning items from: {_review_detail_target(reports)}")
+    print(f"- Implementation handoff: {_implementation_handoff_target(reports)}")
+
+
+def _print_ready_guidance(reports: list[tuple[Path, dict]]) -> None:
+    print_section("Next Action")
+    print_hint("Summary: Spec is ready for implementation.")
+    print("- Test, Contract, and Implementation Handoff artifacts are generated.")
+    print(f"- Implementation handoff: {_implementation_handoff_target(reports)}")
+    print("- Give the approved spec package and handoff to your coding agent.")
+    print("- Keep application code under develop/<stack>/, then run the verification command named in the handoff.")
+
+
+def _readiness_counts(reports: list[tuple[Path, dict]]) -> dict[str, int]:
+    counts = {"critical": 0, "major": 0, "minor": 0}
+    for _feature_dir, report in reports:
+        summary = report.get("summary", {})
+        if not isinstance(summary, dict):
+            continue
+        for key in counts:
+            counts[key] += _int_count(summary.get(key))
+    return counts
+
+
+def _int_count(value: object) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _top_readiness_issue(reports: list[tuple[Path, dict]], severities: tuple[str, ...]) -> dict | None:
+    for severity in severities:
+        for _feature_dir, report in reports:
+            issues = report.get("issues", [])
+            if not isinstance(issues, list):
+                continue
+            for issue in issues:
+                if isinstance(issue, dict) and str(issue.get("severity")) == severity:
+                    return issue
+    return None
+
+
+def _issue_suffix(issue: dict | None) -> str:
+    if not issue:
+        return ""
+    title = str(issue.get("title") or "").strip()
+    if not title:
+        return ""
+    return f": {_short_text(title)}"
+
+
+def _short_text(text: str, limit: int = 84) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 3].rstrip() + "..."
+
+
+def _review_detail_target(reports: list[tuple[Path, dict]]) -> str:
+    if len(reports) == 1:
+        return _display_path(reports[0][0] / "readiness-review.md")
+    return "each feature's readiness-review.md"
+
+
+def _implementation_handoff_target(reports: list[tuple[Path, dict]]) -> str:
+    if len(reports) == 1:
+        return _display_path(reports[0][0] / "implementation-output.md")
+    return "each feature's implementation-output.md"
+
+
+def _display_path(path: Path) -> str:
+    return path.as_posix()
+
+
+def _print_manual_spec_revision_guidance(args: argparse.Namespace) -> None:
+    print_section("Manual Spec Revision")
+    print_hint("SpecGuard did not rewrite spec.md automatically.")
+    print("- Review the Readiness Findings above, edit the spec intentionally, then rerun:")
+    print(f"  specguard run {args.path}")
+    print_hint("Automatic Spec Revision is experimental; opt in with --experimental-auto-revise.")
 
 
 def _print_readiness_review(path: Path) -> None:
@@ -582,22 +761,39 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
     if selected is None:
         return result
     feature_dir, _report = selected
+    revision_steps = _StepLogger("Spec Revision")
+    revision_steps.step("loading current spec and Readiness Findings")
     original_spec = feature_dir.joinpath("spec.md").read_text(encoding="utf-8")
 
     print_section("Spec Revision")
     print_hint(f"Generating a revised spec.md from Readiness Findings: {feature_dir}")
     print_hint("Local Codex can take a minute or two here. Keep this terminal open.")
+    revision_steps.step("requesting revised spec from the configured LLM provider")
     try:
         revised_spec = _run_with_progress(
             "Revising spec.md",
-            lambda: generate_spec_revision(feature_dir, llm_client),
+            lambda: generate_spec_revision(feature_dir, llm_client, review_level=getattr(args, "review_level", None)),
+            announce_activity=True,
         )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         print_hint("The follow-up menu is still open. Review findings or retry after adjusting timeout/model.")
         return result
+    softened = None
+    if getattr(args, "review_level", None) == "low":
+        revision_steps.step("applying low-mode scope safeguards")
+        softened = soften_low_mode_spec_revision(feature_dir, revised_spec)
+        revised_spec = softened.revised_spec
+    revision_steps.step("checking intent preservation")
     intent_check = validate_spec_revision_intent(feature_dir, revised_spec)
+    if softened and softened.demoted_items:
+        demoted_preview = "; ".join(softened.demoted_items[:3])
+        intent_check.add_info(
+            "SpecGuard low mode auto-demoted out-of-scope additions before intent validation "
+            f"({demoted_preview})."
+        )
     if not intent_check.ok:
+        revision_steps.step("writing audit diff for manual review")
         audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
         intent_check.add_info(f"Updated working spec.md for in-place review: {audit.spec_path}")
         intent_check.add_info(f"Original spec and unified diff written to: {audit.audit_dir}")
@@ -605,15 +801,28 @@ def _revise_spec_from_readiness(path: Path, args: argparse.Namespace, llm_client
         intent_check.print()
         print_hint("SpecGuard stopped before Verification Review so you can review the applied spec diff.")
         return result
+    if softened and softened.demoted_items:
+        demoted_preview = "; ".join(softened.demoted_items[:3])
+        print_hint(f"SpecGuard low mode auto-demoted out-of-scope additions: {demoted_preview}.")
     _print_markdown_preview(revised_spec)
+    revision_steps.step("checking whether technical design must refresh")
     refresh_reason = spec_revision_design_refresh_reason(original_spec, revised_spec)
-    spec_path = apply_spec_revision(feature_dir, revised_spec)
+    if softened and softened.demoted_items:
+        revision_steps.step("writing updated spec.md and audit diff")
+        audit = apply_spec_revision_with_audit(feature_dir, revised_spec)
+        spec_path = audit.spec_path
+        print_hint(f"Original spec and unified diff written to: {audit.audit_dir}")
+        print_hint(f"Review diff: {audit.diff_path}")
+    else:
+        revision_steps.step("writing updated spec.md")
+        spec_path = apply_spec_revision(feature_dir, revised_spec)
     print_success(f"[PASS] Updated spec: {spec_path}")
     if refresh_reason:
         print_hint(f"Technical design refresh required before Verification Review: {refresh_reason}.")
     else:
         print_hint("Reusing existing technical-design.md for Verification Review because the spec revision does not change design-significant sections.")
     print_hint("Automatically running Verification Review so SpecGuard Review checks whether the regenerated spec is ready.")
+    revision_steps.step("starting Verification Review rerun")
     try:
         return _rerun_pipeline(
             args,
@@ -662,17 +871,40 @@ def _print_markdown_preview(markdown: str, *, max_lines: int = 22) -> None:
     print("")
 
 
-def _run_with_progress(label: str, operation):
+class _StepLogger:
+    def __init__(self, label: str) -> None:
+        self.label = label
+        self.started_at = time.monotonic()
+
+    def step(self, message: str) -> None:
+        elapsed = int(time.monotonic() - self.started_at)
+        print_hint(f"{self.label} step ({elapsed}s): {message}.")
+
+
+def _run_with_progress(label: str, operation, *, announce_activity: bool = False):
     stop = threading.Event()
     started_at = time.monotonic()
     failed = False
+    last_line_len = 0
+    last_activity: str | None = None
 
     def render() -> None:
+        nonlocal last_activity, last_line_len
         tick = 0
         while not stop.wait(0.25):
             elapsed = int(time.monotonic() - started_at)
-            sys.stdout.write("\r" + _progress_line(label, elapsed, tick, activity=current_progress_activity()))
+            activity = current_progress_activity()
+            if announce_activity and activity and activity != last_activity:
+                sys.stdout.write("\r" + (" " * last_line_len) + "\r")
+                sys.stdout.flush()
+                print_hint(f"Current step: {activity}.")
+                last_activity = activity
+                last_line_len = 0
+            line = _progress_line(label, elapsed, tick, activity=activity)
+            padding = " " * max(0, last_line_len - len(line))
+            sys.stdout.write("\r" + line + padding)
             sys.stdout.flush()
+            last_line_len = len(line)
             tick += 1
 
     thread = threading.Thread(target=render, daemon=True)
@@ -686,7 +918,7 @@ def _run_with_progress(label: str, operation):
         stop.set()
         thread.join(timeout=1)
         elapsed = int(time.monotonic() - started_at)
-        sys.stdout.write("\r" + (" " * 100) + "\r")
+        sys.stdout.write("\r" + (" " * max(100, last_line_len)) + "\r")
         sys.stdout.flush()
         status = "stopped" if failed else "completed"
         print_hint(f"{label} {status} after {elapsed}s.")
@@ -843,9 +1075,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         epilog=(
             "Examples:\n"
-            "  specguard init team-invite --no-llm\n"
+            "  specguard auth setup --mode codex --model gpt-5.4 --skip-login\n"
+            "  specguard init team-invite --non-interactive --no-llm\n"
             "  specguard example copy team-invite --force\n"
-            "  specguard run specs/team-invite --no-llm --no-follow-up"
+            "  specguard run specs/team-invite --no-follow-up"
         ),
         formatter_class=SpecGuardHelpFormatter,
     )
@@ -863,7 +1096,9 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=(
             "Examples:\n"
             "  specguard run specs/team-invite\n"
+            "  specguard run specs/team-invite --review-level medium\n"
             "  specguard run specs/team-invite --no-llm --no-follow-up\n"
+            "  specguard run specs/team-invite --experimental-auto-revise --follow-up\n"
             "  specguard run specs/team-invite --strict-e2e --strict-max-iterations 2\n\n"
             "Timeout recovery:\n"
             f"  specguard auth setup --mode codex --timeout {DEFAULT_CODEX_TIMEOUT} --skip-login"
@@ -881,8 +1116,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=sorted(READINESS_REVIEW_LEVELS),
         help="SpecGuard Review level; defaults to low, or medium for strict E2E unless SPECGUARD_REVIEW_LEVEL is set",
     )
-    run_parser.add_argument("--strict-e2e", action="store_true", help="Automatically regenerate blocked specs and rerun Verification Review")
+    run_parser.add_argument("--strict-e2e", action="store_true", help="Experimental: automatically regenerate blocked specs and rerun Verification Review")
     run_parser.add_argument("--strict-max-iterations", type=int, default=3, help="Maximum strict E2E verification iterations")
+    run_parser.add_argument(
+        "--experimental-auto-revise",
+        action="store_true",
+        help="Experimental: allow the follow-up menu to rewrite blocked specs and rerun Verification Review",
+    )
     run_parser.add_argument("--follow-up", action="store_true", help="Force the interactive post-run action menu after the run")
     run_parser.add_argument("--no-follow-up", action="store_true", help="Never show the interactive post-run action menu")
     run_parser.set_defaults(func=run)

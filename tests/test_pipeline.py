@@ -34,8 +34,10 @@ from tools.post_run import (
     generate_spec_revision,
     readiness_report_stale_reason,
     render_readiness_summary,
+    soften_low_mode_spec_revision,
     validate_spec_revision_intent,
 )
+from tools.progress import current_progress_activity, progress_activity
 from tools.result import CheckResult
 from tools.runner import run_pipeline
 from tools.spec_validator import validate_feature
@@ -52,9 +54,13 @@ ROOT = Path(__file__).resolve().parents[1]
 class FakeLLM:
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.inputs: list[str] = []
+        self.max_output_tokens: list[int] = []
 
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         self.calls.append(instructions)
+        self.inputs.append(input_text)
+        self.max_output_tokens.append(max_output_tokens)
         if "feature specification" in instructions.lower():
             return "\n".join([
                 "# Feature Specification: Billing Export",
@@ -207,6 +213,29 @@ class AcceptanceOnlyRevisionLLM:
         ])
 
 
+class OutOfScopePromotionRevisionLLM:
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        assert "spec refinement assistant" in instructions
+        return "\n".join([
+            "# Spec: feature",
+            "",
+            "## Requirements",
+            "",
+            "- The system must accept valid input.",
+            "- The system must implement billing automation.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Valid input succeeds.",
+            "- [ ] Billing automation succeeds.",
+            "",
+            "## Error Cases",
+            "",
+            "- Invalid input",
+            "",
+        ])
+
+
 class TimeoutRevisionLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         from tools.llm_client import LLMRequestError
@@ -311,6 +340,39 @@ class OptionalMajorReadinessLLM:
         })
 
 
+class LowCalibrationMajorReadinessLLM:
+    def __init__(self) -> None:
+        self.instructions = ""
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.instructions = instructions
+        return json.dumps({
+            "issues": [
+                {
+                    "severity": "Major",
+                    "title": "Automatic retry queues for failed email delivery",
+                    "description": "The spec does not define retries after the email handoff.",
+                    "impact": "Implementation can ship the core invite flow without retry queues.",
+                    "fix": "Consider adding retry queue behavior in a later iteration.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk invite import is not specified",
+                    "description": "The spec covers single invites but not CSV or bulk import.",
+                    "impact": "The current feature can still be implemented without bulk import.",
+                    "fix": "Document bulk import separately when it enters scope.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Cross-workspace invites from one token are not specified",
+                    "description": "The spec only describes invites within the current workspace.",
+                    "impact": "The one-workspace invite path remains implementable.",
+                    "fix": "Keep cross-workspace invites out of scope or define them separately.",
+                },
+            ]
+        })
+
+
 class CriticalReadinessLLM:
     def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
         return json.dumps({
@@ -333,6 +395,112 @@ class CaptureVerificationReadinessLLM:
         self.instructions = instructions
         self.input_text = input_text
         return '{"issues":[]}'
+
+
+class CaptureSpecRevisionLLM:
+    def __init__(self, revised_spec: str) -> None:
+        self.revised_spec = revised_spec
+        self.instructions = ""
+        self.input_text = ""
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.instructions = instructions
+        self.input_text = input_text
+        return self.revised_spec
+
+
+class ActivityCaptureSpecRevisionLLM(CaptureSpecRevisionLLM):
+    def __init__(self, revised_spec: str) -> None:
+        super().__init__(revised_spec)
+        self.activity_during_generate: str | None = None
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        self.activity_during_generate = current_progress_activity()
+        return super().generate_text(instructions, input_text, max_output_tokens)
+
+
+class LowModeConvergingWarningLLM:
+    def __init__(self) -> None:
+        self.revision_inputs: list[str] = []
+        self.verification_inputs: list[str] = []
+
+    def generate_text(self, instructions: str, input_text: str, max_output_tokens: int = 2500) -> str:
+        lowered = instructions.lower()
+        if "technical design generator" in lowered:
+            return "\n".join([
+                "# Technical Design: feature",
+                "",
+                "## Architecture",
+                "",
+                "- API layer calls a service layer with owner-scoped validation.",
+                "",
+                "## Data Flow",
+                "",
+                "1. Request arrives.",
+                "2. Service validates owner scope and input.",
+                "3. Response is returned.",
+                "",
+                "## State",
+                "",
+                "- Initial state: request received but not validated.",
+                "- Terminal state: completed or rejected.",
+                "",
+                "## Failure Handling",
+                "",
+                "- Unauthorized owner access returns 403.",
+                "- Invalid input returns 400.",
+                "",
+            ])
+        if "spec refinement assistant" in lowered:
+            self.revision_inputs.append(input_text)
+            return "\n".join([
+                "# Spec: feature",
+                "",
+                "## Requirements",
+                "",
+                "- The system must accept valid input.",
+                "- The system must scope every request to the authenticated owner.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] Valid input succeeds.",
+                "- [ ] Cross-owner access is rejected.",
+                "",
+                "## Error Cases",
+                "",
+                "- Invalid input",
+                "- Unauthorized owner access",
+                "",
+            ])
+        if "verification review board" in lowered:
+            self.verification_inputs.append(input_text)
+            return json.dumps({
+                "issues": [{
+                    "severity": "Major",
+                    "title": "Contract examples can be more explicit",
+                    "description": "The regenerated spec is implementable, but examples could be clearer.",
+                    "impact": "Implementation can proceed in low mode.",
+                    "fix": "Add richer examples later if desired.",
+                }]
+            })
+        return json.dumps({
+            "issues": [
+                {
+                    "severity": "Critical",
+                    "title": "Owner scope missing",
+                    "description": "The spec does not state how owner scope is enforced.",
+                    "impact": "Implementation would need to guess authorization behavior.",
+                    "fix": "Add owner-scoped requirements and acceptance criteria.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk import missing",
+                    "description": "Bulk import behavior is not specified.",
+                    "impact": "This is useful follow-up but not required for the current implementation.",
+                    "fix": "Define bulk import later if it enters scope.",
+                },
+            ]
+        })
 
 
 class StrictE2EConvergingLLM:
@@ -771,6 +939,17 @@ def test_cli_run_smoke_executes_pipeline_from_authored_specs(tmp_path: Path) -> 
     assert feature.joinpath("implementation-output.md").exists()
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert payload["readiness"]["implementation_ready"] is True
+
+
+def test_cli_example_copy_points_to_default_low_mode_run(tmp_path: Path) -> None:
+    completed = run_cli_smoke(tmp_path, "example", "copy", "team-invite", "--force")
+    expected_run = f"Run: specguard run {tmp_path / 'specs' / 'team-invite'} --no-follow-up"
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "[PASS] Copied authored example specs." in completed.stdout
+    assert expected_run in completed.stdout
+    assert "Use --no-llm only for deterministic local smoke checks" in completed.stdout
+    assert (tmp_path / "specs" / "team-invite" / "spec.md").exists()
 
 
 def test_discovery_init_generates_feature_spec(tmp_path: Path) -> None:
@@ -1213,6 +1392,10 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
         ]),
         encoding="utf-8",
     )
+    feature.joinpath("plan.md").write_text(
+        "# Plan\n\n" + "\n".join(f"- Implementation planning detail {index}" for index in range(200)),
+        encoding="utf-8",
+    )
     feature.joinpath("contracts").mkdir()
     feature.joinpath("contracts", "openapi.yaml").write_text(
         "\n".join([
@@ -1241,10 +1424,45 @@ def test_run_can_use_llm_for_design_and_review(tmp_path: Path) -> None:
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert payload["blocked"] is False
     assert any("technical design generator" in call.lower() for call in llm.calls)
+    assert any("low-mode technical design generator" in call for call in llm.calls)
+    assert any("minimum implementation safety gating" in call for call in llm.calls)
+    assert not any("full SpecGuard spec package" in call for call in llm.calls)
+    assert payload["review_input"]["mode"] == "low_compact"
+    assert payload["review_input"]["total_characters"] < payload["review_input"]["source_total_characters"]
+    assert 1800 in llm.max_output_tokens
+    assert 1400 in llm.max_output_tokens
+    assert not any("safest explicit design assumption" in call for call in llm.calls)
+
+
+def test_medium_review_level_uses_full_llm_prompt_context(tmp_path: Path) -> None:
+    result = initialize_specs(tmp_path, {
+        "feature_names": "billing-export",
+        "problem": "Export billing records safely.",
+        "users": "Finance users",
+        "outcomes": "Exports are scoped and auditable",
+        "constraints": "CSV only for the first pass",
+        "flows": "Request export, validate ownership, create file",
+        "data": "Billing record, owner, export file",
+        "dependencies": "Billing database",
+        "risks": "Cross-tenant export",
+        "out_of_scope": "Scheduled exports",
+        "acceptance": "An authorized user can export only owned records",
+    })
+    assert result.ok
+    feature = tmp_path / "specs" / "billing-export"
+    llm = FakeLLM()
+
+    pipeline = run_pipeline(feature, llm_client=llm, review_level="medium")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert pipeline.ok
+    assert payload["review_level"] == "medium"
+    assert payload["review_input"]["mode"] == "full"
     assert any("full SpecGuard spec package" in call for call in llm.calls)
     assert any("Do not resolve contradictions by inventing behavior" in call for call in llm.calls)
     assert any("mark the item as a blocker" in call for call in llm.calls)
-    assert not any("safest explicit design assumption" in call for call in llm.calls)
+    assert 3000 in llm.max_output_tokens
+    assert 2500 in llm.max_output_tokens
 
 
 def test_risk_todo_example_is_ready_with_warnings(tmp_path: Path) -> None:
@@ -1311,6 +1529,8 @@ def test_readiness_reviews_full_spec_package_artifacts(tmp_path: Path) -> None:
     reviewed_paths = {artifact["path"] for artifact in payload["input"]["artifacts"]}
     assert pipeline.ok
     assert {"discovery.md", "spec.md", "plan.md", "tasks.md", "constitution.md", "checklists/spec-readiness.md", "technical-design.md"} <= reviewed_paths
+    assert "generated-artifacts.md" in reviewed_paths
+    assert {"contracts/openapi.yaml", "tests/billing-export.test.md"}.isdisjoint(reviewed_paths)
     assert any("SpecGuard Review input size" in message for message in pipeline.messages)
     assert payload["input"]["artifact_count"] == len(payload["input"]["artifacts"])
     assert payload["input"]["total_characters"] == sum(artifact["characters"] for artifact in payload["input"]["artifacts"])
@@ -1498,12 +1718,47 @@ def test_readiness_downgrades_non_blocking_major_findings(tmp_path: Path) -> Non
     assert payload["issues"][0]["severity"] == "Minor"
 
 
+def test_low_review_level_uses_minimum_safety_gate_prompt_and_calibration(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = LowCalibrationMajorReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    report = feature.joinpath("readiness-review.md").read_text(encoding="utf-8")
+    assert result.ok
+    assert payload["review_level"] == "low"
+    assert payload["readiness"]["status"] == "ready_with_warnings"
+    assert payload["summary"]["major"] == 0
+    assert payload["summary"]["minor"] == 3
+    assert all(issue["severity"] == "Minor" for issue in payload["issues"])
+    assert "minimum safety gate" in llm.instructions
+    assert "Do not perform a broad architecture" in llm.instructions
+    assert "Warnings: Major=0, Minor=3 (non-blocking in low mode)" in report
+    assert any("SpecGuard low gate: 0 blocker(s); 3 warning finding(s)" in message for message in result.messages)
+
+
+def test_medium_review_level_preserves_deeper_major_calibration(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = LowCalibrationMajorReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm, review_level="medium")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["review_level"] == "medium"
+    assert payload["readiness"]["status"] == "not_ready"
+    assert payload["summary"]["major"] == 3
+    assert payload["summary"]["minor"] == 0
+    assert "break it before Codex" in llm.instructions
+
+
 def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
-    run_pipeline(feature)
+    run_pipeline(feature, review_level="medium")
     llm = CaptureVerificationReadinessLLM()
 
-    result = run_readiness_review(feature, llm_client=llm, review_mode="verification")
+    result = run_readiness_review(feature, llm_client=llm, review_mode="verification", review_level="medium")
 
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
@@ -1514,6 +1769,53 @@ def test_readiness_verification_mode_uses_previous_findings(tmp_path: Path) -> N
     assert "Previous SpecGuard Review Findings" in llm.input_text
     assert "Verification Review Delta Evidence" in llm.input_text
     assert "Delete semantics are unsafe" in llm.input_text
+
+
+def test_low_verification_mode_uses_previous_critical_backlog_only(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    for name in ("spec.md", "technical-design.md"):
+        path = feature / name
+        path.write_text(
+            path.read_text(encoding="utf-8")
+            + "\nOwner scope missing closure: owner scope is now required for authorization behavior.\n",
+            encoding="utf-8",
+        )
+    feature.joinpath("readiness-review.json").write_text(
+        json.dumps({
+            "review_level": "low",
+            "blocked": True,
+            "readiness": {"status": "not_ready", "implementation_ready": False},
+            "summary": {"critical": 1, "major": 1, "minor": 0},
+            "issues": [
+                {
+                    "severity": "Critical",
+                    "title": "Owner scope missing",
+                    "description": "The spec does not state how owner scope is enforced.",
+                    "impact": "Implementation would need to guess authorization behavior.",
+                    "fix": "Add owner-scoped requirements and acceptance criteria.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk import missing",
+                    "description": "Bulk import behavior is not specified.",
+                    "impact": "This warning should not drive low-mode verification.",
+                    "fix": "Define bulk import later if it enters scope.",
+                },
+            ],
+        }),
+        encoding="utf-8",
+    )
+    llm = CaptureVerificationReadinessLLM()
+
+    result = run_readiness_review(feature, llm_client=llm, review_mode="verification", review_level="low")
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["review_input"]["mode"] == "delta"
+    assert payload["review_input"]["previous_finding_count"] == 1
+    assert "Use these previous Critical blockers as the verification backlog." in llm.input_text
+    assert "Owner scope missing" in llm.input_text
+    assert "Bulk import missing" not in llm.input_text
 
 
 def test_readiness_verification_mode_falls_back_without_previous_findings(tmp_path: Path) -> None:
@@ -1723,6 +2025,57 @@ def test_intent_preservation_check_blocks_out_of_scope_promotion(tmp_path: Path)
     assert any("out-of-scope" in message for message in result.messages)
 
 
+def test_low_mode_softens_out_of_scope_promotions_before_intent_check(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    spec_path = feature / "spec.md"
+    spec_path.write_text(
+        spec_path.read_text(encoding="utf-8")
+        + "\n## Out of Scope\n\n- Billing automation\n",
+        encoding="utf-8",
+    )
+    revised = "\n".join([
+        "# Spec: feature",
+        "",
+        "## Requirements",
+        "",
+        "- The system must accept valid input.",
+        "- The system must implement billing automation.",
+        "",
+        "## Acceptance Criteria",
+        "",
+        "- [ ] Valid input succeeds.",
+        "- [ ] Billing automation succeeds.",
+        "",
+        "## Error Cases",
+        "",
+        "- Invalid input",
+        "",
+    ])
+
+    softened = soften_low_mode_spec_revision(feature, revised)
+    result = validate_spec_revision_intent(feature, softened.revised_spec)
+
+    assert softened.demoted_items == ("Billing automation",)
+    assert result.ok
+    assert "The system must implement billing automation" not in softened.revised_spec
+    assert "Billing automation succeeds" not in softened.revised_spec
+    assert "## Out of Scope" in softened.revised_spec
+    assert "- Billing automation" in softened.revised_spec
+
+
+def test_low_mode_softening_does_not_hide_unsafe_intent_changes(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+    revised = IntentDriftRevisionLLM().generate_text("spec refinement assistant", "")
+
+    softened = soften_low_mode_spec_revision(feature, revised)
+    result = validate_spec_revision_intent(feature, softened.revised_spec)
+
+    assert softened.demoted_items == ()
+    assert not result.ok
+    assert any("acceptance coverage" in message for message in result.messages)
+
+
 def test_post_run_strips_markdown_fences_from_spec_revision(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "risk/todo-api")
     run_pipeline(feature)
@@ -1784,6 +2137,121 @@ def test_post_run_spec_revision_applies_and_reruns_pipeline(tmp_path: Path, monk
     assert captured["review_mode"] == "verification"
     assert captured["refresh_technical_design"] is True
     assert "scope every todo read and write by owner" in spec
+
+
+def test_post_run_low_mode_revision_prompt_uses_critical_backlog_only(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("readiness-review.json").write_text(
+        json.dumps({
+            "review_level": "low",
+            "blocked": True,
+            "readiness": {"status": "not_ready", "implementation_ready": False},
+            "summary": {"critical": 1, "major": 1, "minor": 0},
+            "issues": [
+                {
+                    "severity": "Critical",
+                    "title": "Owner scope missing",
+                    "description": "The spec does not state how owner scope is enforced.",
+                    "impact": "Implementation would need to guess authorization behavior.",
+                    "fix": "Add owner-scoped requirements and acceptance criteria.",
+                },
+                {
+                    "severity": "Major",
+                    "title": "Bulk import missing",
+                    "description": "Bulk import behavior is not specified.",
+                    "impact": "This warning should not drive low-mode revision.",
+                    "fix": "Define bulk import later if it enters scope.",
+                },
+            ],
+        }),
+        encoding="utf-8",
+    )
+    llm = CaptureSpecRevisionLLM(feature.joinpath("spec.md").read_text(encoding="utf-8"))
+
+    generate_spec_revision(feature, llm, review_level="low")
+
+    assert "Prioritize Critical Readiness Findings." in llm.instructions
+    assert "Use these Critical Readiness Findings as the required revision backlog." in llm.input_text
+    assert "Owner scope missing" in llm.input_text
+    assert "Bulk import missing" not in llm.input_text
+    assert "Major and Minor findings are intentionally omitted" in llm.input_text
+
+
+def test_generate_spec_revision_marks_provider_wait_activity(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    llm = ActivityCaptureSpecRevisionLLM(feature.joinpath("spec.md").read_text(encoding="utf-8"))
+
+    generate_spec_revision(feature, llm, review_level="low")
+
+    assert llm.activity_during_generate == "waiting for LLM Spec Revision response"
+
+
+def test_post_run_low_mode_revision_converges_to_ready_with_warnings(tmp_path: Path, capsys) -> None:
+    feature = write_feature(tmp_path)
+    llm = LowModeConvergingWarningLLM()
+    result = run_pipeline(feature, llm_client=llm, review_level="low")
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(path=str(feature), force=False, review_level="low"),
+        llm,
+        result,
+    )
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert returned.ok
+    assert payload["review_mode"] == "verification"
+    assert payload["readiness"]["status"] == "ready_with_warnings"
+    assert payload["summary"] == {"critical": 0, "major": 1, "minor": 0}
+    assert feature.joinpath("implementation-output.md").exists()
+    assert "Owner scope missing" in llm.revision_inputs[0]
+    assert "Bulk import missing" not in llm.revision_inputs[0]
+    assert "Owner scope missing" in llm.verification_inputs[0]
+    assert "Bulk import missing" not in llm.verification_inputs[0]
+    rendered = capsys.readouterr().out
+    assert "Spec Revision step" in rendered
+    assert "checking intent preservation" in rendered
+    assert "writing updated spec.md" in rendered
+    assert "starting Verification Review rerun" in rendered
+
+
+def test_post_run_low_mode_revision_auto_demotes_out_of_scope_additions(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("spec.md").write_text(
+        feature.joinpath("spec.md").read_text(encoding="utf-8")
+        + "\n## Out of Scope\n\n- Billing automation\n",
+        encoding="utf-8",
+    )
+    result = run_pipeline(feature)
+    rerun_result = CheckResult("SpecGuard pipeline")
+
+    def fake_rerun_pipeline(*args, **kwargs):
+        return rerun_result
+
+    monkeypatch.setattr(specguard_cli, "_rerun_pipeline", fake_rerun_pipeline)
+
+    returned = specguard_cli._revise_spec_from_readiness(
+        feature,
+        Namespace(force=False, review_level="low"),
+        OutOfScopePromotionRevisionLLM(),
+        result,
+    )
+
+    rendered = capsys.readouterr().out
+    spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
+    diff_files = list(tmp_path.joinpath(".specguard", "spec-revisions").rglob("spec.diff"))
+    assert returned is rerun_result
+    assert "auto-demoted out-of-scope additions" in rendered
+    assert "Original spec and unified diff written to" in rendered
+    assert "The system must implement billing automation" not in spec
+    assert "- Billing automation" in spec
+    assert len(diff_files) == 1
+    assert diff_files[0].exists()
 
 
 def test_post_run_spec_revision_reuses_technical_design_when_revision_is_acceptance_only(
@@ -1894,6 +2362,23 @@ def test_pipeline_progress_line_prefers_active_activity() -> None:
     assert "building tests, contracts, and outputs" not in line
 
 
+def test_run_with_progress_announces_activity_changes(capsys) -> None:
+    def operation() -> str:
+        with progress_activity("assembling Spec Revision context"):
+            time.sleep(0.35)
+        with progress_activity("waiting for LLM Spec Revision response"):
+            time.sleep(0.35)
+        return "done"
+
+    result = specguard_cli._run_with_progress("Revising spec.md", operation, announce_activity=True)
+
+    rendered = capsys.readouterr().out
+    assert result == "done"
+    assert "Current step: assembling Spec Revision context." in rendered
+    assert "Current step: waiting for LLM Spec Revision response." in rendered
+    assert "Revising spec.md completed" in rendered
+
+
 def test_rerun_pipeline_uses_activity_progress(monkeypatch) -> None:
     captured = {"label": ""}
 
@@ -1942,10 +2427,10 @@ def test_follow_up_empty_input_keeps_menu_open(monkeypatch, capsys) -> None:
 
     rendered = capsys.readouterr().out
     assert returned is result
-    assert "No action selected" in rendered
+    assert "Choose 1 to view findings, or q to exit." in rendered
 
 
-def test_follow_up_menu_uses_readiness_review_actions(monkeypatch, capsys) -> None:
+def test_follow_up_menu_hides_spec_regeneration_without_blocked_findings(monkeypatch, capsys) -> None:
     result = CheckResult("SpecGuard pipeline")
 
     monkeypatch.setattr("builtins.input", lambda _prompt: "q")
@@ -1959,8 +2444,85 @@ def test_follow_up_menu_uses_readiness_review_actions(monkeypatch, capsys) -> No
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
-    assert "[2] Regenerate spec from Readiness Findings (auto-runs SpecGuard Review after)" in rendered
+    assert "[2] Regenerate spec from Readiness Findings" not in rendered
+    assert "Spec regeneration is hidden because no blocked Readiness Findings were found." in rendered
     assert "[q] Exit" in rendered
+
+
+def test_follow_up_menu_hides_spec_regeneration_by_default_with_blocked_findings(monkeypatch, capsys) -> None:
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
+    monkeypatch.setattr("builtins.input", lambda _prompt: "q")
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "[1] View Readiness Findings" in rendered
+    assert "[2] Experimental auto-revise spec from Readiness Findings" not in rendered
+    assert "Automatic Spec Revision is experimental and disabled by default." in rendered
+    assert "Edit spec.md using the findings, then rerun SpecGuard." in rendered
+    assert "[q] Exit" in rendered
+
+
+def test_follow_up_menu_shows_experimental_spec_regeneration_when_enabled(monkeypatch, capsys) -> None:
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
+    monkeypatch.setattr("builtins.input", lambda _prompt: "q")
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False, experimental_auto_revise=True),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "[1] View Readiness Findings" in rendered
+    assert "[2] Experimental auto-revise spec from Readiness Findings" in rendered
+    assert "[q] Exit" in rendered
+
+
+def test_follow_up_menu_rejects_spec_regeneration_when_experimental_flag_is_missing(monkeypatch, capsys) -> None:
+    choices = iter(["2", "q"])
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr(specguard_cli, "blocked_feature_reports", lambda _path: [(Path("specs/example"), {})])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "Automatic Spec Revision is experimental and disabled by default." in rendered
+    assert "To opt in, rerun with --experimental-auto-revise." in rendered
+
+
+def test_follow_up_menu_rejects_spec_regeneration_without_blocked_findings(monkeypatch, capsys) -> None:
+    choices = iter(["2", "q"])
+    result = CheckResult("SpecGuard pipeline")
+
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(choices))
+
+    returned = specguard_cli._run_follow_up_loop(
+        Namespace(path="specs/example", force=False),
+        llm_client=None,
+        result=result,
+    )
+
+    rendered = capsys.readouterr().out
+    assert returned is result
+    assert "Spec regeneration is available only when SpecGuard Review is blocked." in rendered
 
 
 def test_follow_up_menu_detects_git_bash_environment(monkeypatch) -> None:
@@ -1977,6 +2539,13 @@ def test_follow_up_menu_can_be_forced_or_disabled(monkeypatch) -> None:
     assert _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=True))
     assert not _should_offer_follow_up(Namespace(no_follow_up=True, follow_up=True))
     assert not _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=False))
+
+
+def test_follow_up_menu_is_not_default_after_ready_result(monkeypatch) -> None:
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+
+    assert not _should_offer_follow_up(Namespace(no_follow_up=False, follow_up=False), CheckResult("SpecGuard pipeline"))
 
 
 def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
@@ -2004,6 +2573,126 @@ def test_run_invokes_follow_up_loop_when_forced(monkeypatch) -> None:
 
     assert exit_code == 0
     assert called["value"]
+
+
+def test_run_ready_result_does_not_open_default_follow_up_menu(monkeypatch) -> None:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        return CheckResult("SpecGuard pipeline")
+
+    def fail_follow_up(args, llm_client, result):
+        raise AssertionError("READY results should not open the default follow-up menu")
+
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+    monkeypatch.setattr(specguard_cli, "_run_follow_up_loop", fail_follow_up)
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=False,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    assert exit_code == 0
+
+
+def test_run_not_ready_guides_manual_spec_revision(monkeypatch, capsys) -> None:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        result = CheckResult("SpecGuard pipeline")
+        result.add_error("SpecGuard Review found Critical readiness blockers.")
+        return result
+
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=True,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    rendered = capsys.readouterr().out
+    assert exit_code == 1
+    assert "Manual Spec Revision" in rendered
+    assert "SpecGuard did not rewrite spec.md automatically." in rendered
+    assert "specguard run specs/example" in rendered
+    assert "--experimental-auto-revise" in rendered
+
+
+def test_post_review_guidance_for_not_ready_report(monkeypatch, capsys) -> None:
+    report = {
+        "blocked": True,
+        "readiness": {"status": "not_ready", "implementation_ready": False},
+        "summary": {"critical": 1, "major": 2, "minor": 3},
+        "issues": [
+            {"severity": "Major", "title": "Minor ordering should not win"},
+            {"severity": "Critical", "title": "Missing rollback and failure handling details"},
+        ],
+    }
+    result = CheckResult("SpecGuard pipeline")
+    result.add_error("SpecGuard Review found blockers.")
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+
+    specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), result)
+
+    rendered = capsys.readouterr().out
+    assert "Next Action" in rendered
+    assert "blocking readiness gaps: Missing rollback and failure handling details" in rendered
+    assert "Current findings: Critical 1, Major 2, Minor 3." in rendered
+    assert "SpecGuard Review (Detail)" in rendered
+    assert "specs/example/readiness-review.md" in rendered
+    assert "specguard run specs/example" in rendered
+    assert "--experimental-auto-revise" in rendered
+
+
+def test_post_review_guidance_for_ready_with_warnings(monkeypatch, capsys) -> None:
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready_with_warnings", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 1, "minor": 1},
+        "issues": [
+            {"severity": "Minor", "title": "Observability signal names can be tighter"},
+            {"severity": "Major", "title": "Contract examples are incomplete"},
+        ],
+    }
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+
+    specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), CheckResult("SpecGuard pipeline"))
+
+    rendered = capsys.readouterr().out
+    assert "Next Action" in rendered
+    assert "implementation-ready with warnings: Contract examples are incomplete" in rendered
+    assert "You can proceed now; warnings are not blocking at this review level." in rendered
+    assert "specs/example/readiness-review.md" in rendered
+    assert "specs/example/implementation-output.md" in rendered
+
+
+def test_post_review_guidance_for_ready(monkeypatch, capsys) -> None:
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 0, "minor": 0},
+        "issues": [],
+    }
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+
+    specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), CheckResult("SpecGuard pipeline"))
+
+    rendered = capsys.readouterr().out
+    assert "Summary: Spec is ready for implementation." in rendered
+    assert "Test, Contract, and Implementation Handoff artifacts are generated." in rendered
+    assert "specs/example/implementation-output.md" in rendered
+    assert "develop/<stack>" in rendered
 
 
 def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:
