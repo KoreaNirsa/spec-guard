@@ -175,7 +175,7 @@ Readiness has three states, interpreted by review level:
 
 - Low: READY when Critical=0 and no warnings exist; READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist; NOT_READY only when Critical>=1.
 - Medium: READY when Critical=0, Major=0, Minor<=5; READY_WITH_WARNINGS when Critical=0, Major<=2, Minor<=10; NOT_READY when Critical>=1, Major>=3, or Minor>10.
-- High: uses the medium gate thresholds in v0.2.7 with stricter review attention.
+- High: uses the medium gate thresholds introduced in v0.2.7 with stricter review attention.
 
 Critical findings always block implementation. READY results are highlighted in green, READY_WITH_WARNINGS results are highlighted as warning output, and NOT_READY results are highlighted in red and block Test, Contract, and Implementation Handoff.
 
