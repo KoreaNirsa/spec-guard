@@ -243,7 +243,9 @@ def _resource_relative_files(root) -> list[Path]:
 def _copy_resource_tree(source, target: Path) -> int:
     copied = 0
     target.mkdir(parents=True, exist_ok=True)
-    for child in source.iterdir():
+    # Copy authored technical design last so it is not immediately treated as stale.
+    children = sorted(source.iterdir(), key=lambda child: (child.name == "technical-design.md", child.name))
+    for child in children:
         destination = target / child.name
         if child.is_dir():
             copied += _copy_resource_tree(child, destination)
