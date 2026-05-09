@@ -87,21 +87,25 @@ For Codex setup, example packages, LLM review options, follow-up menus, implemen
 
 ## Benchmark Summary
 
-A controlled benchmark used Codex `gpt-5.5` for code generation and SpecGuard's local no-LLM gate for weak-spec blocking.
+A controlled benchmark used Codex `gpt-5.5` and SpecGuard's local `--no-llm` gate to measure defect exposure before and after the SpecGuard handoff. The v0.3.1 refresh uses 18 task-service cases instead of the earlier six-case comparison: 6 ready-reference specs and 12 weak specs.
 
-With a complete and explicit spec, all workflows generated code that passed the hidden contract checks. With defective or incomplete specs, Spec Kit and OpenSpec still generated runnable Codex code, but every generated implementation exposed contract defects. SpecGuard blocked the same defective inputs before implementation using local deterministic and heuristic validation.
+The primary question is now: how much does SpecGuard reduce exposed implementation defects from weak specs?
 
-| Workflow | Generated code from defective specs | Average exposed contract defect rate | Blocked before implementation |
-| --- | ---: | ---: | ---: |
-| Spec Kit | 6 | 77.2% | 0/6 |
-| OpenSpec | 6 | 63.6% | 0/6 |
-| SpecGuard | 0 | 0% exposed | 6/6 |
+| Metric | Result |
+| --- | ---: |
+| Raw weak-spec average contract defect rate | 25.0% |
+| Raw weak specs with contract defects | 11/12 |
+| Weak specs blocked before code generation | 3/12 |
+| Prevented exposure rate | 27.3% |
+| False positive rate on ready specs | 0.0% |
+| False negative rate on weak specs | 75.0% |
+| Post-gate average contract defect rate | 14.0% |
 
 ### Weak-Spec Before And After
 
-Before SpecGuard, the benchmark passed the same six defective or incomplete specs into Spec Kit and OpenSpec prompts. Both workflows still produced runnable Codex `gpt-5.5` implementations, and every weak-spec case exposed hidden contract defects.
+Before SpecGuard, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. After SpecGuard, the local low gate blocked 3 weak specs before code generation and produced no false positives on the 6 ready specs.
 
-After SpecGuard, the same weak specs were checked by the local no-LLM gate before implementation. SpecGuard marked all six packages NOT READY, produced no implementation handoff, and blocked the bad inputs before an AI coding agent could turn them into code.
+The remaining weak specs were allowed as `READY_WITH_WARNINGS`, so the result is deliberately conservative: the current local gate reduces some defect exposure, but it does not yet catch enough semantic weak-spec cases to be treated as a complete defect-prevention layer.
 
 Full methodology, case breakdown, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 

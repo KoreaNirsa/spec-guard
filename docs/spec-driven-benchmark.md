@@ -1,378 +1,174 @@
-# Spec-Driven Development Benchmark: Spec Kit, OpenSpec, and SpecGuard
+# SpecGuard Impact Benchmark
 
-## Purpose
+## Primary Question
 
-This benchmark compares Spec Kit, OpenSpec, and SpecGuard in spec-driven AI coding workflows.
+How much does SpecGuard reduce exposed implementation defects from weak specs?
 
-The focus is not whether a model can generate runnable code from a clear prompt. The focus is whether each workflow protects the implementation from weak, incomplete, or defective specs before those specs become code.
-
-The benchmark evaluates:
-
-- whether generated code satisfies the functional requirements
-- whether generated code stays within the response and error contracts
-- whether ownership, state transitions, deletion semantics, and idempotency are preserved
-- whether defective or incomplete specs are blocked before implementation
-- whether SpecGuard reduces exposed contract defects when AI coding is driven by poor specs
+This benchmark no longer treats Spec Kit, OpenSpec, and SpecGuard as directly competing layers. Spec Kit and OpenSpec help structure specification work. SpecGuard is measured here as an implementation-readiness gate that runs before an AI coding agent turns a spec package into code.
 
 ## Executive Summary
 
-With a complete and explicit spec, Codex `gpt-5.5` generated code that passed all hidden contract checks across all tested workflows.
+The v0.3.1 benchmark refresh ran an expanded in-memory Python `TaskService` suite with 18 cases:
 
-| Workflow | Passed | Failed | Defect Rate | Result |
-| --- | ---: | ---: | ---: | --- |
-| Spec Kit | 12 | 0 | 0% | Pass |
-| OpenSpec | 12 | 0 | 0% | Pass |
-| Spec Kit + SpecGuard | 12 | 0 | 0% | Pass |
-| OpenSpec + SpecGuard | 12 | 0 | 0% | Pass |
+- 6 ready-reference specs with explicit ownership, validation, idempotency, and deleted-state contracts.
+- 12 weak specs covering ownership leaks, incomplete idempotency, deleted-state drift, freeform errors, client-side filtering, and missing acceptance evidence.
 
-```mermaid
-xychart-beta
-  title "Complete Spec Baseline: Defect Rate"
-  x-axis ["Spec Kit", "OpenSpec", "Spec Kit+SpecGuard", "OpenSpec+SpecGuard"]
-  y-axis "Defect rate (%)" 0 --> 100
-  bar [0, 0, 0, 0]
-```
+Codex `gpt-5.5` generated code for every raw AI case. SpecGuard's local `--no-llm` gate evaluated every package before implementation. Codex then generated code only for packages that SpecGuard marked `READY` or `READY_WITH_WARNINGS`.
 
-That result is expected: when the spec is small, explicit, and internally consistent, the model has enough information to produce contract-compliant code.
+| Metric | Result |
+| --- | ---: |
+| Raw weak-spec average contract defect rate | 25.0% |
+| Raw weak specs with contract defects | 11/12 |
+| Weak specs blocked before code generation | 3/12 |
+| Prevented exposure rate | 27.3% |
+| False positive rate on ready specs | 0.0% |
+| False negative rate on weak specs | 75.0% |
+| Post-gate generated cases | 15 |
+| Post-gate average contract defect rate | 14.0% |
+| Post-gate weak cases still exposing defects | 8 |
 
-The stronger signal appeared in the defective and incomplete spec benchmark. Spec Kit and OpenSpec both produced runnable code from every weak spec, but every generated implementation exposed contract defects. SpecGuard blocked the same six weak spec packages before implementation.
+The result is intentionally conservative. The local low gate prevented three weak specs from becoming code, but it allowed nine weak specs through as `READY_WITH_WARNINGS`. Those allowed weak specs still produced contract-defective code in eight cases. The benchmark therefore supports a narrower and more useful claim:
 
-| Workflow | Defective or Incomplete Specs | Generated Implementations | Average Exposed Contract Defect Rate | Cases With Contract Defects | Blocked Before Implementation | Result |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Spec Kit | 6 | 6 | 77.2% | 6/6 | 0/6 | Defective code exposed |
-| OpenSpec | 6 | 6 | 63.6% | 6/6 | 0/6 | Defective code exposed |
-| SpecGuard | 6 | 0 | N/A | 0/6 exposed | 6/6 | Implementation blocked |
+> SpecGuard's current local low gate reduces defect exposure for some Critical weak-spec patterns without blocking ready specs, but it does not yet catch enough semantic weak-spec cases to be treated as a complete defect-prevention layer.
 
-```mermaid
-xychart-beta
-  title "Exposed Contract Defect Rate On Weak Specs"
-  x-axis ["Spec Kit", "OpenSpec", "SpecGuard"]
-  y-axis "Average exposed contract defect rate (%)" 0 --> 100
-  bar [77.2, 63.6, 0]
-```
-
-SpecGuard's `0%` exposed defect rate does not mean it generated better code from bad specs. It means SpecGuard prevented bad specs from reaching the AI implementation step.
-
-The practical conclusion is:
-
-- Spec Kit and OpenSpec are useful for structuring spec-driven work.
-- A strong model can implement well when the spec is already complete.
-- When the spec is defective or incomplete, generated code can look structurally correct while still violating runtime contracts.
-- SpecGuard's value is the validation gate: it blocks unsafe implementation inputs before an AI coding agent turns them into code.
-
-## Evidence Levels
-
-| Level | Meaning | Evidence Used Here |
-| --- | --- | --- |
-| E0 | Locally executed benchmark evidence | 16 Codex `gpt-5.5` code generation runs, hidden contract runners, and 10 SpecGuard readiness gate runs. The weak-spec SpecGuard gate used local `--no-llm` validation, not a Codex review. |
-| E1 | Official project documentation | Spec Kit, OpenSpec, and SpecGuard workflow and artifact documentation |
-| E2 | Analysis based on E0 and E1 | Defect-rate comparison, contract-risk interpretation, and workflow positioning |
-
-Reference materials:
-
-| Tool | Reference |
-| --- | --- |
-| Spec Kit | [github/spec-kit README](https://github.com/github/spec-kit), [Spec-Driven Development methodology](https://github.com/github/spec-kit/blob/main/spec-driven.md) |
-| OpenSpec | [OpenSpec official site](https://openspec.dev/), [Fission-AI/OpenSpec README](https://github.com/Fission-AI/OpenSpec) |
-| SpecGuard | [README](../README.md), [Workflow Guide](workflow.md) |
-
-## Benchmark Environment
+## Benchmark Metadata
 
 | Item | Value |
 | --- | --- |
-| Run date | 2026-05-06 |
-| SpecGuard package version | `0.2.2` |
-| SpecGuard repository state | `v0.2.2` / `b680de34b8cdf1d1b2f9724585e296ad51d213f5` |
-| Benchmark result schema | `specguard-ai-benchmark/v1` |
-| Code generation command | `npx @openai/codex@0.128.0 exec -m gpt-5.5` |
-| SpecGuard weak-spec gate | `python -m cli.specguard run <temp-feature> --no-llm --no-follow-up` |
+| Result JSON | [`docs/benchmark-results/specguard-impact-v0.3.0.json`](benchmark-results/specguard-impact-v0.3.0.json) |
+| Result schema | `specguard-impact-benchmark/v2` |
+| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `2` |
+| Run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
+| SpecGuard package version | `0.3.0` |
+| Git commit | `13218f58b9f1354b8fc059490c26f4a2a0b43c6a` |
+| Git dirty | `false` |
+| Codex package | `@openai/codex@0.128.0` |
 | Model | `gpt-5.5` |
-| SpecGuard gate model | None. `--no-llm` uses local deterministic validation and heuristic readiness checks. |
 | Reasoning effort | `low` |
-| Implementation task | In-memory Python `TaskService` |
-| Generated file | `task_service.py` |
-| External runtime dependencies | None |
-| Complete-spec evaluation | Python hidden contract runner with 12 checks |
-| Weak-spec evaluation | Python hidden contract runner with 21 checks: 10 structure/runtime checks and 11 contract checks |
-| Temporary project cleanup | Final benchmark roots reported `temp_removed=True` |
+| SpecGuard gate | `python -m cli.specguard run <package> --no-llm --no-follow-up` |
+| Hidden contract checks | 10 per generated implementation |
+| Temporary workspace cleanup | `temp_removed=true` |
 
-New benchmark JSON emitted by `tools/spec_driven_ai_benchmark.py` includes a top-level `metadata` object with the SpecGuard package version, git commit, exact git tag when available, benchmark script schema/version, and run timestamp. If a value cannot be resolved, the script records `unknown` instead of omitting the field.
+## Modes
 
-## Complete-Spec Baseline
-
-The complete-spec baseline used the same canonical task spec across all workflows. The only workflow-specific difference was how the same requirements were packaged.
-
-| Workflow | Input Shape | Spec Content |
+| Mode | Purpose | v0.3.1 Status |
 | --- | --- | --- |
-| Spec Kit | Spec Kit-style `spec.md`, `plan.md`, and `tasks.md` wrapper | Same canonical spec |
-| OpenSpec | OpenSpec-style proposal, design, and spec delta wrapper | Same canonical spec |
-| Spec Kit + SpecGuard | Spec Kit wrapper plus SpecGuard readiness, contract, and handoff artifacts | Same canonical spec |
-| OpenSpec + SpecGuard | OpenSpec wrapper plus SpecGuard readiness, contract, and handoff artifacts | Same canonical spec |
+| `raw_ai` | Codex generates implementation directly from authored `spec.md` and `technical-design.md`. | Executed |
+| `specguard_gate` | SpecGuard local no-LLM gate reviews the package before implementation. | Executed |
+| `specguard_handoff_ai` | Codex generates implementation only after SpecGuard reports `READY` or `READY_WITH_WARNINGS`. | Executed |
+| `future_llm_specguard_review` | Compare local heuristic gate with LLM-backed SpecGuard Review. | Reserved |
+| `future_strict_e2e` | Measure whether Strict E2E can revise blocked specs into safer implementation inputs. | Reserved |
 
-The SpecGuard wrapper did not add new feature requirements. It only restated the same canonical spec as readiness, contract, verification, and handoff context.
+## Methodology
 
-### Canonical Contract Summary
-
-| Area | Requirement |
-| --- | --- |
-| Public API | `TaskService`, `TaskError`, `create_task`, `list_tasks`, `complete_task`, `delete_task` |
-| Success response | Exactly `schema_version`, `correlation_id`, `task_id`, `owner_user_id`, `title`, `status`, `created_at`, `updated_at` |
-| Error response | Exactly `schema_version`, `correlation_id`, `error_code`, `message` |
-| Error codes | `UNAUTHENTICATED`, `INVALID_TITLE`, `TASK_NOT_FOUND`, `IDEMPOTENCY_KEY_REUSED` |
-| Validation | `user_id` and `title` are trimmed before validation |
-| Ownership | Users cannot list, complete, or delete another user's task |
-| State transitions | `open -> completed`, `completed -> completed`, `open/completed -> deleted` |
-| Idempotency | Same user/key/title returns the same task; same user/key/different title is rejected |
-| Out of scope | HTTP, database, repository layer, auth provider, background jobs |
-
-### Complete-Spec Hidden Checks
-
-The complete-spec benchmark used 12 hidden checks.
-
-| No. | Check |
-| ---: | --- |
-| 1 | `create_task` response has exact fields; title and owner are trimmed |
-| 2 | Blank title returns `INVALID_TITLE` with the flat error schema |
-| 3 | Non-string title returns `INVALID_TITLE` |
-| 4 | Title longer than 100 characters returns `INVALID_TITLE` |
-| 5 | Blank user returns `UNAUTHENTICATED` |
-| 6 | Non-string user returns `UNAUTHENTICATED` |
-| 7 | Same idempotency key and title returns the same task id |
-| 8 | Same idempotency key with a different title returns `IDEMPOTENCY_KEY_REUSED` |
-| 9 | `list_tasks` enforces owner scope and hides deleted tasks |
-| 10 | Cross-user complete returns `TASK_NOT_FOUND` |
-| 11 | Completing an already completed task is idempotent |
-| 12 | Deleted tasks are hidden and cannot be mutated later |
-
-Defect-rate formula:
+Each case uses the same target API:
 
 ```text
-defect_rate = failed_hidden_checks / total_hidden_checks * 100
+TaskError
+TaskService.create_task(user_id, title, idempotency_key=None, correlation_id=None)
+TaskService.list_tasks(user_id, correlation_id=None)
+TaskService.complete_task(user_id, task_id, correlation_id=None)
+TaskService.delete_task(user_id, task_id, correlation_id=None)
 ```
 
-### Complete-Spec Results
+Generated implementations are scored with hidden runtime contract checks:
 
-| Workflow | Model | Codex CLI | Generated | Elapsed | Passed | Failed | Defect Rate |
-| --- | --- | --- | --- | ---: | ---: | ---: | ---: |
-| Spec Kit | `gpt-5.5` | `0.128.0` | Yes | 94.9s | 12 | 0 | 0% |
-| OpenSpec | `gpt-5.5` | `0.128.0` | Yes | 85.7s | 12 | 0 | 0% |
-| Spec Kit + SpecGuard | `gpt-5.5` | `0.128.0` | Yes | 132.7s | 12 | 0 | 0% |
-| OpenSpec + SpecGuard | `gpt-5.5` | `0.128.0` | Yes | 55.9s | 12 | 0 | 0% |
-
-```mermaid
-xychart-beta
-  title "Complete Spec Baseline: Passed Checks"
-  x-axis ["Spec Kit", "OpenSpec", "Spec Kit+SpecGuard", "OpenSpec+SpecGuard"]
-  y-axis "Passed checks" 0 --> 12
-  bar [12, 12, 12, 12]
-```
-
-## Defective and Incomplete Spec Benchmark
-
-The second benchmark intentionally used weak implementation inputs.
-
-Spec Kit and OpenSpec received the weak specs and generated code with Codex `gpt-5.5`. SpecGuard received the same spec packages first and was evaluated on whether it allowed or blocked implementation. In this weak-spec gate benchmark, SpecGuard used `--no-llm`, so blocker detection came from local validation and heuristic readiness rules rather than from Codex.
-
-### Reproducibility
-
-The benchmark harness is included in [tools/spec_driven_ai_benchmark.py](../tools/spec_driven_ai_benchmark.py).
-
-```bash
-python tools/spec_driven_ai_benchmark.py
-```
-
-The script creates temporary benchmark projects, invokes Codex for Spec Kit and OpenSpec prompts, runs the hidden checker against generated `task_service.py` files, runs the local SpecGuard gate, and removes the temporary root.
-
-### Why `--no-llm` Still Found Defects
-
-`--no-llm` does not mean SpecGuard skips review. It means the pipeline does not call a model. The gate still runs local checks such as:
-
-- required artifact and section validation
-- placeholder detection in `spec.md` and `technical-design.md`
-- heuristic readiness checks for missing ownership boundaries in Todo-style specs
-- unsafe delete semantics
-- external dependency failure paths without timeout, retry, or fallback policy
-- incomplete state and failure-handling sections
-
-In the incomplete-spec cases, SpecGuard blocked the package before readiness review because validation found placeholder or incomplete technical-design content. In the fault-injected cases, the local readiness heuristic produced `not_ready` findings. This is different from a Codex-based SpecGuard Review, which would require running without `--no-llm` after configuring a Codex provider.
-
-### Why `--no-llm` Reduced the Exposed Defect Rate
-
-The local gate did not make generated code better. It reduced the exposed defect rate by preventing code generation from starting when the implementation input was already unsafe.
-
-That distinction is important:
-
-| Mechanism | What Happened |
+| Check | Contract Risk |
 | --- | --- |
-| Spec Kit and OpenSpec | Weak specs were handed directly to Codex `gpt-5.5`; Codex produced runnable code; hidden contract checks found runtime defects. |
-| SpecGuard `--no-llm` gate | Weak specs were validated first; local checks returned `not_ready` or validation failure; no implementation was generated from those inputs. |
+| `create_exact_success` | Valid create response and title normalization |
+| `blank_title_error` | Blank title rejection |
+| `blank_user_error` | Blank user rejection |
+| `idempotent_replay` | Same key and same title returns original task |
+| `idempotency_conflict` | Same key and different title raises `TaskError` |
+| `owner_scoped_list` | A user lists only their own active tasks |
+| `cross_user_complete_hidden` | Cross-user mutation is blocked without changing owner data |
+| `complete_idempotent` | Repeated complete remains completed |
+| `delete_hides_task` | Deleted tasks disappear from normal lists |
+| `deleted_task_blocked` | Deleted tasks cannot be completed |
 
-In other words, the measured improvement is an exposure-control improvement:
+The benchmark records structure quality checks separately from contract checks. The headline defect rates use only contract checks because the primary question is exposed behavior, not code style.
 
-```text
-exposed_contract_defect_rate =
-  contract-defective implementations that reach runtime
-  / implementations generated from weak specs
-```
+## Aggregate Results
 
-For Spec Kit and OpenSpec, weak specs produced runnable implementations, so contract defects were exposed. For SpecGuard, the same weak specs were blocked before implementation, so no contract-defective implementation reached the runtime checker.
-
-This is a conservative result. It shows that even without LLM review, SpecGuard's deterministic and heuristic gate can catch a useful class of implementation blockers. It does not claim that local `--no-llm` review is as complete as a Codex-based SpecGuard Review.
-
-### Weak-Spec Cases
-
-| Category | Case | Spec Problem |
-| --- | --- | --- |
-| Fault injected | `fault_ownership_leak` | The spec incorrectly allows global task lookup and does not enforce owner scope for list/complete/delete |
-| Fault injected | `fault_deleted_visible` | Deleted tasks remain visible and can still be completed |
-| Fault injected | `fault_external_dependency` | The spec requires an external notification call but does not define failure behavior |
-| Incomplete | `incomplete_error_contract` | Error schema, error codes, and correlation-id behavior are missing |
-| Incomplete | `incomplete_idempotency` | Idempotency conflict behavior is unclear |
-| Incomplete | `incomplete_state_transition` | State transitions and deleted-terminal behavior are not defined |
-
-### Aggregate Results
-
-| Workflow | Generated Code | Structure Quality | Average Contract Defect Rate | Cases With Contract Defects | SpecGuard Block Rate |
+| Workflow | Generated Cases | Mean Contract Defect Rate | Median | Std Dev | Cases With Contract Defects |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Spec Kit | 6 | 100.0% | 77.2% | 6/6 | 0% |
-| OpenSpec | 6 | 100.0% | 63.6% | 6/6 | 0% |
-| SpecGuard | 0 | N/A | N/A | 0/6 exposed | 100.0% |
+| Raw AI | 18 | 16.7% | 15.0% | 15.6% | 11 |
+| SpecGuard handoff AI | 15 | 14.0% | 10.0% | 15.8% | 8 |
 
-Structure quality means the generated file existed, imported successfully, exposed `TaskService` and `TaskError`, and implemented the expected public methods. The important finding is that structurally valid code still violated the runtime contract in every weak-spec case.
+| Gate Metric | Result |
+| --- | ---: |
+| Evaluated cases | 18 |
+| Blocked before code generation | 3 |
+| Blocked weak cases | 3 |
+| Blocked good cases | 0 |
+| Overall block rate | 16.7% |
 
-```mermaid
-xychart-beta
-  title "Weak Specs: Average Contract Defect Rate"
-  x-axis ["Spec Kit", "OpenSpec", "SpecGuard blocked"]
-  y-axis "Contract defect rate (%)" 0 --> 100
-  bar [77.2, 63.6, 0]
-```
+## Case Results
 
-### Fault-Injected Spec Results
-
-| Case | Spec Kit Contract Defect Rate | OpenSpec Contract Defect Rate | SpecGuard Result |
-| --- | ---: | ---: | --- |
-| `fault_ownership_leak` | 63.6% | 63.6% | `not_ready`, implementation blocked |
-| `fault_deleted_visible` | 63.6% | 54.5% | `not_ready`, implementation blocked |
-| `fault_external_dependency` | 90.9% | 63.6% | `not_ready`, implementation blocked |
-
-In the fault-injected cases, the model often followed the defective spec faithfully. For example, when the spec weakened ownership rules, generated code allowed cross-user operations. When the spec kept deleted tasks visible, generated code exposed deleted tasks through the public API.
-
-### Incomplete Spec Results
-
-| Case | Spec Kit Contract Defect Rate | OpenSpec Contract Defect Rate | SpecGuard Result |
-| --- | ---: | ---: | --- |
-| `incomplete_error_contract` | 81.8% | 81.8% | `validation_blocked`, implementation blocked |
-| `incomplete_idempotency` | 81.8% | 54.5% | `validation_blocked`, implementation blocked |
-| `incomplete_state_transition` | 81.8% | 63.6% | `validation_blocked`, implementation blocked |
-
-In the incomplete cases, the generated code was runnable but failed to preserve important contracts such as the error envelope, idempotency conflict handling, and deleted-task terminal behavior. SpecGuard blocked these packages at validation time before a readiness report could approve implementation.
-
-### Runtime Exposure
-
-Contract-defect formula:
-
-```text
-contract_defect_rate = failed_contract_checks / total_contract_checks * 100
-```
-
-Runtime exposure summary:
-
-| Workflow | Implementations Exposed To Runtime | Cases With Exposed Defects | Average Exposed Contract Defect Rate |
-| --- | ---: | ---: | ---: |
-| Spec Kit | 6 | 6/6 | 77.2% |
-| OpenSpec | 6 | 6/6 | 63.6% |
-| SpecGuard | 0 | 0/6 | 0% |
-
-This is the core SpecGuard result: when implementation input is weak, SpecGuard prevents the defective implementation path from starting.
+| Case | Type | Raw Defect Rate | SpecGuard Gate | Handoff Defect Rate | Exposure Prevented |
+| --- | --- | ---: | --- | ---: | --- |
+| `ready_canonical_task_service` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
+| `ready_trimmed_validation_contract` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
+| `ready_audit_soft_delete` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
+| `ready_idempotency_contract` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
+| `ready_state_machine_detail` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
+| `ready_support_view_out_of_scope` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
+| `fault_ownership_leak` | weak | 30.0% | `not_ready` | N/A | Yes |
+| `fault_deleted_visible` | weak | 20.0% | `ready_with_warnings` | 20.0% | No |
+| `fault_external_dependency` | weak | 0.0% | `ready_with_warnings` | 0.0% | No |
+| `incomplete_error_contract` | weak | 30.0% | `not_ready` | N/A | Yes |
+| `incomplete_idempotency` | weak | 30.0% | `ready_with_warnings` | 40.0% | No |
+| `incomplete_state_transition` | weak | 20.0% | `ready_with_warnings` | 20.0% | No |
+| `fault_client_side_filtering` | weak | 10.0% | `ready_with_warnings` | 10.0% | No |
+| `fault_idempotency_conflict_allows_new_task` | weak | 40.0% | `ready_with_warnings` | 40.0% | No |
+| `fault_error_schema_freeform` | weak | 30.0% | `ready_with_warnings` | 30.0% | No |
+| `fault_title_no_trim` | weak | 40.0% | `ready_with_warnings` | 40.0% | No |
+| `fault_deleted_mutable` | weak | 10.0% | `ready_with_warnings` | 10.0% | No |
+| `incomplete_acceptance_missing` | weak | 40.0% | `not_ready` | N/A | Yes |
 
 ## Interpretation
 
-### Code Quality Versus Contract Quality
+The ready-reference cases show that complete implementation input remains safe for the target task: raw AI and SpecGuard handoff AI both produced code with 0.0% contract defect rate across all six ready specs.
 
-The complete-spec benchmark did not show a code-quality difference. All workflows passed the same hidden contract checks.
+The weak-spec cases show the failure mode this benchmark is designed to expose. Raw AI produced contract-defective code in 11 of 12 weak cases. SpecGuard blocked three of those defective paths before code generation, which prevented 3 of 11 observed raw weak-spec exposures.
 
-The weak-spec benchmark showed a different failure mode. Spec Kit and OpenSpec generated structurally valid code in every case. The code was importable and exposed the expected public API, but it violated hidden runtime contracts in every case.
+The remaining nine weak specs were not blocked by the local low gate. They were marked `READY_WITH_WARNINGS`, so the handoff path still generated implementation code. Eight of those post-gate weak cases exposed contract defects. This is the main product signal for follow-up work: the local low gate is calibrated to block Critical findings only, and several semantic defects currently land as warnings.
 
-That distinction matters in real AI-assisted development. A generated implementation can look clean in review, satisfy the visible artifact shape, and still violate the intended product contract because the input spec was incomplete or wrong.
+## Spec Kit And OpenSpec Reference
 
-### What SpecGuard Adds
+Older benchmark material compared Spec Kit, OpenSpec, and SpecGuard prompts directly. That comparison is now treated as historical reference context, not the primary claim.
 
-SpecGuard is not a better prompt-to-code generator. It is a validation gate for implementation input.
+The current v2 harness does not execute the official Spec Kit or OpenSpec CLIs, and it does not claim that SpecGuard replaces either tool. The more defensible framing is:
 
-It asks:
+- Spec Kit and OpenSpec can structure planning artifacts.
+- A coding model can implement well when a spec is complete.
+- SpecGuard should be judged by whether it blocks or improves unsafe implementation inputs before code generation.
 
-- Is the implementation basis explicit enough for an AI coding agent?
-- Are ownership, state, failure, idempotency, and contract rules testable?
-- Does the spec force the model to guess?
-- Is there a Critical or Major blocker that should stop implementation?
-- Would generated code be allowed to reach runtime before these issues are resolved?
+Future benchmark versions may add reference prompt wrappers again, but they should remain secondary to defect-exposure metrics.
 
-The benchmark supports the following positioning:
+## Complete-Spec Baseline
 
-> SpecGuard is strongest when the risk is not model capability, but weak implementation input. It prevents incomplete or defective specs from being converted into runnable but contract-defective code.
+The complete-spec baseline is now reproducible in the harness through the six `ready_reference` cases. Each ready case is run through raw AI, SpecGuard gate, and SpecGuard handoff AI. All ready cases produced 0.0% contract defect rate in both generation modes, and SpecGuard produced no false positives.
 
-## Final Assessment
-
-| Question | Result |
-| --- | --- |
-| Was real code generated? | Yes. Spec Kit and OpenSpec generated Codex `gpt-5.5` code for the benchmark cases. |
-| Was the same task domain used? | Yes. All cases used an in-memory Todo Task Service. |
-| Was Codex `gpt-5.5` used? | Yes for code generation. The weak-spec SpecGuard gate used local `--no-llm` validation, not Codex. |
-| Was defect rate measured? | Yes. Hidden contract runners measured runtime and contract defects. |
-| Were temporary projects removed? | Yes. Final benchmark roots reported cleanup success. |
-| Which workflow generated the best code on the complete spec? | No winner. All workflows passed. |
-| Which workflow performed best on weak specs? | SpecGuard, because it blocked 6/6 weak specs before implementation. |
-| Did SpecGuard reduce exposed defects? | Yes. It reduced exposed contract-defect cases from 6/6 to 0/6 in the weak-spec benchmark. |
-| How should SpecGuard be positioned? | As an implementation-readiness and PR-drift control layer, not as a replacement for Spec Kit or OpenSpec. |
+The previous Spec Kit/OpenSpec complete-spec table is not reproduced by the v2 harness. Treat it as historical/manual evidence only.
 
 ## Limitations
 
-- The benchmark used one task domain and one run per weak-spec case, so it is not a statistical claim.
-- The complete-spec task was intentionally small and explicit, which made it easy for `gpt-5.5` to implement correctly.
-- The hidden runner measured runtime behavior and DTO/API contracts, not long-term maintainability or architecture quality.
-- The benchmark used controlled prompts that reflected each tool's artifact style. It did not execute the full official Spec Kit or OpenSpec CLI slash-command workflows.
-- SpecGuard was evaluated with local heuristic review via `--no-llm`. The blocker-detection result is therefore evidence for the local SpecGuard gate, not for Codex-based SpecGuard Review. LLM-based strict review and live PR review would need separate measurement.
-- Spec Kit and OpenSpec were evaluated without adding a custom validator or manual review step. Adding those controls would change the baseline.
+- The benchmark uses one service domain: an in-memory Python task service.
+- Each case uses one Codex generation, so this is not a statistical confidence interval.
+- The SpecGuard gate is local `--no-llm` low mode. It does not measure LLM-backed SpecGuard Review.
+- `READY_WITH_WARNINGS` is treated as implementation-allowed because that is the current low-mode contract.
+- Hidden checks cover the benchmark contract, not all possible production risks.
+- The benchmark does not measure PR drift review, strict E2E revision, multi-agent UX, official Spec Kit CLI execution, official OpenSpec CLI execution, or multi-domain defect rates.
 
-## Benchmark Expansion Roadmap
-
-Future releases will expand this benchmark suite so the document can track SpecGuard's behavior across broader and more realistic implementation risks.
-
-The current benchmark supports a narrow claim:
-
-> SpecGuard's local gate can prevent a set of defective or incomplete Todo Task Service specs from becoming exposed contract-defective code.
-
-Upcoming benchmark updates are planned to test broader claims:
-
-- "Clear specs are enough for strong models to generate correct code."
-- "When specs are incomplete or defective, SpecGuard reduces the chance that contract-defective code reaches implementation and review."
-- "LLM-backed SpecGuard Review catches blockers that are outside the current local heuristic coverage."
-- "SpecGuard can detect post-implementation drift between an approved spec package and a pull request diff."
-
-Planned expansion areas:
+## v0.3.2 Benchmark Roadmap
 
 | Area | Planned Expansion |
 | --- | --- |
-| Feature set | Add authentication, authorization boundaries, payment webhooks, state machines, OpenAPI CRUD, and multi-tenant data access. |
-| Repetition | Run at least three generations per workflow per feature to measure variance. |
-| Spec control | Keep canonical requirements identical and transform only the artifact shape for each workflow. |
-| Evaluation | Add hidden tests, OpenAPI response matching, mutation tests, static analysis, and PR diff review. |
-| Defect taxonomy | Track missing behavior, contract drift, authorization bugs, state-transition bugs, idempotency bugs, and out-of-scope additions. |
-| Statistics | Report mean defect rate, median, standard deviation, confidence intervals, and worst-case failure count. |
-| SpecGuard-specific metrics | Track readiness blocker detection rate, false-positive rate, PR drift detection rate, and stale-artifact block rate. |
-
-### Confidence Roadmap
-
-The current result is intentionally conservative because the weak-spec SpecGuard gate used local `--no-llm` validation. Future benchmark releases will add evidence in layers rather than replacing the current result.
-
-| Planned Addition | Confidence Improvement |
-| --- | --- |
-| More domains | Reduces the chance that the result is specific to Todo-style ownership and deletion rules. |
-| Multiple runs per workflow | Measures variance across Codex generations and avoids over-reading a single run. |
-| Codex `gpt-5.5` SpecGuard Review | Separates local-gate evidence from LLM-review evidence. |
-| Strict E2E regeneration | Measures whether SpecGuard can not only block weak specs, but also improve them until they become implementation-ready. |
-| PR drift review | Measures post-implementation contract conformance, not only pre-implementation readiness. |
-| False-positive tracking | Shows whether SpecGuard blocks only meaningful implementation risks or blocks too aggressively. |
-
-The next benchmark milestone is expected to add a Codex `gpt-5.5` SpecGuard Review variant alongside the current `--no-llm` baseline. That will make it possible to compare local gate coverage, LLM-backed blocker detection, and false-positive behavior in the same benchmark document.
+| More domains | Add auth/session, API contract, persistence, and async side-effect suites. |
+| Repeated runs | Run multiple generations per case and report confidence intervals. |
+| Gate comparison | Compare local low, medium/high, and LLM-backed SpecGuard Review. |
+| Strict E2E | Measure whether blocked specs can be revised into safer ready specs. |
+| PR drift | Measure SpecGuard PR Review against implementation diffs. |
+| False negatives | Promote recurring warning-only semantic blockers into deterministic Critical checks where justified. |
+| Reference tools | Keep Spec Kit/OpenSpec as secondary context with clearly separated layer claims. |
