@@ -173,6 +173,357 @@ def _contains(text: str, *needles: str) -> bool:
     return any(needle in text for needle in needles)
 
 
+def _artifact_contexts(artifacts: list[ReviewArtifact], path: str | None = None) -> list[str]:
+    contexts: list[str] = []
+    for artifact in artifacts:
+        if path is not None and artifact.path != path:
+            continue
+        contexts.extend(_text_contexts(artifact.content))
+    return contexts
+
+
+def _text_contexts(content: str) -> list[str]:
+    contexts: list[str] = []
+    for block in re.split(r"\n\s*\n", content):
+        normalized = " ".join(line.strip() for line in block.splitlines() if line.strip())
+        if normalized:
+            contexts.append(normalized.lower())
+    for line in content.splitlines():
+        normalized = line.strip().lower()
+        if normalized:
+            contexts.append(normalized)
+    return contexts
+
+
+def _context_has_any(context: str, markers: tuple[str, ...]) -> bool:
+    return any(marker in context for marker in markers)
+
+
+def _todo_contexts(contexts: list[str]) -> list[str]:
+    return [context for context in contexts if _context_has_any(context, ("todo", "todos"))]
+
+
+def _has_todo_feature_scope(contexts: list[str]) -> bool:
+    scope_markers = (
+        "create",
+        "list",
+        "read",
+        "update",
+        "delete",
+        "mutate",
+        "complete",
+        "private",
+        "todo_id",
+    )
+    return any(
+        _context_has_any(context, ("todo", "todos"))
+        and _context_has_any(context, scope_markers)
+        for context in contexts
+    )
+
+
+def _has_safe_todo_owner_context(contexts: list[str]) -> bool:
+    enforcement_markers = (
+        "only",
+        "owned",
+        "owner-scoped",
+        "owner scoped",
+        "current user",
+        "authenticated owner",
+        "caller-owned",
+        "reject",
+        "forbidden",
+        "must not",
+        "cannot",
+    )
+    owner_markers = ("owner", "owned", "current user", "user_id", "tenant")
+    for context in _todo_contexts(contexts):
+        if _context_has_any(context, owner_markers) and _context_has_any(context, enforcement_markers):
+            return True
+        if "cross-user" in context and _context_has_any(context, ("reject", "forbidden", "must not", "cannot")):
+            return True
+    return False
+
+
+def _unsafe_todo_owner_context(contexts: list[str], technical_contexts: list[str]) -> str | None:
+    dangerous_patterns = (
+        r"does\s+not\s+need\s+to\s+check\s+which\s+user",
+        r"does\s+not\s+need\s+to\s+check\s+.*owner",
+        r"server\s+does\s+not\s+need\s+to\s+check",
+        r"any\s+logged-in\s+user\s+.*\b(any\s+)?todo",
+        r"user\s+can\s+.*todo\s+created\s+by\s+another\s+user",
+        r"cross-user\s+.*\b(allowed|accepted|permitted)\b",
+    )
+    for context in _todo_contexts(contexts):
+        if any(re.search(pattern, context) for pattern in dangerous_patterns):
+            return context
+        if (
+            "client" in context
+            and _context_has_any(context, ("responsible", "filter"))
+            and _context_has_any(context, ("own", "owner", "todo", "todos"))
+        ):
+            return context
+
+    for context in contexts:
+        if (
+            _context_has_any(context, ("client", "clients"))
+            and _context_has_any(context, ("responsible", "filter", "filtering"))
+            and _context_has_any(context, ("own", "owner", "owner_user_id"))
+        ):
+            return context
+        if _context_has_any(context, ("list_tasks returns all active tasks", "returns all active tasks")):
+            return context
+
+    for context in _todo_contexts(technical_contexts):
+        reads_or_writes_by_id = (
+            _context_has_any(context, ("read", "reads", "write", "writes", "repository", "todo_id"))
+            and _context_has_any(context, ("todo_id", "by id", "by `todo_id`"))
+        )
+        if reads_or_writes_by_id and not _context_has_any(
+            context,
+            ("owner", "owned", "user_id", "tenant", "authorization"),
+        ):
+            return context
+    return None
+
+
+def _token_lifecycle_danger_context(contexts: list[str]) -> str | None:
+    token_scope = any(
+        _context_has_any(context, ("token", "login", "password", "authentication"))
+        for context in contexts
+    )
+    if not token_scope:
+        return None
+
+    dangerous_patterns = (
+        r"\b(no|without)\s+(access\s+|refresh\s+)?token\s+expiration\b",
+        r"\b(no|without)\s+expiration\b",
+        r"token\s+does\s+not\s+need\s+expiration",
+        r"token\s+(does\s+not|doesn't)\s+expire",
+        r"token\s+never\s+expires",
+        r"\b(no|without)\s+(token\s+)?revocation\b",
+        r"token\s+does\s+not\s+need\s+revocation",
+        r"token\s+cannot\s+be\s+revoked",
+        r"replay\s+(is\s+)?(accepted|allowed|permitted)",
+        r"accepts?\s+replay",
+        r"copied[-\s]+token\s+reuse",
+        r"copied\s+token\s+.*\breus",
+        r"reused\s+token\s+.*\baccepted\b",
+    )
+    for context in contexts:
+        if any(re.search(pattern, context) for pattern in dangerous_patterns):
+            return context
+    return None
+
+
+def _context_marks_safe_deleted_behavior(context: str) -> bool:
+    return _context_has_any(context, (
+        "raises",
+        "reject",
+        "invalid transition",
+        "invalid transitions",
+        "hidden",
+        "hides",
+        "terminal",
+        "cannot",
+        "must not",
+        "forbidden",
+    ))
+
+
+def _has_token_issuance_context(contexts: list[str]) -> bool:
+    return any(
+        (
+            _context_has_any(context, ("login", "password", "authentication"))
+            and _context_has_any(context, ("token", "tokens"))
+        )
+        or "issues access tokens" in context
+        or "issue access tokens" in context
+        for context in contexts
+    )
+
+
+def _has_token_lifecycle_control_context(contexts: list[str]) -> bool:
+    lifecycle_markers = (
+        "expire",
+        "expires",
+        "expiration",
+        "ttl",
+        "revoked",
+        "revocation",
+        "rotation",
+        "replay detection",
+        "replay is blocked",
+        "replay blocked",
+    )
+    unsafe_markers = ("does not", "doesn't", "no ", "without ", "accepted", "allowed", "permitted", "out of scope")
+    for context in contexts:
+        if not _context_has_any(context, ("token", "tokens")):
+            continue
+        if _context_has_any(context, lifecycle_markers) and not _context_has_any(context, unsafe_markers):
+            return True
+    return False
+
+
+def _has_task_service_scope(contexts: list[str]) -> bool:
+    return any(
+        "taskservice" in context
+        or "task_service" in context
+        or (
+            _context_has_any(context, ("create_task", "list_tasks", "complete_task", "delete_task"))
+            and "task" in context
+        )
+        for context in contexts
+    )
+
+
+def _has_task_operation_surface(contexts: list[str]) -> bool:
+    text = "\n".join(contexts)
+    return all(operation in text for operation in ("create_task", "list_tasks", "complete_task", "delete_task"))
+
+
+def _has_task_error_context(contexts: list[str], markers: tuple[str, ...]) -> bool:
+    error_markers = ("taskerror", "raises", "raise", "reject", "rejected", "forbidden", "not found")
+    return any(
+        _context_has_any(context, markers)
+        and _context_has_any(context, error_markers)
+        for context in contexts
+    )
+
+
+def _task_error_contract_is_too_generic(contexts: list[str]) -> bool:
+    text = "\n".join(contexts)
+    if not _has_task_operation_surface(contexts):
+        return False
+    if "taskerror" not in text:
+        return True
+    required_error_contexts = (
+        ("blank user", "blank user_id", "invalid user", "invalid user_id"),
+        ("blank title", "invalid title", "empty title"),
+        ("missing task", "missing task_id", "unknown task"),
+        ("cross-user", "ownership", "owner"),
+        ("deleted task", "deleted"),
+        ("idempotency conflict", "different title", "different normalized title"),
+    )
+    covered = sum(
+        1 for markers in required_error_contexts
+        if _has_task_error_context(contexts, markers)
+    )
+    return covered < 5
+
+
+def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
+    if not _has_task_service_scope(contexts):
+        return None
+
+    for context in contexts:
+        if (
+            _context_has_any(context, ("list_tasks returns all active tasks", "returns all active tasks"))
+            or "global list retrieval" in context
+            or (
+                _context_has_any(context, ("client", "clients"))
+                and _context_has_any(context, ("filter", "filtering"))
+                and _context_has_any(context, ("owner", "owner_user_id"))
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Task ownership boundary is unclear",
+                "The spec package allows list_tasks to return cross-user task data for callers to filter.",
+                "Generated code can expose task data across users before client-side filtering occurs.",
+                "Require list_tasks to return only caller-owned tasks from the service boundary.",
+            )
+
+    for context in contexts:
+        if "idempotency" in context and _context_has_any(
+            context,
+            ("does not define", "not defined", "should be considered", "conflict behavior is not defined"),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Task idempotency contract is ambiguous",
+                "The spec package mentions idempotency but leaves replay scope or conflict behavior undefined.",
+                "Generated code can create duplicate tasks or share idempotency records across users.",
+                "Define idempotency key scope, same-request replay behavior, and conflicting-replay rejection.",
+            )
+        if (
+            "idempotency" in context
+            and "different title" in context
+            and not _context_has_any(context, ("raises", "reject", "error"))
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Task idempotency contract is ambiguous",
+                "The spec package does not require a clear error for reused idempotency keys with different task data.",
+                "Conflicting retries can create duplicate or inconsistent tasks.",
+                "Require TaskError for conflicting idempotency-key reuse and define the response for exact replay.",
+            )
+    for context in contexts:
+        if (
+            "deleted" in context
+            and _context_has_any(context, (
+                "remain visible",
+                "remains visible",
+                "can be read",
+                "can be completed",
+                "may be called for a deleted task",
+                "may restore",
+                "deleted to completed",
+                "including deleted tasks",
+                "transition rules are to be selected by the implementer",
+            ))
+            and not _context_marks_safe_deleted_behavior(context)
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Deleted task terminal behavior is unsafe",
+                "The spec package permits or leaves open deleted-task visibility or mutation after deletion.",
+                "Generated code can expose deleted records or revive terminal state.",
+                "Define deleted tasks as hidden from normal lists and terminal for later completion unless the spec "
+                "explicitly defines a safer lifecycle.",
+            )
+    if _task_error_contract_is_too_generic(contexts):
+        return ReadinessIssue(
+            "Critical",
+            "Task error contract is non-actionable",
+            "The TaskService spec exposes create, list, complete, and delete operations without concrete error cases.",
+            "Generated code must guess validation, ownership, missing-task, deleted-task, or idempotency failure behavior.",
+            "Define TaskError behavior with clear reasons for validation, ownership, missing task, deleted task, and "
+            "idempotency conflicts.",
+        )
+    for context in contexts:
+        if _context_has_any(context, (
+            "return none when",
+            "may return none",
+            "returning none is acceptable",
+            "silently ignored",
+            "space-only titles are allowed",
+        )):
+            return ReadinessIssue(
+                "Critical",
+                "Task error contract is non-actionable",
+                "The spec package allows invalid operations to return None or silently accept invalid task data.",
+                "Generated code can hide validation, ownership, or missing-task failures from callers.",
+                "Require TaskError with a clear reason for validation, ownership, missing task, deleted task, and "
+                "idempotency conflicts.",
+            )
+    for context in contexts:
+        if (
+            _context_has_any(context, ("works for normal user flows", "handled sensibly"))
+            and _context_has_any(context, ("idempotency", "deleted", "unrelated tasks", "ownership"))
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Task service acceptance evidence is too vague",
+                "The spec package names ownership, idempotency, or deleted-state risks without executable acceptance "
+                "criteria.",
+                "Generated code must guess important contract behavior before implementation starts.",
+                "Replace vague acceptance language with explicit owner-scope, idempotency, validation, and "
+                "deleted-state criteria.",
+            )
+    return None
+
+
 def normalize_review_level(review_level: str | None) -> str:
     normalized = (review_level or DEFAULT_REVIEW_LEVEL).strip().lower()
     if normalized not in READINESS_REVIEW_LEVELS:
@@ -805,6 +1156,8 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
     text = _render_artifact_input(artifacts).lower()
     technical_design = _artifact_content(artifacts, "technical-design.md")
     technical_design_text = technical_design.lower()
+    contexts = _artifact_contexts(artifacts)
+    technical_contexts = _artifact_contexts(artifacts, "technical-design.md")
     issues: list[ReadinessIssue] = []
 
     architecture = _section(technical_design, "Architecture")
@@ -839,8 +1192,18 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
             "Define per-dependency timeout, retry policy, idempotency requirement, and user-visible error response.",
         ))
 
-    if _contains(text, "login", "password", "refresh token"):
-        if not _contains(text, "expire", "ttl", "refresh"):
+    token_danger_context = _token_lifecycle_danger_context(contexts)
+    if token_danger_context is not None:
+        issues.append(ReadinessIssue(
+            "Critical",
+            "Token lifecycle is missing",
+            f"Authentication token behavior permits an unsafe lifecycle decision: {token_danger_context}",
+            "Leaked, replayed, or copied tokens can remain valid or reusable longer than intended.",
+            "Define token expiration, revocation, rotation or replay detection, and copied-token rejection in the same "
+            "authentication-token contract.",
+        ))
+    elif _has_token_issuance_context(contexts):
+        if not _has_token_lifecycle_control_context(contexts):
             issues.append(ReadinessIssue(
                 "Critical",
                 "Token lifecycle is missing",
@@ -848,6 +1211,7 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
                 "Leaked or replayed tokens can remain valid longer than intended.",
                 "Define access token TTL, refresh token rotation, revocation, and replay detection.",
             ))
+    if _contains(text, "login", "password", "refresh token"):
         if not _contains(text, "rate limit", "lockout", "brute"):
             issues.append(ReadinessIssue(
                 "Major",
@@ -857,12 +1221,22 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
                 "Add rate limits by account and IP, progressive delay, audit logging, and lockout rules.",
             ))
 
-    if _contains(text, "todo", "todos"):
-        if not _contains(technical_design_text, "owner_user_id", "owner id", "authorization", "tenant"):
+    if _has_todo_feature_scope(contexts):
+        unsafe_todo_context = _unsafe_todo_owner_context(contexts, technical_contexts)
+        if unsafe_todo_context is not None:
             issues.append(ReadinessIssue(
                 "Critical",
                 "Todo ownership boundary is unclear",
-                "The technical design does not prove that users can only read or mutate their own todos.",
+                f"The spec package permits or designs unsafe todo ownership behavior: {unsafe_todo_context}",
+                "A generated API may expose cross-user todo data through list, update, or delete operations.",
+                "Require server-side owner-scoped queries and authorization checks for every todo read/write path.",
+            ))
+        elif not _has_safe_todo_owner_context(contexts):
+            issues.append(ReadinessIssue(
+                "Critical",
+                "Todo ownership boundary is unclear",
+                "The spec package does not state, in a todo-specific decision context, that users can only read or "
+                "mutate their own todos.",
                 "A generated API may expose cross-user data through list, update, or delete operations.",
                 "Require owner-scoped queries and authorization checks for every todo read/write path.",
             ))
@@ -883,6 +1257,10 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
             "The service can hang, duplicate side effects, or return inconsistent results.",
             "Define timeout budgets, retryable errors, non-retryable errors, and circuit-breaker behavior.",
         ))
+
+    task_service_blocker = _task_service_semantic_blocker(contexts)
+    if task_service_blocker is not None:
+        issues.append(task_service_blocker)
 
     if _is_placeholder(data_flow):
         issues.append(ReadinessIssue(

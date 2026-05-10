@@ -1645,6 +1645,329 @@ def test_heuristic_review_reads_additional_authored_markdown_specs(tmp_path: Pat
     assert "Token lifecycle is missing" in {issue["title"] for issue in payload["issues"]}
 
 
+def test_heuristic_blocks_todo_owner_negations_despite_unrelated_safe_keywords(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            "# Spec: todo privacy",
+            "",
+            "## Requirements",
+            "",
+            "- The system must let logged-in users create todos.",
+            "- The system must let any logged-in user update any todo by `todo_id`.",
+            "- The server does not need to check which user created the todo.",
+            "- The client is responsible for showing each user only their own todos.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] A user can update a todo created by another user when the `todo_id` is known.",
+            "",
+            "## Error Cases",
+            "",
+            "- Missing access token returns `401 UNAUTHENTICATED`.",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("technical-design.md").write_text(
+        "\n".join([
+            "# Technical Design: todo privacy",
+            "",
+            "## Architecture",
+            "",
+            "- API layer accepts todo requests.",
+            "- TodoRepository reads and writes todos by `todo_id`.",
+            "- Authorization and tenant checks are handled by a separate billing export feature.",
+            "",
+            "## Data Flow",
+            "",
+            "1. Caller sends a todo request.",
+            "2. Service validates that an access token exists.",
+            "3. Repository reads or writes the todo by `todo_id`.",
+            "",
+            "## State",
+            "",
+            "- Valid states: active, completed, deleted.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Missing access token returns `401 UNAUTHENTICATED`.",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    assert "Todo ownership boundary is unclear" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_blocks_todo_client_side_filtering(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            "# Spec: todo privacy",
+            "",
+            "## Requirements",
+            "",
+            "- The system must let logged-in users create todos.",
+            "- list_tasks returns all active tasks and includes owner_user_id so clients can filter locally.",
+            "- complete_task and delete_task verify ownership.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Clients are responsible for filtering their own rows.",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("technical-design.md").write_text(
+        "\n".join([
+            "# Technical Design: todo privacy",
+            "",
+            "## Architecture",
+            "",
+            "- TodoService performs global list retrieval and owner-scoped mutation lookup.",
+            "",
+            "## Data Flow",
+            "",
+            "1. list_tasks reads all non-deleted task rows from memory.",
+            "2. Clients filter by owner_user_id when needed.",
+            "",
+            "## State",
+            "",
+            "- Valid states: active, completed, deleted.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Missing access token returns `401 UNAUTHENTICATED`.",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert "Todo ownership boundary is unclear" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_blocks_token_lifecycle_negations_despite_refresh_keyword(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("security-notes.md").write_text(
+        "\n".join([
+            "# Security Notes",
+            "",
+            "- Login with password issues access tokens.",
+            "- Token does not need expiration for the first release.",
+            "- No revocation is required.",
+            "- Replay is accepted for copied tokens.",
+            "",
+            "# Later Notes",
+            "",
+            "- Refresh token rotation belongs to a different product area.",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    assert "Token lifecycle is missing" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_does_not_create_critical_from_unrelated_safety_keywords(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("notes.md").write_text(
+        "\n".join([
+            "# Notes",
+            "",
+            "- Owner, tenant, and authorization terms here describe a future reporting feature.",
+            "- Refresh token examples belong to identity-provider documentation.",
+            "- No todo or token implementation is in scope for this feature.",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["summary"]["critical"] == 0
+
+
+def test_heuristic_blocks_task_service_idempotency_ambiguity(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            "# Spec: task service",
+            "",
+            "## Requirements",
+            "",
+            "- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.",
+            "- Every task belongs to one user_id.",
+            "- create_task accepts idempotency_key.",
+            "- Repeating a create request should be safe.",
+            "- The spec does not define whether idempotency_key is scoped by user, title, or both.",
+            "- The spec does not define conflict behavior when the same idempotency_key is reused "
+            "with a different title.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Repeating a create request should not create excessive duplicates.",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("technical-design.md").write_text(
+        "\n".join([
+            "# Technical Design: task service",
+            "",
+            "## Architecture",
+            "",
+            "- TaskService owns validation, task storage, idempotency, and response shaping.",
+            "",
+            "## Data Flow",
+            "",
+            "1. Caller sends create_task.",
+            "2. TaskService stores a task or returns an existing task when idempotency applies.",
+            "",
+            "## State",
+            "",
+            "- Valid states: open, completed, deleted.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Idempotency conflict behavior is not defined.",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert "Task idempotency contract is ambiguous" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_blocks_task_service_missing_error_contract(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            "# Spec: task service",
+            "",
+            "## Requirements",
+            "",
+            "- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.",
+            "- A task has an owner user, title, status, and timestamps.",
+            "- create_task validates title and user_id.",
+            "- list_tasks returns tasks for the caller.",
+            "- complete_task completes a task.",
+            "- delete_task removes a task from normal lists.",
+            "- Idempotency is supported for create_task.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] create_task returns a task.",
+            "- [ ] list_tasks returns caller tasks.",
+            "- [ ] complete_task marks a task completed.",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("technical-design.md").write_text(
+        "\n".join([
+            "# Technical Design: task service",
+            "",
+            "## Architecture",
+            "",
+            "- TaskService owns validation and task operations.",
+            "- Use in-memory storage.",
+            "",
+            "## Data Flow",
+            "",
+            "1. Validate request.",
+            "2. Load or create task.",
+            "3. Return result.",
+            "",
+            "## State",
+            "",
+            "- States: open, completed, deleted.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Validation errors raise TaskError.",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert "Task error contract is non-actionable" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_accepts_safe_task_service_deleted_state_contract(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            "# Spec: task service",
+            "",
+            "## Requirements",
+            "",
+            "- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.",
+            "- Every read and mutation is owner-scoped.",
+            "- Blank user_id raises TaskError.",
+            "- Blank title raises TaskError.",
+            "- Missing task_id raises TaskError.",
+            "- list_tasks returns only non-deleted tasks owned by the caller.",
+            "- complete_task raises TaskError for missing, cross-user, or deleted tasks.",
+            "- delete_task soft-deletes an open or completed task.",
+            "- Deleted tasks are terminal and hidden from list_tasks.",
+            "- Reusing the same user_id and idempotency_key with a different title raises TaskError.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Completing a deleted task raises TaskError.",
+            "- [ ] Deleting an owned open or completed task hides it from list_tasks.",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("technical-design.md").write_text(
+        "\n".join([
+            "# Technical Design: task service",
+            "",
+            "## Architecture",
+            "",
+            "- TaskService owns validation, idempotency lookup, owner-scoped task lookup, and state transitions.",
+            "",
+            "## Data Flow",
+            "",
+            "1. complete_task resolves the task by task_id, verifies owner_user_id, and rejects deleted tasks.",
+            "2. delete_task verifies owner_user_id, sets deleted status, and hides it from list_tasks.",
+            "",
+            "## State",
+            "",
+            "- Valid states: open, completed, deleted.",
+            "- Invalid transitions: deleted to completed.",
+            "- Deleted is terminal for complete_task and list_tasks visibility.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Deleted task completion raises TaskError.",
+            "- Reused idempotency key with different normalized title raises TaskError.",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["summary"]["critical"] == 0
+
+
 def test_llm_review_reads_authored_markdown_and_excludes_generated_outputs(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
     feature.joinpath("domain-rules.md").write_text(
