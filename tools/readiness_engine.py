@@ -617,7 +617,7 @@ def _has_payment_side_effect_context(contexts: list[str]) -> bool:
 def _webhook_contexts(contexts: list[str]) -> list[str]:
     return [
         context for context in contexts
-        if _context_has_any(context, ("webhook", "subscriber", "delivery", "callback url"))
+        if _context_has_any(context, ("webhook", "subscriber", "callback url"))
     ]
 
 
@@ -798,7 +798,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Define timeout budgets, retry policy, delivery idempotency key, and duplicate delivery handling.",
             )
         for context in webhook_contexts:
-            if _context_has_any(context, ("webhook", "subscriber", "delivery")) and _context_matches_any(
+            if _context_has_any(context, ("webhook", "subscriber", "callback url")) and _context_matches_any(
                 context,
                 (
                     r"does\s+not\s+define\s+.*(timeout|retry|idempotency)",

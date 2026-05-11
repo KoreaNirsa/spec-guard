@@ -2144,6 +2144,29 @@ def test_heuristic_accepts_non_payment_api_gateway_context(tmp_path: Path) -> No
     assert payload["summary"]["critical"] == 0
 
 
+def test_heuristic_accepts_non_webhook_order_delivery_context(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "order delivery tracking",
+        [
+            "Users can view delivery status for their own orders.",
+            "Delivery status includes carrier, tracking number, shipped_at, and estimated arrival.",
+        ],
+        [
+            "OrderDeliveryService loads orders by user_id and delivery_id.",
+            "The service returns the latest delivery status from internal order state.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert "Webhook side-effect contract is ambiguous" not in {issue["title"] for issue in payload["issues"]}
+    assert payload["summary"]["critical"] == 0
+
+
 def test_heuristic_blocks_task_service_idempotency_ambiguity(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
     feature.joinpath("spec.md").write_text(
