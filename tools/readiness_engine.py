@@ -203,6 +203,19 @@ def _context_matches_any(context: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, context) for pattern in patterns)
 
 
+def _context_fragments(context: str) -> list[str]:
+    has_multiple_list_items = bool(re.search(r"\s+-\s+|\s+\d+\.\s+", context))
+    candidates = [] if has_multiple_list_items else [context]
+    candidates.extend(re.split(r"\s+-\s+|\s+\d+\.\s+|\.\s+", context))
+
+    fragments = set()
+    for fragment in candidates:
+        normalized = fragment.strip(" -*")
+        if normalized and not normalized.startswith("#"):
+            fragments.add(normalized)
+    return list(fragments)
+
+
 def _todo_contexts(contexts: list[str]) -> list[str]:
     return [context for context in contexts if _context_has_any(context, ("todo", "todos"))]
 
@@ -584,6 +597,34 @@ def _is_payment_side_effect_context(context: str) -> bool:
     )
 
 
+def _has_payment_idempotency_context(contexts: list[str]) -> bool:
+    return any(
+        _is_payment_context(fragment)
+        and _context_has_any(fragment, ("idempotency", "idempotency_key", "idempotency key", "idempotent"))
+        for context in contexts
+        for fragment in _context_fragments(context)
+    )
+
+
+def _has_payment_side_effect_context(contexts: list[str]) -> bool:
+    return any(
+        _is_payment_side_effect_context(fragment)
+        for context in contexts
+        for fragment in _context_fragments(context)
+    )
+
+
+def _webhook_contexts(contexts: list[str]) -> list[str]:
+    return [
+        context for context in contexts
+        if _context_has_any(context, ("webhook", "subscriber", "delivery", "callback url"))
+    ]
+
+
+def _has_webhook_policy_dimension(contexts: list[str], markers: tuple[str, ...]) -> bool:
+    return any(_context_has_any(context, markers) for context in contexts)
+
+
 def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
     text = "\n".join(contexts)
 
@@ -646,8 +687,8 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Include tenant or user identity in every cache key for tenant-scoped reads and exports.",
             )
 
-    payment_side_effect = any(_is_payment_side_effect_context(context) for context in contexts)
-    if payment_side_effect and "idempotency" not in text:
+    payment_side_effect = _has_payment_side_effect_context(contexts)
+    if payment_side_effect and not _has_payment_idempotency_context(contexts):
         return ReadinessIssue(
             "Critical",
             "Payment idempotency contract is ambiguous",
@@ -724,6 +765,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 context,
                 (
                     r"server[-\s]+side\s+(role|authorization|permission)\s+check\s+.*\b(not required|optional)",
+                    r"server[-\s]+side\s+(role|authorization|permission)\s+.*\bout of scope\b",
                     r"does\s+not\s+need\s+.*\b(role|authorization|permission)\b",
                     r"\b(no|without)\s+server[-\s]+side\s+(role|authorization|permission)",
                     r"last\s+owner\s+.*\b(remove|removed|delete|deleted|demote|demoted|undefined|not defined)",
@@ -738,9 +780,16 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Require server-side authorization for every privileged action and define last-owner protection.",
             )
 
-    webhook_scope = any(_context_has_any(context, ("webhook", "subscriber", "delivery", "callback url")) for context in contexts)
-    if webhook_scope:
-        if not _context_has_any(text, ("timeout", "retry", "idempotency", "idempotent", "event_id", "dedupe", "deduplicate")):
+    webhook_contexts = _webhook_contexts(contexts)
+    if webhook_contexts:
+        if (
+            not _has_webhook_policy_dimension(webhook_contexts, ("timeout", "deadline"))
+            or not _has_webhook_policy_dimension(webhook_contexts, ("retry", "retries", "retryable", "non-retryable"))
+            or not _has_webhook_policy_dimension(
+                webhook_contexts,
+                ("idempotency", "idempotent", "event_id", "event id", "dedupe", "deduplicate"),
+            )
+        ):
             return ReadinessIssue(
                 "Critical",
                 "Webhook side-effect contract is ambiguous",
@@ -748,7 +797,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Generated code can hang on subscriber calls or duplicate external side effects.",
                 "Define timeout budgets, retry policy, delivery idempotency key, and duplicate delivery handling.",
             )
-        for context in contexts:
+        for context in webhook_contexts:
             if _context_has_any(context, ("webhook", "subscriber", "delivery")) and _context_matches_any(
                 context,
                 (

@@ -1867,6 +1867,19 @@ def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str]
             "Payment idempotency contract is ambiguous",
         ),
         (
+            "payment creation with unrelated report note",
+            [
+                "POST /payments creates a payment gateway charge for an invoice.",
+                "Callers may retry when the network connection fails.",
+                "Reporting exports use idempotency when generating CSV files.",
+            ],
+            [
+                "PaymentService submits the charge request to the payment gateway.",
+                "ExportReportService uses idempotency for CSV export jobs.",
+            ],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
             "refund timeout",
             [
                 "POST /refunds sends a refund request to the payment gateway with an idempotency key.",
@@ -1903,6 +1916,18 @@ def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str]
             "Server-side authorization is missing",
         ),
         (
+            "admin role server authorization out of scope",
+            [
+                "Server-side authorization for role mutation is out of scope for the first release.",
+                "Admin role changes are accepted when the request body is valid.",
+            ],
+            [
+                "RoleService updates the target user's role when the request body is valid.",
+                "The client hides role mutation controls from non-owner users.",
+            ],
+            "Server-side authorization is missing",
+        ),
+        (
             "webhook delivery",
             [
                 "Webhook delivery calls subscriber URLs.",
@@ -1912,6 +1937,18 @@ def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str]
             [
                 "WebhookService posts each event to subscriber callback URLs.",
                 "Delivery status is stored after the HTTP call returns.",
+            ],
+            "Webhook side-effect contract is ambiguous",
+        ),
+        (
+            "webhook partial delivery policy",
+            [
+                "Webhook delivery calls subscriber URLs with a 2 second timeout.",
+                "Webhook retries use exponential backoff for 5xx responses.",
+            ],
+            [
+                "WebhookService posts each event to the subscriber callback URL.",
+                "Delivery timeout and retry status are recorded after each subscriber call.",
             ],
             "Webhook side-effect contract is ambiguous",
         ),
