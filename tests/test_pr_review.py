@@ -76,6 +76,20 @@ def test_pr_review_skips_missing_credentials_before_context(tmp_path: Path) -> N
     assert "<!-- specguard-pr-review:42:abc123 -->" in result.body
 
 
+def test_pr_review_guides_implementation_only_pr_to_explicit_spec_paths(tmp_path: Path) -> None:
+    diff = write_diff(tmp_path, "diff --git a/develop/app.py b/develop/app.py\n+++ b/develop/app.py\n+pass\n")
+
+    result = run_review(review_args(tmp_path, diff), env={"OPENAI_API_KEY": "test-key"})
+
+    assert result.exit_code == 0
+    assert result.status == "skipped"
+    assert "implementation files" in result.body
+    assert "SPECGUARD_REVIEW_SPEC_PATHS" in result.body
+    assert "--spec-paths" in result.body
+    assert "readiness-review.json" in result.body
+    assert "implementation-output.md" in result.body
+
+
 def test_pr_review_blocks_not_ready_specs_without_invoking_codex(tmp_path: Path) -> None:
     write_ready_spec_package(tmp_path, blocked=True)
     diff = write_diff(tmp_path)
