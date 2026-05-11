@@ -1916,6 +1916,18 @@ def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str]
             "Webhook side-effect contract is ambiguous",
         ),
         (
+            "webhook policy out of scope",
+            [
+                "Webhook delivery calls subscriber URLs for account events.",
+                "Subscriber timeout, retry, and idempotency behavior are out of scope.",
+            ],
+            [
+                "WebhookService posts each event to the subscriber callback URL.",
+                "Delivery status is recorded after the subscriber call returns.",
+            ],
+            "Webhook side-effect contract is ambiguous",
+        ),
+        (
             "audit evidence",
             [
                 "Audit records are required for admin actions.",
@@ -2069,6 +2081,29 @@ def test_heuristic_accepts_sensitive_field_redaction_context(tmp_path: Path) -> 
     payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
     assert result.ok
     assert "Token lifecycle is missing" not in {issue["title"] for issue in payload["issues"]}
+    assert payload["summary"]["critical"] == 0
+
+
+def test_heuristic_accepts_non_payment_api_gateway_context(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "api gateway trace",
+        [
+            "API gateway creates an internal request trace for each incoming request.",
+            "Trace records include request_id, route, status_code, and latency_ms.",
+        ],
+        [
+            "GatewayTraceService validates the request_id and stores a trace record.",
+            "Trace creation has no external side effects and does not call a financial processor.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert "Payment idempotency contract is ambiguous" not in {issue["title"] for issue in payload["issues"]}
     assert payload["summary"]["critical"] == 0
 
 

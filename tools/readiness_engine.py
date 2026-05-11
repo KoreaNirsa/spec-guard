@@ -556,12 +556,13 @@ def _is_payment_context(context: str) -> bool:
         context,
         (
             r"\bpayments?\b",
+            r"\bpayment[-_\s]?service\b",
             r"\brefunds?\b",
+            r"\brefund[-_\s]?service\b",
             r"\bcharges?\b",
             r"\bcaptures?\b",
             r"\bpayouts?\b",
-            r"\bgateway\b",
-            r"\bprocessor\b",
+            r"\b(payment|refund|charge|capture|payout)\s+(gateway|processor)\b",
         ),
     )
 
@@ -752,6 +753,8 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 context,
                 (
                     r"does\s+not\s+define\s+.*(timeout|retry|idempotency)",
+                    r"(timeout|retry|idempotency)\s+.*\b(out of scope|optional|not required|not defined)\b",
+                    r"(timeout|retry|idempotency)\s+.*\bare\s+not\s+defined\b",
                     r"duplicate\s+delivery\s+.*\b(allowed|accepted|permitted)",
                     r"subscriber[s]?\s+should\s+be\s+idempotent",
                     r"\b(no|without)\s+(retry|timeout|idempotency|event_id)",
