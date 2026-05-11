@@ -25,7 +25,7 @@ CODEX_PACKAGE = "@openai/codex@0.128.0"
 MODEL = "gpt-5.5"
 MODEL_REASONING_EFFORT = "low"
 BENCHMARK_RESULT_SCHEMA = "specguard-impact-benchmark/v2"
-BENCHMARK_SCRIPT_VERSION = "2"
+BENCHMARK_SCRIPT_VERSION = "3"
 CODEX_TIMEOUT_SECONDS = 420
 
 BASE_API = """
@@ -144,9 +144,13 @@ def _case(
     risk: str,
     spec: str,
     technical_design: str,
+    suite: str = "impact_v2",
+    domain: str = "task_service",
 ) -> dict[str, str]:
     return {
         "id": case_id,
+        "suite": suite,
+        "domain": domain,
         "category": category,
         "expectation": expectation,
         "title": title,
@@ -206,6 +210,111 @@ def _weak_design(architecture: str, data_flow: str, state: str, failure: str, de
 ## Failure Handling
 {textwrap.dedent(failure).strip()}
 """.strip()
+
+
+def _gate_spec(
+    *,
+    feature: str,
+    summary: str,
+    requirements: str,
+    acceptance: str,
+    errors: str,
+    out_of_scope: str = "- Implementation details outside this feature package.",
+) -> str:
+    return f"""
+# Feature: {feature}
+
+## Summary
+{textwrap.dedent(summary).strip()}
+
+## Requirements
+{textwrap.dedent(requirements).strip()}
+
+## Acceptance Criteria
+{textwrap.dedent(acceptance).strip()}
+
+## Error Cases
+{textwrap.dedent(errors).strip()}
+
+## Out of Scope
+{textwrap.dedent(out_of_scope).strip()}
+""".strip()
+
+
+def _gate_design(
+    *,
+    feature: str,
+    architecture: str,
+    data_flow: str,
+    state: str,
+    failure: str,
+    dependencies: str = "- No external integrations.",
+) -> str:
+    return f"""
+# Technical Design: {feature}
+
+## Architecture
+{textwrap.dedent(architecture).strip()}
+
+## Data Flow
+{textwrap.dedent(data_flow).strip()}
+
+## State
+{textwrap.dedent(state).strip()}
+
+## Dependencies
+{textwrap.dedent(dependencies).strip()}
+
+## Failure Handling
+{textwrap.dedent(failure).strip()}
+""".strip()
+
+
+def _gate_case(
+    case_id: str,
+    *,
+    domain: str,
+    category: str,
+    expectation: str,
+    title: str,
+    risk: str,
+    feature: str,
+    summary: str,
+    requirements: str,
+    acceptance: str,
+    errors: str,
+    architecture: str,
+    data_flow: str,
+    state: str,
+    failure: str,
+    dependencies: str = "- No external integrations.",
+    out_of_scope: str = "- Implementation details outside this feature package.",
+) -> dict[str, str]:
+    return _case(
+        case_id,
+        suite="gate_only_supplemental_v1",
+        domain=domain,
+        category=category,
+        expectation=expectation,
+        title=title,
+        risk=risk,
+        spec=_gate_spec(
+            feature=feature,
+            summary=summary,
+            requirements=requirements,
+            acceptance=acceptance,
+            errors=errors,
+            out_of_scope=out_of_scope,
+        ),
+        technical_design=_gate_design(
+            feature=feature,
+            architecture=architecture,
+            data_flow=data_flow,
+            state=state,
+            failure=failure,
+            dependencies=dependencies,
+        ),
+    )
 
 
 CASES = [
@@ -780,6 +889,1574 @@ CASES = [
     ),
 ]
 
+
+GATE_ONLY_EXTRA_CASES = [
+    _gate_case(
+        "ready_auth_session_rotation",
+        domain="auth_session",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready auth session rotation",
+        risk="token lifecycle and replay control",
+        feature="Auth Session Rotation",
+        summary="- Password login issues short-lived access tokens and rotating refresh tokens.",
+        requirements="""
+- Access tokens expire after 15 minutes.
+- Refresh tokens rotate on every use and previous refresh tokens are revoked.
+- Copied access tokens are rejected when replay detection marks the session compromised.
+- Password login has account and IP rate limits with progressive lockout.
+""",
+        acceptance="""
+- [ ] Expired access tokens are rejected.
+- [ ] Reused refresh tokens revoke the session family.
+- [ ] Replay detection rejects copied token reuse.
+""",
+        errors="""
+- Expired token returns 401.
+- Revoked token returns 401.
+- Rate limited login returns 429.
+""",
+        architecture="""
+- API layer validates password credentials and delegates token issuance to SessionService.
+- SessionService owns token expiration, refresh rotation, revocation, replay detection, and audit events.
+""",
+        data_flow="""
+1. Login validates credentials and rate limits.
+2. SessionService issues an access token with ttl and a refresh token family id.
+3. Refresh rotates the token and revokes the prior refresh token.
+4. Replay detection revokes the session family before returning 401.
+""",
+        state="""
+- Session states: active, revoked, expired, compromised.
+- Compromised and revoked sessions are terminal.
+""",
+        failure="""
+- Token validation failures return 401 with a reason code.
+- Rate limits return 429 and do not reveal whether the account exists.
+""",
+    ),
+    _gate_case(
+        "ready_api_tenant_invoice_export",
+        domain="billing_export",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready tenant invoice export",
+        risk="tenant-scoped export",
+        feature="Tenant Invoice Export",
+        summary="- Finance users export invoices only for their own tenant.",
+        requirements="""
+- Export requests include authenticated tenant_id and requester_id.
+- Invoice queries are scoped by tenant_id before rows leave the repository.
+- Cross-tenant invoice ids return 404 without leaking invoice metadata.
+- Export files include an audit record with requester_id and tenant_id.
+""",
+        acceptance="""
+- [ ] Tenant A cannot export Tenant B invoices.
+- [ ] Export output contains only rows whose tenant_id matches the caller.
+- [ ] Every successful export writes an audit event.
+""",
+        errors="""
+- Missing tenant_id returns 401.
+- Cross-tenant invoice id returns 404.
+- Empty export range returns a valid empty file.
+""",
+        architecture="""
+- ExportController receives authenticated tenant context.
+- InvoiceExportService owns tenant-scoped query construction and audit creation.
+- InvoiceRepository accepts tenant_id as a required query predicate.
+""",
+        data_flow="""
+1. Controller reads tenant_id from auth context.
+2. Service validates date range and requester permissions.
+3. Repository queries invoices by tenant_id and invoice filters.
+4. Service writes an audit event before returning the export artifact.
+""",
+        state="""
+- Export states: requested, completed, failed.
+- Failed exports do not create downloadable files.
+""",
+        failure="""
+- Missing auth context returns 401.
+- Permission failure returns 403.
+- Repository timeout returns 503 and records a failed export state.
+""",
+    ),
+    _gate_case(
+        "ready_document_share_expiry",
+        domain="document_sharing",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready document share expiry",
+        risk="share link lifetime and owner scope",
+        feature="Document Share Links",
+        summary="- Users create expiring document share links for documents they own.",
+        requirements="""
+- Share links expire after the configured expiry_at timestamp.
+- Only the document owner can create, revoke, or list share links.
+- Revoked share links cannot be used even before expiry_at.
+- Shared downloads log recipient_ip and share_id.
+""",
+        acceptance="""
+- [ ] Expired links return 410.
+- [ ] Revoked links return 410.
+- [ ] A user cannot create a link for another user's document.
+""",
+        errors="""
+- Missing owner context returns 401.
+- Cross-owner document access returns 403.
+- Expired or revoked links return 410.
+""",
+        architecture="""
+- DocumentShareService owns owner lookup, link generation, expiry validation, revocation, and download audit.
+- DocumentRepository must resolve documents by owner_id and document_id together.
+""",
+        data_flow="""
+1. Create link verifies owner_id and document_id.
+2. Service stores token_hash, expiry_at, revoked_at, and owner_id.
+3. Download checks token_hash, expiry_at, and revoked_at before streaming content.
+""",
+        state="""
+- Link states: active, expired, revoked.
+- Expired and revoked links are terminal.
+""",
+        failure="""
+- Invalid token returns 404.
+- Expired or revoked token returns 410.
+- Cross-owner create attempt returns 403.
+""",
+    ),
+    _gate_case(
+        "ready_webhook_retry_idempotency",
+        domain="webhook_delivery",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready webhook retry idempotency",
+        risk="external delivery retries",
+        feature="Webhook Delivery",
+        summary="- Webhook delivery has explicit timeout, retry, and idempotency behavior.",
+        requirements="""
+- Each event has an event_id used as the idempotency key.
+- Delivery uses a 3 second timeout and retries at most 5 times with exponential backoff.
+- HTTP 2xx marks delivery as delivered.
+- HTTP 4xx marks delivery as failed without retry except 429.
+- HTTP 429 and 5xx are retryable.
+""",
+        acceptance="""
+- [ ] Duplicate event_id is not sent twice concurrently.
+- [ ] 5xx responses are retried within the retry budget.
+- [ ] Final failure records the last response status.
+""",
+        errors="""
+- Timeout records retryable failure.
+- Exhausted retry budget records failed state.
+""",
+        architecture="""
+- WebhookDeliveryService owns event idempotency, timeout, retry policy, and delivery state.
+- The HTTP client is injected and wrapped by retry policy.
+""",
+        data_flow="""
+1. Service checks event_id delivery state.
+2. Service sends payload with a timeout.
+3. Service records delivered, retry_pending, or failed.
+4. Retry worker only picks retry_pending events.
+""",
+        state="""
+- Delivery states: pending, retry_pending, delivered, failed.
+- Delivered and failed are terminal.
+""",
+        dependencies="- External subscriber endpoint with timeout, retry, and fallback policy.",
+        failure="""
+- Timeout and 5xx schedule retry until budget is exhausted.
+- 4xx except 429 fails permanently.
+- Duplicate event_id returns existing delivery state.
+""",
+    ),
+    _gate_case(
+        "ready_payment_refund_idempotency",
+        domain="payments",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready payment refund idempotency",
+        risk="duplicate refund prevention",
+        feature="Payment Refunds",
+        summary="- Refund creation is idempotent and owner-scoped by merchant account.",
+        requirements="""
+- refund_idempotency_key is required for every refund create request.
+- Reusing the same merchant_id and refund_idempotency_key with the same amount returns the original refund.
+- Reusing the same key with a different amount raises RefundError.
+- Refund requests verify that the payment belongs to merchant_id.
+""",
+        acceptance="""
+- [ ] Exact refund replay returns the original refund.
+- [ ] Conflicting replay raises RefundError.
+- [ ] Cross-merchant payment id returns 404.
+""",
+        errors="""
+- Missing idempotency key returns 400.
+- Cross-merchant payment returns 404.
+- Gateway timeout returns retry_pending.
+""",
+        architecture="""
+- RefundService owns merchant-scoped payment lookup, idempotency table, and gateway request state.
+- PaymentGateway is called only after the idempotency record is reserved.
+""",
+        data_flow="""
+1. Service validates merchant_id, payment_id, amount, and idempotency key.
+2. Service checks merchant-scoped payment ownership.
+3. Service reserves idempotency record before gateway call.
+4. Service records gateway result and returns refund state.
+""",
+        state="""
+- Refund states: pending, succeeded, failed, retry_pending.
+- Succeeded refunds are terminal.
+""",
+        dependencies="- Payment gateway with timeout and retry_pending fallback.",
+        failure="""
+- Gateway timeout stores retry_pending rather than creating a second refund.
+- Conflicting idempotency replay raises RefundError.
+""",
+    ),
+    _gate_case(
+        "ready_inventory_reservation_concurrency",
+        domain="inventory",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready inventory reservation concurrency",
+        risk="oversell prevention",
+        feature="Inventory Reservation",
+        summary="- Inventory reservations prevent oversell under concurrent checkout.",
+        requirements="""
+- Reservation uses sku_id and warehouse_id as the stock scope.
+- Available stock cannot go below zero.
+- Reusing reservation_key with the same cart returns the original reservation.
+- Reusing reservation_key with different items raises InventoryError.
+""",
+        acceptance="""
+- [ ] Two reservations cannot reserve more than available stock.
+- [ ] Exact reservation replay is idempotent.
+- [ ] Conflicting replay raises InventoryError.
+""",
+        errors="""
+- Insufficient stock raises InventoryError.
+- Unknown sku_id raises InventoryError.
+- Conflicting reservation_key raises InventoryError.
+""",
+        architecture="""
+- ReservationService owns stock scope, reservation idempotency, and atomic stock decrement.
+- StockRepository updates sku_id and warehouse_id in one compare-and-set operation.
+""",
+        data_flow="""
+1. Service validates cart lines and reservation_key.
+2. Service checks existing reservation by reservation_key.
+3. Repository atomically reserves stock per sku_id and warehouse_id.
+4. Service returns reservation state.
+""",
+        state="""
+- Reservation states: active, released, consumed, expired.
+- Consumed and expired reservations are terminal.
+""",
+        failure="""
+- Insufficient stock does not create a reservation.
+- Conflicting idempotency replay raises InventoryError.
+""",
+    ),
+    _gate_case(
+        "ready_support_ticket_owner_scope",
+        domain="support",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready support ticket owner scope",
+        risk="organization-scoped ticket access",
+        feature="Support Ticket Access",
+        summary="- Support tickets are visible only within the caller's organization.",
+        requirements="""
+- Every ticket has organization_id and requester_user_id.
+- list_tickets returns only tickets whose organization_id matches the caller.
+- get_ticket resolves by organization_id and ticket_id together.
+- Internal staff access requires explicit support_admin role and audit logging.
+""",
+        acceptance="""
+- [ ] Organization A cannot list Organization B tickets.
+- [ ] Cross-organization ticket id returns 404.
+- [ ] Support admin reads are audited.
+""",
+        errors="""
+- Missing organization context returns 401.
+- Cross-organization ticket id returns 404.
+- Missing support_admin role returns 403.
+""",
+        architecture="""
+- TicketService owns organization-scoped query construction and role checks.
+- TicketRepository requires organization_id for list and get queries.
+""",
+        data_flow="""
+1. Controller passes organization_id and role set to TicketService.
+2. Service resolves ticket records by organization_id.
+3. Support admin reads create audit events.
+""",
+        state="""
+- Ticket states: open, pending, solved, archived.
+- Archived tickets are read-only.
+""",
+        failure="""
+- Missing organization context returns 401.
+- Unauthorized support read returns 403.
+""",
+    ),
+    _gate_case(
+        "ready_admin_role_audit",
+        domain="admin_roles",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready admin role audit",
+        risk="privileged role changes",
+        feature="Admin Role Changes",
+        summary="- Role changes require server-side authorization and immutable audit.",
+        requirements="""
+- Only organization owners can grant or revoke admin roles.
+- Role changes require target_user_id and acting_user_id.
+- Every role change writes an immutable audit event before returning success.
+- The actor cannot remove the last remaining owner.
+""",
+        acceptance="""
+- [ ] Non-owner role change returns 403.
+- [ ] Last owner removal returns 409.
+- [ ] Successful role change writes an audit event.
+""",
+        errors="""
+- Missing actor returns 401.
+- Non-owner actor returns 403.
+- Last owner removal returns 409.
+""",
+        architecture="""
+- RoleService owns owner authorization, last-owner guard, role mutation, and audit write.
+- AuditLogService appends immutable role events.
+""",
+        data_flow="""
+1. Service verifies actor identity.
+2. Service checks owner role server-side.
+3. Service validates last-owner constraint.
+4. Service writes audit event and mutates role state.
+""",
+        state="""
+- Role states: member, admin, owner.
+- Last owner cannot transition away from owner.
+""",
+        failure="""
+- Authorization failure returns 403 and does not mutate roles.
+- Audit write failure rolls back the role change.
+""",
+    ),
+    _gate_case(
+        "ready_profile_privacy_update",
+        domain="profile",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready profile privacy update",
+        risk="profile ownership and email verification",
+        feature="Profile Updates",
+        summary="- Users can update only their own profile and email changes require verification.",
+        requirements="""
+- update_profile resolves the profile by authenticated user_id.
+- display_name is trimmed and cannot be blank.
+- Email changes create a pending_email state until verification succeeds.
+- A user cannot update another user's profile_id.
+""",
+        acceptance="""
+- [ ] Cross-user profile update returns 403.
+- [ ] Blank display_name returns 400.
+- [ ] Email is not changed until verification token is confirmed.
+""",
+        errors="""
+- Missing user context returns 401.
+- Cross-user profile_id returns 403.
+- Invalid verification token returns 400.
+""",
+        architecture="""
+- ProfileService owns owner check, input validation, pending email state, and verification token validation.
+- ProfileRepository resolves profiles by user_id and profile_id.
+""",
+        data_flow="""
+1. Service validates authenticated user_id.
+2. Service resolves profile by user_id and profile_id.
+3. Service applies display_name changes immediately.
+4. Service stores pending_email until verification succeeds.
+""",
+        state="""
+- Email states: verified, pending_verification.
+- Pending email does not replace verified email until token confirmation.
+""",
+        failure="""
+- Cross-user update returns 403.
+- Invalid token returns 400 without changing email.
+""",
+    ),
+    _gate_case(
+        "ready_data_export_redaction",
+        domain="data_export",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready data export redaction",
+        risk="PII minimization",
+        feature="Customer Data Export",
+        summary="- Customer export redacts PII fields outside the approved export scope.",
+        requirements="""
+- Export requires data_export_admin role.
+- Export rows are tenant-scoped.
+- SSN, access_token, password_hash, and recovery_codes are never exported.
+- Export completion writes audit metadata with field manifest.
+""",
+        acceptance="""
+- [ ] Export contains only caller tenant rows.
+- [ ] PII denylist fields are absent.
+- [ ] Audit manifest lists exported fields.
+""",
+        errors="""
+- Missing role returns 403.
+- Unknown tenant returns 404.
+- Empty result returns an empty file with manifest.
+""",
+        architecture="""
+- DataExportService owns role checks, tenant query, field allowlist, and audit manifest.
+- ExportRepository only returns tenant-scoped rows.
+""",
+        data_flow="""
+1. Service verifies data_export_admin role.
+2. Repository reads rows by tenant_id.
+3. Service projects fields through the allowlist.
+4. Service writes audit manifest and returns file reference.
+""",
+        state="""
+- Export states: requested, completed, failed.
+- Completed export artifact is immutable.
+""",
+        failure="""
+- Role failure returns 403.
+- Storage failure marks export failed and emits no download link.
+""",
+    ),
+    _gate_case(
+        "ready_notification_preferences",
+        domain="notifications",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready notification preferences",
+        risk="user-scoped preference mutation",
+        feature="Notification Preferences",
+        summary="- Users update only their own notification preferences.",
+        requirements="""
+- Preference reads and writes are scoped by authenticated user_id.
+- Marketing unsubscribe does not disable security notifications.
+- Unknown notification channel returns PreferenceError.
+- Changes are idempotent for the same requested value.
+""",
+        acceptance="""
+- [ ] User A cannot update User B preferences.
+- [ ] Marketing unsubscribe leaves security notifications enabled.
+- [ ] Repeating the same preference update returns the same state.
+""",
+        errors="""
+- Missing user_id returns 401.
+- Unknown channel returns 400.
+- Cross-user update returns 403.
+""",
+        architecture="""
+- PreferenceService owns user-scoped lookup, channel validation, and notification class separation.
+- PreferenceRepository requires user_id for read and write.
+""",
+        data_flow="""
+1. Service validates authenticated user_id.
+2. Service resolves preference row by user_id.
+3. Service applies channel-specific updates.
+4. Service returns the updated preference state.
+""",
+        state="""
+- Channels: marketing_email, product_email, security_email.
+- security_email cannot be disabled by marketing unsubscribe.
+""",
+        failure="""
+- Cross-user update returns 403.
+- Unknown channel returns 400.
+""",
+    ),
+    _gate_case(
+        "ready_file_upload_validation",
+        domain="file_upload",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready file upload validation",
+        risk="file type and size boundary",
+        feature="File Upload Validation",
+        summary="- File uploads enforce owner scope, size limits, and content type allowlist.",
+        requirements="""
+- Upload requires authenticated owner_id.
+- Files larger than 10 MB are rejected.
+- Allowed content types are image/png, image/jpeg, and application/pdf.
+- Stored files are linked to owner_id and never listed across owners.
+""",
+        acceptance="""
+- [ ] Oversized upload returns 413.
+- [ ] Unsupported content type returns 415.
+- [ ] list_files returns only caller-owned files.
+""",
+        errors="""
+- Missing owner_id returns 401.
+- Oversized file returns 413.
+- Unsupported content type returns 415.
+""",
+        architecture="""
+- FileUploadService owns owner validation, size limit, content type allowlist, and storage metadata.
+- FileRepository stores owner_id with every file record.
+""",
+        data_flow="""
+1. Service validates owner_id.
+2. Service checks size and content type before storage.
+3. Service stores file bytes and metadata under owner_id.
+4. list_files queries by owner_id.
+""",
+        state="""
+- File states: uploaded, deleted.
+- Deleted files are hidden from list_files.
+""",
+        failure="""
+- Validation failures occur before storage write.
+- Storage failure returns 503 and records no file metadata.
+""",
+    ),
+    _gate_case(
+        "ready_order_cancellation_state",
+        domain="orders",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready order cancellation state",
+        risk="invalid cancellation transition",
+        feature="Order Cancellation",
+        summary="- Orders can be cancelled only before shipment.",
+        requirements="""
+- cancel_order resolves order by customer_id and order_id.
+- Orders in pending or paid state can be cancelled.
+- Orders in shipped or delivered state cannot be cancelled.
+- Cancellation writes cancelled_at and restock_pending event.
+""",
+        acceptance="""
+- [ ] Pending order cancellation succeeds.
+- [ ] Shipped order cancellation returns 409.
+- [ ] Cross-customer order id returns 404.
+""",
+        errors="""
+- Missing customer context returns 401.
+- Cross-customer order returns 404.
+- Invalid state transition returns 409.
+""",
+        architecture="""
+- OrderService owns owner-scoped lookup, state transition validation, and cancellation event creation.
+- OrderRepository resolves by customer_id and order_id together.
+""",
+        data_flow="""
+1. Service validates customer_id.
+2. Service resolves order by customer_id and order_id.
+3. Service checks state transition before mutation.
+4. Service writes cancellation and restock event.
+""",
+        state="""
+- States: pending, paid, shipped, delivered, cancelled.
+- shipped and delivered cannot transition to cancelled.
+""",
+        failure="""
+- Invalid transition returns 409 and leaves state unchanged.
+- Event write failure rolls back cancellation.
+""",
+    ),
+    _gate_case(
+        "ready_workspace_invite_expiry",
+        domain="workspace_invites",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready workspace invite expiry",
+        risk="invite token lifetime and role scope",
+        feature="Workspace Invites",
+        summary="- Workspace invites expire and cannot grant roles above the inviter.",
+        requirements="""
+- Invite tokens expire after 7 days.
+- Inviter must have admin or owner role in the workspace.
+- Invites cannot grant owner role unless the inviter is an owner.
+- Accepted or revoked invites cannot be reused.
+""",
+        acceptance="""
+- [ ] Expired invite returns 410.
+- [ ] Reused accepted invite returns 409.
+- [ ] Admin cannot invite a new owner.
+""",
+        errors="""
+- Missing inviter returns 401.
+- Insufficient role returns 403.
+- Expired invite returns 410.
+""",
+        architecture="""
+- InviteService owns role authorization, invite token expiry, state transition, and accepted-user creation.
+- InviteRepository stores workspace_id, role, expiry_at, accepted_at, and revoked_at.
+""",
+        data_flow="""
+1. Service validates inviter role.
+2. Service creates invite token with expiry_at.
+3. Accept flow checks expiry and terminal state.
+4. Service adds member with approved role.
+""",
+        state="""
+- Invite states: pending, accepted, revoked, expired.
+- accepted, revoked, and expired are terminal.
+""",
+        failure="""
+- Role failure returns 403.
+- Expired token returns 410.
+- Reuse of terminal invite returns 409.
+""",
+    ),
+    _gate_case(
+        "ready_search_index_tenant_scope",
+        domain="search",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready search index tenant scope",
+        risk="cross-tenant cached search result",
+        feature="Tenant Search",
+        summary="- Search results and cache keys are tenant-scoped.",
+        requirements="""
+- Search requests include authenticated tenant_id.
+- Query cache keys include tenant_id, query text, filters, and user role.
+- Search results never include documents from a different tenant_id.
+- Cache entries expire after 5 minutes.
+""",
+        acceptance="""
+- [ ] Same query from two tenants returns separate result sets.
+- [ ] Cache hit cannot return another tenant result.
+- [ ] Expired cache entry is recomputed.
+""",
+        errors="""
+- Missing tenant_id returns 401.
+- Unsupported filter returns 400.
+""",
+        architecture="""
+- SearchService owns tenant-scoped query construction and cache key generation.
+- SearchIndexRepository requires tenant_id in every query.
+""",
+        data_flow="""
+1. Service validates tenant_id and filters.
+2. Service builds cache key with tenant_id and role.
+3. Repository searches only matching tenant_id.
+4. Service stores results with ttl.
+""",
+        state="""
+- Cache states: fresh, expired.
+- Expired cache entries are recomputed before response.
+""",
+        failure="""
+- Missing tenant_id returns 401.
+- Repository timeout returns 503 without caching partial data.
+""",
+    ),
+    _gate_case(
+        "weak_auth_no_expiration",
+        domain="auth_session",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="auth token without expiration",
+        risk="stolen token remains valid",
+        feature="Auth Sessions Without Expiry",
+        summary="- Password login issues access tokens that remain valid indefinitely.",
+        requirements="""
+- Login with password issues access tokens.
+- Token does not need expiration for the first release.
+- Refresh token rotation can be added later.
+""",
+        acceptance="- [ ] A token issued at login remains valid until the user logs out.",
+        errors="- Invalid password returns 401.",
+        architecture="- SessionService issues bearer tokens and stores no expiry timestamp.",
+        data_flow="""
+1. User logs in with password.
+2. Service returns an access token.
+3. Token validation checks only signature.
+""",
+        state="- Token states: issued.",
+        failure="- Invalid password returns 401.",
+    ),
+    _gate_case(
+        "weak_auth_no_revocation",
+        domain="auth_session",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="auth token without revocation",
+        risk="compromised token cannot be invalidated",
+        feature="Auth Sessions Without Revocation",
+        summary="- Token lifecycle omits revocation after compromise.",
+        requirements="""
+- Login with password issues access tokens.
+- Access tokens expire after 24 hours.
+- No revocation is required after password reset or logout.
+""",
+        acceptance="- [ ] Password reset does not invalidate existing access tokens.",
+        errors="- Invalid password returns 401.",
+        architecture="- SessionService validates token signature and expiry only.",
+        data_flow="""
+1. Login issues a token.
+2. Password reset updates password hash.
+3. Existing tokens continue to validate until expiry.
+""",
+        state="- Token states: issued, expired.",
+        failure="- Invalid password returns 401.",
+    ),
+    _gate_case(
+        "weak_auth_replay_accepted",
+        domain="auth_session",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="auth token replay accepted",
+        risk="copied token can be reused",
+        feature="Auth Sessions Replay Accepted",
+        summary="- Replay of copied tokens is explicitly accepted.",
+        requirements="""
+- Login with password issues access tokens.
+- Access tokens expire after 30 minutes.
+- Replay is accepted for copied tokens because bearer tokens are stateless.
+""",
+        acceptance="- [ ] The same token can be used from multiple devices at the same time.",
+        errors="- Invalid signature returns 401.",
+        architecture="- API validates bearer token signature and expiry without replay tracking.",
+        data_flow="""
+1. Caller sends bearer token.
+2. API validates signature and expiry.
+3. API accepts the request even if the token is copied.
+""",
+        state="- Token states: issued, expired.",
+        failure="- Invalid signature returns 401.",
+    ),
+    _gate_case(
+        "weak_auth_copied_token_reuse",
+        domain="auth_session",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="copied token reuse",
+        risk="session theft remains valid",
+        feature="Copied Token Reuse",
+        summary="- Copied token reuse is allowed across clients.",
+        requirements="""
+- Login with password issues access tokens.
+- Access tokens have ttl.
+- Copied-token reuse is allowed so mobile and web clients can share one session.
+""",
+        acceptance="- [ ] A token copied from web to mobile remains accepted.",
+        errors="- Expired token returns 401.",
+        architecture="- SessionService stores one token per user and does not bind it to client state.",
+        data_flow="""
+1. Login creates a token.
+2. Any client presenting the token is accepted.
+3. No replay or device binding is checked.
+""",
+        state="- Token states: active, expired.",
+        failure="- Expired token returns 401.",
+    ),
+    _gate_case(
+        "weak_auth_client_only_session_timeout",
+        domain="auth_session",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="client-only session timeout",
+        risk="server accepts stale sessions",
+        feature="Client Only Session Timeout",
+        summary="- Session timeout is delegated to the client.",
+        requirements="""
+- Login with password issues access tokens.
+- The client is responsible for expiring inactive sessions.
+- The server does not need to check token age after login.
+""",
+        acceptance="- [ ] Client hides the app after 30 minutes of inactivity.",
+        errors="- Invalid password returns 401.",
+        architecture="- API validates only token signature and trusts client timeout behavior.",
+        data_flow="""
+1. Login issues a token.
+2. Client stores last activity timestamp.
+3. Server accepts signed tokens without age checks.
+""",
+        state="- Token states: issued.",
+        failure="- Invalid signature returns 401.",
+    ),
+    _gate_case(
+        "weak_todo_any_user_update",
+        domain="todo",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="todo any user update",
+        risk="cross-user todo mutation",
+        feature="Todo Collaboration Shortcut",
+        summary="- Todo updates are addressable by todo_id only.",
+        requirements="""
+- The system lets logged-in users create todos.
+- Any logged-in user can update any todo by todo_id.
+- The server does not need to check which user created the todo.
+""",
+        acceptance="- [ ] A user can update a todo created by another user when the todo_id is known.",
+        errors="- Missing access token returns 401.",
+        architecture="- TodoService reads and writes todos by todo_id only.",
+        data_flow="""
+1. Caller sends todo_id and changes.
+2. Service validates that an access token exists.
+3. Repository updates by todo_id without owner predicate.
+""",
+        state="- Todo states: active, completed, deleted.",
+        failure="- Missing access token returns 401.",
+    ),
+    _gate_case(
+        "weak_todo_client_filtering",
+        domain="todo",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="todo client-side filtering",
+        risk="cross-user todo list exposure",
+        feature="Todo Client Filtering",
+        summary="- Todo list returns all active rows for client filtering.",
+        requirements="""
+- list_todos returns all active todos with owner_user_id.
+- Clients are responsible for filtering their own rows.
+- complete_todo and delete_todo verify ownership.
+""",
+        acceptance="- [ ] Clients filter the list by owner_user_id.",
+        errors="- Missing access token returns 401.",
+        architecture="- TodoService performs global list retrieval and owner-scoped mutation lookup.",
+        data_flow="""
+1. list_todos reads all active todo rows.
+2. Service returns owner_user_id with every row.
+3. Client filters rows locally.
+""",
+        state="- Todo states: active, completed, deleted.",
+        failure="- Missing access token returns 401.",
+    ),
+    _gate_case(
+        "weak_task_list_all_active",
+        domain="task_service",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="task list all active",
+        risk="cross-user task list exposure",
+        feature="TaskService Global Listing",
+        summary="- TaskService list operation returns all active tasks.",
+        requirements="""
+- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.
+- list_tasks returns all active tasks and includes owner_user_id so clients can filter.
+- complete_task and delete_task verify ownership.
+""",
+        acceptance="- [ ] list_tasks returns all active tasks.",
+        errors="- Blank user_id raises TaskError.",
+        architecture="- TaskService owns validation and global list retrieval.",
+        data_flow="""
+1. list_tasks reads all non-deleted task rows.
+2. Service returns owner_user_id for client filtering.
+""",
+        state="- Valid states: open, completed, deleted.",
+        failure="- Blank user_id raises TaskError.",
+    ),
+    _gate_case(
+        "weak_task_idempotency_undefined",
+        domain="task_service",
+        category="incomplete_extra",
+        expectation="weak",
+        title="task idempotency undefined",
+        risk="duplicate task creation",
+        feature="TaskService Undefined Idempotency",
+        summary="- TaskService mentions idempotency but does not define replay behavior.",
+        requirements="""
+- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.
+- create_task accepts idempotency_key.
+- Repeating a create request should be safe.
+- The spec does not define whether idempotency_key is scoped by user, title, or both.
+""",
+        acceptance="- [ ] Repeating create does not create excessive duplicates.",
+        errors="- Blank user_id raises TaskError.",
+        architecture="- TaskService stores tasks and idempotency data.",
+        data_flow="""
+1. Caller sends create_task.
+2. Service may return an existing task when idempotency applies.
+""",
+        state="- Valid states: open, completed, deleted.",
+        failure="- Idempotency conflict behavior is not defined.",
+    ),
+    _gate_case(
+        "weak_task_deleted_visible",
+        domain="task_service",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="task deleted visible",
+        risk="deleted task remains exposed",
+        feature="TaskService Deleted Visible",
+        summary="- Deleted tasks remain visible in list_tasks.",
+        requirements="""
+- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.
+- list_tasks returns all caller-owned tasks including deleted tasks.
+- complete_task may be called for a deleted task and should return the task unchanged.
+""",
+        acceptance="- [ ] Deleted tasks remain visible in list_tasks.",
+        errors="- Blank user_id raises TaskError.",
+        architecture="- TaskService owns validation and owner-scoped list retrieval.",
+        data_flow="""
+1. delete_task sets status deleted.
+2. list_tasks returns open, completed, and deleted tasks.
+""",
+        state="- Valid states: open, completed, deleted. Deleted tasks remain visible.",
+        failure="- Blank user_id raises TaskError.",
+    ),
+    _gate_case(
+        "weak_task_error_none",
+        domain="task_service",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="task errors return none",
+        risk="non-actionable task errors",
+        feature="TaskService None Errors",
+        summary="- Invalid TaskService operations may return None.",
+        requirements="""
+- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.
+- Invalid create_task, complete_task, and delete_task may return None instead of raising.
+- list_tasks returns caller-owned active tasks.
+""",
+        acceptance="- [ ] Returning None is acceptable for invalid operations.",
+        errors="- Invalid operations return None.",
+        architecture="- TaskService owns validation and response shaping.",
+        data_flow="""
+1. Validate request fields.
+2. Return None when input is invalid.
+3. Return task data when successful.
+""",
+        state="- Valid states: open, completed, deleted.",
+        failure="- Invalid operations return None.",
+    ),
+    _gate_case(
+        "weak_task_acceptance_vague",
+        domain="task_service",
+        category="incomplete_extra",
+        expectation="weak",
+        title="task vague acceptance",
+        risk="untestable task semantics",
+        feature="TaskService Vague Acceptance",
+        summary="- TaskService spec names risks without executable acceptance criteria.",
+        requirements="""
+- Build a small task service with create, list, complete, and delete.
+- Users should not see unrelated tasks.
+- Idempotency should be considered.
+- Deleted tasks should be handled sensibly.
+""",
+        acceptance="- [ ] The service works for normal user flows.",
+        errors="- Raise TaskError when something is wrong.",
+        architecture="- TaskService is responsible for the workflow.",
+        data_flow="""
+1. Accept inputs.
+2. Do the requested task operation.
+3. Return data.
+""",
+        state="- Use task states as needed.",
+        failure="- Raise TaskError when something is wrong.",
+    ),
+    _gate_case(
+        "weak_task_deleted_restore",
+        domain="task_service",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="task deleted restore",
+        risk="deleted terminal state is violated",
+        feature="TaskService Deleted Restore",
+        summary="- Deleted tasks can be completed again.",
+        requirements="""
+- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.
+- delete_task marks a task as deleted.
+- complete_task may restore a deleted task to completed.
+""",
+        acceptance="- [ ] complete_task may move a deleted task to completed.",
+        errors="- Blank user_id raises TaskError.",
+        architecture="- TaskService owns validation and owner-scoped state changes.",
+        data_flow="""
+1. delete_task marks a task deleted.
+2. complete_task can mark any owned task completed, including deleted tasks.
+""",
+        state="- Valid states: open, completed, deleted. Allowed transitions include deleted to completed.",
+        failure="- Missing task raises TaskError.",
+    ),
+    _gate_case(
+        "weak_task_space_titles_allowed",
+        domain="task_service",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="task space titles allowed",
+        risk="blank-looking task titles",
+        feature="TaskService Space Titles",
+        summary="- Space-only task titles are accepted.",
+        requirements="""
+- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.
+- create_task stores title exactly as provided by the caller.
+- Space-only titles are allowed because clients own display behavior.
+""",
+        acceptance="- [ ] Space-only titles are stored.",
+        errors="- Blank user_id raises TaskError.",
+        architecture="- TaskService owns user_id validation and task storage.",
+        data_flow="""
+1. Validate user_id.
+2. Store title without trimming.
+3. Return the task payload.
+""",
+        state="- Valid states: open, completed, deleted.",
+        failure="- Invalid user_id raises TaskError.",
+    ),
+    _gate_case(
+        "weak_task_missing_server_owner_check",
+        domain="task_service",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="task missing server owner check",
+        risk="cross-user mutation by task_id",
+        feature="TaskService Missing Owner Check",
+        summary="- Task mutation is keyed by task_id only.",
+        requirements="""
+- Provide TaskService with create_task, list_tasks, complete_task, and delete_task.
+- task_id is globally addressable after creation.
+- The server does not need to check task owner before complete_task or delete_task.
+""",
+        acceptance="- [ ] Any caller with task_id can complete that task.",
+        errors="- Missing task_id raises TaskError.",
+        architecture="- TaskService resolves tasks by task_id and logs user_id for audit.",
+        data_flow="""
+1. Caller sends task_id and user_id.
+2. Service resolves by task_id.
+3. Service mutates the task without owner predicate.
+""",
+        state="- Valid states: open, completed, deleted.",
+        failure="- Missing task_id raises TaskError.",
+    ),
+    _gate_case(
+        "weak_invoice_export_all_tenants",
+        domain="billing_export",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="invoice export all tenants",
+        risk="cross-tenant invoice exposure",
+        feature="Invoice Export All Tenants",
+        summary="- Invoice export returns rows across tenants for convenience.",
+        requirements="""
+- Export requests include authenticated tenant_id.
+- Export returns all invoices for the requested date range across every tenant.
+- The client is responsible for filtering rows by tenant_id.
+""",
+        acceptance="- [ ] Export file includes tenant_id so clients can filter.",
+        errors="- Missing tenant_id returns 401.",
+        architecture="- InvoiceExportService queries invoice rows by date range only.",
+        data_flow="""
+1. Controller receives tenant_id.
+2. Service queries invoices by date range.
+3. Service returns all rows with tenant_id.
+""",
+        state="- Export states: requested, completed, failed.",
+        failure="- Missing tenant_id returns 401.",
+    ),
+    _gate_case(
+        "weak_invoice_client_filtering",
+        domain="billing_export",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="invoice client filtering",
+        risk="tenant filtering outside service boundary",
+        feature="Invoice Client Filtering",
+        summary="- Tenant isolation is delegated to the UI.",
+        requirements="""
+- Invoice search returns all matching invoices with tenant_id.
+- The UI must hide invoices not owned by the current tenant.
+- Server-side tenant filtering is not required for export preview.
+""",
+        acceptance="- [ ] UI filters the returned invoice list by tenant_id.",
+        errors="- Missing tenant_id returns 401.",
+        architecture="- ExportPreviewService returns search results by text and date range.",
+        data_flow="""
+1. User opens export preview.
+2. Service searches all invoices.
+3. UI filters rows by tenant_id.
+""",
+        state="- Preview states: requested, rendered.",
+        failure="- Missing tenant_id returns 401.",
+    ),
+    _gate_case(
+        "weak_document_public_link_no_expiry",
+        domain="document_sharing",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="document public link without expiry",
+        risk="indefinite document access",
+        feature="Document Public Links Without Expiry",
+        summary="- Public document links never expire.",
+        requirements="""
+- Users can create public share tokens for documents they own.
+- Share token does not need expiration.
+- Revocation is optional for the first release.
+""",
+        acceptance="- [ ] A public token remains usable until manually deleted from storage.",
+        errors="- Missing owner context returns 401.",
+        architecture="- DocumentShareService stores token_hash and document_id without expiry_at.",
+        data_flow="""
+1. Owner creates a share token.
+2. Recipient presents the token.
+3. Service returns the document when token_hash matches.
+""",
+        state="- Link states: active.",
+        failure="- Invalid token returns 404.",
+    ),
+    _gate_case(
+        "weak_document_share_client_enforced",
+        domain="document_sharing",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="document share client enforced",
+        risk="cross-owner document access",
+        feature="Document Share Client Enforcement",
+        summary="- Owner checks are performed by the client before calling the API.",
+        requirements="""
+- create_share_link accepts document_id and owner_id.
+- The client is responsible for ensuring owner_id matches the authenticated user.
+- The server does not need to check which user owns the document.
+""",
+        acceptance="- [ ] API creates a share link when document_id exists.",
+        errors="- Missing owner_id returns 401.",
+        architecture="- ShareService resolves documents by document_id only.",
+        data_flow="""
+1. Client sends document_id and owner_id.
+2. Service resolves document_id.
+3. Service creates share link without owner predicate.
+""",
+        state="- Link states: active, revoked.",
+        failure="- Missing owner_id returns 401.",
+    ),
+    _gate_case(
+        "weak_webhook_no_retry_timeout",
+        domain="webhook_delivery",
+        category="incomplete_extra",
+        expectation="weak",
+        title="webhook missing retry timeout",
+        risk="undefined external failure path",
+        feature="Webhook Missing Retry Timeout",
+        summary="- Webhook delivery calls an external endpoint without failure policy.",
+        requirements="""
+- Completing an order sends a webhook to an external subscriber.
+- The spec does not define timeout, retry, fallback, or duplicate delivery behavior.
+""",
+        acceptance="- [ ] Subscriber receives the webhook after order completion.",
+        errors="- Subscriber failure is logged.",
+        architecture="- WebhookService calls an external subscriber endpoint.",
+        data_flow="""
+1. Service builds webhook payload.
+2. Service sends payload to external subscriber.
+3. Service logs the response.
+""",
+        state="- Delivery states are not defined.",
+        dependencies="- External subscriber endpoint.",
+        failure="- Subscriber failure is logged.",
+    ),
+    _gate_case(
+        "weak_webhook_duplicate_delivery_allowed",
+        domain="webhook_delivery",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="webhook duplicate delivery allowed",
+        risk="duplicate side effects",
+        feature="Webhook Duplicate Delivery Allowed",
+        summary="- Duplicate webhook deliveries are acceptable.",
+        requirements="""
+- Each order completion sends a webhook.
+- Duplicate delivery is allowed because subscribers should be idempotent.
+- The service does not need an event_id idempotency key.
+""",
+        acceptance="- [ ] Retrying the same completion can send the same webhook again.",
+        errors="- Subscriber timeout can be retried manually.",
+        architecture="- WebhookService sends payloads without delivery records.",
+        data_flow="""
+1. Completion event triggers webhook send.
+2. Service calls subscriber endpoint.
+3. Manual retries call the endpoint again.
+""",
+        state="- Delivery state is not stored.",
+        dependencies="- External subscriber endpoint.",
+        failure="- Timeout details are logged for manual retry.",
+    ),
+    _gate_case(
+        "weak_payment_no_idempotency",
+        domain="payments",
+        category="incomplete_extra",
+        expectation="weak",
+        title="payment no idempotency",
+        risk="duplicate charge or refund",
+        feature="Payment Without Idempotency",
+        summary="- Payment operation does not define idempotency.",
+        requirements="""
+- create_payment charges a customer through the payment gateway.
+- Retrying after a timeout should be attempted by the caller.
+- The spec does not define idempotency keys or duplicate charge behavior.
+""",
+        acceptance="- [ ] Payment succeeds when gateway returns success.",
+        errors="- Gateway timeout returns 503.",
+        architecture="- PaymentService calls the external payment gateway directly.",
+        data_flow="""
+1. Service validates customer and amount.
+2. Service calls gateway.
+3. Service returns gateway result.
+""",
+        state="- Payment states: requested, succeeded, failed.",
+        dependencies="- Payment gateway.",
+        failure="- Timeout returns 503; retry behavior is caller-owned.",
+    ),
+    _gate_case(
+        "weak_payment_refund_external_timeout",
+        domain="payments",
+        category="incomplete_extra",
+        expectation="weak",
+        title="payment refund timeout ambiguous",
+        risk="unknown refund state after timeout",
+        feature="Refund Timeout Ambiguity",
+        summary="- Refund gateway timeout behavior is undefined.",
+        requirements="""
+- refund_payment calls the payment gateway.
+- If the gateway is slow, the service may return an error.
+- The spec does not define whether a timeout means the refund succeeded, failed, or should be retried.
+""",
+        acceptance="- [ ] Refund request returns a response to the caller.",
+        errors="- Gateway error returns RefundError.",
+        architecture="- RefundService calls an external payment gateway.",
+        data_flow="""
+1. Service validates merchant and payment.
+2. Service sends refund request.
+3. Service returns gateway response.
+""",
+        state="- Refund states: requested, succeeded, failed.",
+        dependencies="- Payment gateway.",
+        failure="- Gateway error returns RefundError.",
+    ),
+    _gate_case(
+        "weak_inventory_no_reservation_lock",
+        domain="inventory",
+        category="incomplete_extra",
+        expectation="weak",
+        title="inventory no reservation lock",
+        risk="oversell under concurrency",
+        feature="Inventory Without Reservation Lock",
+        summary="- Inventory reservation does not define atomic stock update.",
+        requirements="""
+- reserve_stock checks available quantity and creates a reservation.
+- Multiple checkout requests may reserve the same sku at the same time.
+- The spec does not define locking, compare-and-set, or oversell behavior.
+""",
+        acceptance="- [ ] Reservation succeeds when stock appears available.",
+        errors="- Insufficient stock raises InventoryError.",
+        architecture="- ReservationService reads stock and then writes reservation.",
+        data_flow="""
+1. Service reads current stock.
+2. Service compares requested quantity.
+3. Service writes reservation.
+""",
+        state="- Reservation states: active, released.",
+        failure="- Insufficient stock raises InventoryError.",
+    ),
+    _gate_case(
+        "weak_inventory_negative_stock_allowed",
+        domain="inventory",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="inventory negative stock allowed",
+        risk="stock count below zero",
+        feature="Inventory Negative Stock",
+        summary="- Negative stock is allowed to avoid checkout failures.",
+        requirements="""
+- reserve_stock decrements available stock.
+- Available stock may go below zero during promotion spikes.
+- Backoffice reconciliation fixes negative stock later.
+""",
+        acceptance="- [ ] Reservation can succeed even when requested quantity exceeds available stock.",
+        errors="- Unknown sku_id raises InventoryError.",
+        architecture="- ReservationService writes reservation and decrements stock without minimum bound.",
+        data_flow="""
+1. Service loads stock.
+2. Service creates reservation.
+3. Service subtracts requested quantity even if result is negative.
+""",
+        state="- Stock states: available, negative.",
+        failure="- Unknown sku_id raises InventoryError.",
+    ),
+    _gate_case(
+        "weak_support_ticket_cross_org_read",
+        domain="support",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="support ticket cross org read",
+        risk="cross-organization ticket exposure",
+        feature="Support Ticket Cross Org Read",
+        summary="- Ticket lookup is global by ticket_id.",
+        requirements="""
+- get_ticket accepts organization_id and ticket_id.
+- The service returns any ticket when ticket_id exists.
+- The client is responsible for hiding tickets from other organizations.
+""",
+        acceptance="- [ ] get_ticket returns the ticket when ticket_id exists.",
+        errors="- Missing organization_id returns 401.",
+        architecture="- TicketService resolves ticket_id globally.",
+        data_flow="""
+1. Caller sends organization_id and ticket_id.
+2. Service resolves ticket by ticket_id.
+3. Service returns ticket with organization_id.
+""",
+        state="- Ticket states: open, pending, solved.",
+        failure="- Missing organization_id returns 401.",
+    ),
+    _gate_case(
+        "weak_admin_role_client_hidden_actions",
+        domain="admin_roles",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="admin role client hidden actions",
+        risk="server-side authorization gap",
+        feature="Client Hidden Admin Actions",
+        summary="- Admin actions are hidden in the client rather than blocked by the server.",
+        requirements="""
+- Non-admin users do not see admin buttons in the UI.
+- The role update API accepts target_user_id and new_role.
+- Server-side owner role verification is not required because the UI hides the action.
+""",
+        acceptance="- [ ] Admin buttons are hidden for non-admin users.",
+        errors="- Missing actor returns 401.",
+        architecture="- RoleController accepts requests after authentication and delegates to RoleService.",
+        data_flow="""
+1. Client hides admin controls for non-admin users.
+2. API receives role update request.
+3. Service applies requested role.
+""",
+        state="- Role states: member, admin, owner.",
+        failure="- Missing actor returns 401.",
+    ),
+    _gate_case(
+        "weak_audit_log_mutable",
+        domain="audit",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="mutable audit log",
+        risk="audit evidence can be altered",
+        feature="Mutable Audit Log",
+        summary="- Audit events can be edited after creation.",
+        requirements="""
+- Audit events record actor_id, action, target_id, and timestamp.
+- Admin users can edit or delete audit events to fix mistakes.
+- The system does not need immutable append-only storage.
+""",
+        acceptance="- [ ] Admin can update an audit event message.",
+        errors="- Missing actor returns 401.",
+        architecture="- AuditService stores audit rows and exposes update/delete operations.",
+        data_flow="""
+1. Service writes audit event.
+2. Admin can edit or delete audit event by id.
+""",
+        state="- Audit states: active, edited, deleted.",
+        failure="- Missing actor returns 401.",
+    ),
+    _gate_case(
+        "weak_data_export_no_pii_redaction",
+        domain="data_export",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="data export no PII redaction",
+        risk="sensitive data over-export",
+        feature="Data Export Without Redaction",
+        summary="- Export includes every database field.",
+        requirements="""
+- Export returns all customer columns for the selected tenant.
+- password_hash, access_token, and recovery_codes are included for troubleshooting.
+- Operators are responsible for deleting sensitive fields before sharing externally.
+""",
+        acceptance="- [ ] Export file contains every customer table column.",
+        errors="- Missing tenant_id returns 401.",
+        architecture="- DataExportService selects all columns from the customer table.",
+        data_flow="""
+1. Service validates tenant_id.
+2. Repository returns all customer columns.
+3. Service writes the file.
+""",
+        state="- Export states: requested, completed.",
+        failure="- Missing tenant_id returns 401.",
+    ),
+    _gate_case(
+        "weak_search_cross_tenant_cache",
+        domain="search",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="search cross tenant cache",
+        risk="cached tenant data leak",
+        feature="Search Cache Missing Tenant",
+        summary="- Search cache key omits tenant_id.",
+        requirements="""
+- Search requests include tenant_id and query text.
+- Query cache key uses query text only so identical searches share cache entries.
+- Search results include tenant_id so clients can filter locally.
+""",
+        acceptance="- [ ] Same query text reuses the cached result across tenants.",
+        errors="- Missing tenant_id returns 401.",
+        architecture="- SearchService builds cache keys from query text and filters.",
+        data_flow="""
+1. Service receives tenant_id and query.
+2. Service checks cache by query text.
+3. Service returns cached results with tenant_id fields.
+""",
+        state="- Cache states: fresh, expired.",
+        failure="- Missing tenant_id returns 401.",
+    ),
+    _gate_case(
+        "weak_file_upload_no_type_size_validation",
+        domain="file_upload",
+        category="incomplete_extra",
+        expectation="weak",
+        title="file upload missing validation",
+        risk="unsafe file acceptance",
+        feature="File Upload Missing Validation",
+        summary="- Upload validation is left to storage provider defaults.",
+        requirements="""
+- Users can upload files for later download.
+- The spec does not define max size, content type allowlist, malware scan, or owner-scoped listing.
+""",
+        acceptance="- [ ] A user can upload and download a file.",
+        errors="- Storage error returns UploadError.",
+        architecture="- FileUploadService passes files to object storage.",
+        data_flow="""
+1. Client sends file bytes.
+2. Service stores bytes.
+3. Service returns file id.
+""",
+        state="- File states: uploaded.",
+        dependencies="- Object storage.",
+        failure="- Storage error returns UploadError.",
+    ),
+    _gate_case(
+        "weak_order_cancel_after_shipped",
+        domain="orders",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="order cancel after shipped",
+        risk="invalid order state transition",
+        feature="Order Cancel After Shipment",
+        summary="- Shipped orders can be cancelled.",
+        requirements="""
+- cancel_order can be called for pending, paid, shipped, or delivered orders.
+- Cancellation after shipment sets status cancelled and notifies fulfillment later.
+- The system does not need to reject cancellation based on shipment state.
+""",
+        acceptance="- [ ] A shipped order can be cancelled from the customer account page.",
+        errors="- Missing customer context returns 401.",
+        architecture="- OrderService resolves order and sets status cancelled.",
+        data_flow="""
+1. Service resolves order by order_id.
+2. Service sets status cancelled.
+3. Fulfillment reconciliation happens later.
+""",
+        state="- States: pending, paid, shipped, delivered, cancelled. Any state may transition to cancelled.",
+        failure="- Missing customer context returns 401.",
+    ),
+    _gate_case(
+        "weak_workspace_invite_no_expiration",
+        domain="workspace_invites",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="workspace invite no expiration",
+        risk="old invite grants access",
+        feature="Workspace Invites Without Expiry",
+        summary="- Workspace invite tokens never expire.",
+        requirements="""
+- Workspace admins can create invite tokens.
+- Invite token does not need expiration.
+- Revocation is optional and can be handled manually by deleting rows.
+""",
+        acceptance="- [ ] A one-year-old invite token can still be accepted.",
+        errors="- Missing inviter returns 401.",
+        architecture="- InviteService stores token_hash and workspace_id without expiry_at.",
+        data_flow="""
+1. Admin creates invite.
+2. User presents token later.
+3. Service accepts the token if row exists.
+""",
+        state="- Invite states: pending, accepted.",
+        failure="- Missing inviter returns 401.",
+    ),
+    _gate_case(
+        "weak_notification_global_unsubscribe",
+        domain="notifications",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="notification global unsubscribe",
+        risk="security notification disabled",
+        feature="Global Notification Unsubscribe",
+        summary="- One unsubscribe disables all notification categories.",
+        requirements="""
+- User can unsubscribe from all emails with one flag.
+- The same flag disables marketing, product, billing, and security emails.
+- Security notifications do not need a separate required channel.
+""",
+        acceptance="- [ ] Global unsubscribe stops all future email notifications.",
+        errors="- Missing user_id returns 401.",
+        architecture="- PreferenceService stores one email_enabled flag per user.",
+        data_flow="""
+1. User toggles email_enabled false.
+2. Service suppresses every email type for that user.
+""",
+        state="- Preference states: enabled, disabled.",
+        failure="- Missing user_id returns 401.",
+    ),
+    _gate_case(
+        "weak_profile_email_update_no_verification",
+        domain="profile",
+        category="fault_injected_extra",
+        expectation="weak",
+        title="profile email update no verification",
+        risk="account takeover via unverified email",
+        feature="Profile Email Without Verification",
+        summary="- Email changes apply immediately without verification.",
+        requirements="""
+- update_profile accepts email and display_name.
+- Email changes are saved immediately.
+- The system does not need to verify that the user controls the new email address.
+""",
+        acceptance="- [ ] User can change email in one request.",
+        errors="- Missing user_id returns 401.",
+        architecture="- ProfileService updates email and display_name in one transaction.",
+        data_flow="""
+1. User submits new email.
+2. Service validates syntax.
+3. Service stores new email immediately.
+""",
+        state="- Email states: active.",
+        failure="- Missing user_id returns 401.",
+    ),
+]
+
+
+PR136_BASELINE_GATE = {
+    "weak_case_count": 12,
+    "raw_weak_cases_with_contract_defects": 11,
+    "blocked_weak_cases": 3,
+    "blocked_weak_rate": 25.0,
+    "prevented_exposure_cases": 3,
+    "prevented_exposure_rate": 27.3,
+    "false_positive_rate": 0.0,
+    "false_negative_rate": 75.0,
+}
+
+PR136_RAW_DEFECTIVE_WEAK_CASES = {
+    "fault_ownership_leak",
+    "fault_deleted_visible",
+    "incomplete_error_contract",
+    "incomplete_idempotency",
+    "incomplete_state_transition",
+    "fault_client_side_filtering",
+    "fault_idempotency_conflict_allows_new_task",
+    "fault_error_schema_freeform",
+    "fault_title_no_trim",
+    "fault_deleted_mutable",
+    "incomplete_acceptance_missing",
+}
+
 CONTRACT_CHECK_NAMES = [
     "create_exact_success",
     "blank_title_error",
@@ -866,11 +2543,18 @@ def _tail(text: str, limit: int = 4000) -> str:
     return text[-limit:]
 
 
+def benchmark_cases(*, include_gate_only_extra_cases: bool = False) -> list[dict[str, str]]:
+    cases = list(CASES)
+    if include_gate_only_extra_cases:
+        cases.extend(GATE_ONLY_EXTRA_CASES)
+    return cases
+
+
 def make_specguard_package(root: Path, case: dict[str, str]) -> Path:
     package = root / "specguard_packages" / case["id"]
-    write_text(
-        package / "discovery.md",
-        f"""
+    domain = case.get("domain", "task_service")
+    if domain == "task_service":
+        discovery = f"""
 # Discovery: {case["title"]}
 
 ## Foundation
@@ -894,13 +2578,8 @@ def make_specguard_package(root: Path, case: dict[str, str]) -> Path:
 - Implementation starts only when SpecGuard reports READY or READY_WITH_WARNINGS.
 - The benchmark compares raw AI implementation against implementation after the SpecGuard gate.
 - Hidden contract checks score the generated code after each allowed implementation path.
-""",
-    )
-    write_text(package / "spec.md", case["spec"])
-    write_text(package / "technical-design.md", case["technical_design"])
-    write_text(
-        package / "plan.md",
-        f"""
+"""
+        plan = f"""
 # Plan: {case["title"]}
 
 ## Scope
@@ -909,28 +2588,78 @@ def make_specguard_package(root: Path, case: dict[str, str]) -> Path:
 
 ## Verification
 - Run generated tests and hidden benchmark contract checks.
-""",
-    )
-    write_text(
-        package / "tasks.md",
-        """
+"""
+        tasks = """
 # Tasks
 
 - [ ] Review spec.md and technical-design.md before implementation.
 - [ ] Implement TaskService only after SpecGuard reports implementation-ready status.
 - [ ] Verify owner scoping, idempotency, validation, and deleted-state behavior.
-""",
-    )
-    write_text(
-        package / "constitution.md",
-        """
+"""
+        constitution = """
 # Constitution
 
 - Do not implement behavior that is not present in the approved spec package.
 - Do not expose cross-user task data.
 - Do not start AI implementation when SpecGuard reports NOT_READY.
-""",
+"""
+    else:
+        discovery = f"""
+# Discovery: {case["title"]}
+
+## Foundation
+- Goal: evaluate whether the {domain.replace("_", " ")} spec is ready for an AI coding agent.
+- Primary user: an application developer implementing a production service boundary.
+- Product risk under test: {case["risk"]}.
+- Benchmark expectation: {case["expectation"]}.
+
+## Mechanisms
+- Inputs and outputs are defined by spec.md for this domain.
+- The service must enforce security, ownership, state, and failure-handling decisions server-side.
+- External systems are used only when technical-design.md explicitly names timeout, retry, and fallback behavior.
+
+## Stress Test
+- Client-only authorization, cross-tenant data exposure, unsafe token/session lifecycle, duplicate side effects, and undefined state transitions are blockers.
+- Complete specs should pass without Critical findings.
+- Weak specs should be blocked before implementation when the risk is concrete enough for deterministic local review.
+
+## Synthesis
+- This supplemental gate-only case does not run code generation.
+- The benchmark measures whether SpecGuard blocks unsafe implementation input before handoff.
+"""
+        plan = f"""
+# Plan: {case["title"]}
+
+## Scope
+- Implement only the behavior approved in spec.md and technical-design.md.
+- Do not add behavior that is not present in the approved package.
+
+## Verification
+- Run generated tests and domain contract checks before shipping.
+"""
+        tasks = """
+# Tasks
+
+- [ ] Review spec.md and technical-design.md before implementation.
+- [ ] Implement only after SpecGuard reports implementation-ready status.
+- [ ] Verify authorization, state, error, and external dependency behavior.
+"""
+        constitution = """
+# Constitution
+
+- SpecGuard is the readiness gate before implementation.
+- Do not rely on client-only checks for server-owned security decisions.
+- Do not implement behavior absent from the approved spec package.
+"""
+    write_text(
+        package / "discovery.md",
+        discovery,
     )
+    write_text(package / "spec.md", case["spec"])
+    write_text(package / "technical-design.md", case["technical_design"])
+    write_text(package / "plan.md", plan)
+    write_text(package / "tasks.md", tasks)
+    write_text(package / "constitution.md", constitution)
     return package
 
 
@@ -1340,7 +3069,104 @@ def _by_case(results: list[dict[str, Any]], workflow: str) -> dict[str, dict[str
     return {result["case"]: result for result in results if result.get("workflow") == workflow}
 
 
-def build_aggregates(results: list[dict[str, Any]]) -> dict[str, Any]:
+def _suite_counts(cases: list[dict[str, str]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for case in cases:
+        suite = case.get("suite", "impact_v2")
+        counts[suite] = counts.get(suite, 0) + 1
+    return counts
+
+
+def _gate_metrics_for_cases(
+    gate: list[dict[str, Any]],
+    cases: list[dict[str, str]],
+) -> dict[str, Any]:
+    case_ids = {case["id"] for case in cases}
+    good_ids = {case["id"] for case in cases if case["expectation"] == "good"}
+    weak_ids = {case["id"] for case in cases if case["expectation"] == "weak"}
+    scoped_gate = [result for result in gate if result["case"] in case_ids]
+    blocked = [result for result in scoped_gate if not bool(result.get("implementation_ready"))]
+    blocked_good = [result for result in blocked if result["case"] in good_ids]
+    blocked_weak = [result for result in blocked if result["case"] in weak_ids]
+    passed_weak = [
+        result for result in scoped_gate
+        if result["case"] in weak_ids and bool(result.get("implementation_ready"))
+    ]
+    return {
+        "evaluated_cases": len(scoped_gate),
+        "good_cases": len(good_ids),
+        "weak_cases": len(weak_ids),
+        "blocked_before_codegen": len(blocked),
+        "blocked_weak_cases": len(blocked_weak),
+        "blocked_good_cases": len(blocked_good),
+        "blocked_weak_rate": _pct(len(blocked_weak), len(weak_ids)),
+        "block_rate": _pct(len(blocked), len(scoped_gate)),
+        "false_positive_rate": _pct(len(blocked_good), len(good_ids)),
+        "false_positive_cases": [result["case"] for result in blocked_good],
+        "false_negative_rate": _pct(len(passed_weak), len(weak_ids)),
+        "false_negative_cases": [result["case"] for result in passed_weak],
+    }
+
+
+def _pr136_gate_baseline_comparison(
+    gate: list[dict[str, Any]],
+    cases: list[dict[str, str]],
+) -> dict[str, Any] | None:
+    impact_cases = [
+        case for case in cases
+        if case.get("suite", "impact_v2") == "impact_v2"
+    ]
+    if not impact_cases:
+        return None
+    impact_metrics = _gate_metrics_for_cases(gate, impact_cases)
+    gate_by_case = _by_case(gate, "specguard_gate")
+    blocked_defective = [
+        case_id for case_id in sorted(PR136_RAW_DEFECTIVE_WEAK_CASES)
+        if not bool(gate_by_case.get(case_id, {}).get("implementation_ready", True))
+    ]
+    current_prevented_rate = _pct(
+        len(blocked_defective),
+        PR136_BASELINE_GATE["raw_weak_cases_with_contract_defects"],
+    )
+    current = {
+        "blocked_weak_cases": impact_metrics["blocked_weak_cases"],
+        "blocked_weak_rate": impact_metrics["blocked_weak_rate"],
+        "prevented_exposure_cases_against_pr136_raw_defects": len(blocked_defective),
+        "prevented_exposure_rate_against_pr136_raw_defects": current_prevented_rate,
+        "false_positive_rate": impact_metrics["false_positive_rate"],
+        "false_negative_rate": impact_metrics["false_negative_rate"],
+        "remaining_allowed_weak_cases": impact_metrics["false_negative_cases"],
+    }
+    return {
+        "baseline_pr136": PR136_BASELINE_GATE,
+        "current_gate_only": current,
+        "delta": {
+            "blocked_weak_cases": current["blocked_weak_cases"] - PR136_BASELINE_GATE["blocked_weak_cases"],
+            "blocked_weak_rate_points": round(
+                float(current["blocked_weak_rate"] or 0.0) - PR136_BASELINE_GATE["blocked_weak_rate"],
+                1,
+            ),
+            "prevented_exposure_rate_points": round(
+                float(current_prevented_rate or 0.0) - PR136_BASELINE_GATE["prevented_exposure_rate"],
+                1,
+            ),
+            "false_negative_rate_points": round(
+                float(current["false_negative_rate"] or 0.0) - PR136_BASELINE_GATE["false_negative_rate"],
+                1,
+            ),
+            "false_positive_rate_points": round(
+                float(current["false_positive_rate"] or 0.0) - PR136_BASELINE_GATE["false_positive_rate"],
+                1,
+            ),
+        },
+    }
+
+
+def build_aggregates(
+    results: list[dict[str, Any]],
+    cases: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    cases = CASES if cases is None else cases
     raw = _workflow_results(results, "raw_ai")
     gate = _workflow_results(results, "specguard_gate")
     handoff = _workflow_results(results, "specguard_handoff_ai")
@@ -1348,8 +3174,8 @@ def build_aggregates(results: list[dict[str, Any]]) -> dict[str, Any]:
     gate_by_case = _by_case(results, "specguard_gate")
     handoff_by_case = _by_case(results, "specguard_handoff_ai")
 
-    good_cases = [case for case in CASES if case["expectation"] == "good"]
-    weak_cases = [case for case in CASES if case["expectation"] == "weak"]
+    good_cases = [case for case in cases if case["expectation"] == "good"]
+    weak_cases = [case for case in cases if case["expectation"] == "weak"]
     weak_ids = {case["id"] for case in weak_cases}
     good_ids = {case["id"] for case in good_cases}
 
@@ -1383,7 +3209,12 @@ def build_aggregates(results: list[dict[str, Any]]) -> dict[str, Any]:
     ]
 
     case_matrix = []
-    for case in CASES:
+    gate_by_suite: dict[str, Any] = {}
+    for suite in sorted({case.get("suite", "impact_v2") for case in cases}):
+        suite_cases = [case for case in cases if case.get("suite", "impact_v2") == suite]
+        gate_by_suite[suite] = _gate_metrics_for_cases(gate, suite_cases)
+
+    for case in cases:
         raw_result = raw_by_case.get(case["id"])
         gate_result = gate_by_case.get(case["id"])
         handoff_result = handoff_by_case.get(case["id"])
@@ -1391,6 +3222,8 @@ def build_aggregates(results: list[dict[str, Any]]) -> dict[str, Any]:
         blocked = bool(gate_result and not gate_result.get("implementation_ready"))
         case_matrix.append({
             "case": case["id"],
+            "suite": case.get("suite", "impact_v2"),
+            "domain": case.get("domain", "task_service"),
             "category": case["category"],
             "expectation": case["expectation"],
             "risk": case["risk"],
@@ -1453,6 +3286,9 @@ def build_aggregates(results: list[dict[str, Any]]) -> dict[str, Any]:
             "false_negative_rate": _pct(len(passed_weak), len(weak_cases)),
             "false_negative_cases": [result["case"] for result in passed_weak],
         },
+        "gate_only": _gate_metrics_for_cases(gate, cases),
+        "gate_by_suite": gate_by_suite,
+        "pr136_gate_baseline_comparison": _pr136_gate_baseline_comparison(gate, cases),
         "case_matrix": case_matrix,
     }
 
@@ -1461,12 +3297,15 @@ def build_benchmark_payload(
     *,
     root: Path,
     results: list[dict[str, Any]],
+    cases: list[dict[str, str]] | None = None,
     started_at: str,
     finished_at: str,
     max_workers: int,
     skip_codex: bool,
+    include_gate_only_extra_cases: bool = False,
     temp_removed: bool,
 ) -> dict[str, Any]:
+    cases = CASES if cases is None else cases
     return {
         "schema": BENCHMARK_RESULT_SCHEMA,
         "metadata": build_benchmark_metadata(started_at, finished_at),
@@ -1480,9 +3319,10 @@ def build_benchmark_payload(
         "codex_package": CODEX_PACKAGE,
         "model_reasoning_effort": MODEL_REASONING_EFFORT,
         "question": "How much does SpecGuard reduce exposed implementation defects from weak specs?",
-        "case_count": len(CASES),
-        "good_case_count": sum(1 for case in CASES if case["expectation"] == "good"),
-        "weak_case_count": sum(1 for case in CASES if case["expectation"] == "weak"),
+        "case_count": len(cases),
+        "good_case_count": sum(1 for case in cases if case["expectation"] == "good"),
+        "weak_case_count": sum(1 for case in cases if case["expectation"] == "weak"),
+        "suite_counts": _suite_counts(cases),
         "contract_check_names": CONTRACT_CHECK_NAMES,
         "quality_check_names": QUALITY_CHECK_NAMES,
         "modes": {
@@ -1495,33 +3335,45 @@ def build_benchmark_payload(
         "run_config": {
             "max_workers": max_workers,
             "skip_codex": skip_codex,
+            "include_gate_only_extra_cases": include_gate_only_extra_cases,
             "codex_timeout_seconds": CODEX_TIMEOUT_SECONDS,
             "temp_root": str(root),
         },
         "cases": [
             {
                 "id": case["id"],
+                "suite": case.get("suite", "impact_v2"),
+                "domain": case.get("domain", "task_service"),
                 "category": case["category"],
                 "expectation": case["expectation"],
                 "title": case["title"],
                 "risk": case["risk"],
             }
-            for case in CASES
+            for case in cases
         ],
         "results": results,
-        "aggregates": build_aggregates(results),
+        "aggregates": build_aggregates(results, cases),
         "temp_removed": temp_removed,
     }
 
 
-def run_benchmark(*, max_workers: int = 3, skip_codex: bool = False, keep_temp: bool = False) -> dict[str, Any]:
+def run_benchmark(
+    *,
+    max_workers: int = 3,
+    skip_codex: bool = False,
+    keep_temp: bool = False,
+    include_gate_only_extra_cases: bool = False,
+) -> dict[str, Any]:
+    if include_gate_only_extra_cases and not skip_codex:
+        raise ValueError("Supplemental gate-only cases require --skip-codex.")
     root = Path(tempfile.mkdtemp(prefix="specguard-impact-benchmark-"))
     started_at = datetime.now(UTC).isoformat()
     results: list[dict[str, Any]] = []
     temp_removed = False
+    cases = benchmark_cases(include_gate_only_extra_cases=include_gate_only_extra_cases)
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(run_specguard, root, case): case for case in CASES}
+            futures = {executor.submit(run_specguard, root, case): case for case in cases}
             for future in concurrent.futures.as_completed(futures):
                 try:
                     results.append(future.result())
@@ -1540,11 +3392,11 @@ def run_benchmark(*, max_workers: int = 3, skip_codex: bool = False, keep_temp: 
         if not skip_codex:
             raw_jobs = [
                 ("raw_ai", case, raw_ai_prompt(case))
-                for case in CASES
+                for case in cases
             ]
             gate_by_case = _by_case(results, "specguard_gate")
             handoff_jobs = []
-            for case in CASES:
+            for case in cases:
                 gate_result = gate_by_case.get(case["id"], {})
                 if gate_result.get("implementation_ready"):
                     package = root / str(gate_result["package_path"])
@@ -1579,10 +3431,12 @@ def run_benchmark(*, max_workers: int = 3, skip_codex: bool = False, keep_temp: 
         payload = build_benchmark_payload(
             root=root,
             results=sorted(results, key=lambda item: (item.get("workflow", ""), item.get("case", ""))),
+            cases=cases,
             started_at=started_at,
             finished_at=finished_at,
             max_workers=max_workers,
             skip_codex=skip_codex,
+            include_gate_only_extra_cases=include_gate_only_extra_cases,
             temp_removed=False,
         )
     finally:
@@ -1604,6 +3458,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, help="Write benchmark JSON to this path.")
     parser.add_argument("--max-workers", type=int, default=3, help="Concurrent SpecGuard/Codex jobs.")
     parser.add_argument("--skip-codex", action="store_true", help="Run only the SpecGuard gate phase.")
+    parser.add_argument(
+        "--include-gate-only-extra-cases",
+        action="store_true",
+        help="Include the supplemental multi-domain gate-only suite. Requires --skip-codex.",
+    )
     parser.add_argument("--keep-temp", action="store_true", help="Keep the temporary benchmark workspace.")
     return parser.parse_args(argv)
 
@@ -1614,6 +3473,7 @@ def main(argv: list[str] | None = None) -> int:
         max_workers=max(1, args.max_workers),
         skip_codex=args.skip_codex,
         keep_temp=args.keep_temp,
+        include_gate_only_extra_cases=args.include_gate_only_extra_cases,
     )
     rendered = json.dumps(result, ensure_ascii=False, indent=2)
     if args.output:

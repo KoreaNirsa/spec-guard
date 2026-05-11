@@ -87,25 +87,26 @@ For Codex setup, example packages, LLM review options, follow-up menus, implemen
 
 ## Benchmark Summary
 
-A controlled benchmark used Codex `gpt-5.5` and SpecGuard's local `--no-llm` gate to measure defect exposure before and after the SpecGuard handoff. The v0.3.1 refresh uses 18 task-service cases instead of the earlier six-case comparison: 6 ready-reference specs and 12 weak specs.
+A controlled benchmark used Codex `gpt-5.5` and SpecGuard's local `--no-llm` gate to measure defect exposure before and after the SpecGuard handoff. The v0.3.1 refresh uses an 18-case task-service impact suite plus a 50-case supplemental gate-only suite across auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, data export, search, upload, orders, workspace invites, notifications, and profile updates.
 
 The primary question is now: how much does SpecGuard reduce exposed implementation defects from weak specs?
 
 | Metric | Result |
 | --- | ---: |
-| Raw weak-spec average contract defect rate | 25.0% |
-| Raw weak specs with contract defects | 11/12 |
-| Weak specs blocked before code generation | 3/12 |
-| Prevented exposure rate | 27.3% |
-| False positive rate on ready specs | 0.0% |
-| False negative rate on weak specs | 75.0% |
-| Post-gate average contract defect rate | 14.0% |
+| Raw weak-spec average contract defect rate from #136 | 25.0% |
+| Raw weak specs with contract defects from #136 | 11/12 |
+| Post-#129 weak specs blocked in original 18-case gate | 11/12 |
+| Post-#129 prevented exposure rate against #136 raw defects | 90.9% |
+| Prevented exposure improvement vs #136 | +63.6 points |
+| Post-#129 false positive rate on original ready specs | 0.0% |
+| Post-#129 false negative rate on original weak specs | 8.3% |
+| Supplemental 50-case weak block rate | 51.4% |
 
 ### Weak-Spec Before And After
 
-Before SpecGuard, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. After SpecGuard, the local low gate blocked 3 weak specs before code generation and produced no false positives on the 6 ready specs.
+Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. After #129, the same 18-case gate-only rerun blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
 
-The remaining weak specs were allowed as `READY_WITH_WARNINGS`, so the result is deliberately conservative: the current local gate reduces some defect exposure, but it does not yet catch enough semantic weak-spec cases to be treated as a complete defect-prevention layer.
+The broader supplemental suite is deliberately harder and more varied. It shows the improved local gate is strong on task/todo ownership and auth token lifecycle patterns, while broader domains such as billing exports, payments, inventory, admin roles, and webhooks still expose false negatives that should feed future heuristic or LLM-backed review work.
 
 Full methodology, case breakdown, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 

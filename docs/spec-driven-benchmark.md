@@ -4,64 +4,77 @@
 
 How much does SpecGuard reduce exposed implementation defects from weak specs?
 
-This benchmark no longer treats Spec Kit, OpenSpec, and SpecGuard as directly competing layers. Spec Kit and OpenSpec help structure specification work. SpecGuard is measured here as an implementation-readiness gate that runs before an AI coding agent turns a spec package into code.
+This benchmark does not treat Spec Kit, OpenSpec, and SpecGuard as directly competing layers. Spec Kit and OpenSpec help structure specification work. SpecGuard is measured here as an implementation-readiness gate that runs before an AI coding agent turns a spec package into code.
 
 ## Executive Summary
 
-The v0.3.1 benchmark refresh ran an expanded in-memory Python `TaskService` suite with 18 cases:
+The v0.3.1 refresh now has two evidence layers:
 
-- 6 ready-reference specs with explicit ownership, validation, idempotency, and deleted-state contracts.
-- 12 weak specs covering ownership leaks, incomplete idempotency, deleted-state drift, freeform errors, client-side filtering, and missing acceptance evidence.
+- The original #136 18-case in-memory Python `TaskService` impact suite: 6 ready-reference specs and 12 weak specs. This suite includes raw Codex generation, SpecGuard gate evaluation, and SpecGuard handoff generation from the pre-#129 run.
+- A post-#129 gate-only rerun with the same 18 cases plus 50 supplemental real-world-style gate cases across auth/session, billing export, document sharing, webhooks, payments, inventory, support, admin roles, audit, data export, search, file upload, orders, workspace invites, notifications, and profile updates.
 
-Codex `gpt-5.5` generated code for every raw AI case. SpecGuard's local `--no-llm` gate evaluated every package before implementation. Codex then generated code only for packages that SpecGuard marked `READY` or `READY_WITH_WARNINGS`.
+The original #136 full generation run found that raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. Before #129, SpecGuard blocked 3 of those weak specs. After the #129 heuristic calibration, the same local `--no-llm` gate blocks 11 of 12 original weak specs.
 
-| Metric | Result |
+| Metric | #136 Baseline | Post-#129 Gate-Only | Change |
+| --- | ---: | ---: | ---: |
+| Weak specs blocked before code generation | 3/12 | 11/12 | +8 cases |
+| Weak-spec block rate | 25.0% | 91.7% | +66.7 points |
+| Prevented exposure rate against #136 raw defects | 27.3% | 90.9% | +63.6 points |
+| False positive rate on original ready specs | 0.0% | 0.0% | 0.0 points |
+| False negative rate on original weak specs | 75.0% | 8.3% | -66.7 points |
+
+The remaining original false negative is `fault_title_no_trim`.
+
+The supplemental 50-case gate-only suite is intentionally broader than the original task-service benchmark. It is not used to claim post-gate code defect rates because no Codex generation was run for these cases. It measures only local readiness gate behavior.
+
+| Supplemental Gate Metric | Result |
 | --- | ---: |
-| Raw weak-spec average contract defect rate | 25.0% |
-| Raw weak specs with contract defects | 11/12 |
-| Weak specs blocked before code generation | 3/12 |
-| Prevented exposure rate | 27.3% |
-| False positive rate on ready specs | 0.0% |
-| False negative rate on weak specs | 75.0% |
-| Post-gate generated cases | 15 |
-| Post-gate average contract defect rate | 14.0% |
-| Post-gate weak cases still exposing defects | 8 |
+| Evaluated supplemental cases | 50 |
+| Ready-reference supplemental cases | 15 |
+| Weak supplemental cases | 35 |
+| Weak supplemental cases blocked | 18/35 |
+| Supplemental weak block rate | 51.4% |
+| Supplemental false positive rate | 13.3% |
+| Supplemental false negative rate | 48.6% |
 
-The result is intentionally conservative. The local low gate prevented three weak specs from becoming code, but it allowed nine weak specs through as `READY_WITH_WARNINGS`. Those allowed weak specs still produced contract-defective code in eight cases. The benchmark therefore supports a narrower and more useful claim:
-
-> SpecGuard's current local low gate reduces defect exposure for some Critical weak-spec patterns without blocking ready specs, but it does not yet catch enough semantic weak-spec cases to be treated as a complete defect-prevention layer.
+The broad suite shows the improved local gate is strong on the deterministic patterns added in #129, especially task/todo ownership, client-side filtering, dangerous token lifecycle wording, task idempotency, deleted-state, and task error-contract gaps. It also shows remaining calibration work: several non-task domains still pass as `READY_WITH_WARNINGS` despite practical security or reliability risks.
 
 ## Benchmark Metadata
 
 | Item | Value |
 | --- | --- |
-| Result JSON | [`docs/benchmark-results/specguard-impact-v0.3.0.json`](benchmark-results/specguard-impact-v0.3.0.json) |
+| Original full impact JSON | [`docs/benchmark-results/specguard-impact-v0.3.0.json`](benchmark-results/specguard-impact-v0.3.0.json) |
+| Post-#129 gate-only JSON | [`docs/benchmark-results/specguard-gate-only-v0.3.1.json`](benchmark-results/specguard-gate-only-v0.3.1.json) |
 | Result schema | `specguard-impact-benchmark/v2` |
-| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `2` |
-| Run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
+| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `3` |
+| Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
+| Post-#129 gate-only timestamp | `2026-05-11T11:37:50Z` to `2026-05-11T11:37:54Z` |
 | SpecGuard package version | `0.3.0` |
-| Git commit | `13218f58b9f1354b8fc059490c26f4a2a0b43c6a` |
-| Git dirty | `false` |
+| Original full run commit | `13218f58b9f1354b8fc059490c26f4a2a0b43c6a` |
+| Post-#129 gate-only commit | `7175525d43dd91d8edaaf447ccb6286d72c6f8f0` |
+| Post-#129 gate-only git dirty | `true` |
 | Codex package | `@openai/codex@0.128.0` |
 | Model | `gpt-5.5` |
 | Reasoning effort | `low` |
 | SpecGuard gate | `python -m cli.specguard run <package> --no-llm --no-follow-up` |
-| Hidden contract checks | 10 per generated implementation |
-| Temporary workspace cleanup | `temp_removed=true` |
+| Supplemental run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.3.1.json` |
+
+The post-#129 run is intentionally recorded as a gate-only working-tree run because the added supplemental cases and result artifact are part of this PR update. A later release-quality benchmark can rerun from a clean tag after the benchmark changes merge.
 
 ## Modes
 
 | Mode | Purpose | v0.3.1 Status |
 | --- | --- | --- |
-| `raw_ai` | Codex generates implementation directly from authored `spec.md` and `technical-design.md`. | Executed |
-| `specguard_gate` | SpecGuard local no-LLM gate reviews the package before implementation. | Executed |
-| `specguard_handoff_ai` | Codex generates implementation only after SpecGuard reports `READY` or `READY_WITH_WARNINGS`. | Executed |
+| `raw_ai` | Codex generates implementation directly from authored `spec.md` and `technical-design.md`. | Executed in original #136 run |
+| `specguard_gate` | SpecGuard local no-LLM gate reviews the package before implementation. | Executed in original and post-#129 gate-only runs |
+| `specguard_handoff_ai` | Codex generates implementation only after SpecGuard reports `READY` or `READY_WITH_WARNINGS`. | Executed in original #136 run |
+| `gate_only_supplemental_v1` | Multi-domain local gate-only supplemental suite. | Executed post-#129 |
 | `future_llm_specguard_review` | Compare local heuristic gate with LLM-backed SpecGuard Review. | Reserved |
 | `future_strict_e2e` | Measure whether Strict E2E can revise blocked specs into safer implementation inputs. | Reserved |
 
 ## Methodology
 
-Each case uses the same target API:
+The original 18-case impact suite uses a fixed target API:
 
 ```text
 TaskError
@@ -71,7 +84,7 @@ TaskService.complete_task(user_id, task_id, correlation_id=None)
 TaskService.delete_task(user_id, task_id, correlation_id=None)
 ```
 
-Generated implementations are scored with hidden runtime contract checks:
+Generated implementations from the original #136 run are scored with hidden runtime contract checks:
 
 | Check | Contract Risk |
 | --- | --- |
@@ -86,16 +99,20 @@ Generated implementations are scored with hidden runtime contract checks:
 | `delete_hides_task` | Deleted tasks disappear from normal lists |
 | `deleted_task_blocked` | Deleted tasks cannot be completed |
 
-The benchmark records structure quality checks separately from contract checks. The headline defect rates use only contract checks because the primary question is exposed behavior, not code style.
+The post-#129 gate-only rerun does not execute Codex and does not produce new post-gate code defect rates. Its improvement calculation uses the raw defective weak cases from #136 as the exposure baseline, then asks whether the improved local gate now blocks those same weak inputs before code generation.
+
+The supplemental 50-case suite adds practical specification shapes that are not limited to the TaskService hidden contract. It measures readiness gate behavior only.
 
 ## Aggregate Results
+
+### Original Full Impact Run From #136
 
 | Workflow | Generated Cases | Mean Contract Defect Rate | Median | Std Dev | Cases With Contract Defects |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Raw AI | 18 | 16.7% | 15.0% | 15.6% | 11 |
 | SpecGuard handoff AI | 15 | 14.0% | 10.0% | 15.8% | 8 |
 
-| Gate Metric | Result |
+| #136 Gate Metric | Result |
 | --- | ---: |
 | Evaluated cases | 18 |
 | Blocked before code generation | 3 |
@@ -103,42 +120,74 @@ The benchmark records structure quality checks separately from contract checks. 
 | Blocked good cases | 0 |
 | Overall block rate | 16.7% |
 
-## Case Results
+### Post-#129 Gate-Only Rerun
 
-| Case | Type | Raw Defect Rate | SpecGuard Gate | Handoff Defect Rate | Exposure Prevented |
-| --- | --- | ---: | --- | ---: | --- |
-| `ready_canonical_task_service` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
-| `ready_trimmed_validation_contract` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
-| `ready_audit_soft_delete` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
-| `ready_idempotency_contract` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
-| `ready_state_machine_detail` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
-| `ready_support_view_out_of_scope` | ready | 0.0% | `ready_with_warnings` | 0.0% | No |
-| `fault_ownership_leak` | weak | 30.0% | `not_ready` | N/A | Yes |
-| `fault_deleted_visible` | weak | 20.0% | `ready_with_warnings` | 20.0% | No |
-| `fault_external_dependency` | weak | 0.0% | `ready_with_warnings` | 0.0% | No |
-| `incomplete_error_contract` | weak | 30.0% | `not_ready` | N/A | Yes |
-| `incomplete_idempotency` | weak | 30.0% | `ready_with_warnings` | 40.0% | No |
-| `incomplete_state_transition` | weak | 20.0% | `ready_with_warnings` | 20.0% | No |
-| `fault_client_side_filtering` | weak | 10.0% | `ready_with_warnings` | 10.0% | No |
-| `fault_idempotency_conflict_allows_new_task` | weak | 40.0% | `ready_with_warnings` | 40.0% | No |
-| `fault_error_schema_freeform` | weak | 30.0% | `ready_with_warnings` | 30.0% | No |
-| `fault_title_no_trim` | weak | 40.0% | `ready_with_warnings` | 40.0% | No |
-| `fault_deleted_mutable` | weak | 10.0% | `ready_with_warnings` | 10.0% | No |
-| `incomplete_acceptance_missing` | weak | 40.0% | `not_ready` | N/A | Yes |
+| Gate Suite | Evaluated | Weak Blocked | Ready Blocked | Weak Block Rate | False Positive Rate | False Negative Rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Original 18-case impact suite | 18 | 11/12 | 0/6 | 91.7% | 0.0% | 8.3% |
+| Supplemental 50-case gate suite | 50 | 18/35 | 2/15 | 51.4% | 13.3% | 48.6% |
+| Combined gate-only run | 68 | 29/47 | 2/21 | 61.7% | 9.5% | 38.3% |
+
+## Original Case Results
+
+These rows combine the #136 raw AI defect evidence with the post-#129 gate-only status.
+
+| Case | Type | #136 Raw Defect Rate | Post-#129 Gate | Exposure Prevented Against #136 Raw Defects |
+| --- | --- | ---: | --- | --- |
+| `ready_canonical_task_service` | ready | 0.0% | `ready_with_warnings` | No |
+| `ready_trimmed_validation_contract` | ready | 0.0% | `ready_with_warnings` | No |
+| `ready_audit_soft_delete` | ready | 0.0% | `ready_with_warnings` | No |
+| `ready_idempotency_contract` | ready | 0.0% | `ready_with_warnings` | No |
+| `ready_state_machine_detail` | ready | 0.0% | `ready_with_warnings` | No |
+| `ready_support_view_out_of_scope` | ready | 0.0% | `ready_with_warnings` | No |
+| `fault_ownership_leak` | weak | 30.0% | `not_ready` | Yes |
+| `fault_deleted_visible` | weak | 20.0% | `not_ready` | Yes |
+| `fault_external_dependency` | weak | 0.0% | `not_ready` | No |
+| `incomplete_error_contract` | weak | 30.0% | `not_ready` | Yes |
+| `incomplete_idempotency` | weak | 30.0% | `not_ready` | Yes |
+| `incomplete_state_transition` | weak | 20.0% | `not_ready` | Yes |
+| `fault_client_side_filtering` | weak | 10.0% | `not_ready` | Yes |
+| `fault_idempotency_conflict_allows_new_task` | weak | 40.0% | `not_ready` | Yes |
+| `fault_error_schema_freeform` | weak | 30.0% | `not_ready` | Yes |
+| `fault_title_no_trim` | weak | 40.0% | `ready_with_warnings` | No |
+| `fault_deleted_mutable` | weak | 10.0% | `not_ready` | Yes |
+| `incomplete_acceptance_missing` | weak | 40.0% | `not_ready` | Yes |
+
+## Supplemental Gate-Only Findings
+
+The supplemental suite uses 15 ready-reference specs and 35 weak specs. The weak specs are distributed across practical domains and risk families rather than repeating only the original task-service shape.
+
+Strong deterministic coverage:
+
+- Auth/session weak cases: 5/5 blocked.
+- Todo weak cases: 2/2 blocked.
+- Supplemental TaskService weak cases: 8/8 blocked.
+- Workspace invite no-expiration and data export with explicit sensitive token fields were blocked.
+
+Remaining false negatives:
+
+- Client-only authorization or filtering outside the task/todo domain: billing export, support tickets, admin role actions, document sharing, and search cache cases.
+- Non-task idempotency and external side-effect ambiguity: payments, webhooks, inventory reservations.
+- Non-task unsafe state or data policy gaps: order cancellation after shipment, mutable audit logs, global notification unsubscribe, profile email update without verification, file upload validation gaps.
+
+False positives:
+
+- `ready_auth_session_rotation` was blocked by token-lifecycle wording even though the spec explicitly requires expiration, refresh rotation, revocation, and replay rejection.
+- `ready_data_export_redaction` was blocked because sensitive token field names were present in a denylist context.
+
+These findings are useful calibration signals. They should not be hidden by narrowing the supplemental cases because the purpose of the gate-only run is to expose where deterministic low-mode coverage is strong and where it is still domain-specific.
 
 ## Interpretation
 
-The ready-reference cases show that complete implementation input remains safe for the target task: raw AI and SpecGuard handoff AI both produced code with 0.0% contract defect rate across all six ready specs.
+The #129 heuristic calibration materially improves the original benchmark target. Against the #136 raw AI exposure baseline, the local low gate now prevents 10 of 11 observed weak-spec exposure paths, up from 3 of 11. The original ready-reference cases still produce no false positives.
 
-The weak-spec cases show the failure mode this benchmark is designed to expose. Raw AI produced contract-defective code in 11 of 12 weak cases. SpecGuard blocked three of those defective paths before code generation, which prevented 3 of 11 observed raw weak-spec exposures.
-
-The remaining nine weak specs were not blocked by the local low gate. They were marked `READY_WITH_WARNINGS`, so the handoff path still generated implementation code. Eight of those post-gate weak cases exposed contract defects. This is the main product signal for follow-up work: the local low gate is calibrated to block Critical findings only, and several semantic defects currently land as warnings.
+The broader supplemental run changes the interpretation from "the gate is complete" to "the gate is much stronger in calibrated domains, but still narrow." Deterministic low-mode review now catches several high-impact patterns before implementation, but non-task business domains still need either broader heuristic families, LLM-backed SpecGuard Review measurement, or stricter review levels before the project can claim broad defect-prevention coverage.
 
 ## Spec Kit And OpenSpec Reference
 
 Older benchmark material compared Spec Kit, OpenSpec, and SpecGuard prompts directly. That comparison is now treated as historical reference context, not the primary claim.
 
-The current v2 harness does not execute the official Spec Kit or OpenSpec CLIs, and it does not claim that SpecGuard replaces either tool. The more defensible framing is:
+The current v2/v3 harness does not execute the official Spec Kit or OpenSpec CLIs, and it does not claim that SpecGuard replaces either tool. The more defensible framing is:
 
 - Spec Kit and OpenSpec can structure planning artifacts.
 - A coding model can implement well when a spec is complete.
@@ -148,27 +197,31 @@ Future benchmark versions may add reference prompt wrappers again, but they shou
 
 ## Complete-Spec Baseline
 
-The complete-spec baseline is now reproducible in the harness through the six `ready_reference` cases. Each ready case is run through raw AI, SpecGuard gate, and SpecGuard handoff AI. All ready cases produced 0.0% contract defect rate in both generation modes, and SpecGuard produced no false positives.
+The complete-spec baseline remains reproducible in the original six `ready_reference` TaskService cases. Each ready case ran through raw AI, SpecGuard gate, and SpecGuard handoff AI in #136. All ready cases produced 0.0% contract defect rate in both generation modes.
 
-The previous Spec Kit/OpenSpec complete-spec table is not reproduced by the v2 harness. Treat it as historical/manual evidence only.
+The supplemental ready-reference cases are gate-only. They are useful for false-positive calibration, but they do not yet provide code-generation defect rates.
 
 ## Limitations
 
-- The benchmark uses one service domain: an in-memory Python task service.
-- Each case uses one Codex generation, so this is not a statistical confidence interval.
+- The original code-generation benchmark still uses one implementation domain: an in-memory Python task service.
+- The supplemental 50-case suite is gate-only and does not measure raw AI or post-gate implementation defect rates.
+- Each generated-code case in #136 used one Codex generation, so the full impact results are not statistical confidence intervals.
 - The SpecGuard gate is local `--no-llm` low mode. It does not measure LLM-backed SpecGuard Review.
 - `READY_WITH_WARNINGS` is treated as implementation-allowed because that is the current low-mode contract.
-- Hidden checks cover the benchmark contract, not all possible production risks.
-- The benchmark does not measure PR drift review, strict E2E revision, multi-agent UX, official Spec Kit CLI execution, official OpenSpec CLI execution, or multi-domain defect rates.
+- Hidden checks cover the original benchmark contract, not all possible production risks.
+- The post-#129 gate-only run was executed from a working tree containing benchmark changes, so `git_dirty=true` is expected in the result JSON.
+- The benchmark does not measure PR drift review, strict E2E revision, multi-agent UX, official Spec Kit CLI execution, official OpenSpec CLI execution, or post-gate multi-domain code defect rates.
 
 ## v0.3.2 Benchmark Roadmap
 
 | Area | Planned Expansion |
 | --- | --- |
-| More domains | Add auth/session, API contract, persistence, and async side-effect suites. |
+| Clean release run | Rerun gate-only and full impact benchmark from a clean tag after v0.3.1 benchmark changes merge. |
+| More codegen domains | Add auth/session, API contract, persistence, payments, webhooks, and async side-effect suites with hidden checks. |
 | Repeated runs | Run multiple generations per case and report confidence intervals. |
 | Gate comparison | Compare local low, medium/high, and LLM-backed SpecGuard Review. |
 | Strict E2E | Measure whether blocked specs can be revised into safer ready specs. |
 | PR drift | Measure SpecGuard PR Review against implementation diffs. |
 | False negatives | Promote recurring warning-only semantic blockers into deterministic Critical checks where justified. |
+| False positives | Calibrate safe token and sensitive-field denylist contexts so concrete mitigations are not treated as Critical risks. |
 | Reference tools | Keep Spec Kit/OpenSpec as secondary context with clearly separated layer claims. |
