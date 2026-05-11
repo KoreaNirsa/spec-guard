@@ -4166,6 +4166,51 @@ def test_run_ready_result_does_not_open_default_follow_up_menu(monkeypatch) -> N
     assert exit_code == 0
 
 
+def test_run_prints_primary_next_action_before_secondary_next_steps(monkeypatch, capsys) -> None:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        result = CheckResult("SpecGuard pipeline")
+        result.add_info("Generated implementation handoff guide: specs/example/implementation-output.md")
+        result.add_next_step("Review lower-priority warning findings later.")
+        return result
+
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 0, "minor": 0},
+        "issues": [],
+    }
+
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+    monkeypatch.setattr(
+        specguard_cli,
+        "_run_follow_up_loop",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("READY results should not open follow-up")),
+    )
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=False,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    rendered = capsys.readouterr().out
+    assert exit_code == 0
+    assert "Generated implementation handoff guide" in rendered
+    assert "Next Action" in rendered
+    assert "Next steps:" in rendered
+    assert rendered.index("Next Action") < rendered.index("Next steps:")
+    assert "Primary handoff: give specs/example/implementation-output.md" in rendered
+    assert "Review lower-priority warning findings later." in rendered
+
+
 def test_run_validation_failure_does_not_open_default_follow_up_menu(monkeypatch, capsys) -> None:
     def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
         result = CheckResult("SpecGuard pipeline")

@@ -144,9 +144,12 @@ def run(args: argparse.Namespace) -> int:
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         return 1
-    result.print()
-    if not strict_e2e:
+    if strict_e2e:
+        result.print()
+    else:
+        result.print(include_next_steps=False)
         _print_post_review_guidance(args, result)
+        _print_secondary_next_steps(result)
 
     if not strict_e2e and _should_offer_follow_up(args, result):
         try:
@@ -667,6 +670,16 @@ def _print_post_review_guidance(args: argparse.Namespace, result: object) -> Non
         _print_ready_with_warnings_guidance(args, reports)
         return
     _print_ready_guidance(reports)
+
+
+def _print_secondary_next_steps(result: object) -> None:
+    next_steps = getattr(result, "next_steps", [])
+    if not next_steps:
+        return
+    print("")
+    print(bold("Next steps:"))
+    for step in next_steps:
+        print(yellow(f"- {step}"))
 
 
 def _failed_before_readiness_review(result: object) -> bool:

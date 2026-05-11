@@ -23,7 +23,7 @@ class CheckResult:
     def add_next_step(self, message: str) -> None:
         self.next_steps.append(message)
 
-    def print(self) -> None:
+    def print(self, *, include_next_steps: bool = True) -> None:
         status = "PASS" if self.ok else "FAIL"
         status_line = f"[{status}] {self.name}"
         print(green(bold(status_line)) if self.ok else red(bold(status_line)))
@@ -39,7 +39,7 @@ class CheckResult:
                 print(yellow(line))
             else:
                 print(line)
-        if self.next_steps:
+        if include_next_steps and self.next_steps:
             print("")
             print(bold("Next steps:"))
             for step in self.next_steps:
