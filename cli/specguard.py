@@ -144,9 +144,12 @@ def run(args: argparse.Namespace) -> int:
     except LLMRequestError as exc:
         _print_llm_failure(exc)
         return 1
-    result.print()
-    if not strict_e2e:
+    if strict_e2e:
+        result.print()
+    else:
+        result.print(include_next_steps=False)
         _print_post_review_guidance(args, result)
+        _print_secondary_next_steps(result)
 
     if not strict_e2e and _should_offer_follow_up(args, result):
         try:
@@ -562,11 +565,11 @@ def _run_follow_up_loop(args: argparse.Namespace, llm_client: object | None, res
         print_section("Continue")
         print(menu_item("[1] View Readiness Findings"))
         if can_detail_review:
-            print(menu_item("[2] Run the LLM for a detailed spec review. This can take a few minutes."))
+            print(menu_item("[2] Review-only: run LLM Detail Review without rewriting spec.md"))
         print(menu_item("[u] I updated spec.md; rerun SpecGuard"))
         if can_regenerate:
             revise_choice = "3" if can_detail_review else "2"
-            print(menu_item(f"[{revise_choice}] Experimental auto-revise spec from Readiness Findings"))
+            print(menu_item(f"[{revise_choice}] Spec rewrite: experimental auto-revise spec.md from Readiness Findings"))
         elif has_blocked_findings:
             print_hint("Automatic Spec Revision is experimental and disabled by default.")
             print_hint("Edit spec.md using the findings, then rerun SpecGuard.")
@@ -630,10 +633,10 @@ def _run_pre_review_failure_follow_up(args: argparse.Namespace, llm_client: obje
 def _follow_up_choice_hint(can_regenerate: bool, can_detail_review: bool = False) -> str:
     choices = ["1 to view findings"]
     if can_detail_review:
-        choices.append("2 for detailed LLM spec review")
+        choices.append("2 for review-only Detail Review")
     choices.append("u after editing spec.md")
     if can_regenerate:
-        choices.append(("3" if can_detail_review else "2") + " for experimental auto-revision")
+        choices.append(("3" if can_detail_review else "2") + " for experimental spec rewrite")
     return "Choose " + ", ".join(choices) + ", or q to exit."
 
 
@@ -667,6 +670,16 @@ def _print_post_review_guidance(args: argparse.Namespace, result: object) -> Non
         _print_ready_with_warnings_guidance(args, reports)
         return
     _print_ready_guidance(reports)
+
+
+def _print_secondary_next_steps(result: object) -> None:
+    next_steps = getattr(result, "next_steps", [])
+    if not next_steps:
+        return
+    print("")
+    print(bold("Next steps:"))
+    for step in next_steps:
+        print(yellow(f"- {step}"))
 
 
 def _failed_before_readiness_review(result: object) -> bool:
@@ -707,8 +720,9 @@ def _print_not_ready_guidance(args: argparse.Namespace, reports: list[tuple[Path
     print_section("Next Action")
     print_hint(f"Summary: Spec has blocking readiness gaps{_issue_suffix(issue)}.")
     print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
-    print("- Edit spec.md directly, or give SpecGuard Review (Detail) to an AI assistant to strengthen the spec.")
-    print(f"- Detail: {_review_detail_target(reports)}")
+    print("- Edit target: spec.md")
+    print(f"- Human report: {_review_detail_target(reports)}")
+    print("- AI assistant prompt: Strengthen spec.md only enough to resolve the report findings; preserve current feature intent, acceptance coverage, and explicit non-goals; do not add behavior outside the current spec scope.")
     print(f"- Rerun after edits: specguard run {args.path}")
     if not _experimental_auto_revise_enabled(args):
         print_hint("SpecGuard did not rewrite spec.md automatically. Experimental auto-revision requires --experimental-auto-revise.")
@@ -720,17 +734,16 @@ def _print_ready_with_warnings_guidance(args: argparse.Namespace, reports: list[
     print_section("Next Action")
     print_hint(f"Summary: Spec is implementation-ready with warnings{_issue_suffix(issue)}.")
     print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
-    print("- You can proceed now; warnings are not blocking at this review level.")
-    print(f"- To strengthen the spec first, edit warning items from: {_review_detail_target(reports)}")
-    print(f"- Implementation handoff: {_implementation_handoff_target(reports)}")
+    print(f"- Primary handoff: give {_implementation_handoff_target(reports)} and the approved spec package to the external coding agent.")
+    print("- Agent prompt: copy the prompt from the handoff file's Copy/Paste Agent Prompt section.")
+    print(f"- Optional warning cleanup: edit warning items from {_review_detail_target(reports)}, then rerun SpecGuard.")
 
 
 def _print_ready_guidance(reports: list[tuple[Path, dict]]) -> None:
     print_section("Next Action")
     print_hint("Summary: Spec is ready for implementation.")
-    print("- Test, Contract, and Implementation Handoff artifacts are generated.")
-    print(f"- Implementation handoff: {_implementation_handoff_target(reports)}")
-    print("- Give the approved spec package and handoff to your coding agent.")
+    print(f"- Primary handoff: give {_implementation_handoff_target(reports)} and the approved spec package to the external coding agent.")
+    print("- Agent prompt: copy the prompt from the handoff file's Copy/Paste Agent Prompt section.")
     print("- Keep application code under develop/<stack>/, then run the verification command named in the handoff.")
 
 

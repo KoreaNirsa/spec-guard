@@ -809,6 +809,9 @@ def test_ready_pipeline_writes_external_handoff_metadata(tmp_path: Path) -> None
     assert "readiness-review-detail.md" not in metadata["approved_artifacts"]
     assert "SpecGuard stops at an approved implementation handoff" in output
     assert "Primary implementation basis" in output
+    assert "Copy/Paste Agent Prompt" in output
+    assert "Use implementation-output.md as the handoff entrypoint" in output
+    assert "Do not invent missing product behavior" in output
     assert "`discovery.md`, `plan.md`, `tasks.md`" in output
     assert "`discovery.md` is for SpecGuard discovery" not in output
     assert any("External AI implementation handoff ready" in message for message in result.messages)
@@ -3981,7 +3984,7 @@ def test_follow_up_menu_hides_spec_regeneration_by_default_with_blocked_findings
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
-    assert "[2] Experimental auto-revise spec from Readiness Findings" not in rendered
+    assert "[2] Spec rewrite: experimental auto-revise spec.md from Readiness Findings" not in rendered
     assert "Automatic Spec Revision is experimental and disabled by default." in rendered
     assert "Edit spec.md using the findings, then rerun SpecGuard." in rendered
     assert "[q] Exit" in rendered
@@ -4002,8 +4005,8 @@ def test_follow_up_menu_shows_experimental_spec_regeneration_when_enabled(monkey
     rendered = capsys.readouterr().out
     assert returned is result
     assert "[1] View Readiness Findings" in rendered
-    assert "[2] Run the LLM for a detailed spec review. This can take a few minutes." in rendered
-    assert "[3] Experimental auto-revise spec from Readiness Findings" in rendered
+    assert "[2] Review-only: run LLM Detail Review without rewriting spec.md" in rendered
+    assert "[3] Spec rewrite: experimental auto-revise spec.md from Readiness Findings" in rendered
     assert "[q] Exit" in rendered
 
 
@@ -4219,6 +4222,51 @@ def test_run_ready_result_does_not_open_default_follow_up_menu(monkeypatch) -> N
     assert exit_code == 0
 
 
+def test_run_prints_primary_next_action_before_secondary_next_steps(monkeypatch, capsys) -> None:
+    def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
+        result = CheckResult("SpecGuard pipeline")
+        result.add_info("Generated implementation handoff guide: specs/example/implementation-output.md")
+        result.add_next_step("Review lower-priority warning findings later.")
+        return result
+
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 0, "minor": 0},
+        "issues": [],
+    }
+
+    monkeypatch.setenv("MSYSTEM", "MINGW64")
+    monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+    monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
+    monkeypatch.setattr(
+        specguard_cli,
+        "_run_follow_up_loop",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("READY results should not open follow-up")),
+    )
+
+    exit_code = specguard_cli.run(Namespace(
+        path="specs/example",
+        force=False,
+        no_llm=True,
+        no_follow_up=False,
+        follow_up=False,
+        review_level=None,
+        strict_e2e=False,
+        strict_max_iterations=3,
+    ))
+
+    rendered = capsys.readouterr().out
+    assert exit_code == 0
+    assert "Generated implementation handoff guide" in rendered
+    assert "Next Action" in rendered
+    assert "Next steps:" in rendered
+    assert rendered.index("Next Action") < rendered.index("Next steps:")
+    assert "Primary handoff: give specs/example/implementation-output.md" in rendered
+    assert "Review lower-priority warning findings later." in rendered
+
+
 def test_run_validation_failure_does_not_open_default_follow_up_menu(monkeypatch, capsys) -> None:
     def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
         result = CheckResult("SpecGuard pipeline")
@@ -4366,7 +4414,9 @@ def test_post_review_guidance_for_not_ready_report(monkeypatch, capsys) -> None:
     assert "Next Action" in rendered
     assert "blocking readiness gaps: Missing rollback and failure handling details" in rendered
     assert "Current findings: Critical 1, Major 2, Minor 3." in rendered
-    assert "SpecGuard Review (Detail)" in rendered
+    assert "Edit target: spec.md" in rendered
+    assert "Human report: specs/example/readiness-review.md" in rendered
+    assert "preserve current feature intent" in rendered
     assert "specs/example/readiness-review.md" in rendered
     assert "specguard run specs/example" in rendered
     assert "--experimental-auto-revise" in rendered
@@ -4389,7 +4439,8 @@ def test_post_review_guidance_for_ready_with_warnings(monkeypatch, capsys) -> No
     rendered = capsys.readouterr().out
     assert "Next Action" in rendered
     assert "implementation-ready with warnings: Contract examples are incomplete" in rendered
-    assert "You can proceed now; warnings are not blocking at this review level." in rendered
+    assert "Primary handoff: give specs/example/implementation-output.md" in rendered
+    assert "Copy/Paste Agent Prompt" in rendered
     assert "specs/example/readiness-review.md" in rendered
     assert "specs/example/implementation-output.md" in rendered
 
@@ -4407,7 +4458,8 @@ def test_post_review_guidance_for_ready(monkeypatch, capsys) -> None:
 
     rendered = capsys.readouterr().out
     assert "Summary: Spec is ready for implementation." in rendered
-    assert "Test, Contract, and Implementation Handoff artifacts are generated." in rendered
+    assert "Primary handoff: give specs/example/implementation-output.md" in rendered
+    assert "Copy/Paste Agent Prompt" in rendered
     assert "specs/example/implementation-output.md" in rendered
     assert "develop/<stack>" in rendered
 
