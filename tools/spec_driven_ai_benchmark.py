@@ -273,6 +273,7 @@ def _gate_design(
 def _gate_case(
     case_id: str,
     *,
+    suite: str = "gate_only_supplemental_v1",
     domain: str,
     category: str,
     expectation: str,
@@ -292,7 +293,7 @@ def _gate_case(
 ) -> dict[str, str]:
     return _case(
         case_id,
-        suite="gate_only_supplemental_v1",
+        suite=suite,
         domain=domain,
         category=category,
         expectation=expectation,
@@ -315,6 +316,10 @@ def _gate_case(
             dependencies=dependencies,
         ),
     )
+
+
+def _extended_gate_case(case_id: str, **kwargs: str) -> dict[str, str]:
+    return _gate_case(case_id, suite="gate_only_extended_v2", **kwargs)
 
 
 CASES = [
@@ -2432,6 +2437,998 @@ GATE_ONLY_EXTRA_CASES = [
 ]
 
 
+GATE_ONLY_EXTENDED_CASES = [
+    _extended_gate_case(
+        "ready_oauth_consent_scope_review",
+        domain="oauth_consent",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready oauth consent scope review",
+        risk="overbroad third-party authorization",
+        feature="OAuth Consent Scope Review",
+        summary="- OAuth consent grants only requested scopes after explicit user review.",
+        requirements="""
+- Consent requests list each requested scope and the requesting client_id.
+- The user must approve the exact requested scopes before an authorization code is issued.
+- Previously granted scopes are reused only when they match the new request.
+- Revoked consent blocks new authorization codes until the user grants consent again.
+""",
+        acceptance="""
+- [ ] A client requesting a new scope must show a new consent review.
+- [ ] Revoked consent prevents authorization code issuance.
+- [ ] Authorization codes include only approved scopes.
+""",
+        errors="""
+- Missing authenticated user returns 401.
+- Unknown client_id returns 404.
+- Scope outside the client's allowlist returns 403.
+""",
+        architecture="""
+- ConsentService owns scope comparison, user approval, revocation, and authorization code creation.
+- OAuthClientRepository stores each client's allowed scopes.
+""",
+        data_flow="""
+1. Authorization request resolves client_id and requested scopes.
+2. Service compares requested scopes with existing consent.
+3. User approves the exact scope set.
+4. Service issues an authorization code bound to user_id, client_id, and approved scopes.
+""",
+        state="""
+- Consent states: pending, granted, revoked.
+- Revoked consent is terminal for the previous grant record.
+""",
+        failure="""
+- Client lookup failure returns 404.
+- Scope policy failure returns 403 without issuing a code.
+""",
+    ),
+    _extended_gate_case(
+        "ready_api_key_rotation",
+        domain="api_keys",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready api key rotation",
+        risk="long-lived credential compromise",
+        feature="API Key Rotation",
+        summary="- API keys are hashed, expiring, owner-scoped credentials with revocation.",
+        requirements="""
+- API keys are stored only as hashes.
+- Each key has owner_id, created_at, expires_at, last_used_at, and revoked_at fields.
+- A key cannot authenticate after expires_at or revoked_at.
+- Rotation creates a new key and revokes the old key in one transaction.
+""",
+        acceptance="""
+- [ ] Revoked keys return 401.
+- [ ] Expired keys return 401.
+- [ ] Rotation invalidates the previous key before returning the new secret once.
+""",
+        errors="""
+- Missing owner context returns 401.
+- Unknown key hash returns 401.
+- Rotation conflict returns 409.
+""",
+        architecture="""
+- ApiKeyService owns hash comparison, expiration checks, revocation, rotation, and audit events.
+- ApiKeyRepository resolves keys by hash and owner_id together.
+""",
+        data_flow="""
+1. Service hashes the presented key.
+2. Repository resolves an active owner-scoped key.
+3. Service checks expires_at and revoked_at before authentication succeeds.
+4. Rotation revokes the old key and returns the new plaintext secret once.
+""",
+        state="""
+- Key states: active, expired, revoked.
+- Expired and revoked keys cannot return to active.
+""",
+        failure="""
+- Invalid, expired, or revoked keys return 401 with a reason code.
+- Rotation conflicts return 409 and leave the prior key unchanged.
+""",
+    ),
+    _extended_gate_case(
+        "ready_password_reset_token_lifecycle",
+        domain="password_reset",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready password reset token lifecycle",
+        risk="account takeover through reset token reuse",
+        feature="Password Reset Tokens",
+        summary="- Password reset tokens expire, are single use, and revoke prior active tokens.",
+        requirements="""
+- Reset tokens expire after 30 minutes.
+- Token secrets are stored only as hashes.
+- A successful password reset marks the token used_at and revokes all other active reset tokens for the user.
+- Reset requests always return the same outward response whether the email exists.
+""",
+        acceptance="""
+- [ ] Expired reset token returns 410.
+- [ ] A used token cannot reset the password again.
+- [ ] Creating a new token revokes earlier active reset tokens for that user.
+""",
+        errors="""
+- Invalid token returns 404.
+- Expired or used token returns 410.
+- Weak new password returns 422.
+""",
+        architecture="""
+- PasswordResetService owns token creation, hash lookup, expiry, one-time use, password update, and token family revocation.
+- UserRepository updates password_hash only after token validation succeeds.
+""",
+        data_flow="""
+1. User requests reset by email.
+2. Service creates a hashed token with expires_at and revokes older active tokens.
+3. User submits token and new password.
+4. Service validates expiry and used_at before updating the password and marking used_at.
+""",
+        state="""
+- Token states: active, expired, used, revoked.
+- Used and revoked tokens are terminal.
+""",
+        failure="""
+- Email lookup does not reveal account existence.
+- Token validation failures do not update the password.
+""",
+    ),
+    _extended_gate_case(
+        "ready_subscription_proration_idempotency",
+        domain="subscriptions",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready subscription proration idempotency",
+        risk="duplicate or incorrect billing on plan changes",
+        feature="Subscription Plan Change",
+        summary="- Plan changes define proration, idempotency, invoice timing, and rollback behavior.",
+        requirements="""
+- Change plan requests require subscription_id, target_plan_id, effective_at, and idempotency_key.
+- Mid-cycle changes calculate prorated credit and charge lines before invoice creation.
+- Replaying the same idempotency_key returns the original plan change result.
+- If invoice creation fails, the subscription remains on the original plan.
+""",
+        acceptance="""
+- [ ] Same idempotency key and same request returns the first result.
+- [ ] Same idempotency key with different target_plan_id returns 409.
+- [ ] Invoice failure does not change the subscription plan.
+""",
+        errors="""
+- Missing idempotency_key returns 400.
+- Idempotency conflict returns 409.
+- Invoice provider timeout returns 503.
+""",
+        architecture="""
+- SubscriptionService owns plan validation, proration calculation, idempotency records, invoice creation, and rollback.
+- InvoiceGateway receives one charge request per accepted plan change.
+""",
+        data_flow="""
+1. Service stores or reuses the idempotency record.
+2. Service calculates proration for the current billing period.
+3. InvoiceGateway creates the invoice with the idempotency key.
+4. Service commits the new plan only after invoice creation succeeds.
+""",
+        state="""
+- Plan change states: requested, invoiced, applied, failed.
+- Failed changes keep the previous subscription state.
+""",
+        dependencies="- Billing provider invoice API with idempotency support.",
+        failure="""
+- Billing timeout returns 503 and records failed state.
+- Provider conflict maps to 409 without a second invoice.
+""",
+    ),
+    _extended_gate_case(
+        "ready_payout_reconciliation",
+        domain="payouts",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready payout reconciliation",
+        risk="duplicate external money movement",
+        feature="Seller Payouts",
+        summary="- Payouts use idempotency, ledger checks, external transfer status, and reconciliation.",
+        requirements="""
+- Payout requests require seller_id, amount, currency, destination_account_id, and idempotency_key.
+- The available balance is reserved before the external transfer is requested.
+- External transfer calls include the same idempotency_key.
+- Reconciliation marks timed-out transfers as pending until provider status is confirmed.
+""",
+        acceptance="""
+- [ ] Retry after timeout does not create a duplicate transfer.
+- [ ] Insufficient balance returns 409 without calling the provider.
+- [ ] Pending provider status keeps the reserved balance until reconciliation.
+""",
+        errors="""
+- Missing idempotency_key returns 400.
+- Insufficient balance returns 409.
+- Provider timeout returns 202 with pending status.
+""",
+        architecture="""
+- PayoutService owns balance reservation, idempotency, transfer request, status tracking, and reconciliation.
+- LedgerRepository writes immutable reserve and release entries.
+""",
+        data_flow="""
+1. Service resolves seller balance and idempotency key.
+2. Service reserves the payout amount.
+3. Provider receives one transfer request with idempotency_key.
+4. Reconciliation confirms, releases, or keeps the reserve based on provider status.
+""",
+        state="""
+- Payout states: requested, pending_provider, paid, failed, cancelled.
+- Paid payout states are terminal.
+""",
+        dependencies="- External payout provider.",
+        failure="""
+- Provider timeout returns pending_provider and does not retry inline.
+- Reconciliation failure records an audit event and leaves the payout pending.
+""",
+    ),
+    _extended_gate_case(
+        "ready_shipping_label_purchase",
+        domain="shipping",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready shipping label purchase",
+        risk="duplicate carrier purchases",
+        feature="Shipping Label Purchase",
+        summary="- Shipping labels are purchased once per shipment with carrier timeout handling.",
+        requirements="""
+- Label purchase requires shipment_id, package dimensions, destination, and idempotency_key.
+- Shipment ownership is checked before carrier purchase.
+- Carrier requests use the idempotency_key and a 5 second timeout.
+- A timeout stores retry_pending instead of issuing another immediate purchase.
+""",
+        acceptance="""
+- [ ] Replaying the same idempotency key returns the first label.
+- [ ] Carrier timeout stores retry_pending and does not create a duplicate label.
+- [ ] Cross-tenant shipment_id returns 404.
+""",
+        errors="""
+- Missing idempotency_key returns 400.
+- Carrier timeout returns 202.
+- Cross-tenant shipment returns 404.
+""",
+        architecture="""
+- ShippingService owns tenant-scoped shipment lookup, idempotency, carrier purchase, and retry_pending state.
+- CarrierGateway supports idempotent label creation.
+""",
+        data_flow="""
+1. Service validates tenant_id and shipment_id.
+2. Service creates or reuses a label idempotency record.
+3. Carrier receives the label request with idempotency_key.
+4. Service stores label_url on success or retry_pending on timeout.
+""",
+        state="""
+- Label states: requested, retry_pending, purchased, failed, voided.
+- Purchased labels cannot be repurchased for the same shipment.
+""",
+        dependencies="- Carrier label API.",
+        failure="""
+- Carrier timeout returns 202 and schedules reconciliation.
+- Carrier validation failure returns 422 and marks failed.
+""",
+    ),
+    _extended_gate_case(
+        "ready_booking_conflict_prevention",
+        domain="booking",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready booking conflict prevention",
+        risk="double booking scarce resources",
+        feature="Room Booking",
+        summary="- Booking creation atomically prevents overlapping reservations.",
+        requirements="""
+- Booking requests include resource_id, user_id, starts_at, ends_at, and idempotency_key.
+- The service rejects overlapping confirmed or held bookings for the same resource.
+- Conflict detection and booking insert run in one transaction.
+- Replaying the same idempotency_key returns the original booking.
+""",
+        acceptance="""
+- [ ] Overlap against a confirmed booking returns 409.
+- [ ] Back-to-back non-overlapping bookings succeed.
+- [ ] Same idempotency key returns the original booking.
+""",
+        errors="""
+- Invalid time range returns 422.
+- Overlap returns 409.
+- Missing user context returns 401.
+""",
+        architecture="""
+- BookingService owns time range validation, idempotency, conflict detection, and transactional insert.
+- BookingRepository exposes a resource-scoped overlap query inside the transaction.
+""",
+        data_flow="""
+1. Service validates starts_at before ends_at.
+2. Service checks idempotency record.
+3. Repository locks the resource calendar and checks overlaps.
+4. Service inserts the booking and returns the confirmed state.
+""",
+        state="""
+- Booking states: held, confirmed, cancelled.
+- Cancelled bookings do not block future reservations.
+""",
+        failure="""
+- Transaction deadlock returns 503 and does not create a booking.
+- Overlap returns 409 without exposing the conflicting customer's details.
+""",
+    ),
+    _extended_gate_case(
+        "ready_feature_flag_targeting",
+        domain="feature_flags",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready feature flag targeting",
+        risk="cross-tenant feature exposure",
+        feature="Feature Flag Targeting",
+        summary="- Feature flags evaluate server-side with tenant and environment boundaries.",
+        requirements="""
+- Flag evaluation requires tenant_id, environment, flag_key, and user_id.
+- Rules are resolved by tenant_id and environment before any targeting comparison.
+- Unknown flags return the configured default value.
+- Client hints cannot override server-side targeting rules.
+""",
+        acceptance="""
+- [ ] Tenant A cannot evaluate Tenant B flag rules.
+- [ ] Unknown flag returns its default value without an exception.
+- [ ] Client-provided override fields are ignored.
+""",
+        errors="""
+- Missing tenant_id returns 401.
+- Invalid environment returns 422.
+- Disabled project returns 403.
+""",
+        architecture="""
+- FeatureFlagService owns tenant-scoped rule lookup, server-side evaluation, defaults, and audit sampling.
+- FlagRuleRepository requires tenant_id and environment predicates.
+""",
+        data_flow="""
+1. Service receives authenticated tenant_id and environment.
+2. Repository loads flag rules scoped by tenant and environment.
+3. Service evaluates rules against server-known user traits.
+4. Service returns the variation and reason.
+""",
+        state="""
+- Flag states: draft, active, archived.
+- Archived flags evaluate to default.
+""",
+        failure="""
+- Rule store timeout returns default with degraded reason.
+- Disabled project returns 403.
+""",
+    ),
+    _extended_gate_case(
+        "ready_data_retention_delete_request",
+        domain="privacy",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready data retention delete request",
+        risk="privacy deletion without retention boundaries",
+        feature="User Data Delete Request",
+        summary="- Delete requests define identity verification, retention exceptions, audit, and completion state.",
+        requirements="""
+- Delete request creation requires verified user identity.
+- The service deletes eligible personal data and preserves records required by legal retention policy.
+- Each retained record must include retention_reason and retention_until.
+- Completion writes an immutable audit event with requester_id and processed_at.
+""",
+        acceptance="""
+- [ ] Unverified requester returns 403.
+- [ ] Retained records include retention_reason and retention_until.
+- [ ] Completed request cannot be processed again.
+""",
+        errors="""
+- Missing authenticated user returns 401.
+- Identity verification failure returns 403.
+- Already completed request returns 409.
+""",
+        architecture="""
+- PrivacyRequestService owns identity verification, delete orchestration, retention exception capture, and immutable audit.
+- Domain repositories expose delete_eligible_user_data operations.
+""",
+        data_flow="""
+1. Service verifies requester identity.
+2. Service creates a delete_request record.
+3. Domain repositories delete eligible data and return retained record summaries.
+4. Service marks completed and writes immutable audit.
+""",
+        state="""
+- Request states: pending, processing, completed, failed.
+- Completed requests are terminal.
+""",
+        failure="""
+- Partial domain failure marks failed and stores failed_domain.
+- Retention policy lookup failure returns 503 before deletion starts.
+""",
+    ),
+    _extended_gate_case(
+        "ready_webhook_signature_verification",
+        domain="inbound_webhooks",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready webhook signature verification",
+        risk="forged inbound events",
+        feature="Inbound Webhook Verification",
+        summary="- Inbound webhooks verify signature, timestamp tolerance, replay key, and event idempotency.",
+        requirements="""
+- Webhook requests require signature, timestamp, event_id, and raw body.
+- Signature verification uses the raw body and endpoint secret.
+- Timestamps outside a 5 minute tolerance are rejected.
+- Processed event_id values are stored so retries are idempotent.
+""",
+        acceptance="""
+- [ ] Invalid signature returns 401.
+- [ ] Old timestamp returns 401.
+- [ ] Replayed event_id returns the original processing result.
+""",
+        errors="""
+- Missing signature returns 401.
+- Signature mismatch returns 401.
+- Event processing conflict returns 409.
+""",
+        architecture="""
+- WebhookReceiverService owns signature verification, timestamp tolerance, replay detection, and event dispatch.
+- WebhookEventRepository stores event_id, signature timestamp, and processing result.
+""",
+        data_flow="""
+1. Receiver reads raw body and signature headers.
+2. Service verifies signature and timestamp before parsing.
+3. Repository checks event_id idempotency.
+4. Service dispatches the event once and stores the result.
+""",
+        state="""
+- Event states: received, processed, failed, ignored.
+- Processed event results are replayed for duplicate event_id values.
+""",
+        dependencies="- Webhook sender secret rotation registry.",
+        failure="""
+- Signature failure returns 401 without parsing the body.
+- Dispatch failure returns 500 and keeps failed state for retry.
+""",
+    ),
+    _extended_gate_case(
+        "ready_cache_invalidation_tenant_scope",
+        domain="cache",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready cache invalidation tenant scope",
+        risk="cross-tenant cache mutation",
+        feature="Tenant Cache Invalidation",
+        summary="- Cache invalidation keys are tenant-scoped and never globally flushed from tenant requests.",
+        requirements="""
+- Invalidation requests require tenant_id, cache_namespace, and entity_id.
+- Cache keys include tenant_id, namespace, and entity_id.
+- Tenant users can invalidate only keys within their own tenant.
+- Global flush is limited to admin maintenance jobs and is out of scope for this API.
+""",
+        acceptance="""
+- [ ] Tenant A invalidation does not remove Tenant B keys.
+- [ ] Unknown entity_id returns 404.
+- [ ] Tenant request cannot request a global flush.
+""",
+        errors="""
+- Missing tenant_id returns 401.
+- Cross-tenant entity returns 404.
+- Global flush request returns 403.
+""",
+        architecture="""
+- CacheInvalidationService owns tenant-scoped key construction and permission checks.
+- CacheClient receives explicit key patterns containing tenant_id.
+""",
+        data_flow="""
+1. Service resolves authenticated tenant_id.
+2. Repository checks entity ownership by tenant_id and entity_id.
+3. Service builds tenant-scoped cache key pattern.
+4. CacheClient deletes matching tenant keys only.
+""",
+        state="""
+- Invalidation states: accepted, completed, failed.
+- Failed invalidations can be retried with the same request id.
+""",
+        dependencies="- Shared cache cluster.",
+        failure="""
+- Cache timeout returns 503 and records failed state.
+- Permission failure returns 403 without deleting keys.
+""",
+    ),
+    _extended_gate_case(
+        "ready_return_authorization_state",
+        domain="returns",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready return authorization state",
+        risk="refund or return after terminal order state",
+        feature="Return Authorization",
+        summary="- Returns enforce ownership, item eligibility, refund status, and state transitions.",
+        requirements="""
+- Return creation requires customer_id, order_id, order_item_id, reason, and idempotency_key.
+- The item must belong to the customer's delivered order.
+- Refunded or previously returned items cannot create a new return authorization.
+- Replaying the same idempotency_key returns the original return authorization.
+""",
+        acceptance="""
+- [ ] Refunded item returns 409.
+- [ ] Cross-customer order_id returns 404.
+- [ ] Duplicate idempotency key returns the original return authorization.
+""",
+        errors="""
+- Missing customer context returns 401.
+- Cross-customer order returns 404.
+- Ineligible item state returns 409.
+""",
+        architecture="""
+- ReturnService owns customer-scoped order lookup, item eligibility, idempotency, and authorization state.
+- RefundRepository is checked before a return is created.
+""",
+        data_flow="""
+1. Service resolves order by customer_id and order_id.
+2. Service checks item delivered state and refund status.
+3. Service checks idempotency record.
+4. Service creates the return authorization in requested state.
+""",
+        state="""
+- Return states: requested, approved, received, rejected, closed.
+- Closed and rejected returns are terminal.
+""",
+        failure="""
+- Refund lookup timeout returns 503 before creating a return.
+- Ineligible state returns 409 with a reason code.
+""",
+    ),
+    _extended_gate_case(
+        "weak_oauth_consent_all_scopes",
+        domain="oauth_consent",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak oauth consent all scopes",
+        risk="overbroad third-party authorization",
+        feature="OAuth Consent All Scopes",
+        summary="- OAuth consent grants all client scopes after a single approval.",
+        requirements="""
+- User approval grants every scope registered to the client.
+- The request does not need to list individual scopes on the consent screen.
+- Revoked consent can be re-enabled automatically when the client sends a new authorization request.
+""",
+        acceptance="- [ ] A client receives all registered scopes after one approval.",
+        errors="- Missing authenticated user returns 401.",
+        architecture="- ConsentService creates authorization codes with the client's full registered scope list.",
+        data_flow="""
+1. Request resolves client_id.
+2. Service loads all registered client scopes.
+3. Service issues an authorization code containing every scope.
+""",
+        state="- Consent states: granted, revoked.",
+        failure="- Missing user returns 401.",
+    ),
+    _extended_gate_case(
+        "weak_api_key_no_expiration",
+        domain="api_keys",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak api key no expiration",
+        risk="permanent credential compromise",
+        feature="API Keys Without Expiry",
+        summary="- API keys never expire and revocation is optional.",
+        requirements="""
+- API keys are valid until the user manually deletes them.
+- Keys do not need expires_at or last_used_at fields.
+- Rotation may create a new key without revoking the old key.
+""",
+        acceptance="- [ ] A key created one year ago can still authenticate.",
+        errors="- Unknown key returns 401.",
+        architecture="- ApiKeyService stores key_hash and owner_id only.",
+        data_flow="""
+1. Service hashes the presented key.
+2. Repository finds a matching key_hash.
+3. Service authenticates without expiration or revocation checks.
+""",
+        state="- Key states: active, deleted.",
+        failure="- Unknown key returns 401.",
+    ),
+    _extended_gate_case(
+        "weak_password_reset_reusable_token",
+        domain="password_reset",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak password reset reusable token",
+        risk="account takeover through reset token reuse",
+        feature="Reusable Password Reset Token",
+        summary="- Password reset tokens remain usable until manually deleted.",
+        requirements="""
+- Reset token can be reused while the token row exists.
+- The spec does not define token expiration.
+- Successful password reset does not need to mark the token used or revoke other tokens.
+""",
+        acceptance="- [ ] The same reset token can change the password twice.",
+        errors="- Invalid token returns 404.",
+        architecture="- PasswordResetService looks up token_hash and updates password_hash.",
+        data_flow="""
+1. User submits token and new password.
+2. Service resolves token_hash.
+3. Service updates the password without changing token state.
+""",
+        state="- Token states: active.",
+        failure="- Invalid token returns 404.",
+    ),
+    _extended_gate_case(
+        "weak_subscription_proration_undefined",
+        domain="subscriptions",
+        category="incomplete_extended",
+        expectation="weak",
+        title="weak subscription proration undefined",
+        risk="incorrect subscription billing",
+        feature="Subscription Plan Change Missing Billing Contract",
+        summary="- Plan changes omit proration, invoice failure, and idempotency behavior.",
+        requirements="""
+- Users can switch to another subscription plan.
+- The service updates the subscription's plan_id.
+- Billing adjustments are handled later by a background process.
+""",
+        acceptance="- [ ] User can change from the current plan to a target plan.",
+        errors="- Unknown subscription returns SubscriptionError.",
+        architecture="- SubscriptionService updates plan_id and emits PlanChanged.",
+        data_flow="""
+1. Service receives subscription_id and target_plan_id.
+2. Service stores target_plan_id.
+3. Billing job eventually adjusts invoices.
+""",
+        state="- Subscription states: active, cancelled.",
+        failure="- Unknown subscription returns SubscriptionError.",
+    ),
+    _extended_gate_case(
+        "weak_payout_retry_duplicate_transfer",
+        domain="payouts",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak payout retry duplicate transfer",
+        risk="duplicate external money movement",
+        feature="Payout Retry Duplicate Transfer",
+        summary="- Payout retries call the provider again after timeouts without idempotency.",
+        requirements="""
+- Payout request sends amount and destination_account_id to the provider.
+- If the provider times out, the service retries the transfer immediately.
+- The request does not require idempotency_key because provider status can be reconciled later.
+""",
+        acceptance="- [ ] Timeout triggers a second transfer request.",
+        errors="- Provider error returns PayoutError.",
+        architecture="- PayoutService calls Provider.transfer and retries on timeout.",
+        data_flow="""
+1. Service validates seller_id and amount.
+2. Provider transfer times out.
+3. Service sends another transfer request.
+""",
+        state="- Payout states: requested, paid, failed.",
+        dependencies="- External payout provider.",
+        failure="- Timeout is retried inline.",
+    ),
+    _extended_gate_case(
+        "weak_shipping_label_duplicate_purchase",
+        domain="shipping",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak shipping label duplicate purchase",
+        risk="duplicate carrier label charges",
+        feature="Duplicate Shipping Label Purchase",
+        summary="- Shipping label retries buy another label after a carrier timeout.",
+        requirements="""
+- Label purchase sends shipment details to the carrier.
+- Carrier timeout causes the service to retry the purchase immediately.
+- The service does not require idempotency_key for label purchases.
+""",
+        acceptance="- [ ] Carrier timeout triggers another purchase request.",
+        errors="- Carrier validation error returns 422.",
+        architecture="- ShippingService sends label purchase requests directly to CarrierGateway.",
+        data_flow="""
+1. Service receives shipment_id.
+2. Carrier purchase times out.
+3. Service sends the same purchase again.
+""",
+        state="- Label states: requested, purchased, failed.",
+        dependencies="- Carrier label API.",
+        failure="- Carrier timeout is retried inline.",
+    ),
+    _extended_gate_case(
+        "weak_booking_double_book_allowed",
+        domain="booking",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak booking double book allowed",
+        risk="double booking scarce resources",
+        feature="Booking Without Conflict Check",
+        summary="- Booking creation allows overlapping reservations for the same room.",
+        requirements="""
+- Booking requests include resource_id, starts_at, and ends_at.
+- The service creates a booking even when the time range overlaps another booking.
+- Staff can resolve overlapping bookings manually after creation.
+""",
+        acceptance="- [ ] Two overlapping bookings for the same room can both be confirmed.",
+        errors="- Invalid time range returns 422.",
+        architecture="- BookingService validates time format and inserts the booking.",
+        data_flow="""
+1. Service receives resource_id and time range.
+2. Service inserts a confirmed booking.
+3. Staff review conflicts later.
+""",
+        state="- Booking states: confirmed, cancelled.",
+        failure="- Invalid time range returns 422.",
+    ),
+    _extended_gate_case(
+        "weak_feature_flag_client_only_targeting",
+        domain="feature_flags",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak feature flag client only targeting",
+        risk="client-side access control bypass",
+        feature="Client-Side Feature Flag Targeting",
+        summary="- Feature targeting trusts client-provided tenant and user traits.",
+        requirements="""
+- Client sends tenant_id, user_id, and traits to evaluate a flag.
+- The service evaluates the flag using the client-provided fields.
+- Server-side tenant or environment lookup is not required.
+""",
+        acceptance="- [ ] Client can supply any tenant_id to evaluate flag rules.",
+        errors="- Missing flag_key returns 400.",
+        architecture="- FeatureFlagService evaluates rule JSON from the request body.",
+        data_flow="""
+1. Client sends flag_key and traits.
+2. Service evaluates rules using the provided traits.
+3. Service returns enabled or disabled.
+""",
+        state="- Flag states: active, archived.",
+        failure="- Missing flag_key returns 400.",
+    ),
+    _extended_gate_case(
+        "weak_data_deletion_no_retention_boundary",
+        domain="privacy",
+        category="incomplete_extended",
+        expectation="weak",
+        title="weak data deletion no retention boundary",
+        risk="privacy delete without auditable retention policy",
+        feature="Delete Request Missing Retention Contract",
+        summary="- Delete request omits identity verification, retention exceptions, and audit.",
+        requirements="""
+- A user can request account data deletion.
+- The service removes user records from application tables.
+- Legal retention exceptions and audit records are outside this feature.
+""",
+        acceptance="- [ ] User can submit a delete request.",
+        errors="- Missing user_id returns 401.",
+        architecture="- PrivacyRequestService deletes rows by user_id.",
+        data_flow="""
+1. User submits delete request.
+2. Service deletes related rows.
+3. Service returns completed.
+""",
+        state="- Request states: pending, completed.",
+        failure="- Missing user_id returns 401.",
+    ),
+    _extended_gate_case(
+        "weak_webhook_signature_not_verified",
+        domain="inbound_webhooks",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak webhook signature not verified",
+        risk="forged inbound events",
+        feature="Unsigned Inbound Webhook",
+        summary="- Inbound webhook processing trusts the posted payload.",
+        requirements="""
+- Webhook endpoint accepts JSON event payloads.
+- Signature verification is not required because the endpoint URL is secret.
+- Duplicate event ids may be processed more than once.
+""",
+        acceptance="- [ ] A payload without signature is processed.",
+        errors="- Invalid JSON returns 400.",
+        architecture="- WebhookReceiverService parses JSON and dispatches events.",
+        data_flow="""
+1. Receiver parses request JSON.
+2. Service dispatches event by type.
+3. Service records processed timestamp.
+""",
+        state="- Event states: received, processed.",
+        failure="- Invalid JSON returns 400.",
+    ),
+    _extended_gate_case(
+        "weak_cache_invalidation_global_flush",
+        domain="cache",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak cache invalidation global flush",
+        risk="cross-tenant cache mutation",
+        feature="Tenant Cache Global Flush",
+        summary="- Tenant cache invalidation can flush global namespaces.",
+        requirements="""
+- Tenant users can request cache invalidation by namespace.
+- If entity_id is omitted, the service flushes the entire namespace.
+- The cache key pattern does not need tenant_id because namespaces are shared.
+""",
+        acceptance="- [ ] Tenant user can invalidate all keys in a shared namespace.",
+        errors="- Missing namespace returns 400.",
+        architecture="- CacheInvalidationService builds namespace-wide key patterns.",
+        data_flow="""
+1. Tenant user sends namespace.
+2. Service builds namespace:* pattern.
+3. CacheClient deletes all matching keys.
+""",
+        state="- Invalidation states: accepted, completed.",
+        dependencies="- Shared cache cluster.",
+        failure="- Cache timeout returns 503.",
+    ),
+    _extended_gate_case(
+        "weak_return_after_refund_accepted",
+        domain="returns",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak return after refund accepted",
+        risk="invalid return after terminal refund state",
+        feature="Return After Refund",
+        summary="- Return authorization can be created after an item has already been refunded.",
+        requirements="""
+- Customer can create a return for any item in a delivered order.
+- Refund status does not need to be checked before return creation.
+- Duplicate returns are reconciled by support later.
+""",
+        acceptance="- [ ] Refunded item can create another return authorization.",
+        errors="- Missing customer context returns 401.",
+        architecture="- ReturnService resolves order_id and inserts a return authorization.",
+        data_flow="""
+1. Service resolves the customer's order.
+2. Service inserts a return authorization for the item.
+3. Support reconciles refund conflicts later.
+""",
+        state="- Return states: requested, approved, closed.",
+        failure="- Missing customer context returns 401.",
+    ),
+    _extended_gate_case(
+        "weak_rate_limit_client_enforced",
+        domain="rate_limits",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak rate limit client enforced",
+        risk="abusive traffic bypasses client controls",
+        feature="Client-Enforced Rate Limit",
+        summary="- Rate limiting is documented as a client responsibility.",
+        requirements="""
+- Clients should wait one second between search requests.
+- The server records requests but does not need to reject excess traffic.
+- The web client disables the search button during the cooldown.
+""",
+        acceptance="- [ ] Direct API calls can exceed the documented cooldown.",
+        errors="- Missing query returns 400.",
+        architecture="- SearchController trusts the client cooldown and forwards every request.",
+        data_flow="""
+1. Client sends a search request.
+2. Controller forwards request to SearchService.
+3. Service returns search results.
+""",
+        state="- Rate limit states are not stored server-side.",
+        failure="- Missing query returns 400.",
+    ),
+    _extended_gate_case(
+        "weak_sso_account_linking_no_domain_verification",
+        domain="sso",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak sso account linking no domain verification",
+        risk="cross-tenant account takeover",
+        feature="SSO Account Link Without Domain Verification",
+        summary="- SSO account linking trusts email domain from the identity provider payload.",
+        requirements="""
+- SSO login links a user to the tenant matching the email domain.
+- The service does not need to verify that the tenant owns the domain.
+- Existing local accounts are linked when the email string matches.
+""",
+        acceptance="- [ ] Any identity provider payload with a tenant domain can link to that tenant.",
+        errors="- Missing email returns 400.",
+        architecture="- SsoLoginService maps email domain to tenant_id and links accounts.",
+        data_flow="""
+1. Service receives identity provider profile.
+2. Service extracts email domain.
+3. Service links profile to tenant with the same domain.
+""",
+        state="- Link states: linked, unlinked.",
+        dependencies="- External identity provider.",
+        failure="- Missing email returns 400.",
+    ),
+    _extended_gate_case(
+        "weak_device_trust_never_expires",
+        domain="device_trust",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak device trust never expires",
+        risk="persistent bypass after device compromise",
+        feature="Device Trust Without Expiry",
+        summary="- Trusted devices remain trusted indefinitely.",
+        requirements="""
+- Successful MFA can mark a device trusted.
+- Trusted devices skip MFA on future logins.
+- Trust records do not need expiration or revocation because users can clear cookies.
+""",
+        acceptance="- [ ] A trusted device skips MFA one year later.",
+        errors="- Missing user context returns 401.",
+        architecture="- DeviceTrustService stores user_id and device_id for trusted devices.",
+        data_flow="""
+1. User completes MFA.
+2. Service stores trusted device_id.
+3. Future login skips MFA when device_id exists.
+""",
+        state="- Device trust states: trusted.",
+        failure="- Missing user context returns 401.",
+    ),
+    _extended_gate_case(
+        "weak_ledger_entry_mutable",
+        domain="ledger",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak ledger entry mutable",
+        risk="financial audit trail tampering",
+        feature="Mutable Ledger Entry",
+        summary="- Posted ledger entries can be edited in place.",
+        requirements="""
+- Finance admins can update amount, currency, or account_id on posted ledger entries.
+- The service stores the edited values on the original entry.
+- Reversal entries and immutable audit records are not required.
+""",
+        acceptance="- [ ] Posted ledger entry amount can be changed in place.",
+        errors="- Missing finance admin role returns 403.",
+        architecture="- LedgerService updates ledger entry fields directly.",
+        data_flow="""
+1. Admin submits ledger entry edits.
+2. Service checks admin role.
+3. Service updates the existing ledger entry row.
+""",
+        state="- Ledger entry states: draft, posted.",
+        failure="- Missing finance admin role returns 403.",
+    ),
+    _extended_gate_case(
+        "weak_coupon_unbounded_reuse",
+        domain="promotions",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak coupon unbounded reuse",
+        risk="promotion abuse and revenue loss",
+        feature="Reusable Coupon Without Limits",
+        summary="- Coupons can be reused without customer, order, or expiration limits.",
+        requirements="""
+- Checkout accepts coupon_code and applies its percentage discount.
+- Coupons do not need expires_at, max_redemptions, or per_customer limits.
+- Redemption records are optional because discounts are visible on orders.
+""",
+        acceptance="- [ ] The same customer can reuse the same coupon on unlimited orders.",
+        errors="- Unknown coupon returns 404.",
+        architecture="- PromotionService looks up coupon_code and applies discount.",
+        data_flow="""
+1. Checkout sends coupon_code.
+2. Service loads the coupon.
+3. Service applies the discount to the order total.
+""",
+        state="- Coupon states: active.",
+        failure="- Unknown coupon returns 404.",
+    ),
+    _extended_gate_case(
+        "weak_background_job_retry_unbounded",
+        domain="background_jobs",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak background job retry unbounded",
+        risk="retry storms and duplicate side effects",
+        feature="Unbounded Background Job Retry",
+        summary="- Background jobs retry forever and side effects are not idempotent.",
+        requirements="""
+- Failed jobs are retried until they succeed.
+- Retry attempts do not need a maximum count or backoff.
+- Job handlers can call external APIs each time because failures are rare.
+""",
+        acceptance="- [ ] A failing job is retried indefinitely.",
+        errors="- Job failure is logged.",
+        architecture="- JobRunner catches exceptions and requeues the job immediately.",
+        data_flow="""
+1. JobRunner executes the job.
+2. Handler calls an external API.
+3. On error, JobRunner immediately requeues the same job.
+""",
+        state="- Job states: queued, running, completed.",
+        dependencies="- External API called by job handlers.",
+        failure="- Any exception requeues the job immediately.",
+    ),
+]
+
+
 PR136_BASELINE_GATE = {
     "weak_case_count": 12,
     "raw_weak_cases_with_contract_defects": 11,
@@ -2547,6 +3544,7 @@ def benchmark_cases(*, include_gate_only_extra_cases: bool = False) -> list[dict
     cases = list(CASES)
     if include_gate_only_extra_cases:
         cases.extend(GATE_ONLY_EXTRA_CASES)
+        cases.extend(GATE_ONLY_EXTENDED_CASES)
     return cases
 
 

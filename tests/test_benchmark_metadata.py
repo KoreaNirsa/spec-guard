@@ -4,6 +4,7 @@ from pathlib import Path
 
 from tools.spec_driven_ai_benchmark import (
     BENCHMARK_RESULT_SCHEMA,
+    GATE_ONLY_EXTENDED_CASES,
     GATE_ONLY_EXTRA_CASES,
     build_benchmark_metadata,
     build_aggregates,
@@ -50,10 +51,14 @@ def test_benchmark_cases_can_include_supplemental_gate_only_suite() -> None:
     cases = benchmark_cases(include_gate_only_extra_cases=True)
 
     assert len(GATE_ONLY_EXTRA_CASES) == 50
-    assert len(cases) == 68
+    assert len(GATE_ONLY_EXTENDED_CASES) == 30
+    assert len(cases) == 98
     assert sum(1 for case in GATE_ONLY_EXTRA_CASES if case["expectation"] == "good") == 15
     assert sum(1 for case in GATE_ONLY_EXTRA_CASES if case["expectation"] == "weak") == 35
+    assert sum(1 for case in GATE_ONLY_EXTENDED_CASES if case["expectation"] == "good") == 12
+    assert sum(1 for case in GATE_ONLY_EXTENDED_CASES if case["expectation"] == "weak") == 18
     assert {case["suite"] for case in GATE_ONLY_EXTRA_CASES} == {"gate_only_supplemental_v1"}
+    assert {case["suite"] for case in GATE_ONLY_EXTENDED_CASES} == {"gate_only_extended_v2"}
 
 
 def test_impact_aggregates_track_prevented_exposure_and_gate_errors() -> None:

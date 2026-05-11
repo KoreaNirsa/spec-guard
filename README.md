@@ -87,7 +87,7 @@ For Codex setup, example packages, LLM review options, follow-up menus, implemen
 
 ## Benchmark Summary
 
-A controlled benchmark used Codex `gpt-5.5` and SpecGuard's local `--no-llm` gate to measure defect exposure before and after the SpecGuard handoff. The v0.3.1 refresh uses an 18-case task-service impact suite plus a 50-case supplemental gate-only suite across auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, data export, search, upload, orders, workspace invites, notifications, and profile updates.
+A controlled benchmark used Codex `gpt-5.5` and SpecGuard's local `--no-llm` gate to measure defect exposure before and after the SpecGuard handoff. The v0.3.1 refresh uses an 18-case task-service impact suite, a 50-case supplemental gate-only suite, and a 30-case extended gate-only suite across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs.
 
 The primary question is now: how much does SpecGuard reduce exposed implementation defects from weak specs?
 
@@ -95,20 +95,25 @@ The primary question is now: how much does SpecGuard reduce exposed implementati
 | --- | ---: |
 | Raw weak-spec average contract defect rate from #136 | 25.0% |
 | Raw weak specs with contract defects from #136 | 11/12 |
-| Post-#138 weak specs blocked in original 18-case gate | 11/12 |
-| Post-#138 prevented exposure rate against #136 raw defects | 90.9% |
+| Latest-main weak specs blocked in original 18-case gate | 11/12 |
+| Latest-main prevented exposure rate against #136 raw defects | 90.9% |
 | Prevented exposure improvement vs #136 | +63.6 points |
-| Post-#138 false positive rate on original ready specs | 0.0% |
-| Post-#138 false negative rate on original weak specs | 8.3% |
+| Latest-main false positive rate on original ready specs | 0.0% |
+| Latest-main false negative rate on original weak specs | 8.3% |
 | Supplemental 50-case weak block rate | 97.1% |
-| Supplemental 50-case false positive rate | 40.0% |
+| Supplemental 50-case false positive rate | 0.0% |
 | Supplemental 50-case false negative rate | 2.9% |
+| Extended 30-case weak block rate | 38.9% |
+| Extended 30-case false positive rate | 16.7% |
+| Extended 30-case false negative rate | 61.1% |
+| Combined 98-case false positive rate | 6.1% |
+| Combined 98-case false negative rate | 20.0% |
 
 ### Weak-Spec Before And After
 
-Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. After #129 and #138, the same 18-case gate-only rerun blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
+Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. On latest `main`, the same 18-case gate-only rerun blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
 
-The broader supplemental suite is deliberately harder and more varied. It now blocks 34 of 35 weak cases after #138, while also blocking 6 of 15 ready-reference cases. That means the next benchmark-facing calibration should focus on reducing false positives in safe non-task contracts without reopening the blocked weak-spec paths.
+The reproduced 68-case run now blocks 45 of 47 weak cases with no ready-reference false positives. The additional 30-case extended suite is deliberately more varied and exposes current calibration gaps: it blocks 7 of 18 weak cases while incorrectly blocking 2 of 12 ready-reference cases. That means the next benchmark-facing calibration should focus on weak practical domains such as OAuth consent, booking conflicts, feature flags, privacy deletion, cache flushes, rate limits, ledger mutation, coupons, and unbounded job retry, while preserving the no-false-positive result in the reproduced 68-case run.
 
 Full methodology, case breakdown, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
