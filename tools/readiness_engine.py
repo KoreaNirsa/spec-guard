@@ -324,7 +324,9 @@ def _token_lifecycle_danger_context(contexts: list[str]) -> str | None:
         r"replay\s+(is\s+)?(accepted|allowed|permitted)",
         r"accepts?\s+replay",
         r"copied[-\s]+token\s+reuse\s+.*\b(allowed|accepted|permitted)\b",
+        r"copied[-\s]+token\s+reuse\s+.*\b(possible|can|could|may)\b",
         r"copied\s+token\s+.*\b(can\s+be|is|remains)\s+reus",
+        r"copied\s+tokens?\s+.*\b(can|could|may)\s+be\s+reused\b",
         r"reused\s+token\s+.*\baccepted\b",
         r"token\s+copied\s+.*\bremains\s+accepted\b",
     )
@@ -599,12 +601,38 @@ def _is_payment_side_effect_context(context: str) -> bool:
 
 
 def _has_payment_idempotency_context(contexts: list[str]) -> bool:
-    return any(
-        _is_payment_context(fragment)
-        and _context_has_any(fragment, ("idempotency", "idempotency_key", "idempotency key", "idempotent"))
+    payment_side_effect_present = any(
+        _is_payment_side_effect_context(fragment)
         for context in contexts
         for fragment in _context_fragments(context)
     )
+    idempotency_markers = ("idempotency", "idempotency_key", "idempotency key", "idempotent")
+    local_policy_markers = (
+        "required",
+        "create request",
+        "same key",
+        "same amount",
+        "different amount",
+        "replay",
+        "retry",
+        "returns 400",
+        "returns 409",
+        "conflict",
+    )
+    unrelated_markers = ("export", "report", "csv")
+    for context in contexts:
+        for fragment in _context_fragments(context):
+            if not _context_has_any(fragment, idempotency_markers):
+                continue
+            if _is_payment_context(fragment):
+                return True
+            if (
+                payment_side_effect_present
+                and _context_has_any(fragment, local_policy_markers)
+                and not _context_has_any(fragment, unrelated_markers)
+            ):
+                return True
+    return False
 
 
 def _has_payment_side_effect_context(contexts: list[str]) -> bool:

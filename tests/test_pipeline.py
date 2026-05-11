@@ -2308,6 +2308,58 @@ def test_heuristic_accepts_safe_auth_token_lifecycle_contract(tmp_path: Path) ->
     assert payload["summary"]["critical"] == 0
 
 
+def test_heuristic_blocks_copied_token_reuse_possible_wording(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "auth token replay risk",
+        [
+            "Login with password issues access tokens.",
+            "Access tokens expire after 15 minutes.",
+            "Token revocation invalidates active access tokens.",
+            "Copied token reuse is possible after token theft.",
+        ],
+        [
+            "TokenService validates token signature, expiration, and revocation.",
+            "Replay detection is not defined for stolen copied tokens.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    assert "Token lifecycle is missing" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_accepts_payment_idempotency_scoped_by_section_context(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "payment creation",
+        [
+            "POST /payments creates a gateway charge for an invoice.",
+            "Idempotency key is required on every create request.",
+            "Reusing the same key with the same amount returns the original payment.",
+            "Reusing the same key with a different amount returns 409.",
+            "Missing idempotency key returns 400.",
+        ],
+        [
+            "PaymentService reserves the idempotency key before calling the gateway.",
+            "PaymentService returns the stored payment for exact replay.",
+            "PaymentService returns 409 for conflicting replay.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["summary"]["critical"] == 0
+    assert "Payment idempotency contract is ambiguous" not in {issue["title"] for issue in payload["issues"]}
+
+
 def test_heuristic_accepts_sensitive_field_redaction_context(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
     _write_domain_risk_feature(
