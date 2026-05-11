@@ -619,7 +619,25 @@ def _has_payment_idempotency_context(contexts: list[str]) -> bool:
         "returns 409",
         "conflict",
     )
-    unrelated_markers = ("export", "report", "csv")
+    foreign_idempotency_markers = (
+        "audit",
+        "webhook",
+        "inventory",
+        "stock",
+        "reservation",
+        "export",
+        "report",
+        "csv",
+        "search",
+        "notification",
+        "workspace",
+        "invite",
+        "document",
+        "file",
+        "upload",
+        "ticket",
+        "order",
+    )
     for context in contexts:
         for fragment in _context_fragments(context):
             if not _context_has_any(fragment, idempotency_markers):
@@ -629,7 +647,7 @@ def _has_payment_idempotency_context(contexts: list[str]) -> bool:
             if (
                 payment_side_effect_present
                 and _context_has_any(fragment, local_policy_markers)
-                and not _context_has_any(fragment, unrelated_markers)
+                and not _context_has_any(fragment, foreign_idempotency_markers)
             ):
                 return True
     return False

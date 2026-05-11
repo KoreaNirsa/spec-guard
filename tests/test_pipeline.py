@@ -1893,6 +1893,19 @@ def _write_domain_risk_feature(
             "Payment idempotency contract is ambiguous",
         ),
         (
+            "payment creation with audit idempotency note",
+            [
+                "POST /payments creates a payment gateway charge for an invoice.",
+                "Callers may retry when the network connection fails.",
+                "Audit idempotency key is required for audit event writes.",
+            ],
+            [
+                "PaymentService submits the charge request to the payment gateway.",
+                "AuditService stores audit events with idempotency keys.",
+            ],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
             "refund timeout",
             [
                 "POST /refunds sends a refund request to the payment gateway with an idempotency key.",
