@@ -87,7 +87,7 @@ For Codex setup, example packages, LLM review options, follow-up menus, implemen
 
 ## Benchmark Summary
 
-A controlled benchmark used Codex `gpt-5.5` and SpecGuard's local `--no-llm` gate to measure defect exposure before and after the SpecGuard handoff. The v0.3.1 refresh uses an 18-case task-service impact suite, a 50-case supplemental gate-only suite, and a 30-case extended gate-only suite across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs.
+A controlled benchmark used Codex `gpt-5.5` and SpecGuard's local `--no-llm` gate to measure defect exposure before and after the SpecGuard handoff. The calibrated v0.3.1 refresh uses an 18-case task-service impact suite, a 50-case supplemental gate-only suite, and a 30-case extended gate-only suite across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs.
 
 The primary question is now: how much does SpecGuard reduce exposed implementation defects from weak specs?
 
@@ -95,11 +95,11 @@ The primary question is now: how much does SpecGuard reduce exposed implementati
 | --- | ---: |
 | Raw weak-spec average contract defect rate from #136 | 25.0% |
 | Raw weak specs with contract defects from #136 | 11/12 |
-| Latest-main weak specs blocked in original 18-case gate | 11/12 |
-| Latest-main prevented exposure rate against #136 raw defects | 90.9% |
+| v0.3.1 weak specs blocked in original 18-case gate | 11/12 |
+| v0.3.1 prevented exposure rate against #136 raw defects | 90.9% |
 | Prevented exposure improvement vs #136 | +63.6 points |
-| Latest-main false positive rate on original ready specs | 0.0% |
-| Latest-main false negative rate on original weak specs | 8.3% |
+| v0.3.1 false positive rate on original ready specs | 0.0% |
+| v0.3.1 false negative rate on original weak specs | 8.3% |
 | Supplemental 50-case weak block rate | 97.1% |
 | Supplemental 50-case false positive rate | 0.0% |
 | Supplemental 50-case false negative rate | 2.9% |
@@ -110,11 +110,21 @@ The primary question is now: how much does SpecGuard reduce exposed implementati
 | Combined 98-case false positive rate | 0.0% |
 | Combined 98-case false negative rate | 3.1% |
 
+| Gate Suite | Evaluated | Weak Blocked | Ready Blocked | Weak Block Rate | False Positive Rate | False Negative Rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Original 18-case impact suite | 18 | 11/12 | 0/6 | 91.7% | 0.0% | 8.3% |
+| Supplemental 50-case gate suite | 50 | 34/35 | 0/15 | 97.1% | 0.0% | 2.9% |
+| Reproduced 68-case subtotal | 68 | 45/47 | 0/21 | 95.7% | 0.0% | 4.3% |
+| Extended 30-case gate suite | 30 | 18/18 | 0/12 | 100.0% | 0.0% | 0.0% |
+| Combined 98-case gate run | 98 | 63/65 | 0/33 | 96.9% | 0.0% | 3.1% |
+
 ### Weak-Spec Before And After
 
-Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. On latest `main`, the same 18-case gate-only rerun blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
+Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. In the calibrated v0.3.1 gate-only rerun, the same 18-case suite blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
 
 The reproduced 68-case run now blocks 45 of 47 weak cases with no ready-reference false positives. The additional 30-case extended suite now blocks 18 of 18 weak practical-domain cases with no ready-reference false positives. Across all 98 gate-only cases, the local gate blocks 63 of 65 weak cases and keeps ready false positives at 0 of 33.
+
+The remaining known gate-only false negatives are `fault_title_no_trim` in the original impact suite and `weak_document_share_client_enforced` in the supplemental document-sharing suite.
 
 Full methodology, case breakdown, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 

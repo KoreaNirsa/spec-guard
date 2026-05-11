@@ -8,14 +8,14 @@ This benchmark does not treat Spec Kit, OpenSpec, and SpecGuard as directly comp
 
 ## Executive Summary
 
-The v0.3.1 refresh now has two evidence layers:
+The calibrated v0.3.1 refresh now has two evidence layers:
 
 - The original #136 18-case in-memory Python `TaskService` impact suite: 6 ready-reference specs and 12 weak specs. This suite includes raw Codex generation, SpecGuard gate evaluation, and SpecGuard handoff generation from the pre-#129 run.
-- A latest-main gate-only rerun with the same 18 cases plus 50 supplemental and 30 extended real-world-style gate cases across auth/session, billing export, document sharing, webhooks, payments, inventory, support, admin roles, audit, data export, search, file upload, orders, workspace invites, notifications, profile updates, API keys, SSO, privacy, cache, returns, ledger, promotions, and background jobs.
+- A v0.3.1 gate-only rerun with the same 18 cases plus 50 supplemental and 30 extended real-world-style gate cases across auth/session, billing export, document sharing, webhooks, payments, inventory, support, admin roles, audit, data export, search, file upload, orders, workspace invites, notifications, profile updates, API keys, SSO, privacy, cache, returns, ledger, promotions, and background jobs.
 
-The original #136 full generation run found that raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. Before #129, SpecGuard blocked 3 of those weak specs. On latest `main`, the same local `--no-llm` gate blocks 11 of 12 original weak specs.
+The original #136 full generation run found that raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. Before #129, SpecGuard blocked 3 of those weak specs. In the calibrated v0.3.1 local `--no-llm` gate, the same original suite blocks 11 of 12 weak specs.
 
-| Metric | #136 Baseline | Latest Main Gate-Only | Change |
+| Metric | #136 Baseline | v0.3.1 Gate-Only | Change |
 | --- | ---: | ---: | ---: |
 | Weak specs blocked before code generation | 3/12 | 11/12 | +8 cases |
 | Weak-spec block rate | 25.0% | 91.7% | +66.7 points |
@@ -54,32 +54,32 @@ The reproduced 68-case run confirms the improved local gate is strong on the det
 | Item | Value |
 | --- | --- |
 | Original full impact JSON | [`docs/benchmark-results/specguard-impact-v0.3.0.json`](benchmark-results/specguard-impact-v0.3.0.json) |
-| Latest-main gate-only JSON | [`docs/benchmark-results/specguard-gate-only-v0.3.1.json`](benchmark-results/specguard-gate-only-v0.3.1.json) |
+| v0.3.1 gate-only JSON | [`docs/benchmark-results/specguard-gate-only-v0.3.1.json`](benchmark-results/specguard-gate-only-v0.3.1.json) |
 | Result schema | `specguard-impact-benchmark/v2` |
 | Benchmark script | `tools/spec_driven_ai_benchmark.py` version `3` |
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
-| Latest-main gate-only timestamp | `2026-05-11T14:13:44.147205+00:00` to `2026-05-11T14:13:50.488450+00:00` |
+| v0.3.1 gate-only timestamp | `2026-05-11T14:18:22.699591+00:00` to `2026-05-11T14:18:28.946457+00:00` |
 | SpecGuard package version | `0.3.0` |
 | Original full run commit | `13218f58b9f1354b8fc059490c26f4a2a0b43c6a` |
-| Latest-main gate-only commit | `a8c9c9625f9b35923148b501dd802c292b553d7e` |
-| Latest-main gate-only git dirty | `true` |
+| v0.3.1 gate-only commit | `d06824784f023993094d239346a8c52d81af1396` |
+| v0.3.1 gate-only git dirty | `true` |
 | Codex package | `@openai/codex@0.128.0` |
 | Model | `gpt-5.5` |
 | Reasoning effort | `low` |
 | SpecGuard gate | `python -m cli.specguard run <package> --no-llm --no-follow-up` |
 | Supplemental and extended run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.3.1.json` |
 
-The latest-main run is intentionally recorded as a gate-only working-tree run because the benchmark result artifact and benchmark case expansion are part of this PR update. A later release-quality benchmark can rerun from a clean tag after the benchmark changes merge.
+The v0.3.1 gate-only run is intentionally recorded as a working-tree run because the benchmark result artifact and benchmark case expansion are part of this PR update. A later release-quality benchmark can rerun from a clean tag after the benchmark changes merge.
 
 ## Modes
 
 | Mode | Purpose | v0.3.1 Status |
 | --- | --- | --- |
 | `raw_ai` | Codex generates implementation directly from authored `spec.md` and `technical-design.md`. | Executed in original #136 run |
-| `specguard_gate` | SpecGuard local no-LLM gate reviews the package before implementation. | Executed in original and latest-main gate-only runs |
+| `specguard_gate` | SpecGuard local no-LLM gate reviews the package before implementation. | Executed in original and v0.3.1 gate-only runs |
 | `specguard_handoff_ai` | Codex generates implementation only after SpecGuard reports `READY` or `READY_WITH_WARNINGS`. | Executed in original #136 run |
-| `gate_only_supplemental_v1` | Multi-domain local gate-only supplemental suite. | Executed in latest-main rerun |
-| `gate_only_extended_v2` | Additional practical gate-only suite across less-covered business domains. | Executed in latest-main rerun |
+| `gate_only_supplemental_v1` | Multi-domain local gate-only supplemental suite. | Executed in v0.3.1 rerun |
+| `gate_only_extended_v2` | Additional practical gate-only suite across less-covered business domains. | Executed in v0.3.1 rerun |
 | `future_llm_specguard_review` | Compare local heuristic gate with LLM-backed SpecGuard Review. | Reserved |
 | `future_strict_e2e` | Measure whether Strict E2E can revise blocked specs into safer implementation inputs. | Reserved |
 
@@ -110,7 +110,7 @@ Generated implementations from the original #136 run are scored with hidden runt
 | `delete_hides_task` | Deleted tasks disappear from normal lists |
 | `deleted_task_blocked` | Deleted tasks cannot be completed |
 
-The latest-main gate-only rerun does not execute Codex and does not produce new post-gate code defect rates. Its improvement calculation uses the raw defective weak cases from #136 as the exposure baseline, then asks whether the improved local gate now blocks those same weak inputs before code generation.
+The v0.3.1 gate-only rerun does not execute Codex and does not produce new post-gate code defect rates. Its improvement calculation uses the raw defective weak cases from #136 as the exposure baseline, then asks whether the improved local gate now blocks those same weak inputs before code generation.
 
 The supplemental 50-case suite and extended 30-case suite add practical specification shapes that are not limited to the TaskService hidden contract. They measure readiness gate behavior only.
 
@@ -131,7 +131,7 @@ The supplemental 50-case suite and extended 30-case suite add practical specific
 | Blocked good cases | 0 |
 | Overall block rate | 16.7% |
 
-### Latest Main Gate-Only Rerun
+### v0.3.1 Gate-Only Rerun
 
 | Gate Suite | Evaluated | Weak Blocked | Ready Blocked | Weak Block Rate | False Positive Rate | False Negative Rate |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -143,9 +143,9 @@ The supplemental 50-case suite and extended 30-case suite add practical specific
 
 ## Original Case Results
 
-These rows combine the #136 raw AI defect evidence with the latest-main gate-only status.
+These rows combine the #136 raw AI defect evidence with the calibrated v0.3.1 gate-only status.
 
-| Case | Type | #136 Raw Defect Rate | Latest Main Gate | Exposure Prevented Against #136 Raw Defects |
+| Case | Type | #136 Raw Defect Rate | v0.3.1 Gate | Exposure Prevented Against #136 Raw Defects |
 | --- | --- | ---: | --- | --- |
 | `ready_canonical_task_service` | ready | 0.0% | `ready_with_warnings` | No |
 | `ready_trimmed_validation_contract` | ready | 0.0% | `ready_with_warnings` | No |
@@ -224,7 +224,7 @@ The supplemental and extended ready-reference cases are gate-only. They are usef
 - The SpecGuard gate is local `--no-llm` low mode. It does not measure LLM-backed SpecGuard Review.
 - `READY_WITH_WARNINGS` is treated as implementation-allowed because that is the current low-mode contract.
 - Hidden checks cover the original benchmark contract, not all possible production risks.
-- The latest-main gate-only run was executed from a working tree containing benchmark changes, so `git_dirty=true` is expected in the result JSON.
+- The v0.3.1 gate-only run was executed from a working tree containing benchmark changes, so `git_dirty=true` is expected in the result JSON.
 - The benchmark does not measure PR drift review, strict E2E revision, multi-agent UX, official Spec Kit CLI execution, official OpenSpec CLI execution, or post-gate multi-domain code defect rates.
 
 ## v0.3.2 Benchmark Roadmap
