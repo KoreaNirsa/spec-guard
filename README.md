@@ -95,18 +95,20 @@ The primary question is now: how much does SpecGuard reduce exposed implementati
 | --- | ---: |
 | Raw weak-spec average contract defect rate from #136 | 25.0% |
 | Raw weak specs with contract defects from #136 | 11/12 |
-| Post-#129 weak specs blocked in original 18-case gate | 11/12 |
-| Post-#129 prevented exposure rate against #136 raw defects | 90.9% |
+| Post-#138 weak specs blocked in original 18-case gate | 11/12 |
+| Post-#138 prevented exposure rate against #136 raw defects | 90.9% |
 | Prevented exposure improvement vs #136 | +63.6 points |
-| Post-#129 false positive rate on original ready specs | 0.0% |
-| Post-#129 false negative rate on original weak specs | 8.3% |
-| Supplemental 50-case weak block rate | 51.4% |
+| Post-#138 false positive rate on original ready specs | 0.0% |
+| Post-#138 false negative rate on original weak specs | 8.3% |
+| Supplemental 50-case weak block rate | 97.1% |
+| Supplemental 50-case false positive rate | 40.0% |
+| Supplemental 50-case false negative rate | 2.9% |
 
 ### Weak-Spec Before And After
 
-Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. After #129, the same 18-case gate-only rerun blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
+Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. After #129 and #138, the same 18-case gate-only rerun blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
 
-The broader supplemental suite is deliberately harder and more varied. It shows the improved local gate is strong on task/todo ownership and auth token lifecycle patterns, while broader domains such as billing exports, payments, inventory, admin roles, and webhooks still expose false negatives that should feed future heuristic or LLM-backed review work.
+The broader supplemental suite is deliberately harder and more varied. It now blocks 34 of 35 weak cases after #138, while also blocking 6 of 15 ready-reference cases. That means the next benchmark-facing calibration should focus on reducing false positives in safe non-task contracts without reopening the blocked weak-spec paths.
 
 Full methodology, case breakdown, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
