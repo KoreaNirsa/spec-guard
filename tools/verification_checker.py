@@ -8,6 +8,7 @@ from tools.result import CheckResult
 
 EXECUTABLE_TEST_SUFFIXES = {".py", ".js", ".ts", ".sh", ".ps1"}
 VERIFICATION_CONTRACT_NAME = "verification-contract.md"
+NON_ACTIONABLE_CONTRACT_VALUES = {"", "-", "none", "n/a", "na", "tbd", "todo", "pending"}
 
 
 def verification_metadata(path: Path) -> dict[str, object]:
@@ -70,13 +71,29 @@ def _executable_tests(tests_dir: Path) -> list[Path]:
 def _accepted_verification_contract(path: Path) -> bool:
     if not path.exists():
         return False
-    text = path.read_text(encoding="utf-8").lower()
-    return "status: accepted" in text and ("command:" in text or "artifact:" in text)
+    text = path.read_text(encoding="utf-8")
+    return _has_accepted_status(text) and (
+        _actionable_contract_value(text, "command") is not None
+        or _actionable_contract_value(text, "artifact") is not None
+    )
 
 
 def _contract_command(text: str) -> str | None:
-    match = re.search(r"^command:\s*(.+)$", text, flags=re.IGNORECASE | re.MULTILINE)
-    return match.group(1).strip() if match else None
+    return _actionable_contract_value(text, "command")
+
+
+def _has_accepted_status(text: str) -> bool:
+    return re.search(r"^status:[ \t]*accepted[ \t]*$", text, flags=re.IGNORECASE | re.MULTILINE) is not None
+
+
+def _actionable_contract_value(text: str, field: str) -> str | None:
+    match = re.search(rf"^{re.escape(field)}:[ \t]*(.*)$", text, flags=re.IGNORECASE | re.MULTILINE)
+    if not match:
+        return None
+    value = match.group(1).strip()
+    if value.lower() in NON_ACTIONABLE_CONTRACT_VALUES:
+        return None
+    return value
 
 
 def _verification_command(root: Path, artifact: Path) -> str:

@@ -175,7 +175,7 @@ def run_review(args: argparse.Namespace, env: Mapping[str, str] = os.environ) ->
             head_sha=args.head_sha,
             mode=mode,
             status="skipped",
-            message="No relevant SpecGuard spec package was discovered from the PR diff. Set `SPECGUARD_REVIEW_SPEC_PATHS` to review an implementation-only PR against an approved package.",
+            message=_implementation_only_pr_guidance(args.spec_root),
             reviewed_packages=[],
         )
         return ReviewResult("skipped", body, 0)
@@ -241,6 +241,19 @@ def invoke_reviewer(prompt: str, *, env: Mapping[str, str], model: str | None) -
         os.environ["OPENAI_API_KEY"] = env["SPECGUARD_OPENAI_API_KEY"]
     client = build_llm_client(Path.cwd(), mode=env.get("SPECGUARD_PR_REVIEW_LLM_MODE", "openai"), model=model)
     return client.generate_text(REVIEW_SYSTEM, prompt, max_output_tokens=4000)
+
+
+def _implementation_only_pr_guidance(spec_root: Path) -> str:
+    example_root = spec_root.as_posix().rstrip("/") or "specs"
+    return "\n".join([
+        "No relevant SpecGuard spec package was discovered from the PR diff.",
+        "",
+        "If this PR changes only implementation files, configure the approved spec package explicitly so SpecGuard can compare the diff against the correct handoff basis.",
+        "",
+        f"- GitHub Actions variable: `SPECGUARD_REVIEW_SPEC_PATHS={example_root}/your-feature-name`",
+        f"- Local CLI flag: `--spec-paths {example_root}/your-feature-name`",
+        "- Use the package that already has an approved `readiness-review.json` and `implementation-output.md`.",
+    ])
 
 
 def _diff_paths(diff_text: str) -> list[str]:

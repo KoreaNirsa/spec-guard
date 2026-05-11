@@ -3341,6 +3341,48 @@ def test_strict_e2e_accepts_verification_contract(tmp_path: Path) -> None:
     assert metadata["verification"]["command"] == "make verify-feature"
 
 
+def test_strict_e2e_accepts_artifact_only_verification_contract(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("tests", "verification-contract.md").write_text(
+        "\n".join([
+            "# Verification Contract",
+            "",
+            "Status: accepted",
+            "Artifact: CI job `verify-feature`",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    metadata = read_handoff_metadata(feature)
+    assert result.ok
+    assert metadata["verification"]["kind"] == "accepted_contract"
+    assert metadata["verification"]["command"] is None
+
+
+def test_strict_e2e_rejects_blank_verification_contract_values(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    feature.joinpath("tests", "verification-contract.md").write_text(
+        "\n".join([
+            "# Verification Contract",
+            "",
+            "Status: accepted",
+            "Command:   ",
+            "Artifact:   ",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+
+    result = run_strict_e2e_pipeline(feature, FakeLLM(), max_iterations=1)
+
+    assert not result.ok
+    assert any("executable verification artifacts" in message for message in result.messages)
+    assert not feature.joinpath("implementation-output.md").exists()
+
+
 def test_strict_e2e_fails_after_max_iterations(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
     llm = StrictE2EAlwaysBlockingLLM()
@@ -3382,6 +3424,20 @@ def test_post_run_detects_stale_readiness_report_after_spec_change(tmp_path: Pat
 
     assert reason is not None
     assert "spec.md" in reason
+
+
+def test_post_run_detects_stale_readiness_report_after_additional_markdown_change(tmp_path: Path) -> None:
+    feature = copy_example(tmp_path, "risk/todo-api")
+    run_pipeline(feature)
+    notes_path = feature / "security-notes.md"
+    notes_path.write_text("# Security Notes\n\n- Added after review.\n", encoding="utf-8")
+    future = time.time() + 2
+    os.utime(notes_path, (future, future))
+
+    reason = readiness_report_stale_reason(feature)
+
+    assert reason is not None
+    assert "security-notes.md" in reason
 
 
 def test_post_run_can_generate_and_apply_spec_revision(tmp_path: Path) -> None:
