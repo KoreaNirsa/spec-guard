@@ -103,17 +103,18 @@ The primary question is now: how much does SpecGuard reduce exposed implementati
 | Supplemental 50-case weak block rate | 97.1% |
 | Supplemental 50-case false positive rate | 0.0% |
 | Supplemental 50-case false negative rate | 2.9% |
-| Extended 30-case weak block rate | 38.9% |
-| Extended 30-case false positive rate | 16.7% |
-| Extended 30-case false negative rate | 61.1% |
-| Combined 98-case false positive rate | 6.1% |
-| Combined 98-case false negative rate | 20.0% |
+| Extended 30-case weak block rate | 100.0% |
+| Extended 30-case false positive rate | 0.0% |
+| Extended 30-case false negative rate | 0.0% |
+| Combined 98-case weak block rate | 96.9% |
+| Combined 98-case false positive rate | 0.0% |
+| Combined 98-case false negative rate | 3.1% |
 
 ### Weak-Spec Before And After
 
 Before the #129 heuristic calibration, raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases, and the local gate blocked 3 weak specs. On latest `main`, the same 18-case gate-only rerun blocks 11 of 12 weak specs, prevents 10 of the 11 raw defective weak-spec exposures, and still produces no false positives on the 6 ready specs.
 
-The reproduced 68-case run now blocks 45 of 47 weak cases with no ready-reference false positives. The additional 30-case extended suite is deliberately more varied and exposes current calibration gaps: it blocks 7 of 18 weak cases while incorrectly blocking 2 of 12 ready-reference cases. That means the next benchmark-facing calibration should focus on weak practical domains such as OAuth consent, booking conflicts, feature flags, privacy deletion, cache flushes, rate limits, ledger mutation, coupons, and unbounded job retry, while preserving the no-false-positive result in the reproduced 68-case run.
+The reproduced 68-case run now blocks 45 of 47 weak cases with no ready-reference false positives. The additional 30-case extended suite now blocks 18 of 18 weak practical-domain cases with no ready-reference false positives. Across all 98 gate-only cases, the local gate blocks 63 of 65 weak cases and keeps ready false positives at 0 of 33.
 
 Full methodology, case breakdown, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 

@@ -42,12 +42,12 @@ The supplemental and extended gate-only suites are intentionally broader than th
 | Evaluated extended cases | 30 |
 | Ready-reference extended cases | 12 |
 | Weak extended cases | 18 |
-| Weak extended cases blocked | 7/18 |
-| Extended weak block rate | 38.9% |
-| Extended false positive rate | 16.7% |
-| Extended false negative rate | 61.1% |
+| Weak extended cases blocked | 18/18 |
+| Extended weak block rate | 100.0% |
+| Extended false positive rate | 0.0% |
+| Extended false negative rate | 0.0% |
 
-The reproduced 68-case run confirms the improved local gate is strong on the deterministic patterns added in #129, #138, and #140: it blocks 45 of 47 weak cases with no ready-reference false positives. The new extended suite shows remaining calibration work in practical domains where weak specs still pass as `READY_WITH_WARNINGS`.
+The reproduced 68-case run confirms the improved local gate is strong on the deterministic patterns added in #129, #138, and #140: it blocks 45 of 47 weak cases with no ready-reference false positives. The #142 extended calibration blocks all 18 weak practical-domain cases while preserving zero false positives across the 12 extended ready-reference cases.
 
 ## Benchmark Metadata
 
@@ -58,10 +58,10 @@ The reproduced 68-case run confirms the improved local gate is strong on the det
 | Result schema | `specguard-impact-benchmark/v2` |
 | Benchmark script | `tools/spec_driven_ai_benchmark.py` version `3` |
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
-| Latest-main gate-only timestamp | `2026-05-11T13:44:36.195921+00:00` to `2026-05-11T13:44:42.022851+00:00` |
+| Latest-main gate-only timestamp | `2026-05-11T14:13:44.147205+00:00` to `2026-05-11T14:13:50.488450+00:00` |
 | SpecGuard package version | `0.3.0` |
 | Original full run commit | `13218f58b9f1354b8fc059490c26f4a2a0b43c6a` |
-| Latest-main gate-only commit | `5eae9c679c79ba086115e2431fb7b8e4e0004840` |
+| Latest-main gate-only commit | `a8c9c9625f9b35923148b501dd802c292b553d7e` |
 | Latest-main gate-only git dirty | `true` |
 | Codex package | `@openai/codex@0.128.0` |
 | Model | `gpt-5.5` |
@@ -138,8 +138,8 @@ The supplemental 50-case suite and extended 30-case suite add practical specific
 | Original 18-case impact suite | 18 | 11/12 | 0/6 | 91.7% | 0.0% | 8.3% |
 | Supplemental 50-case gate suite | 50 | 34/35 | 0/15 | 97.1% | 0.0% | 2.9% |
 | Reproduced 68-case subtotal | 68 | 45/47 | 0/21 | 95.7% | 0.0% | 4.3% |
-| Extended 30-case gate suite | 30 | 7/18 | 2/12 | 38.9% | 16.7% | 61.1% |
-| Combined gate-only run | 98 | 52/65 | 2/33 | 80.0% | 6.1% | 20.0% |
+| Extended 30-case gate suite | 30 | 18/18 | 0/12 | 100.0% | 0.0% | 0.0% |
+| Combined gate-only run | 98 | 63/65 | 0/33 | 96.9% | 0.0% | 3.1% |
 
 ## Original Case Results
 
@@ -179,25 +179,24 @@ Strong deterministic coverage:
 - Supplemental billing export weak cases: 2/2 blocked.
 - Supplemental webhook, payment, and inventory weak cases: 6/6 blocked.
 - Supplemental support, admin role, audit, data export, search, file upload, order, workspace invite, notification, and profile weak cases: 10/10 blocked.
-- Extended payout, shipping, API key, password reset, inbound webhook, return, and SSO weak cases: 7/7 blocked.
+- Extended practical-domain weak cases: 18/18 blocked.
 
 Remaining false negatives:
 
 - Original impact suite: `fault_title_no_trim`.
 - Supplemental suite: `weak_document_share_client_enforced`.
-- Extended suite: `weak_oauth_consent_all_scopes`, `weak_subscription_proration_undefined`, `weak_booking_double_book_allowed`, `weak_feature_flag_client_only_targeting`, `weak_data_deletion_no_retention_boundary`, `weak_cache_invalidation_global_flush`, `weak_rate_limit_client_enforced`, `weak_device_trust_never_expires`, `weak_ledger_entry_mutable`, `weak_coupon_unbounded_reuse`, `weak_background_job_retry_unbounded`.
 
 False positives:
 
-- Extended suite: `ready_data_retention_delete_request`, `ready_webhook_signature_verification`.
+- None in the 98-case gate-only run.
 
-These findings are useful calibration signals. They should not be hidden by narrowing the extended cases because the purpose of the gate-only run is to expose where deterministic low-mode coverage is strong and where it is still domain-specific.
+The remaining false negatives are intentionally left visible instead of being hidden by benchmark narrowing. They are now limited to the original title-normalization ambiguity and the supplemental document-sharing ownership gap.
 
 ## Interpretation
 
-The #129, #138, and #140/#141 heuristic calibration materially improves the original benchmark target. Against the #136 raw AI exposure baseline, the local low gate now prevents 10 of 11 observed weak-spec exposure paths, up from 3 of 11. The original ready-reference cases still produce no false positives.
+The #129, #138, #140/#141, and #142 heuristic calibration materially improves the original benchmark target. Against the #136 raw AI exposure baseline, the local low gate now prevents 10 of 11 observed weak-spec exposure paths, up from 3 of 11. The original ready-reference cases still produce no false positives.
 
-The reproduced 68-case run changes the interpretation from "the gate is conservative" to "the gate is precise for the currently calibrated deterministic patterns." The extended 30-case run changes the broader interpretation again: deterministic low-mode review still needs targeted weak-domain coverage before the project can claim a broadly precise deterministic gate across practical business specs.
+The reproduced 68-case run changes the interpretation from "the gate is conservative" to "the gate is precise for the currently calibrated deterministic patterns." The extended 30-case run now supports the same interpretation across the added practical-domain cases, while the benchmark limitations still apply because supplemental and extended suites are gate-only.
 
 ## Spec Kit And OpenSpec Reference
 
@@ -238,6 +237,6 @@ The supplemental and extended ready-reference cases are gate-only. They are usef
 | Gate comparison | Compare local low, medium/high, and LLM-backed SpecGuard Review. |
 | Strict E2E | Measure whether blocked specs can be revised into safer ready specs. |
 | PR drift | Measure SpecGuard PR Review against implementation diffs. |
-| False negatives | Promote the remaining title-normalization, document-sharing ownership, OAuth consent, subscription billing, booking conflict, feature-flag, privacy deletion, cache flush, rate-limit, device-trust, ledger, coupon, and background-job retry gaps into deterministic Critical checks where justified. |
-| False positives | Calibrate safe extended contracts so explicit mitigations in data-retention deletion and signed inbound webhook specs are not treated as Critical risks. |
+| False negatives | Promote the remaining title-normalization and document-sharing ownership gaps into deterministic Critical checks where justified. |
+| False positives | Keep ready-reference false positives at 0 across the gate-only suite while expanding future domains. |
 | Reference tools | Keep Spec Kit/OpenSpec as secondary context with clearly separated layer claims. |

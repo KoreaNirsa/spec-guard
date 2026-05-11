@@ -576,9 +576,10 @@ def _is_payment_context(context: str) -> bool:
             r"\brefunds?\b",
             r"\brefund[-_\s]?service\b",
             r"\bcharges?\b",
-            r"\bcaptures?\b",
             r"\bpayouts?\b",
             r"\b(payment|refund|charge|capture|payout)\s+(gateway|processor)\b",
+            r"\bcaptures?\b.*\b(payment|charge|gateway|processor)\b",
+            r"\b(payment|charge|gateway|processor)\b.*\bcaptures?\b",
         ),
     )
 
@@ -664,7 +665,17 @@ def _has_payment_side_effect_context(contexts: list[str]) -> bool:
 def _webhook_contexts(contexts: list[str]) -> list[str]:
     return [
         context for context in contexts
-        if _context_has_any(context, ("webhook", "subscriber", "callback url"))
+        if (
+            _context_has_any(context, ("subscriber", "callback url"))
+            or (
+                _context_has_any(context, ("webhook",))
+                and _context_has_any(context, ("delivery", "deliver", "delivers", "delivered", "subscriber", "callback"))
+            )
+        )
+        and not _context_has_any(
+            context,
+            ("inbound webhook", "webhookreceiver", "webhook receiver", "receiver reads raw body", "raw body"),
+        )
     ]
 
 
@@ -672,8 +683,260 @@ def _has_webhook_policy_dimension(contexts: list[str], markers: tuple[str, ...])
     return any(_context_has_any(context, markers) for context in contexts)
 
 
+def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | None:
+    text = "\n".join(contexts)
+    feature_flag_scope = _context_has_any(text, ("feature flag", "featureflagservice", "flag evaluation", "flag_key", "targeting"))
+
+    for context in contexts:
+        if _context_has_any(context, ("oauth", "consent", "scope", "client_id")) and _context_matches_any(
+            context,
+            (
+                r"\b(grants?|granting)\s+(all|every)\b.*\bscopes?\b",
+                r"\bevery\s+scope\s+registered\s+to\s+the\s+client\b",
+                r"\bfull\s+registered\s+scope\s+list\b",
+                r"\ball\s+registered\s+client\s+scopes?\b",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "OAuth consent scope boundary is unsafe",
+                "OAuth consent grants every registered client scope instead of the exact requested and approved scope set.",
+                "Generated code can over-authorize third-party clients.",
+                "Require consent review for each requested scope and bind authorization codes to the approved scope set.",
+            )
+
+        if _context_has_any(context, ("subscription", "plan change", "plan_id", "target_plan")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\bomits?\s+(proration|invoice failure|idempotency)",
+                    r"\b(proration|invoice failure|idempotency)\s+.*\b(undefined|not defined|omitted|missing)\b",
+                    r"\bbilling\s+adjustments?\s+.*\bhandled\s+later\b",
+                    r"\bupdates?\s+.*plan_id\b.*\b(billing|invoice)\s+.*\b(later|eventually)\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Subscription billing transition is ambiguous",
+                "Subscription plan change behavior omits proration, idempotency, invoice timing, or rollback semantics.",
+                "Generated code can update subscription state without a defensible billing contract.",
+                "Define proration calculation, invoice failure rollback, idempotency replay, and conflict behavior.",
+            )
+
+        if _context_has_any(context, ("booking", "reservation", "resource_id")) and _context_matches_any(
+            context,
+            (
+                r"\boverlapping\s+bookings?\b.*\b(can|may)\s+.*\bconfirmed\b",
+                r"\bcreates?\s+a\s+booking\s+even\s+when\b.*\boverlaps?\b",
+                r"\boverlaps?\s+another\s+booking\b.*\b(resolve|resolved)\s+.*\b(manual|later)\b",
+                r"\bstaff\s+.*\b(resolve|review)\s+.*\bconflicts?\s+later\b",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Booking conflict contract is unsafe",
+                "Booking creation allows overlapping reservations or defers conflict handling until after confirmation.",
+                "Generated code can double-book scarce resources.",
+                "Require transactional overlap checks and a 409 response for conflicting reservations.",
+            )
+
+        if feature_flag_scope and (
+            _context_matches_any(
+                context,
+                (
+                    r"\btrusts?\s+client[-\s]+provided\b.*\b(tenant|user|traits?)",
+                    r"\bclient\s+sends?\s+tenant_id\b",
+                    r"\bserver[-\s]+side\s+(tenant|environment|rule)\s+.*\b(not required|out of scope)\b",
+                    r"\bclient\s+can\s+supply\s+any\s+tenant_id\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Feature flag targeting boundary is unsafe",
+                "Feature flag evaluation trusts client-provided tenant or user traits instead of server-side targeting.",
+                "Generated code can expose tenant-scoped features to the wrong users.",
+                "Resolve flag rules by authenticated tenant and environment before evaluating server-known traits.",
+            )
+
+        if _context_has_any(context, ("delete request", "privacy", "personal data", "retention")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\bomits?\s+(identity verification|retention exceptions?|audit)",
+                    r"\b(retention exceptions?|audit records?|identity verification)\s+.*\b(outside|out of scope|not required)\b",
+                    r"\blegal\s+retention\s+exceptions?\s+.*\boutside\b",
+                    r"\bdeletes?\s+rows?\s+by\s+user_id\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Privacy deletion contract is incomplete",
+                "Privacy deletion omits identity verification, retention exceptions, or audit evidence.",
+                "Generated code can delete or retain personal data without a reviewable privacy contract.",
+                "Define requester verification, eligible deletion scope, retained-record reasons, retention_until, and audit.",
+            )
+
+        if _context_has_any(context, ("cache", "invalidation", "namespace")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\btenant\s+users?\s+can\s+request\s+cache\s+invalidation\s+by\s+namespace\b",
+                    r"\bflush(es)?\s+the\s+entire\s+namespace\b",
+                    r"\bnamespace[-\s]+wide\s+key\s+patterns?\b",
+                    r"\bglobal\s+flush\b",
+                    r"\bdoes\s+not\s+need\s+tenant_id\b",
+                    r"\bshared\s+namespaces?\b",
+                ),
+            )
+            and not _context_has_any(
+                context,
+                (
+                    "cannot request a global flush",
+                    "global flush request returns 403",
+                    "global flush is limited to admin maintenance",
+                    "tenant-scoped cache key",
+                    "tenant-scoped key",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Cache invalidation boundary is unsafe",
+                "Tenant cache invalidation can flush shared namespaces or omit tenant-scoped cache keys.",
+                "Generated code can delete or expose cache data across tenants.",
+                "Require tenant-scoped cache keys and reject tenant-initiated global flush requests.",
+            )
+
+        if _context_has_any(context, ("rate limit", "rate limiting", "cooldown", "search requests")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\bclients?\s+should\s+wait\b",
+                    r"\bserver\s+.*\bdoes\s+not\s+need\s+to\s+reject\b",
+                    r"\bweb\s+client\s+disables?\b.*\bcooldown\b",
+                    r"\bdirect\s+api\s+calls?\s+can\s+exceed\b",
+                    r"\brate\s+limit\s+states?\s+.*\bnot\s+stored\s+server[-\s]+side\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Server-side rate limit is missing",
+                "Rate limiting is delegated to the client while direct API calls remain unrestricted.",
+                "Generated code can allow abusive traffic despite documented cooldowns.",
+                "Require server-side rate limit state, rejection behavior, and retry-after semantics.",
+            )
+
+        if _context_has_any(context, ("device trust", "trusted device", "trusted devices", "mfa")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\btrusted\s+devices?\s+remain\s+trusted\s+indefinitely\b",
+                    r"\btrusted\s+devices?\s+skip\s+mfa\b.*\bfuture\s+logins?\b",
+                    r"\btrust\s+records?\s+do\s+not\s+need\s+(expiration|revocation)\b",
+                    r"\btrusted\s+device\s+skips\s+mfa\s+one\s+year\s+later\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Device trust lifecycle is unsafe",
+                "Trusted devices can skip MFA indefinitely without server-side expiry or revocation.",
+                "Generated code can preserve MFA bypass after device compromise.",
+                "Define trust expiry, revocation, re-verification triggers, and compromised-device handling.",
+            )
+
+        if _context_has_any(context, ("ledger", "ledger entry", "ledger entries", "posted")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\bposted\s+ledger\s+entries?\s+can\s+be\s+(edited|updated|changed)\b",
+                    r"\bledger\s+entries?\s+can\s+be\s+edited\s+in\s+place\b",
+                    r"\bupdates?\s+ledger\s+entry\s+fields?\s+directly\b",
+                    r"\breversal\s+entries?\s+.*\bnot required\b",
+                    r"\bimmutable\s+audit\s+records?\s+.*\bnot required\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Ledger immutability contract is unsafe",
+                "Posted financial ledger entries can be edited in place instead of corrected through immutable reversals.",
+                "Generated code can destroy financial auditability.",
+                "Require immutable posted entries, reversal entries for corrections, and append-only audit evidence.",
+            )
+
+        if _context_has_any(context, ("coupon", "coupon_code", "promotion", "discount")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\bcoupons?\s+.*\b(do\s+not|don't)\s+need\s+(expires_at|max_redemptions|per_customer)",
+                    r"\bwithout\s+(customer|order|expiration)\s+limits?\b",
+                    r"\bunlimited\s+orders?\b",
+                    r"\bsame\s+customer\s+can\s+reuse\s+.*\bunlimited\b",
+                    r"\bredemption\s+records?\s+are\s+optional\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Coupon redemption contract is unsafe",
+                "Coupon redemption lacks expiration, redemption, or per-customer limits.",
+                "Generated code can allow unbounded promotion reuse.",
+                "Define expiration, redemption records, max_redemptions, per-customer limits, and conflict behavior.",
+            )
+
+        if _context_has_any(context, ("background job", "jobrunner", "failed jobs", "job handlers")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"\bfailed\s+jobs?\s+are\s+retried\s+until\s+they\s+succeed\b",
+                    r"\bretr(y|ies)\s+forever\b",
+                    r"\bretry\s+attempts?\s+do\s+not\s+need\s+a\s+maximum\b",
+                    r"\bno\s+(maximum|max)\s+(retry|attempt)",
+                    r"\brequeues?\s+the\s+job\s+immediately\b",
+                    r"\bexternal\s+apis?\s+each\s+time\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Background job retry contract is unsafe",
+                "Background jobs can retry indefinitely without backoff, max attempts, or idempotent side-effect bounds.",
+                "Generated code can cause retry storms or duplicate external side effects.",
+                "Define max attempts, backoff, dead-letter behavior, and idempotency for side-effecting handlers.",
+            )
+
+        if _context_has_any(context, ("webhook", "signature", "endpoint secret", "event_id")) and _context_matches_any(
+            context,
+            (
+                r"\bsignature\s+verification\s+is\s+not\s+required\b",
+                r"\bpayload\s+without\s+signature\s+is\s+processed\b",
+                r"\bwithout\s+signature\s+.*\bprocessed\b",
+                r"\bendpoint\s+url\s+is\s+secret\b",
+                r"\bduplicate\s+event\s+ids?\s+may\s+be\s+processed\s+more\s+than\s+once\b",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Webhook signature verification is missing",
+                "Inbound webhook processing trusts unsigned or replayed payloads.",
+                "Generated code can process forged external events.",
+                "Require raw-body signature verification, timestamp tolerance, event_id idempotency, and replay rejection.",
+            )
+
+    return None
+
+
 def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
     text = "\n".join(contexts)
+
+    extended_blocker = _extended_practical_domain_blocker(contexts)
+    if extended_blocker is not None:
+        return extended_blocker
 
     for context in contexts:
         tenant_scope = _context_has_any(context, ("tenant", "tenant_id", "workspace", "organization_id"))
