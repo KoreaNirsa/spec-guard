@@ -323,9 +323,12 @@ def _token_lifecycle_danger_context(contexts: list[str]) -> str | None:
         r"token\s+cannot\s+be\s+revoked",
         r"replay\s+(is\s+)?(accepted|allowed|permitted)",
         r"accepts?\s+replay",
-        r"copied[-\s]+token\s+reuse",
-        r"copied\s+token\s+.*\breus",
+        r"copied[-\s]+token\s+reuse\s+.*\b(allowed|accepted|permitted)\b",
+        r"copied[-\s]+token\s+reuse\s+.*\b(possible|can|could|may)\b",
+        r"copied\s+token\s+.*\b(can\s+be|is|remains)\s+reus",
+        r"copied\s+tokens?\s+.*\b(can|could|may)\s+be\s+reused\b",
         r"reused\s+token\s+.*\baccepted\b",
+        r"token\s+copied\s+.*\bremains\s+accepted\b",
     )
     for context in contexts:
         if any(re.search(pattern, context) for pattern in dangerous_patterns):
@@ -598,12 +601,56 @@ def _is_payment_side_effect_context(context: str) -> bool:
 
 
 def _has_payment_idempotency_context(contexts: list[str]) -> bool:
-    return any(
-        _is_payment_context(fragment)
-        and _context_has_any(fragment, ("idempotency", "idempotency_key", "idempotency key", "idempotent"))
+    payment_side_effect_present = any(
+        _is_payment_side_effect_context(fragment)
         for context in contexts
         for fragment in _context_fragments(context)
     )
+    idempotency_markers = ("idempotency", "idempotency_key", "idempotency key", "idempotent")
+    local_policy_markers = (
+        "required",
+        "create request",
+        "same key",
+        "same amount",
+        "different amount",
+        "replay",
+        "retry",
+        "returns 400",
+        "returns 409",
+        "conflict",
+    )
+    foreign_idempotency_markers = (
+        "audit",
+        "webhook",
+        "inventory",
+        "stock",
+        "reservation",
+        "export",
+        "report",
+        "csv",
+        "search",
+        "notification",
+        "workspace",
+        "invite",
+        "document",
+        "file",
+        "upload",
+        "ticket",
+        "order",
+    )
+    for context in contexts:
+        for fragment in _context_fragments(context):
+            if not _context_has_any(fragment, idempotency_markers):
+                continue
+            if _is_payment_context(fragment):
+                return True
+            if (
+                payment_side_effect_present
+                and _context_has_any(fragment, local_policy_markers)
+                and not _context_has_any(fragment, foreign_idempotency_markers)
+            ):
+                return True
+    return False
 
 
 def _has_payment_side_effect_context(contexts: list[str]) -> bool:
@@ -649,9 +696,10 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
             or _context_matches_any(
                 context,
                 (
-                    r"\b(allows?|returns?|lists|exports)\b.*\b(cross-tenant|all tenants|every tenant|across tenants)\b",
+                    r"\b(allows?|returns?|lists|exports)\b[^.]*\b(cross-tenant|all tenants|every tenant|across tenants)\b",
                     r"\b(cross-tenant|all tenants|every tenant|across tenants)\b.*\b(allowed|accepted|permitted|returned)",
                     r"\b(export|list|return)s?\s+all\b.*\btenant_id\b",
+                    r"server[-\s]+side\s+tenant\s+filtering\s+.*\b(not required|optional|out of scope)\b",
                 ),
             )
         ):
@@ -703,10 +751,12 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
             _context_matches_any(
                 context,
                 (
-                    r"\b(no|missing|without)\s+idempotency\b",
+                    r"\b(no|without)\s+idempotency\b",
+                    r"missing\s+idempotency\s+(contract|behavior|handling|policy)",
                     r"does\s+not\s+define\s+.*idempotency",
                     r"idempotency\s+.*\b(optional|not required|out of scope)\b",
-                    r"duplicate\s+(charge|charges|refund|refunds|payment|payments)",
+                    r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+.*\b(allowed|accepted|possible|created|sent)\b",
+                    r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+behavior\s+.*\b(undefined|not defined|ambiguous)\b",
                     r"(charge|refund|capture).*\b(twice|duplicate)\b",
                 ),
             )
@@ -719,6 +769,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "timeout" in context
                 and _context_has_any(context, ("gateway", "provider", "processor"))
                 and _context_has_any(context, ("ambiguous", "undefined", "not defined", "does not define", "unknown"))
+                and not _context_has_any(context, ("retry_pending", "retry pending", "reconcile", "reconciliation"))
             )
         ):
             return ReadinessIssue(
@@ -732,11 +783,29 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
 
     inventory_scope = any(_context_has_any(context, ("inventory", "stock", "sku", "reservation")) for context in contexts)
     if inventory_scope and _context_has_any(text, ("reserve", "reservation")):
-        if _context_matches_any(
+        inventory_fragments = [
+            fragment
+            for context in contexts
+            for fragment in _context_fragments(context)
+            if _context_has_any(fragment, ("inventory", "stock", "sku", "reservation", "oversell", "concurrent"))
+        ]
+        unsafe_negative_stock = any(
+            _context_matches_any(
+                fragment,
+                (
+                    r"(negative|below zero)\s+(stock|inventory)",
+                    r"(stock|inventory)\s+.*\b(below zero|negative)\b",
+                ),
+            )
+            and not _context_has_any(
+                fragment,
+                ("cannot", "must not", "reject", "rejected", "error", "insufficient stock"),
+            )
+            for fragment in inventory_fragments
+        )
+        unsafe_concurrency = _context_matches_any(
             text,
             (
-                r"(negative|below zero)\s+(stock|inventory)",
-                r"(stock|inventory)\s+.*\b(below zero|negative)\b",
                 r"does\s+not\s+define\s+.*(locking|atomic|transaction|concurrency)",
                 r"(concurrent|parallel)\s+.*\b(undefined|not defined|ambiguous)\b",
                 r"(oversell|overselling)\s+.*\b(allowed|possible|accepted)\b",
@@ -744,7 +813,8 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
         ) or (
             _context_has_any(text, ("concurrent", "parallel", "race"))
             and not _context_has_any(text, ("lock", "atomic", "transaction", "compare-and-set", "compare and set"))
-        ):
+        )
+        if unsafe_negative_stock or unsafe_concurrency:
             return ReadinessIssue(
                 "Critical",
                 "Inventory reservation contract is unsafe",
@@ -877,8 +947,19 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
             )
 
         if _context_has_any(context, ("notification", "notifications", "email alert", "security email")) and (
-            _context_has_any(context, ("global unsubscribe", "same flag disables", "disable security"))
-            or _context_matches_any(context, (r"(unsubscribe|disable)\s+.*security\s+(notification|email|alert)",))
+            (
+                _context_has_any(context, ("global unsubscribe", "same flag disables", "disable security"))
+                or _context_matches_any(context, (r"(unsubscribe|disable)\s+.*security\s+(notification|email|alert)",))
+            )
+            and not _context_has_any(
+                context,
+                (
+                    "does not disable security",
+                    "leaves security notifications enabled",
+                    "security notifications are mandatory",
+                    "not controlled by marketing unsubscribe",
+                ),
+            )
         ):
             return ReadinessIssue(
                 "Critical",
@@ -907,6 +988,16 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
             if (
                 _context_has_any(context, ("shipped", "delivered", "fulfilled"))
                 and _context_has_any(context, ("can be cancelled", "may be cancelled", "any state", "undefined"))
+                and not _context_has_any(
+                    context,
+                    (
+                        "cannot be cancelled",
+                        "can be cancelled only before shipment",
+                        "returns 409",
+                        "invalid transition",
+                        "leaves state unchanged",
+                    ),
+                )
             ):
                 return ReadinessIssue(
                     "Critical",
