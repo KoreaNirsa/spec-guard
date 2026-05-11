@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from tools.progress import progress_activity
+from tools.readiness_engine import review_artifact_paths
 from tools.result import CheckResult
 
 
@@ -139,16 +140,11 @@ def readiness_report_stale_reason(feature_dir: Path) -> str | None:
         return None
 
     report_mtime = report_path.stat().st_mtime
-    sources = [
-        feature_dir / "discovery.md",
-        feature_dir / "spec.md",
-        feature_dir / "plan.md",
-        feature_dir / "tasks.md",
-        feature_dir / "constitution.md",
-        feature_dir / "checklists" / "spec-readiness.md",
-        feature_dir / "technical-design.md",
+    newer_sources = [
+        relative.as_posix()
+        for relative in review_artifact_paths(feature_dir)
+        if (feature_dir / relative).exists() and (feature_dir / relative).stat().st_mtime > report_mtime
     ]
-    newer_sources = [source.name for source in sources if source.exists() and source.stat().st_mtime > report_mtime]
     if not newer_sources:
         return None
     return f"SpecGuard Review report may be stale; newer source file(s): {', '.join(newer_sources)}"
