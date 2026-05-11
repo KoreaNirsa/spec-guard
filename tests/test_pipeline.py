@@ -1798,7 +1798,17 @@ def test_heuristic_does_not_create_critical_from_unrelated_safety_keywords(tmp_p
     assert payload["summary"]["critical"] == 0
 
 
-def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str], design_notes: list[str]) -> None:
+def _write_domain_risk_feature(
+    feature: Path,
+    name: str,
+    requirements: list[str],
+    design_notes: list[str],
+    *,
+    acceptance: list[str] | None = None,
+    errors: list[str] | None = None,
+    state: list[str] | None = None,
+    failure: list[str] | None = None,
+) -> None:
     feature.joinpath("spec.md").write_text(
         "\n".join([
             f"# Spec: {name}",
@@ -1809,7 +1819,11 @@ def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str]
             "",
             "## Acceptance Criteria",
             "",
-            "- [ ] The documented domain behavior is implemented exactly.",
+            *[f"- [ ] {criterion}" for criterion in (acceptance or ["The documented domain behavior is implemented exactly."])],
+            "",
+            "## Error Cases",
+            "",
+            *[f"- {error}" for error in (errors or ["Invalid input returns 400."])],
         ]),
         encoding="utf-8",
     )
@@ -1828,12 +1842,11 @@ def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str]
             "",
             "## State",
             "",
-            "- Valid states: requested, completed, failed.",
-            "- Invalid transitions return a documented error.",
+            *[f"- {state_note}" for state_note in (state or ["Valid states: requested, completed, failed.", "Invalid transitions return a documented error."])],
             "",
             "## Failure Handling",
             "",
-            "- Invalid input returns 400.",
+            *[f"- {failure_note}" for failure_note in (failure or ["Invalid input returns 400."])],
         ]),
         encoding="utf-8",
     )
@@ -1876,6 +1889,19 @@ def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str]
             [
                 "PaymentService submits the charge request to the payment gateway.",
                 "ExportReportService uses idempotency for CSV export jobs.",
+            ],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
+            "payment creation with audit idempotency note",
+            [
+                "POST /payments creates a payment gateway charge for an invoice.",
+                "Callers may retry when the network connection fails.",
+                "Audit idempotency key is required for audit event writes.",
+            ],
+            [
+                "PaymentService submits the charge request to the payment gateway.",
+                "AuditService stores audit events with idempotency keys.",
             ],
             "Payment idempotency contract is ambiguous",
         ),
@@ -2068,6 +2094,205 @@ def test_heuristic_blocks_non_task_domain_readiness_risks(
     assert expected_title in {issue["title"] for issue in payload["issues"]}
 
 
+@pytest.mark.parametrize(
+    ("name", "requirements", "acceptance", "errors", "design_notes", "state", "failure", "blocked_title"),
+    [
+        (
+            "auth session rotation",
+            [
+                "Password login issues short-lived access tokens and rotating refresh tokens.",
+                "Access tokens expire after 15 minutes.",
+                "Refresh tokens rotate on every use and previous refresh tokens are revoked.",
+                "Copied access tokens are rejected when replay detection marks the session compromised.",
+                "Password login has account and IP rate limits with progressive lockout.",
+            ],
+            [
+                "Expired access tokens are rejected.",
+                "Reused refresh tokens revoke the session family.",
+                "Replay detection rejects copied token reuse.",
+            ],
+            [
+                "Token validation failures return 401 with a reason code.",
+                "Rate limits return 429 and do not reveal whether the account exists.",
+            ],
+            [
+                "SessionService owns token expiration, refresh rotation, revocation, replay detection, and audit events.",
+                "SessionService issues an access token with ttl and a refresh token family id.",
+                "Refresh rotates the token and revokes the prior refresh token.",
+                "Replay detection revokes the session family before returning 401.",
+            ],
+            ["Session states: active, revoked, expired, compromised.", "Compromised and revoked sessions are terminal."],
+            ["Token validation failures return 401 with a reason code."],
+            "Token lifecycle is missing",
+        ),
+        (
+            "tenant invoice export",
+            [
+                "Export requests include authenticated tenant_id and requester_id.",
+                "Invoice queries are scoped by tenant_id before rows leave the repository.",
+                "Cross-tenant invoice ids return 404 without leaking invoice metadata.",
+                "Export files include an audit record with requester_id and tenant_id.",
+            ],
+            [
+                "Tenant A cannot export Tenant B invoices.",
+                "Export output contains only rows whose tenant_id matches the caller.",
+                "Every successful export writes an audit event.",
+            ],
+            [
+                "Missing tenant_id returns 401.",
+                "Cross-tenant invoice id returns 404.",
+                "Empty export range returns a valid empty file.",
+            ],
+            [
+                "InvoiceExportService owns tenant-scoped query construction and audit creation.",
+                "InvoiceRepository accepts tenant_id as a required query predicate.",
+                "Repository queries invoices by tenant_id and invoice filters.",
+                "Service writes an audit event before returning the export artifact.",
+            ],
+            ["Export states: requested, completed, failed.", "Failed exports do not create downloadable files."],
+            ["Repository timeout returns 503 and records a failed export state."],
+            "Tenant boundary is unsafe",
+        ),
+        (
+            "payment refund idempotency",
+            [
+                "Duplicate refund prevention is required for every retry path.",
+                "refund_idempotency_key is required for every refund create request.",
+                "Reusing the same merchant_id and refund_idempotency_key with the same amount returns the original refund.",
+                "Reusing the same key with a different amount raises RefundError.",
+                "Refund requests verify that the payment belongs to merchant_id.",
+            ],
+            [
+                "Exact refund replay returns the original refund.",
+                "Conflicting replay raises RefundError.",
+                "Cross-merchant payment id returns 404.",
+            ],
+            [
+                "Missing idempotency key returns 400.",
+                "Cross-merchant payment returns 404.",
+                "Gateway timeout returns retry_pending.",
+            ],
+            [
+                "RefundService owns merchant scoping, idempotency records, and gateway timeout handling.",
+                "Service reserves idempotency record before gateway call.",
+                "Service records gateway result and returns refund state.",
+            ],
+            ["Refund states: pending, succeeded, failed, retry_pending.", "Succeeded refunds are terminal."],
+            ["Gateway timeout stores retry_pending rather than creating a second refund."],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
+            "inventory reservation concurrency",
+            [
+                "Reservation uses sku_id and warehouse_id as the stock scope.",
+                "Available stock cannot go below zero.",
+                "Reusing reservation_key with the same cart returns the original reservation.",
+                "Reusing reservation_key with different items raises InventoryError.",
+            ],
+            [
+                "Two reservations cannot reserve more than available stock.",
+                "Exact reservation replay is idempotent.",
+                "Conflicting replay raises InventoryError.",
+            ],
+            [
+                "Insufficient stock returns InventoryError.",
+                "Reservation key conflict returns 409.",
+            ],
+            [
+                "InventoryService owns atomic stock decrement and idempotency records.",
+                "StockRepository updates available stock with compare-and-set semantics.",
+                "Service performs atomic reservation transaction before returning success.",
+            ],
+            ["Reservation states: held, confirmed, expired, released.", "Expired reservations release stock once."],
+            ["Insufficient stock returns InventoryError without changing stock."],
+            "Inventory reservation contract is unsafe",
+        ),
+        (
+            "notification preferences",
+            [
+                "Preference reads and writes are scoped by authenticated user_id.",
+                "Marketing unsubscribe does not disable security notifications.",
+                "Unknown notification channel returns PreferenceError.",
+                "Changes are idempotent for the same requested value.",
+            ],
+            [
+                "User A cannot update User B preferences.",
+                "Marketing unsubscribe leaves security notifications enabled.",
+                "Repeating the same preference update returns the same state.",
+            ],
+            [
+                "Missing user context returns 401.",
+                "Unknown channel returns PreferenceError.",
+            ],
+            [
+                "NotificationPreferenceService writes preferences by user_id and channel.",
+                "Security notifications are mandatory and not controlled by marketing unsubscribe.",
+                "PreferenceRepository keys preferences by user_id and notification channel.",
+            ],
+            ["Preference states: enabled, disabled.", "Security notifications remain enabled by policy."],
+            ["Repository timeout returns 503 and leaves existing preferences unchanged."],
+            "Notification safety contract is unsafe",
+        ),
+        (
+            "order cancellation state",
+            [
+                "cancel_order resolves order by customer_id and order_id.",
+                "Orders in pending or paid state can be cancelled.",
+                "Orders in shipped or delivered state cannot be cancelled.",
+                "Cancellation writes cancelled_at and restock_pending event.",
+            ],
+            [
+                "Pending order cancellation succeeds.",
+                "Shipped order cancellation returns 409.",
+                "Cross-customer order id returns 404.",
+            ],
+            [
+                "Missing customer context returns 401.",
+                "Cross-customer order returns 404.",
+                "Invalid state transition returns 409.",
+            ],
+            [
+                "OrderService owns owner-scoped lookup, state transition validation, and cancellation event creation.",
+                "OrderRepository resolves by customer_id and order_id together.",
+                "Service checks state transition before mutation.",
+            ],
+            ["States: pending, paid, shipped, delivered, cancelled.", "shipped and delivered cannot transition to cancelled."],
+            ["Invalid transition returns 409 and leaves state unchanged.", "Event write failure rolls back cancellation."],
+            "Order state transition is unsafe",
+        ),
+    ],
+)
+def test_heuristic_accepts_safe_non_task_contract_calibration_cases(
+    tmp_path: Path,
+    name: str,
+    requirements: list[str],
+    acceptance: list[str],
+    errors: list[str],
+    design_notes: list[str],
+    state: list[str],
+    failure: list[str],
+    blocked_title: str,
+) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        name,
+        requirements,
+        design_notes,
+        acceptance=acceptance,
+        errors=errors,
+        state=state,
+        failure=failure,
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["summary"]["critical"] == 0
+    assert blocked_title not in {issue["title"] for issue in payload["issues"]}
+
+
 def test_heuristic_accepts_safe_auth_token_lifecycle_contract(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
     _write_domain_risk_feature(
@@ -2094,6 +2319,58 @@ def test_heuristic_accepts_safe_auth_token_lifecycle_contract(tmp_path: Path) ->
     assert result.ok
     assert "Token lifecycle is missing" not in {issue["title"] for issue in payload["issues"]}
     assert payload["summary"]["critical"] == 0
+
+
+def test_heuristic_blocks_copied_token_reuse_possible_wording(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "auth token replay risk",
+        [
+            "Login with password issues access tokens.",
+            "Access tokens expire after 15 minutes.",
+            "Token revocation invalidates active access tokens.",
+            "Copied token reuse is possible after token theft.",
+        ],
+        [
+            "TokenService validates token signature, expiration, and revocation.",
+            "Replay detection is not defined for stolen copied tokens.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    assert "Token lifecycle is missing" in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_accepts_payment_idempotency_scoped_by_section_context(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "payment creation",
+        [
+            "POST /payments creates a gateway charge for an invoice.",
+            "Idempotency key is required on every create request.",
+            "Reusing the same key with the same amount returns the original payment.",
+            "Reusing the same key with a different amount returns 409.",
+            "Missing idempotency key returns 400.",
+        ],
+        [
+            "PaymentService reserves the idempotency key before calling the gateway.",
+            "PaymentService returns the stored payment for exact replay.",
+            "PaymentService returns 409 for conflicting replay.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["summary"]["critical"] == 0
+    assert "Payment idempotency contract is ambiguous" not in {issue["title"] for issue in payload["issues"]}
 
 
 def test_heuristic_accepts_sensitive_field_redaction_context(tmp_path: Path) -> None:
