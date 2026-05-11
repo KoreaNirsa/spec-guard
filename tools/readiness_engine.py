@@ -199,6 +199,10 @@ def _context_has_any(context: str, markers: tuple[str, ...]) -> bool:
     return any(marker in context for marker in markers)
 
 
+def _context_matches_any(context: str, patterns: tuple[str, ...]) -> bool:
+    return any(re.search(pattern, context) for pattern in patterns)
+
+
 def _todo_contexts(contexts: list[str]) -> list[str]:
     return [context for context in contexts if _context_has_any(context, ("todo", "todos"))]
 
@@ -316,6 +320,27 @@ def _token_lifecycle_danger_context(contexts: list[str]) -> str | None:
     return None
 
 
+def _is_sensitive_field_mitigation_context(context: str) -> bool:
+    return _context_has_any(
+        context,
+        ("access_token", "refresh_token", "password_hash", "recovery_codes", "secret", "credential"),
+    ) and _context_has_any(
+        context,
+        (
+            "denylist",
+            "denylisted",
+            "redact",
+            "redacted",
+            "redaction",
+            "never exported",
+            "not exported",
+            "excluded from export",
+            "masked",
+            "masking",
+        ),
+    )
+
+
 def _context_marks_safe_deleted_behavior(context: str) -> bool:
     return _context_has_any(context, (
         "raises",
@@ -332,15 +357,17 @@ def _context_marks_safe_deleted_behavior(context: str) -> bool:
 
 
 def _has_token_issuance_context(contexts: list[str]) -> bool:
-    return any(
-        (
+    for context in contexts:
+        if _is_sensitive_field_mitigation_context(context):
+            continue
+        if (
             _context_has_any(context, ("login", "password", "authentication"))
             and _context_has_any(context, ("token", "tokens"))
-        )
-        or "issues access tokens" in context
-        or "issue access tokens" in context
-        for context in contexts
-    )
+        ):
+            return True
+        if "issues access tokens" in context or "issue access tokens" in context:
+            return True
+    return False
 
 
 def _has_token_lifecycle_control_context(contexts: list[str]) -> bool:
@@ -521,6 +548,322 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "Replace vague acceptance language with explicit owner-scope, idempotency, validation, and "
                 "deleted-state criteria.",
             )
+    return None
+
+
+def _is_payment_context(context: str) -> bool:
+    return _context_matches_any(
+        context,
+        (
+            r"\bpayments?\b",
+            r"\brefunds?\b",
+            r"\bcharges?\b",
+            r"\bcaptures?\b",
+            r"\bpayouts?\b",
+            r"\bgateway\b",
+            r"\bprocessor\b",
+        ),
+    )
+
+
+def _is_payment_side_effect_context(context: str) -> bool:
+    return _is_payment_context(context) and _context_matches_any(
+        context,
+        (
+            r"\bcreate[s]?\b",
+            r"\bsubmit[s]?\b",
+            r"\bcapture[s]?\b",
+            r"\brefund[s]?\b",
+            r"\bcharge[s]?\b",
+            r"\bpay[s]?\b",
+            r"\bretr(y|ies)\b",
+            r"\bgateway\b",
+            r"\bprocessor\b",
+        ),
+    )
+
+
+def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
+    text = "\n".join(contexts)
+
+    for context in contexts:
+        tenant_scope = _context_has_any(context, ("tenant", "tenant_id", "workspace", "organization_id"))
+        if tenant_scope and (
+            (
+                _context_has_any(context, ("client", "clients", "frontend", "browser"))
+                and _context_has_any(context, ("filter locally", "filtering locally", "responsible for filtering"))
+                and _context_has_any(
+                    context,
+                    (
+                        "returns all",
+                        "return all",
+                        "exports all",
+                        "server returns",
+                        "includes tenant_id",
+                        "tenant_id so",
+                    ),
+                )
+            )
+            or _context_matches_any(
+                context,
+                (
+                    r"\b(allows?|returns?|lists|exports)\b.*\b(cross-tenant|all tenants|every tenant|across tenants)\b",
+                    r"\b(cross-tenant|all tenants|every tenant|across tenants)\b.*\b(allowed|accepted|permitted|returned)",
+                    r"\b(export|list|return)s?\s+all\b.*\btenant_id\b",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Tenant boundary is unsafe",
+                "The spec package allows cross-tenant rows to be returned before server-side tenant scoping.",
+                "Generated code can expose billing, search, or profile data across tenant boundaries.",
+                "Require every export, list, and read path to apply tenant or user scope on the server before data is "
+                "returned.",
+            )
+
+        if (
+            _context_has_any(context, ("cache key", "cache-key", "cachekey"))
+            and tenant_scope
+            and _context_has_any(
+                context,
+                (
+                    "query text only",
+                    "omits tenant",
+                    "without tenant",
+                    "does not include tenant",
+                    "missing tenant",
+                    "shared across tenants",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Tenant cache boundary is unsafe",
+                "The cache key omits tenant or user context for tenant-scoped data.",
+                "Generated code can reuse cached search or export results across tenants.",
+                "Include tenant or user identity in every cache key for tenant-scoped reads and exports.",
+            )
+
+    payment_side_effect = any(_is_payment_side_effect_context(context) for context in contexts)
+    if payment_side_effect and "idempotency" not in text:
+        return ReadinessIssue(
+            "Critical",
+            "Payment idempotency contract is ambiguous",
+            "The spec package defines payment or refund side effects without an idempotency key contract.",
+            "Generated code can duplicate charges, refunds, or captures when callers retry.",
+            "Define idempotency key requirements, replay behavior, and conflict handling for every payment side effect.",
+        )
+
+    for context in contexts:
+        payment_scope = _is_payment_context(context)
+        if payment_scope and (
+            _context_matches_any(
+                context,
+                (
+                    r"\b(no|missing|without)\s+idempotency\b",
+                    r"does\s+not\s+define\s+.*idempotency",
+                    r"idempotency\s+.*\b(optional|not required|out of scope)\b",
+                    r"duplicate\s+(charge|charges|refund|refunds|payment|payments)",
+                    r"(charge|refund|capture).*\b(twice|duplicate)\b",
+                ),
+            )
+            or (
+                "idempotency" in context
+                and _context_has_any(context, ("different amount", "different payload", "conflict", "same key"))
+                and not _context_has_any(context, ("reject", "raise", "error", "409", "conflict response"))
+            )
+            or (
+                "timeout" in context
+                and _context_has_any(context, ("gateway", "provider", "processor"))
+                and _context_has_any(context, ("ambiguous", "undefined", "not defined", "does not define", "unknown"))
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Payment idempotency contract is ambiguous",
+                "Payment or refund behavior leaves idempotency, duplicate side effects, or gateway timeout state "
+                "undefined.",
+                "Generated code can retry unsafe operations and produce duplicate financial side effects.",
+                "Specify idempotency scope, conflict response, timeout reconciliation, and retry boundaries.",
+            )
+
+    inventory_scope = any(_context_has_any(context, ("inventory", "stock", "sku", "reservation")) for context in contexts)
+    if inventory_scope and _context_has_any(text, ("reserve", "reservation")):
+        if _context_matches_any(
+            text,
+            (
+                r"(negative|below zero)\s+(stock|inventory)",
+                r"(stock|inventory)\s+.*\b(below zero|negative)\b",
+                r"does\s+not\s+define\s+.*(locking|atomic|transaction|concurrency)",
+                r"(concurrent|parallel)\s+.*\b(undefined|not defined|ambiguous)\b",
+                r"(oversell|overselling)\s+.*\b(allowed|possible|accepted)\b",
+            ),
+        ) or (
+            _context_has_any(text, ("concurrent", "parallel", "race"))
+            and not _context_has_any(text, ("lock", "atomic", "transaction", "compare-and-set", "compare and set"))
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Inventory reservation contract is unsafe",
+                "Inventory reservation can oversell because concurrency or atomic stock mutation behavior is undefined.",
+                "Generated code can reserve the same units multiple times or allow negative stock.",
+                "Define atomic reservation semantics, concurrency conflict behavior, and rejection for insufficient stock.",
+            )
+
+    for context in contexts:
+        role_scope = _context_has_any(context, ("admin", "role", "owner role", "privileged", "permission"))
+        if role_scope and (
+            (
+                _context_has_any(context, ("client", "frontend", "ui"))
+                and _context_has_any(context, ("hide", "hidden", "client-only", "client only"))
+                and _context_has_any(context, ("authorization", "role", "permission", "action"))
+            )
+            or _context_matches_any(
+                context,
+                (
+                    r"server[-\s]+side\s+(role|authorization|permission)\s+check\s+.*\b(not required|optional)",
+                    r"does\s+not\s+need\s+.*\b(role|authorization|permission)\b",
+                    r"\b(no|without)\s+server[-\s]+side\s+(role|authorization|permission)",
+                    r"last\s+owner\s+.*\b(remove|removed|delete|deleted|demote|demoted|undefined|not defined)",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Server-side authorization is missing",
+                "Role or admin behavior relies on client visibility or leaves privileged mutation checks undefined.",
+                "Generated code can allow unauthorized role changes or removal of the last owner.",
+                "Require server-side authorization for every privileged action and define last-owner protection.",
+            )
+
+    webhook_scope = any(_context_has_any(context, ("webhook", "subscriber", "delivery", "callback url")) for context in contexts)
+    if webhook_scope:
+        if not _context_has_any(text, ("timeout", "retry", "idempotency", "idempotent", "event_id", "dedupe", "deduplicate")):
+            return ReadinessIssue(
+                "Critical",
+                "Webhook side-effect contract is ambiguous",
+                "Webhook delivery is in scope without timeout, retry, or idempotency policy.",
+                "Generated code can hang on subscriber calls or duplicate external side effects.",
+                "Define timeout budgets, retry policy, delivery idempotency key, and duplicate delivery handling.",
+            )
+        for context in contexts:
+            if _context_has_any(context, ("webhook", "subscriber", "delivery")) and _context_matches_any(
+                context,
+                (
+                    r"does\s+not\s+define\s+.*(timeout|retry|idempotency)",
+                    r"duplicate\s+delivery\s+.*\b(allowed|accepted|permitted)",
+                    r"subscriber[s]?\s+should\s+be\s+idempotent",
+                    r"\b(no|without)\s+(retry|timeout|idempotency|event_id)",
+                ),
+            ):
+                return ReadinessIssue(
+                    "Critical",
+                    "Webhook side-effect contract is ambiguous",
+                    "Webhook behavior leaves duplicate delivery or side-effect retry semantics undefined.",
+                    "Generated code can duplicate downstream effects or lose delivery status on timeouts.",
+                    "Define retryable failures, non-retryable failures, dedupe keys, and subscriber timeout handling.",
+                )
+
+    for context in contexts:
+        if _context_has_any(context, ("audit", "audit log", "audit record", "audit evidence")) and _context_matches_any(
+            context,
+            (
+                r"\b(audit\s+records?|audit\s+logs?|audit\s+events?|audit\s+evidence)\b"
+                r".*\b(can\s+be|may\s+be|allowed\s+to\s+be|is|are)\s+"
+                r"(edited|updated|deleted|mutable|overwritten)",
+                r"\b(edit|update|delete|overwrite)\s+(the\s+)?"
+                r"\b(audit\s+records?|audit\s+logs?|audit\s+events?|audit\s+evidence)\b",
+                r"audit\s+.*does\s+not\s+need\s+.*immutable",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Audit evidence is mutable",
+                "Audit records can be edited, deleted, or overwritten after creation.",
+                "Generated code can destroy compliance evidence or hide privileged actions.",
+                "Require append-only audit records with immutable event fields and explicit retention behavior.",
+            )
+
+        if _context_has_any(context, ("profile", "account", "email")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"email\s+.*\b(without|no)\s+verification",
+                    r"email\s+.*does\s+not\s+need\s+.*verify",
+                    r"email\s+.*saved\s+immediately",
+                    r"one\s+request\s+.*email",
+                ),
+            )
+            or (
+                _context_has_any(context, ("profile_id", "user_id", "another user", "cross-user"))
+                and _context_has_any(context, ("any authenticated user", "does not check owner", "client filter"))
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Account verification contract is unsafe",
+                "Profile or email mutation behavior omits ownership or verification requirements.",
+                "Generated code can let users take over account communications or mutate another user's profile.",
+                "Require verified email-change flow and owner-scoped profile mutation checks.",
+            )
+
+        if _context_has_any(context, ("upload", "uploaded file", "file upload", "attachment")) and _context_matches_any(
+            context,
+            (
+                r"does\s+not\s+define\s+.*(max size|maximum size|content[-\s]+type|mime)",
+                r"\b(no|without)\s+(max size|maximum size|content[-\s]+type|mime)",
+                r"virus\s+scan\s+.*\b(out of scope|not required|optional)",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "File upload validation is missing",
+                "File upload behavior leaves size, content type, or scanning requirements undefined.",
+                "Generated code can accept unsafe or unbounded files.",
+                "Define maximum size, allowed content types, storage path constraints, and malware scanning policy.",
+            )
+
+        if _context_has_any(context, ("notification", "notifications", "email alert", "security email")) and (
+            _context_has_any(context, ("global unsubscribe", "same flag disables", "disable security"))
+            or _context_matches_any(context, (r"(unsubscribe|disable)\s+.*security\s+(notification|email|alert)",))
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Notification safety contract is unsafe",
+                "Security notifications can be disabled through a generic unsubscribe or notification preference.",
+                "Generated code can suppress account-security alerts unexpectedly.",
+                "Separate mandatory security notifications from marketing or product notification preferences.",
+            )
+
+        if _context_has_any(context, ("support ticket", "ticket_id", "customer ticket")) and (
+            _context_has_any(context, ("any authenticated user", "cross-customer", "another customer"))
+            or (
+                _context_has_any(context, ("client", "clients"))
+                and _context_has_any(context, ("filter", "filtering", "responsible"))
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Support ticket boundary is unsafe",
+                "Support-ticket reads or mutations are not scoped by customer or assignee on the server.",
+                "Generated code can expose private ticket data across customers.",
+                "Require server-side customer or assignee scope checks before returning or mutating ticket data.",
+            )
+
+        if _context_has_any(context, ("order", "orders")) and _context_has_any(context, ("cancel", "cancellation")):
+            if (
+                _context_has_any(context, ("shipped", "delivered", "fulfilled"))
+                and _context_has_any(context, ("can be cancelled", "may be cancelled", "any state", "undefined"))
+            ):
+                return ReadinessIssue(
+                    "Critical",
+                    "Order state transition is unsafe",
+                    "Order cancellation can apply to shipped, delivered, fulfilled, or otherwise undefined states.",
+                    "Generated code can violate fulfillment and refund invariants.",
+                    "Define allowed cancellation states, invalid transition errors, and side effects for each state.",
+                )
+
     return None
 
 
@@ -1261,6 +1604,10 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
     task_service_blocker = _task_service_semantic_blocker(contexts)
     if task_service_blocker is not None:
         issues.append(task_service_blocker)
+
+    non_task_domain_blocker = _non_task_domain_semantic_blocker(contexts)
+    if non_task_domain_blocker is not None:
+        issues.append(non_task_domain_blocker)
 
     if _is_placeholder(data_flow):
         issues.append(ReadinessIssue(

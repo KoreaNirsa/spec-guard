@@ -1798,6 +1798,280 @@ def test_heuristic_does_not_create_critical_from_unrelated_safety_keywords(tmp_p
     assert payload["summary"]["critical"] == 0
 
 
+def _write_domain_risk_feature(feature: Path, name: str, requirements: list[str], design_notes: list[str]) -> None:
+    feature.joinpath("spec.md").write_text(
+        "\n".join([
+            f"# Spec: {name}",
+            "",
+            "## Requirements",
+            "",
+            *[f"- {requirement}" for requirement in requirements],
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] The documented domain behavior is implemented exactly.",
+        ]),
+        encoding="utf-8",
+    )
+    feature.joinpath("technical-design.md").write_text(
+        "\n".join([
+            f"# Technical Design: {name}",
+            "",
+            "## Architecture",
+            "",
+            "- API layer calls the domain service and repository.",
+            "- Domain service owns validation and persistence decisions.",
+            "",
+            "## Data Flow",
+            "",
+            *[f"{index}. {note}" for index, note in enumerate(design_notes, start=1)],
+            "",
+            "## State",
+            "",
+            "- Valid states: requested, completed, failed.",
+            "- Invalid transitions return a documented error.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Invalid input returns 400.",
+        ]),
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize(
+    ("name", "requirements", "design_notes", "expected_title"),
+    [
+        (
+            "billing export tenant filtering",
+            [
+                "POST /billing-exports returns all matching invoice rows with tenant_id so clients can filter locally.",
+                "The response includes invoice_id, tenant_id, amount, and created_at.",
+            ],
+            [
+                "BillingExportService streams invoice rows without a server-side tenant predicate.",
+                "The browser filters rows by tenant_id after the response is received.",
+            ],
+            "Tenant boundary is unsafe",
+        ),
+        (
+            "payment creation",
+            [
+                "POST /payments creates a gateway charge for an invoice.",
+                "Callers may retry when the network connection fails.",
+            ],
+            [
+                "PaymentService submits the charge request to the processor gateway.",
+                "If the caller retries, PaymentService submits another charge request.",
+            ],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
+            "refund timeout",
+            [
+                "POST /refunds sends a refund request to the payment gateway with an idempotency key.",
+                "Gateway timeout state is ambiguous and the spec does not define whether the refund succeeded.",
+            ],
+            [
+                "RefundService calls the gateway and stores the response.",
+                "A timeout from the gateway has unknown refund state.",
+            ],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
+            "inventory reservation",
+            [
+                "Concurrent inventory reservations for the same SKU are accepted.",
+                "Locking behavior is not defined and stock may go below zero.",
+            ],
+            [
+                "InventoryService decrements available stock after reading the current count.",
+                "Parallel reservation behavior is undefined.",
+            ],
+            "Inventory reservation contract is unsafe",
+        ),
+        (
+            "admin role mutation",
+            [
+                "Admin role removal is hidden in the UI for non-owners.",
+                "No server-side role check is required for the first release.",
+            ],
+            [
+                "RoleService updates the target user's role when the request body is valid.",
+                "Last owner removal behavior is not defined.",
+            ],
+            "Server-side authorization is missing",
+        ),
+        (
+            "webhook delivery",
+            [
+                "Webhook delivery calls subscriber URLs.",
+                "Duplicate delivery is allowed and subscribers should be idempotent.",
+                "Timeout and retry policy are not defined.",
+            ],
+            [
+                "WebhookService posts each event to subscriber callback URLs.",
+                "Delivery status is stored after the HTTP call returns.",
+            ],
+            "Webhook side-effect contract is ambiguous",
+        ),
+        (
+            "audit evidence",
+            [
+                "Audit records are required for admin actions.",
+                "Audit records can be edited by admins and deleted after 30 days.",
+            ],
+            [
+                "AuditService writes an audit row after privileged role updates.",
+                "Admins can update audit notes after the event is stored.",
+            ],
+            "Audit evidence is mutable",
+        ),
+        (
+            "profile email update",
+            [
+                "Users can update email in one request without verification.",
+                "The new email is saved immediately.",
+            ],
+            [
+                "ProfileService updates account.email from the request body.",
+                "No verification token is issued before the email is changed.",
+            ],
+            "Account verification contract is unsafe",
+        ),
+        (
+            "search cache",
+            [
+                "Search results are tenant-scoped.",
+                "Search cache key uses query text only and omits tenant_id for tenant-scoped results.",
+            ],
+            [
+                "SearchService checks the cache before querying tenant records.",
+                "The cache entry is shared across tenants for the same search query.",
+            ],
+            "Tenant cache boundary is unsafe",
+        ),
+        (
+            "file upload",
+            [
+                "File upload accepts support attachments.",
+                "The spec does not define max size or content-type validation.",
+            ],
+            [
+                "UploadService stores the uploaded file and returns an attachment_id.",
+                "Virus scan behavior is out of scope.",
+            ],
+            "File upload validation is missing",
+        ),
+        (
+            "security notifications",
+            [
+                "Users can manage notification preferences.",
+                "Global unsubscribe uses the same flag disables security notifications.",
+            ],
+            [
+                "NotificationService checks one opt_out flag before sending email alerts.",
+                "Password-change security email uses the same opt_out flag.",
+            ],
+            "Notification safety contract is unsafe",
+        ),
+        (
+            "support ticket read",
+            [
+                "Any authenticated user can read support ticket by ticket_id.",
+                "The response includes customer email and ticket messages.",
+            ],
+            [
+                "SupportTicketService loads tickets by ticket_id.",
+                "Customer scoping is handled by clients filtering their own tickets.",
+            ],
+            "Support ticket boundary is unsafe",
+        ),
+        (
+            "order cancellation",
+            [
+                "Orders can be cancelled from any state, including shipped and delivered.",
+                "Fulfillment rollback behavior is handled later.",
+            ],
+            [
+                "OrderService changes order status to cancelled when the request is valid.",
+                "State-specific side effects are not defined.",
+            ],
+            "Order state transition is unsafe",
+        ),
+    ],
+)
+def test_heuristic_blocks_non_task_domain_readiness_risks(
+    tmp_path: Path,
+    name: str,
+    requirements: list[str],
+    design_notes: list[str],
+    expected_title: str,
+) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(feature, name, requirements, design_notes)
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    assert expected_title in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_accepts_safe_auth_token_lifecycle_contract(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "auth session rotation",
+        [
+            "Login with password issues access tokens and refresh tokens.",
+            "Access tokens expire after 15 minutes.",
+            "Refresh token rotation is required on every refresh.",
+            "Token revocation invalidates both access and refresh tokens.",
+            "Replay detection rejects copied access tokens.",
+            "Login attempts are rate limited by account and IP.",
+        ],
+        [
+            "AuthService verifies password credentials and rate limits failed login attempts.",
+            "TokenService issues access tokens with TTL and rotates refresh tokens.",
+            "Replay detection rejects copied-token use and revocation denies future requests.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert "Token lifecycle is missing" not in {issue["title"] for issue in payload["issues"]}
+    assert payload["summary"]["critical"] == 0
+
+
+def test_heuristic_accepts_sensitive_field_redaction_context(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "billing export redaction",
+        [
+            "Billing export returns only invoice rows owned by the authenticated tenant.",
+            "Export redaction denylist removes SSN, access_token, password_hash, and recovery_codes.",
+            "Denylisted fields are never exported or logged.",
+        ],
+        [
+            "BillingExportService applies tenant_id scope before selecting rows.",
+            "Redaction removes denylisted fields before the export file is written.",
+            "Audit metadata records export_id, tenant_id, and row_count without sensitive field values.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert "Token lifecycle is missing" not in {issue["title"] for issue in payload["issues"]}
+    assert payload["summary"]["critical"] == 0
+
+
 def test_heuristic_blocks_task_service_idempotency_ambiguity(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
     feature.joinpath("spec.md").write_text(
