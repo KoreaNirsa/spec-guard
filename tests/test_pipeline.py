@@ -2095,6 +2095,185 @@ def test_heuristic_blocks_non_task_domain_readiness_risks(
 
 
 @pytest.mark.parametrize(
+    ("name", "requirements", "design_notes", "expected_title"),
+    [
+        (
+            "oauth consent all scopes",
+            [
+                "User approval grants every scope registered to the client.",
+                "The request does not need to list individual scopes on the consent screen.",
+                "Revoked consent can be re-enabled automatically when the client sends a new authorization request.",
+            ],
+            [
+                "ConsentService creates authorization codes with the client's full registered scope list.",
+                "The authorization code contains every registered scope.",
+            ],
+            "OAuth consent scope boundary is unsafe",
+        ),
+        (
+            "subscription proration undefined",
+            [
+                "Users can switch to another subscription plan.",
+                "The service updates the subscription's plan_id.",
+                "Billing adjustments are handled later by a background process.",
+            ],
+            [
+                "SubscriptionService updates plan_id and emits PlanChanged.",
+                "Billing job eventually adjusts invoices.",
+            ],
+            "Subscription billing transition is ambiguous",
+        ),
+        (
+            "booking double book allowed",
+            [
+                "Booking requests include resource_id, starts_at, and ends_at.",
+                "The service creates a booking even when the time range overlaps another booking.",
+                "Staff can resolve overlapping bookings manually after creation.",
+            ],
+            [
+                "BookingService validates time format and inserts the booking.",
+                "Staff review conflicts later.",
+            ],
+            "Booking conflict contract is unsafe",
+        ),
+        (
+            "feature flag client targeting",
+            [
+                "Client sends tenant_id, user_id, and traits to evaluate a flag.",
+                "The service evaluates the flag using the client-provided fields.",
+                "Server-side tenant or environment lookup is not required.",
+            ],
+            [
+                "FeatureFlagService evaluates rule JSON from the request body.",
+                "Client can supply any tenant_id to evaluate flag rules.",
+            ],
+            "Feature flag targeting boundary is unsafe",
+        ),
+        (
+            "privacy delete missing retention",
+            [
+                "A user can request account data deletion.",
+                "The service removes user records from application tables.",
+                "Legal retention exceptions and audit records are outside this feature.",
+            ],
+            [
+                "PrivacyRequestService deletes rows by user_id.",
+                "Service returns completed after row deletion.",
+            ],
+            "Privacy deletion contract is incomplete",
+        ),
+        (
+            "cache invalidation global flush",
+            [
+                "Tenant users can request cache invalidation by namespace.",
+                "If entity_id is omitted, the service flushes the entire namespace.",
+                "The cache key pattern does not need tenant_id because namespaces are shared.",
+            ],
+            [
+                "CacheInvalidationService builds namespace-wide key patterns.",
+                "CacheClient deletes all matching keys.",
+            ],
+            "Cache invalidation boundary is unsafe",
+        ),
+        (
+            "client-enforced rate limit",
+            [
+                "Clients should wait one second between search requests.",
+                "The server records requests but does not need to reject excess traffic.",
+                "The web client disables the search button during the cooldown.",
+            ],
+            [
+                "SearchController trusts the client cooldown and forwards every request.",
+                "Rate limit states are not stored server-side.",
+            ],
+            "Server-side rate limit is missing",
+        ),
+        (
+            "device trust no expiry",
+            [
+                "Successful MFA can mark a device trusted.",
+                "Trusted devices skip MFA on future logins.",
+                "Trust records do not need expiration or revocation because users can clear cookies.",
+            ],
+            [
+                "DeviceTrustService stores user_id and device_id for trusted devices.",
+                "A trusted device skips MFA one year later.",
+            ],
+            "Device trust lifecycle is unsafe",
+        ),
+        (
+            "ledger entry mutable",
+            [
+                "Finance admins can update amount, currency, or account_id on posted ledger entries.",
+                "The service stores the edited values on the original entry.",
+                "Reversal entries and immutable audit records are not required.",
+            ],
+            [
+                "LedgerService updates ledger entry fields directly.",
+                "Service updates the existing ledger entry row.",
+            ],
+            "Ledger immutability contract is unsafe",
+        ),
+        (
+            "coupon unbounded reuse",
+            [
+                "Checkout accepts coupon_code and applies its percentage discount.",
+                "Coupons do not need expires_at, max_redemptions, or per_customer limits.",
+                "Redemption records are optional because discounts are visible on orders.",
+            ],
+            [
+                "PromotionService looks up coupon_code and applies discount.",
+                "The same customer can reuse the same coupon on unlimited orders.",
+            ],
+            "Coupon redemption contract is unsafe",
+        ),
+        (
+            "background job retry unbounded",
+            [
+                "Failed jobs are retried until they succeed.",
+                "Retry attempts do not need a maximum count or backoff.",
+                "Job handlers can call external APIs each time because failures are rare.",
+            ],
+            [
+                "JobRunner catches exceptions and requeues the job immediately.",
+                "Handler calls an external API on every retry.",
+            ],
+            "Background job retry contract is unsafe",
+        ),
+        (
+            "unsigned inbound webhook",
+            [
+                "Webhook endpoint accepts JSON event payloads.",
+                "Signature verification is not required because the endpoint URL is secret.",
+                "Duplicate event ids may be processed more than once.",
+            ],
+            [
+                "WebhookReceiverService parses JSON and dispatches events.",
+                "A payload without signature is processed.",
+            ],
+            "Webhook signature verification is missing",
+        ),
+    ],
+)
+def test_heuristic_blocks_extended_practical_domain_readiness_risks(
+    tmp_path: Path,
+    name: str,
+    requirements: list[str],
+    design_notes: list[str],
+    expected_title: str,
+) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(feature, name, requirements, design_notes)
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    assert expected_title in {issue["title"] for issue in payload["issues"]}
+
+
+@pytest.mark.parametrize(
     ("name", "requirements", "acceptance", "errors", "design_notes", "state", "failure", "blocked_title"),
     [
         (
@@ -2182,6 +2361,33 @@ def test_heuristic_blocks_non_task_domain_readiness_risks(
             "Payment idempotency contract is ambiguous",
         ),
         (
+            "subscription proration idempotency",
+            [
+                "Change plan requests require subscription_id, target_plan_id, effective_at, and idempotency_key.",
+                "Mid-cycle changes calculate prorated credit and charge lines before invoice creation.",
+                "Replaying the same idempotency_key returns the original plan change result.",
+                "If invoice creation fails, the subscription remains on the original plan.",
+            ],
+            [
+                "Same idempotency key and same request returns the first result.",
+                "Same idempotency key with different target_plan_id returns 409.",
+                "Invoice failure does not change the subscription plan.",
+            ],
+            [
+                "Missing idempotency_key returns 400.",
+                "Idempotency conflict returns 409.",
+                "Invoice provider timeout returns 503.",
+            ],
+            [
+                "SubscriptionService owns plan validation, proration calculation, idempotency records, invoice creation, and rollback.",
+                "InvoiceGateway receives one charge request per accepted plan change.",
+                "Service commits the new plan only after invoice creation succeeds.",
+            ],
+            ["Plan change states: requested, invoiced, applied, failed.", "Failed changes keep the previous subscription state."],
+            ["Billing timeout returns 503 and records failed state."],
+            "Subscription billing transition is ambiguous",
+        ),
+        (
             "inventory reservation concurrency",
             [
                 "Reservation uses sku_id and warehouse_id as the stock scope.",
@@ -2206,6 +2412,33 @@ def test_heuristic_blocks_non_task_domain_readiness_risks(
             ["Reservation states: held, confirmed, expired, released.", "Expired reservations release stock once."],
             ["Insufficient stock returns InventoryError without changing stock."],
             "Inventory reservation contract is unsafe",
+        ),
+        (
+            "booking conflict rejection",
+            [
+                "Booking requests require resource_id, starts_at, ends_at, and idempotency_key.",
+                "The service checks overlapping bookings in a transaction scoped by resource_id before insert.",
+                "If a later request overlaps an existing booking, the service returns 409 and creates no booking.",
+                "Exact idempotency replay returns the original booking result.",
+            ],
+            [
+                "Overlapping booking returns 409.",
+                "Non-overlapping booking creates one booking.",
+                "Exact idempotency replay returns the first booking result.",
+            ],
+            [
+                "Invalid time range returns 400.",
+                "Overlapping booking returns 409.",
+                "Idempotency conflict returns 409.",
+            ],
+            [
+                "BookingService owns resource-scoped overlap checks, idempotency records, and booking creation.",
+                "BookingRepository locks bookings by resource_id and time range inside the transaction.",
+                "Service inserts the booking only after the overlap check succeeds.",
+            ],
+            ["Booking states: requested, confirmed, canceled.", "Confirmed bookings are not moved by later overlap checks."],
+            ["Database conflict rolls back the transaction and returns 409."],
+            "Booking conflict contract is unsafe",
         ),
         (
             "notification preferences",
@@ -2259,6 +2492,60 @@ def test_heuristic_blocks_non_task_domain_readiness_risks(
             ["States: pending, paid, shipped, delivered, cancelled.", "shipped and delivered cannot transition to cancelled."],
             ["Invalid transition returns 409 and leaves state unchanged.", "Event write failure rolls back cancellation."],
             "Order state transition is unsafe",
+        ),
+        (
+            "data retention delete request",
+            [
+                "Delete request creation requires verified user identity.",
+                "The service deletes eligible personal data and preserves records required by legal retention policy.",
+                "Each retained record must include retention_reason and retention_until.",
+                "Completion writes an immutable audit event with requester_id and processed_at.",
+            ],
+            [
+                "Unverified requester returns 403.",
+                "Retained records include retention_reason and retention_until.",
+                "Completed request cannot be processed again.",
+            ],
+            [
+                "Missing authenticated user returns 401.",
+                "Identity verification failure returns 403.",
+                "Already completed request returns 409.",
+            ],
+            [
+                "PrivacyRequestService owns identity verification, delete orchestration, retention exception capture, and immutable audit.",
+                "Domain repositories expose delete_eligible_user_data operations.",
+                "Service marks completed and writes immutable audit.",
+            ],
+            ["Request states: pending, processing, completed, failed.", "Completed requests are terminal."],
+            ["Retention policy lookup failure returns 503 before deletion starts."],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
+            "webhook signature verification",
+            [
+                "Webhook requests require signature, timestamp, event_id, and raw body.",
+                "Signature verification uses the raw body and endpoint secret.",
+                "Timestamps outside a 5 minute tolerance are rejected.",
+                "Processed event_id values are stored so retries are idempotent.",
+            ],
+            [
+                "Invalid signature returns 401.",
+                "Old timestamp returns 401.",
+                "Replayed event_id returns the original processing result.",
+            ],
+            [
+                "Missing signature returns 401.",
+                "Signature mismatch returns 401.",
+                "Event processing conflict returns 409.",
+            ],
+            [
+                "WebhookReceiverService owns signature verification, timestamp tolerance, replay detection, and event dispatch.",
+                "WebhookEventRepository stores event_id, signature timestamp, and processing result.",
+                "Receiver reads raw body and signature headers before parsing.",
+            ],
+            ["Event states: received, processed, failed, ignored.", "Processed event results are replayed for duplicate event_id values."],
+            ["Signature failure returns 401 without parsing the body."],
+            "Webhook side-effect contract is ambiguous",
         ),
     ],
 )
