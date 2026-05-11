@@ -95,7 +95,7 @@ If SpecGuard returns NOT READY, review the findings, edit the spec intentionally
 
 ```text
 [1] View Readiness Findings
-[2] Run the LLM for a detailed spec review. This can take a few minutes.
+[2] Review-only: run LLM Detail Review without rewriting spec.md
 [u] I updated spec.md; rerun SpecGuard
 [q] Exit
 ```
@@ -122,7 +122,7 @@ specs/your-feature-name/implementation-output.md
 
 SpecGuard stops here. It does not invoke Codex, Claude Code, or another coding agent as an internal implementation stage.
 
-Give the approved spec package and `implementation-output.md` to your external coding agent. The generated application code should live under `develop/<stack>/`, for example:
+Give the approved spec package and `implementation-output.md` to your external coding agent. The handoff includes a Copy/Paste Agent Prompt for the coding agent. The generated application code should live under `develop/<stack>/`, for example:
 
 ```text
 develop/spring/
@@ -130,7 +130,7 @@ develop/react/
 develop/fastapi/
 ```
 
-`implementation-output.md` lists the Agent Input Artifacts. It includes every authored Markdown spec artifact reviewed by SpecGuard, including `discovery.md` and additional `.md` notes, then adds generated tests and contracts as implementation and verification inputs. It excludes SpecGuard review reports, cache files, revision audit files, and other generated validation outputs.
+`implementation-output.md` lists the Agent Input Artifacts. It includes every authored Markdown spec artifact reviewed by SpecGuard, including `discovery.md` and additional `.md` notes, then adds generated tests and contracts as implementation and verification inputs. It excludes SpecGuard review reports, cache files, revision audit files, and other generated validation outputs. Its Copy/Paste Agent Prompt tells the coding agent to stop instead of inventing missing product behavior, ownership rules, retries, errors, persistence details, or API fields.
 
 Artifact priority in the handoff:
 

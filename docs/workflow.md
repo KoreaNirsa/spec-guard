@@ -182,8 +182,8 @@ Critical findings always block implementation. READY results are highlighted in 
 After review, the CLI prints a concise Next Action guide:
 
 - READY: Test, Contract, and Implementation Handoff artifacts are ready. Hand `implementation-output.md` and the approved spec package to the external coding agent.
-- READY_WITH_WARNINGS: implementation can proceed at the active review level. Warning findings remain available in `readiness-review.md` if the user wants to strengthen the spec first.
-- NOT_READY: implementation is blocked. Edit `spec.md` using the Readiness Findings, then rerun `specguard run`.
+- READY_WITH_WARNINGS: implementation can proceed at the active review level. The primary handoff is still `implementation-output.md`; warning findings remain available in `readiness-review.md` if the user wants to strengthen the spec first.
+- NOT_READY: implementation is blocked. Edit `spec.md` using the Readiness Findings, or give the scoped CLI prompt to an AI assistant so it strengthens only the current spec intent, then rerun `specguard run`.
 
 Default interactive refinement is review-only:
 
@@ -221,7 +221,7 @@ specs/my-feature/
 `-- implementation-output.md
 ```
 
-`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, the approved artifact list, artifact priority guidance, and the expected verification command or accepted verification artifact for coding agents. The approved artifact list includes every authored Markdown artifact reviewed by SpecGuard, then appends generated tests and contracts as implementation and verification inputs. Generated SpecGuard review reports, cache files, and revision audit files are excluded.
+`implementation-output.md` is an external handoff guide. It includes machine-readable readiness status, the `external_handoff` implementation boundary, the approved artifact list, artifact priority guidance, a copy/paste agent prompt, and the expected verification command or accepted verification artifact for coding agents. The approved artifact list includes every authored Markdown artifact reviewed by SpecGuard, then appends generated tests and contracts as implementation and verification inputs. Generated SpecGuard review reports, cache files, and revision audit files are excluded.
 
 SpecGuard generates missing artifacts and refreshes stale tests and contracts when `spec.md` has changed. Use `--force` when derived artifacts, including `technical-design.md`, should be regenerated even if SpecGuard does not detect them as stale.
 For API features, OpenAPI contracts must include at least one concrete path. Generated contracts derive a first-pass operation, success response, documented error responses, request/response schemas, and `x-specguard-coverage` from the spec's acceptance criteria and error cases. An empty `paths: {}` scaffold remains a contract blocker and prevents implementation handoff until the API surface is specified. Non-API features can use `contracts/contract-exemption.md` when it clearly states that an API contract is not applicable and gives the reason.
