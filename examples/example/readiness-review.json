@@ -1,15 +1,26 @@
 {
   "schema_version": "0.1",
   "review_mode": "initial",
+  "review_level": "low",
   "blocked": false,
   "readiness": {
     "implementation_ready": true,
     "criteria": {
-      "critical": 0,
-      "major": 0,
-      "minor_max": 5
+      "review_level": "low",
+      "ready": {
+        "critical": 0,
+        "major_max": 0,
+        "minor_max": 0
+      },
+      "not_ready": "requires no Critical findings; Major and Minor findings are warnings in low mode.",
+      "ready_with_warnings": {
+        "critical": 0,
+        "major_max": null,
+        "minor_max": null,
+        "note": "Major and Minor findings are warnings in low mode."
+      }
     },
-    "status": "ready"
+    "status": "ready_with_warnings"
   },
   "summary": {
     "critical": 0,
@@ -26,9 +37,11 @@
     }
   ],
   "input": {
+    "artifact_count": 3,
+    "total_characters": 5264,
     "discovery_characters": 2431,
     "spec_characters": 854,
-    "technical_design_characters": 1980,
+    "technical_design_characters": 1979,
     "artifacts": [
       {
         "path": "discovery.md",
@@ -40,9 +53,29 @@
       },
       {
         "path": "technical-design.md",
-        "characters": 1980
+        "characters": 1979
       }
     ]
   },
-  "prompt_mode": "You are SpecGuard's readiness review board: a principal software architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.\n\nYour task is NOT to approve the implementation basis.\nYour task is to BREAK the implementation basis before a coding agent sees it.\n\nReview every spec package artifact together: Discovery, spec, plan, tasks, constitution, checklists, technical design, and any other authored spec document.\n\nUse the SpecGuard Review method:\n- Find contradictions between artifacts.\n- Attack missing requirements, undefined state, ambiguous ownership, weak contracts, unsafe retries, auth gaps, versioning gaps, and untestable acceptance criteria.\n- Convert implementation guesses into Critical or Major findings.\n- Treat style-only improvements as Minor.\n\nImplementation-ready threshold:\n- Critical: 0\n- Major: 0\n- Minor: 5 or fewer, and none may hide a requirement ambiguity."
+  "prompt_mode": "Readiness policy for low review level: NOT_READY only when Critical>=1. READY when Critical=0 and there are no Major or Minor warnings. READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist. Major and Minor findings are warning-level findings and do not block implementation in low mode.",
+  "review_input": {
+    "mode": "heuristic",
+    "review_level": "low",
+    "artifact_count": 3,
+    "total_characters": 5264,
+    "artifacts": [
+      {
+        "path": "discovery.md",
+        "characters": 2431
+      },
+      {
+        "path": "spec.md",
+        "characters": 854
+      },
+      {
+        "path": "technical-design.md",
+        "characters": 1979
+      }
+    ]
+  }
 }

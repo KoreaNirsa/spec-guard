@@ -116,6 +116,30 @@ def test_pr_review_prompt_uses_specguard_reviewer_persona(tmp_path: Path) -> Non
     assert "develop/app.py" in prompt
 
 
+def test_pr_review_context_includes_approved_authored_handoff_artifacts(tmp_path: Path) -> None:
+    feature = write_ready_spec_package(tmp_path)
+    feature.joinpath("discovery.md").write_text("# Discovery\n", encoding="utf-8")
+    feature.joinpath("plan.md").write_text("# Plan\n\nPlan marker.\n", encoding="utf-8")
+    feature.joinpath("tasks.md").write_text("# Tasks\n\nTask marker.\n", encoding="utf-8")
+    feature.joinpath("constitution.md").write_text("# Constitution\n\nConstitution marker.\n", encoding="utf-8")
+    checklist_dir = feature / "checklists"
+    checklist_dir.mkdir()
+    checklist_dir.joinpath("spec-readiness.md").write_text("# Checklist\n\nChecklist marker.\n", encoding="utf-8")
+    feature.joinpath("security-notes.md").write_text("# Security Notes\n\nSecurity marker.\n", encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Generated Report\n\nDo not include.\n", encoding="utf-8")
+    diff = write_diff(tmp_path, "diff --git a/develop/app.py b/develop/app.py\n+++ b/develop/app.py\n+pass\n")
+
+    context = build_review_context([feature], diff)
+    artifact_paths = {path.replace("\\", "/") for path in context.artifacts}
+
+    assert any(path.endswith("specs/feature/plan.md") for path in artifact_paths)
+    assert any(path.endswith("specs/feature/tasks.md") for path in artifact_paths)
+    assert any(path.endswith("specs/feature/constitution.md") for path in artifact_paths)
+    assert any(path.endswith("specs/feature/checklists/spec-readiness.md") for path in artifact_paths)
+    assert any(path.endswith("specs/feature/security-notes.md") for path in artifact_paths)
+    assert not any(path.endswith("specs/feature/readiness-review.md") for path in artifact_paths)
+
+
 def test_pr_review_comment_has_stable_identity_marker(tmp_path: Path) -> None:
     body = render_comment(
         pr_number="42",

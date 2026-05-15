@@ -8,6 +8,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from tools.post_run import readiness_report_stale_reason
+from tools.readiness_engine import is_review_source_artifact
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 
 
@@ -18,16 +19,6 @@ REQUIRED_READINESS_FILES = (
     "technical-design.md",
     "readiness-review.json",
 )
-READINESS_SOURCE_FILES = {
-    "discovery.md",
-    "spec.md",
-    "plan.md",
-    "tasks.md",
-    "constitution.md",
-    "technical-design.md",
-    "checklists/spec-readiness.md",
-}
-
 
 @dataclass(frozen=True)
 class FeatureReadinessGateResult:
@@ -213,7 +204,7 @@ def _changed_source_without_report_reason(
     source_changes = [
         path.as_posix()
         for path in changed_within_feature
-        if path.as_posix() in READINESS_SOURCE_FILES
+        if is_review_source_artifact(path)
     ]
     if not source_changes:
         return None

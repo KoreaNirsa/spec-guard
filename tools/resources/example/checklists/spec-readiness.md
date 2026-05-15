@@ -27,6 +27,6 @@
 ## SpecGuard Readiness Gate
 
 - [ ] Critical findings: 0.
-- [ ] Major findings: 0.
-- [ ] Minor findings: 5 or fewer, with no unresolved ambiguity that blocks coding.
+- [ ] Major and Minor findings are resolved or explicitly accepted according to the active review level.
+- [ ] No unresolved warning hides ambiguity that blocks coding.
 - [x] Acceptance evidence is testable through API, state, audit, concurrency, and contract checks.

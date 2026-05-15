@@ -12,7 +12,7 @@
 ## Design And Validation
 
 - [ ] Run `specguard run specs/team-invite --force`.
-- [ ] Convert every Critical or Major Readiness Finding into a spec, plan, task, checklist, or design update.
+- [ ] Convert every blocking Readiness Finding into a spec, plan, task, checklist, or design update.
 - [ ] Re-run SpecGuard until SpecGuard Review reports implementation-ready status.
 - [ ] Confirm `technical-design.md` has no unresolved Implementation Blockers before handoff.
 
