@@ -2277,6 +2277,172 @@ def test_heuristic_blocks_extended_practical_domain_readiness_risks(
 
 
 @pytest.mark.parametrize(
+    ("name", "requirements", "design_notes", "expected_title"),
+    [
+        (
+            "한국어 테넌트 클라이언트 필터링",
+            [
+                "청구 내보내기는 모든 테넌트의 invoice 행을 반환하고 tenant_id를 포함한다.",
+                "브라우저에서 tenant_id 기준으로 필터링한다.",
+                "서버 측 테넌트 검증은 필요하지 않다.",
+            ],
+            [
+                "ExportService는 전역 invoice 조회를 수행한다.",
+                "프론트에서 자기 테넌트 데이터만 숨긴다.",
+            ],
+            "Tenant boundary is unsafe",
+        ),
+        (
+            "한국어 토큰 만료 철회 누락",
+            [
+                "로그인 성공 시 장기 토큰을 발급한다.",
+                "토큰은 만료되지 않으며 철회 기능은 필수 아님.",
+                "복사된 토큰 재사용도 허용된다.",
+            ],
+            [
+                "SessionService는 token_hash와 user_id만 저장한다.",
+                "만료와 철회 상태는 저장하지 않는다.",
+            ],
+            "Token lifecycle is missing",
+        ),
+        (
+            "한국어 결제 멱등성 누락",
+            [
+                "환불 요청은 외부 결제 게이트웨이에 전달된다.",
+                "네트워크 실패 시 호출자는 재시도할 수 있다.",
+                "멱등키는 필수 아님. 중복 환불은 나중에 재조정한다.",
+            ],
+            [
+                "RefundService는 매 요청마다 게이트웨이에 환불을 보낸다.",
+                "타임아웃이면 클라이언트가 다시 요청한다.",
+            ],
+            "Payment idempotency contract is ambiguous",
+        ),
+        (
+            "한국어 감사 로그 수정 가능",
+            [
+                "관리자 작업에는 감사 로그를 남긴다.",
+                "감사 로그는 관리자가 수정 또는 삭제 가능하다.",
+                "불변 감사 기록은 필수 아님.",
+            ],
+            [
+                "AuditService는 기존 감사 row를 직접 업데이트한다.",
+                "수정 이력은 별도 보관하지 않는다.",
+            ],
+            "Audit evidence is mutable",
+        ),
+        (
+            "한국어 개인정보 삭제 보존 누락",
+            [
+                "사용자는 계정 개인정보 삭제를 요청할 수 있다.",
+                "서비스는 user_id로 application table의 행을 삭제한다.",
+                "본인 확인, 보존 예외, 감사 기록은 이번 범위 밖이다.",
+            ],
+            [
+                "PrivacyRequestService는 user_id 기준 row를 삭제한다.",
+                "서비스는 삭제 후 completed를 반환한다.",
+            ],
+            "Privacy deletion contract is incomplete",
+        ),
+        (
+            "한국어 주문 상태 전이 누락",
+            [
+                "주문은 어떤 상태에서도 취소 가능하다.",
+                "배송 후 취소도 허용된다.",
+                "잘못된 상태 전이는 정의하지 않는다.",
+            ],
+            [
+                "OrderService는 요청이 유효하면 상태를 cancelled로 바꾼다.",
+                "배송 상태별 side effect는 나중에 처리한다.",
+            ],
+            "Order state transition is unsafe",
+        ),
+        (
+            "한국어 웹훅 서명 검증 누락",
+            [
+                "웹훅 엔드포인트는 JSON 이벤트 payload를 처리한다.",
+                "서명 검증은 필수 아님. 엔드포인트 URL이 비밀이면 충분하다.",
+                "중복 event_id는 두 번 이상 처리될 수 있다.",
+            ],
+            [
+                "WebhookReceiverService는 payload를 파싱해 바로 dispatch한다.",
+                "서명 없는 payload도 처리한다.",
+            ],
+            "Webhook signature verification is missing",
+        ),
+        (
+            "한국어 백그라운드 재시도 무제한",
+            [
+                "실패한 작업은 성공할 때까지 계속 재시도한다.",
+                "최대 재시도 횟수와 백오프는 필수 아님.",
+                "작업 핸들러는 외부 API를 매번 다시 호출할 수 있다.",
+            ],
+            [
+                "JobRunner는 예외를 잡으면 작업을 즉시 재큐잉한다.",
+                "Handler는 재시도마다 외부 API를 호출한다.",
+            ],
+            "Background job retry contract is unsafe",
+        ),
+    ],
+)
+def test_heuristic_blocks_korean_readiness_risks(
+    tmp_path: Path,
+    name: str,
+    requirements: list[str],
+    design_notes: list[str],
+    expected_title: str,
+) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(feature, name, requirements, design_notes)
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    assert expected_title in {issue["title"] for issue in payload["issues"]}
+
+
+def test_heuristic_accepts_korean_safe_mitigation_text(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    _write_domain_risk_feature(
+        feature,
+        "한국어 안전한 결제와 테넌트 경계",
+        [
+            "청구 내보내기는 인증된 tenant_id 범위에서만 서버가 invoice 행을 조회한다.",
+            "환불 요청은 refund_idempotency_key가 필수이며 동일 키와 동일 금액은 최초 결과를 반환한다.",
+            "동일 키와 다른 금액은 409 충돌 오류를 반환한다.",
+            "세션 토큰은 15분 후 만료되고 refresh token 재사용은 세션 패밀리를 철회한다.",
+            "감사 로그는 append-only로 저장하며 개인정보 삭제는 본인 확인과 보존 예외를 기록한다.",
+        ],
+        [
+            "ExportService는 tenant_id 조건을 필수 repository predicate로 전달한다.",
+            "RefundService는 게이트웨이 호출 전에 멱등 레코드를 예약한다.",
+            "SessionService는 만료, 철회, 재사용 탐지 상태를 저장한다.",
+            "AuditService는 불변 이벤트만 추가한다.",
+        ],
+        acceptance=[
+            "다른 테넌트 invoice는 서버 응답에 포함되지 않는다.",
+            "환불 멱등 재시도는 최초 결과를 반환한다.",
+            "토큰 만료와 철회는 401을 반환한다.",
+        ],
+        errors=[
+            "교차 테넌트 요청은 404를 반환한다.",
+            "멱등키 충돌은 409를 반환한다.",
+            "만료 또는 철회된 토큰은 401을 반환한다.",
+        ],
+    )
+
+    result = run_readiness_review(feature)
+
+    payload = json.loads(feature.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+    assert result.ok
+    assert payload["summary"]["critical"] == 0
+    assert "Tenant boundary is unsafe" not in {issue["title"] for issue in payload["issues"]}
+    assert "Payment idempotency contract is ambiguous" not in {issue["title"] for issue in payload["issues"]}
+
+
+@pytest.mark.parametrize(
     ("name", "requirements", "acceptance", "errors", "design_notes", "state", "failure", "blocked_title"),
     [
         (

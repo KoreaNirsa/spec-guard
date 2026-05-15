@@ -8,10 +8,11 @@ This benchmark does not treat Spec Kit, OpenSpec, and SpecGuard as directly comp
 
 ## Executive Summary
 
-The calibrated v0.3.1 refresh now has two evidence layers:
+The calibrated benchmark now has three evidence layers:
 
 - The original #136 18-case in-memory Python `TaskService` impact suite: 6 ready-reference specs and 12 weak specs. This suite includes raw Codex generation, SpecGuard gate evaluation, and SpecGuard handoff generation from the pre-#129 run.
 - A v0.3.1 gate-only rerun with the same 18 cases plus 50 supplemental and 30 extended real-world-style gate cases across auth/session, billing export, document sharing, webhooks, payments, inventory, support, admin roles, audit, data export, search, file upload, orders, workspace invites, notifications, profile updates, API keys, SSO, privacy, cache, returns, ledger, promotions, and background jobs.
+- A v0.3.2 Korean gate-only layer with 98 corresponding Korean cases: `impact_v2_ko`, `gate_only_supplemental_v1_ko`, and `gate_only_extended_v2_ko`. These are realistic Korean product-prose fixtures, not code-generation runs.
 
 The original #136 full generation run found that raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. Before #129, SpecGuard blocked 3 of those weak specs. In the calibrated v0.3.1 local `--no-llm` gate, the same original suite blocks 11 of 12 weak specs.
 
@@ -49,27 +50,34 @@ The supplemental and extended gate-only suites are intentionally broader than th
 
 The reproduced 68-case run confirms the improved local gate is strong on the deterministic patterns added in #129, #138, and #140: it blocks 45 of 47 weak cases with no ready-reference false positives. The #142 extended calibration blocks all 18 weak practical-domain cases while preserving zero false positives across the 12 extended ready-reference cases.
 
+The v0.3.2 Korean layer reports English and Korean gate-only metrics separately. In this working-tree run, the English 98-case baseline remains at 63/65 weak specs blocked with 0 ready-reference false positives. The Korean 98-case layer blocks 65/65 weak specs with 0 ready-reference false positives.
+
 ## Benchmark Metadata
 
 | Item | Value |
 | --- | --- |
 | Original full impact JSON | [`docs/benchmark-results/specguard-impact-v0.3.0.json`](benchmark-results/specguard-impact-v0.3.0.json) |
 | v0.3.1 gate-only JSON | [`docs/benchmark-results/specguard-gate-only-v0.3.1.json`](benchmark-results/specguard-gate-only-v0.3.1.json) |
+| v0.3.2 English/Korean gate-only JSON | [`docs/benchmark-results/specguard-gate-only-v0.3.2.json`](benchmark-results/specguard-gate-only-v0.3.2.json) |
 | Result schema | `specguard-impact-benchmark/v2` |
-| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `3` |
+| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `4` |
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
 | v0.3.1 gate-only timestamp | `2026-05-11T14:18:22.699591+00:00` to `2026-05-11T14:18:28.946457+00:00` |
+| v0.3.2 English/Korean gate-only timestamp | `2026-05-15T09:07:50.369407+00:00` to `2026-05-15T09:07:57.964756+00:00` |
 | SpecGuard package version | `0.3.0` |
 | Original full run commit | `13218f58b9f1354b8fc059490c26f4a2a0b43c6a` |
 | v0.3.1 gate-only commit | `d06824784f023993094d239346a8c52d81af1396` |
+| v0.3.2 English/Korean gate-only commit | `f97f5f32faf894105dd770a78df626d86cadb18b` |
 | v0.3.1 gate-only git dirty | `true` |
+| v0.3.2 English/Korean gate-only git dirty | `true` |
 | Codex package | `@openai/codex@0.128.0` |
 | Model | `gpt-5.5` |
 | Reasoning effort | `low` |
 | SpecGuard gate | `python -m cli.specguard run <package> --no-llm --no-follow-up` |
 | Supplemental and extended run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.3.1.json` |
+| English/Korean run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.3.2.json` |
 
-The v0.3.1 gate-only run is intentionally recorded as a working-tree run because the benchmark result artifact and benchmark case expansion are part of this PR update. A later release-quality benchmark can rerun from a clean tag after the benchmark changes merge.
+The v0.3.1 and v0.3.2 gate-only runs are intentionally recorded as working-tree runs because their benchmark result artifacts and benchmark case expansion are part of their PR updates. A later release-quality benchmark can rerun from a clean tag after the benchmark changes merge.
 
 ## Modes
 
@@ -80,6 +88,9 @@ The v0.3.1 gate-only run is intentionally recorded as a working-tree run because
 | `specguard_handoff_ai` | Codex generates implementation only after SpecGuard reports `READY` or `READY_WITH_WARNINGS`. | Executed in original #136 run |
 | `gate_only_supplemental_v1` | Multi-domain local gate-only supplemental suite. | Executed in v0.3.1 rerun |
 | `gate_only_extended_v2` | Additional practical gate-only suite across less-covered business domains. | Executed in v0.3.1 rerun |
+| `impact_v2_ko` | Korean gate-only variants corresponding to the original 18 impact cases. | Executed in v0.3.2 rerun |
+| `gate_only_supplemental_v1_ko` | Korean gate-only variants corresponding to the supplemental 50-case suite. | Executed in v0.3.2 rerun |
+| `gate_only_extended_v2_ko` | Korean gate-only variants corresponding to the extended 30-case suite. | Executed in v0.3.2 rerun |
 | `future_llm_specguard_review` | Compare local heuristic gate with LLM-backed SpecGuard Review. | Reserved |
 | `future_strict_e2e` | Measure whether Strict E2E can revise blocked specs into safer implementation inputs. | Reserved |
 
@@ -114,6 +125,8 @@ The v0.3.1 gate-only rerun does not execute Codex and does not produce new post-
 
 The supplemental 50-case suite and extended 30-case suite add practical specification shapes that are not limited to the TaskService hidden contract. They measure readiness gate behavior only.
 
+The Korean layer adds corresponding gate-only fixtures for the same 98 cases. The Korean cases keep the benchmark domains and expected ready/weak classification, but rewrite the implementation-risk prose in realistic Korean wording. The benchmark output carries `language`, `source_case_id`, `suite_counts`, `language_counts`, `gate_by_suite`, and `gate_by_language` so English and Korean results can be compared without merging their claims.
+
 ## Aggregate Results
 
 ### Original Full Impact Run From #136
@@ -140,6 +153,19 @@ The supplemental 50-case suite and extended 30-case suite add practical specific
 | Reproduced 68-case subtotal | 68 | 45/47 | 0/21 | 95.7% | 0.0% | 4.3% |
 | Extended 30-case gate suite | 30 | 18/18 | 0/12 | 100.0% | 0.0% | 0.0% |
 | Combined gate-only run | 98 | 63/65 | 0/33 | 96.9% | 0.0% | 3.1% |
+
+### v0.3.2 English/Korean Gate-Only Rerun
+
+| Language | Evaluated | Weak Blocked | Ready Blocked | Weak Block Rate | False Positive Rate | False Negative Rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| English | 98 | 63/65 | 0/33 | 96.9% | 0.0% | 3.1% |
+| Korean | 98 | 65/65 | 0/33 | 100.0% | 0.0% | 0.0% |
+
+| Korean Gate Suite | Evaluated | Weak Blocked | Ready Blocked | Weak Block Rate | False Positive Rate | False Negative Rate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `impact_v2_ko` | 18 | 12/12 | 0/6 | 100.0% | 0.0% | 0.0% |
+| `gate_only_supplemental_v1_ko` | 50 | 35/35 | 0/15 | 100.0% | 0.0% | 0.0% |
+| `gate_only_extended_v2_ko` | 30 | 18/18 | 0/12 | 100.0% | 0.0% | 0.0% |
 
 ## Original Case Results
 
@@ -189,6 +215,7 @@ Remaining false negatives:
 False positives:
 
 - None in the 98-case gate-only run.
+- None in the v0.3.2 Korean 98-case gate-only layer.
 
 The remaining false negatives are intentionally left visible instead of being hidden by benchmark narrowing. They are now limited to the original title-normalization ambiguity and the supplemental document-sharing ownership gap.
 
@@ -197,6 +224,17 @@ The remaining false negatives are intentionally left visible instead of being hi
 The #129, #138, #140/#141, and #142 heuristic calibration materially improves the original benchmark target. Against the #136 raw AI exposure baseline, the local low gate now prevents 10 of 11 observed weak-spec exposure paths, up from 3 of 11. The original ready-reference cases still produce no false positives.
 
 The reproduced 68-case run changes the interpretation from "the gate is conservative" to "the gate is precise for the currently calibrated deterministic patterns." The extended 30-case run now supports the same interpretation across the added practical-domain cases, while the benchmark limitations still apply because supplemental and extended suites are gate-only.
+
+The Korean layer supports a narrower claim: deterministic low-mode checks now recognize explicit Korean unsafe wording for ownership and tenant scope, idempotency and replay, expiry and revocation, client-side delegation, external side effects, state transitions, audit mutability, privacy retention, webhook signature/retry policy, cache scope, rate limits, coupons, and background job retries. It does not claim that every Korean phrasing of these risks is covered.
+
+## Language Support Levels
+
+| Spec Language | Current Support Claim |
+| --- | --- |
+| English specs | Calibrated against the 98-case gate-only suite and the original 18-case impact history. |
+| Mixed Korean/English specs | Supported when Korean product prose is paired with common contract identifiers such as `tenant_id`, `idempotency_key`, `expires_at`, `revoked_at`, `event_id`, or service names. |
+| Korean-only product prose | Initial deterministic low-mode support for explicit unsafe wording in the v0.3.2 Korean 98-case layer. Product prose is Korean, while benchmark section headings remain compatible with the current spec parser. |
+| Korean production completeness | Not claimed. The benchmark covers explicit unsafe wording, not all idioms, subtle legal/privacy variants, or model-backed Korean review quality. |
 
 ## Spec Kit And OpenSpec Reference
 
@@ -222,6 +260,7 @@ The supplemental and extended ready-reference cases are gate-only. They are usef
 - The supplemental 50-case and extended 30-case suites are gate-only and do not measure raw AI or post-gate implementation defect rates.
 - Each generated-code case in #136 used one Codex generation, so the full impact results are not statistical confidence intervals.
 - The SpecGuard gate is local `--no-llm` low mode. It does not measure LLM-backed SpecGuard Review.
+- The Korean layer is gate-only and deterministic. It does not measure raw AI generation, LLM-backed Korean review, or full Korean production support.
 - `READY_WITH_WARNINGS` is treated as implementation-allowed because that is the current low-mode contract.
 - Hidden checks cover the original benchmark contract, not all possible production risks.
 - The v0.3.1 gate-only run was executed from a working tree containing benchmark changes, so `git_dirty=true` is expected in the result JSON.
@@ -239,4 +278,5 @@ The supplemental and extended ready-reference cases are gate-only. They are usef
 | PR drift | Measure SpecGuard PR Review against implementation diffs. |
 | False negatives | Promote the remaining title-normalization and document-sharing ownership gaps into deterministic Critical checks where justified. |
 | False positives | Keep ready-reference false positives at 0 across the gate-only suite while expanding future domains. |
+| Korean coverage | Add more Korean phrasing variants and rerun from a clean v0.3.2 tag before making broader Korean support claims. |
 | Reference tools | Keep Spec Kit/OpenSpec as secondary context with clearly separated layer claims. |

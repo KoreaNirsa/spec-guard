@@ -216,6 +216,350 @@ def _context_fragments(context: str) -> list[str]:
     return list(fragments)
 
 
+def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
+    if not any(re.search(r"[가-힣]", context) for context in contexts):
+        return None
+
+    for context in contexts:
+        task_scope = _context_has_any(context, ("할 일", "작업", "taskservice", "list_tasks", "todo"))
+        if task_scope and _context_has_any(context, ("모든 사용자", "모든 작업", "전체 작업", "전역 조회")) and (
+            _context_has_any(context, ("클라이언트", "브라우저", "프론트"))
+            or _context_has_any(context, ("서버 측 소유권", "서버 소유권"))
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Todo ownership boundary is unclear",
+                "The Korean spec package allows task data to be returned across users before server-side owner scoping.",
+                "Generated code can expose cross-user task data through list, update, or delete operations.",
+                "Require server-side owner-scoped queries and authorization checks for every todo read/write path.",
+            )
+
+        tenant_scope = _context_has_any(context, ("테넌트", "조직", "워크스페이스", "tenant_id", "owner_id", "소유권"))
+        if tenant_scope and (
+            (
+                _context_has_any(context, ("클라이언트", "브라우저", "프론트"))
+                and _context_has_any(context, ("필터", "숨김", "처리"))
+                and _context_matches_any(
+                    context,
+                    (
+                        r"(모든|전체).*(행|데이터|작업|티켓|레코드).*(반환|응답)",
+                        r"(반환|응답).*(tenant_id|owner_id|테넌트|소유자).*필터",
+                    ),
+                )
+            )
+            or _context_matches_any(
+                context,
+                (
+                    r"서버\s*측\s*(테넌트|소유권|권한|검증).*(필요하지|필수\s*아님|불필요|범위\s*밖)",
+                    r"(테넌트|소유자|조직|워크스페이스).*검증.*(필요하지|필수\s*아님|불필요)",
+                    r"(모든|전체).*(행|데이터|작업|티켓|레코드).*반환",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Tenant boundary is unsafe",
+                "The Korean spec package allows cross-tenant or cross-owner rows to be returned before server-side scoping.",
+                "Generated code can expose billing, search, profile, or task data across tenant boundaries.",
+                "Require every export, list, and read path to apply tenant or user scope on the server before data is returned.",
+            )
+
+        if _context_has_any(context, ("캐시", "cache", "namespace")) and _context_matches_any(
+            context,
+            (
+                r"(전체|global|namespace).*(flush|플러시|무효화)",
+                r"(cache key|캐시\s*키).*tenant_id.*(필요하지|필수\s*아님|불필요)",
+                r"namespace.*공유",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Cache invalidation boundary is unsafe",
+                "The Korean spec package can flush shared namespaces or omit tenant-scoped cache keys.",
+                "Generated code can delete or expose cache data across tenants.",
+                "Require tenant-scoped cache keys and reject tenant-initiated global flush requests.",
+            )
+
+        if _context_has_any(context, ("토큰", "세션", "초대", "신뢰 기기", "api 키", "api키")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"(토큰|세션|초대|신뢰 기기).*(만료되지|만료.*필수\s*아님|만료.*필요하지|무기한)",
+                    r"(철회|폐기|무효화).*(필수\s*아님|필요하지|불필요|범위\s*밖)",
+                    r"(복사|재사용|리플레이).*(토큰|세션).*(허용|가능|accepted)",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Token lifecycle is missing",
+                f"Authentication token behavior permits an unsafe Korean lifecycle decision: {context}",
+                "Leaked, replayed, or copied tokens can remain valid or reusable longer than intended.",
+                "Define token expiration, revocation, rotation or replay detection, and copied-token rejection.",
+            )
+
+        payment_scope = _context_has_any(context, ("결제", "환불", "지급", "정산", "게이트웨이", "배송사", "외부 api"))
+        if payment_scope and (
+            _context_matches_any(
+                context,
+                (
+                    r"(멱등|idempotency|idempotency_key).*(필수\s*아님|필요하지|선택\s*사항|범위\s*밖)",
+                    r"(중복\s*호출|중복\s*결제|중복\s*환불|중복\s*요청).*(허용|가능|나중에|재조정)",
+                    r"(타임아웃|네트워크 실패).*재시도.*(멱등|중복).*(정의하지|필수\s*아님|나중에)",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Payment idempotency contract is ambiguous",
+                "The Korean spec package leaves idempotency, duplicate side effects, or gateway timeout state undefined.",
+                "Generated code can retry unsafe operations and produce duplicate financial or external side effects.",
+                "Specify idempotency scope, conflict response, timeout reconciliation, and retry boundaries.",
+            )
+
+        if _context_has_any(context, ("구독", "요금제", "plan_id", "청구", "invoice")) and _context_matches_any(
+            context,
+            (
+                r"(proration|일할|청구|invoice|멱등).*(정의하지|나중에|필수\s*아님|누락)",
+                r"(청구|invoice).*(나중에|추후|수동)",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Subscription billing transition is ambiguous",
+                "The Korean spec package omits proration, idempotency, invoice timing, or rollback semantics.",
+                "Generated code can update subscription state without a defensible billing contract.",
+                "Define proration calculation, invoice failure rollback, idempotency replay, and conflict behavior.",
+            )
+
+        if _context_has_any(context, ("예약", "booking", "resource_id", "겹치는")) and _context_matches_any(
+            context,
+            (
+                r"(겹치는|중복).*(예약).*(생성|확정|허용|가능)",
+                r"(충돌|겹침).*(수동|나중에|추후)",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Booking conflict contract is unsafe",
+                "The Korean spec package allows overlapping reservations or defers conflict handling until after confirmation.",
+                "Generated code can double-book scarce resources.",
+                "Require transactional overlap checks and a 409 response for conflicting reservations.",
+            )
+
+        if _context_has_any(context, ("재고", "inventory", "stock", "sku", "예약")) and _context_matches_any(
+            context,
+            (
+                r"(재고|stock).*(음수|0\s*미만|below zero)",
+                r"(동시|병렬|concurrent).*(정의하지|락|lock|transaction|원자).*(않|없)",
+                r"(oversell|초과\s*판매|중복\s*예약).*(허용|가능)",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Inventory reservation contract is unsafe",
+                "The Korean spec package can oversell because concurrency or atomic stock mutation behavior is undefined.",
+                "Generated code can reserve the same units multiple times or allow negative stock.",
+                "Define atomic reservation semantics, concurrency conflict behavior, and rejection for insufficient stock.",
+            )
+
+        if _context_has_any(context, ("웹훅", "webhook", "subscriber", "구독자")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"(서명|signature).*검증.*(필수\s*아님|필요하지|불필요)",
+                    r"엔드포인트\s*url.*비밀",
+                    r"(timeout|타임아웃|retry|재시도|멱등|event_id).*(범위\s*밖|정의하지|필수\s*아님|필요하지)",
+                    r"중복\s*(event_id|이벤트|전송).*(허용|가능|처리)",
+                ),
+            )
+        ):
+            if _context_has_any(context, ("서명", "signature", "엔드포인트 url")):
+                return ReadinessIssue(
+                    "Critical",
+                    "Webhook signature verification is missing",
+                    "The Korean spec package trusts unsigned or replayed inbound webhook payloads.",
+                    "Generated code can process forged external events.",
+                    "Require raw-body signature verification, timestamp tolerance, event_id idempotency, and replay rejection.",
+                )
+            return ReadinessIssue(
+                "Critical",
+                "Webhook side-effect contract is ambiguous",
+                "The Korean spec package leaves webhook timeout, retry, or idempotency policy undefined.",
+                "Generated code can hang on subscriber calls or duplicate external side effects.",
+                "Define timeout budgets, retry policy, delivery idempotency key, and duplicate delivery handling.",
+            )
+
+        if _context_has_any(context, ("상태", "주문", "배송", "반품", "삭제", "취소")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"(어떤|모든)\s*상태.*(취소|완료|수정).*가능",
+                    r"(배송\s*후\s*취소|삭제\s*후\s*수정|환불\s*후\s*반품).*(허용|가능)",
+                    r"(종료\s*상태|잘못된\s*상태\s*전이|invalid transition).*(정의하지|필수\s*아님|선택\s*사항)",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Order state transition is unsafe",
+                "The Korean spec package allows unsafe or undefined terminal-state transitions.",
+                "Generated code can violate fulfillment, deletion, refund, or return invariants.",
+                "Define allowed transitions, terminal states, invalid transition errors, and side effects for each state.",
+            )
+
+        if _context_has_any(context, ("감사 로그", "감사 기록", "감사 이벤트", "감사", "원장", "ledger")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"(감사\s*(로그|기록|이벤트)|원장|ledger).*(수정|삭제|덮어쓰기|변경).*(가능|허용)",
+                    r"(불변|반전\s*항목|reversal).*(필수\s*아님|필요하지|불필요)",
+                    r"기존\s*(row|기록|항목).*덮어쓴",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Audit evidence is mutable",
+                "The Korean spec package allows audit or ledger records to be edited, deleted, or overwritten.",
+                "Generated code can destroy compliance evidence or financial auditability.",
+                "Require append-only audit records, immutable posted entries, and explicit retention behavior.",
+            )
+
+        if _context_has_any(context, ("개인정보", "삭제 요청", "보존", "retention")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"(본인\s*확인|보존\s*예외|감사\s*기록|retention).*(범위\s*밖|정의하지|필수\s*아님|필요하지)",
+                    r"user_id.*행.*삭제",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Privacy deletion contract is incomplete",
+                "The Korean spec package omits identity verification, retention exceptions, or audit evidence for deletion.",
+                "Generated code can delete or retain personal data without a reviewable privacy contract.",
+                "Define requester verification, eligible deletion scope, retained-record reasons, retention_until, and audit.",
+            )
+
+        if _context_has_any(context, ("파일", "업로드", "attachment", "첨부")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"(최대\s*크기|content-type|mime|형식).*정의하지",
+                    r"(바이러스|악성).*검사.*(범위\s*밖|필수\s*아님|필요하지)",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "File upload validation is missing",
+                "The Korean spec package leaves file size, content type, or scanning requirements undefined.",
+                "Generated code can accept unsafe or unbounded files.",
+                "Define maximum size, allowed content types, storage path constraints, and malware scanning policy.",
+            )
+
+        if _context_has_any(context, ("rate limit", "요청 제한", "쿨다운", "cooldown", "검색 요청")) and _context_matches_any(
+            context,
+            (
+                r"서버.*(거부|차단).*(필요가 없다|필요하지|필수\s*아님)",
+                r"(클라이언트|브라우저|웹).*cooldown",
+                r"(rate limit|요청 제한).*서버.*(저장하지|필요하지)",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Server-side rate limit is missing",
+                "The Korean spec package delegates rate limiting to the client while direct API calls remain unrestricted.",
+                "Generated code can allow abusive traffic despite documented cooldowns.",
+                "Require server-side rate limit state, rejection behavior, and retry-after semantics.",
+            )
+
+        if _context_has_any(context, ("알림", "notification", "unsubscribe", "구독 해지")) and _context_matches_any(
+            context,
+            (
+                r"(global|전체|공통).*(unsubscribe|구독\s*해지|수신\s*거부)",
+                r"(보안|security).*(알림|이메일).*(비활성|꺼짐|disable)",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Notification safety contract is unsafe",
+                "The Korean spec package can disable security notifications through a generic unsubscribe or preference.",
+                "Generated code can suppress account-security alerts unexpectedly.",
+                "Separate mandatory security notifications from marketing or product notification preferences.",
+            )
+
+        if _context_has_any(context, ("쿠폰", "coupon", "프로모션", "할인")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"(만료|최대\s*사용|고객별|사용\s*기록).*(필수\s*아님|필요하지|선택\s*사항)",
+                    r"(무제한|제한\s*없이).*(재사용|사용)",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Coupon redemption contract is unsafe",
+                "The Korean spec package lacks expiration, redemption, or per-customer limits.",
+                "Generated code can allow unbounded promotion reuse.",
+                "Define expiration, redemption records, max_redemptions, per-customer limits, and conflict behavior.",
+            )
+
+        if _context_has_any(context, ("작업", "백그라운드", "jobrunner", "job")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"성공할\s*때까지.*재시도",
+                    r"(최대\s*재시도|백오프).*(필수\s*아님|필요하지|불필요)",
+                    r"외부\s*api.*(매번|다시)\s*호출",
+                    r"즉시\s*재큐",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Background job retry contract is unsafe",
+                "The Korean spec package allows indefinite retries without backoff, max attempts, or idempotent side-effect bounds.",
+                "Generated code can cause retry storms or duplicate external side effects.",
+                "Define max attempts, backoff, dead-letter behavior, and idempotency for side-effecting handlers.",
+            )
+
+        if _context_has_any(context, ("권한", "역할", "관리자", "owner", "소유자")) and (
+            _context_matches_any(
+                context,
+                (
+                    r"서버\s*측\s*(권한|역할).*(필수\s*아님|필요하지|범위\s*밖)",
+                    r"(ui|프론트|클라이언트).*(숨김|비활성)",
+                    r"마지막\s*소유자.*(정의하지|삭제|제거)",
+                ),
+            )
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Server-side authorization is missing",
+                "The Korean spec package relies on client visibility or leaves privileged mutation checks undefined.",
+                "Generated code can allow unauthorized role changes or removal of the last owner.",
+                "Require server-side authorization for every privileged action and define last-owner protection.",
+            )
+
+        if _context_has_any(context, ("나중에 처리", "추후 작업", "수동 처리", "구현자가 합리적으로 선택")) and _context_has_any(
+            context,
+            ("소유권", "멱등", "만료", "철회", "감사", "상태 전이", "권한"),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Task service acceptance evidence is too vague",
+                "The Korean spec package defers ownership, idempotency, lifecycle, audit, or authorization policy to later work.",
+                "Generated code must guess important contract behavior before implementation starts.",
+                "Replace vague acceptance language with explicit owner-scope, idempotency, validation, lifecycle, and state criteria.",
+            )
+
+    return None
+
+
 def _todo_contexts(contexts: list[str]) -> list[str]:
     return [context for context in contexts if _context_has_any(context, ("todo", "todos"))]
 
@@ -398,10 +742,29 @@ def _has_token_lifecycle_control_context(contexts: list[str]) -> bool:
         "replay detection",
         "replay is blocked",
         "replay blocked",
+        "만료",
+        "철회",
+        "폐기",
+        "무효화",
+        "재사용 탐지",
     )
-    unsafe_markers = ("does not", "doesn't", "no ", "without ", "accepted", "allowed", "permitted", "out of scope")
+    unsafe_markers = (
+        "does not",
+        "doesn't",
+        "no ",
+        "without ",
+        "accepted",
+        "allowed",
+        "permitted",
+        "out of scope",
+        "필수 아님",
+        "필요하지",
+        "불필요",
+        "범위 밖",
+        "허용",
+    )
     for context in contexts:
-        if not _context_has_any(context, ("token", "tokens")):
+        if not _context_has_any(context, ("token", "tokens", "토큰", "세션", "초대")):
             continue
         if _context_has_any(context, lifecycle_markers) and not _context_has_any(context, unsafe_markers):
             return True
@@ -580,6 +943,7 @@ def _is_payment_context(context: str) -> bool:
             r"\b(payment|refund|charge|capture|payout)\s+(gateway|processor)\b",
             r"\bcaptures?\b.*\b(payment|charge|gateway|processor)\b",
             r"\b(payment|charge|gateway|processor)\b.*\bcaptures?\b",
+            r"(결제|환불|지급|정산|게이트웨이)",
         ),
     )
 
@@ -597,6 +961,7 @@ def _is_payment_side_effect_context(context: str) -> bool:
             r"\bretr(y|ies)\b",
             r"\bgateway\b",
             r"\bprocessor\b",
+            r"(생성|요청|호출|환불|결제|재시도|게이트웨이)",
         ),
     )
 
@@ -607,7 +972,7 @@ def _has_payment_idempotency_context(contexts: list[str]) -> bool:
         for context in contexts
         for fragment in _context_fragments(context)
     )
-    idempotency_markers = ("idempotency", "idempotency_key", "idempotency key", "idempotent")
+    idempotency_markers = ("idempotency", "idempotency_key", "idempotency key", "idempotent", "멱등", "멱등키")
     local_policy_markers = (
         "required",
         "create request",
@@ -619,6 +984,12 @@ def _has_payment_idempotency_context(contexts: list[str]) -> bool:
         "returns 400",
         "returns 409",
         "conflict",
+        "필수",
+        "동일 키",
+        "동일 금액",
+        "최초 결과",
+        "충돌",
+        "재시도",
     )
     foreign_idempotency_markers = (
         "audit",
@@ -638,6 +1009,16 @@ def _has_payment_idempotency_context(contexts: list[str]) -> bool:
         "upload",
         "ticket",
         "order",
+        "감사",
+        "웹훅",
+        "재고",
+        "예약",
+        "내보내기",
+        "검색",
+        "알림",
+        "문서",
+        "파일",
+        "주문",
     )
     for context in contexts:
         for fragment in _context_fragments(context):
@@ -1973,6 +2354,10 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
                 "Attackers can automate credential guessing against the endpoint.",
                 "Add rate limits by account and IP, progressive delay, audit logging, and lockout rules.",
             ))
+
+    korean_blocker = _korean_semantic_blocker(contexts)
+    if korean_blocker is not None and korean_blocker.title not in {issue.title for issue in issues}:
+        issues.append(korean_blocker)
 
     if _has_todo_feature_scope(contexts):
         unsafe_todo_context = _unsafe_todo_owner_context(contexts, technical_contexts)
