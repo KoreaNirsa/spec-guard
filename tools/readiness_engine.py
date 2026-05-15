@@ -9,7 +9,7 @@ import shutil
 import sys
 import time
 from dataclasses import asdict, dataclass
-from pathlib import Path
+from pathlib import Path, PurePath
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -1344,6 +1344,10 @@ def review_artifact_paths(path: Path) -> list[Path]:
             continue
         artifacts.append(relative)
     return artifacts
+
+
+def is_review_source_artifact(relative: PurePath) -> bool:
+    return relative.suffix.lower() == ".md" and not _is_generated_review_artifact(relative)
 
 
 def _is_generated_review_artifact(relative: Path) -> bool:

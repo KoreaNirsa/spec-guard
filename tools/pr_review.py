@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.llm_client import LLMConfigError, LLMRequestError, build_llm_client
 from tools.post_run import readiness_report_stale_reason
+from tools.readiness_engine import review_artifact_paths
 
 
 COMMENT_MARKER_PREFIX = "specguard-pr-review"
@@ -90,22 +91,21 @@ def readiness_blockers(spec_packages: list[Path]) -> list[str]:
 
 def build_review_context(spec_packages: list[Path], diff_file: Path, *, max_diff_chars: int = 60000) -> ReviewContext:
     artifacts: dict[str, str] = {}
+
+    def add_artifact(path: Path, max_chars: int) -> None:
+        if path.exists() and path.is_file():
+            artifacts[str(path).replace("\\", "/")] = _compact(path.read_text(encoding="utf-8"), max_chars)
+
     for package in spec_packages:
-        for relative in (
-            "discovery.md",
-            "spec.md",
-            "technical-design.md",
-            "readiness-review.json",
-            "implementation-output.md",
-        ):
-            path = package / relative
-            if path.exists():
-                artifacts[str(path).replace("\\", "/")] = _compact(path.read_text(encoding="utf-8"), 12000)
+        for relative in review_artifact_paths(package):
+            add_artifact(package / relative, 12000)
+        add_artifact(package / "readiness-review.json", 12000)
+        add_artifact(package / "implementation-output.md", 12000)
         for folder in ("tests", "contracts"):
             root = package / folder
             if root.exists():
                 for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
-                    artifacts[str(path).replace("\\", "/")] = _compact(path.read_text(encoding="utf-8"), 8000)
+                    add_artifact(path, 8000)
     diff_text = _compact(diff_file.read_text(encoding="utf-8"), max_diff_chars)
     return ReviewContext(spec_packages=spec_packages, artifacts=artifacts, diff_text=diff_text)
 

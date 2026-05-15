@@ -143,6 +143,34 @@ def test_readiness_gate_fails_when_changed_source_does_not_update_report(tmp_pat
     assert any("without updating readiness-review.json" in message for message in results[0].messages)
 
 
+def test_readiness_gate_fails_when_additional_authored_note_changes_without_report(tmp_path: Path) -> None:
+    feature = write_ready_feature(tmp_path)
+    feature.joinpath("security-notes.md").write_text(
+        "# Security Notes\n\n## Requirements\n\n- Exports require owner-scoped authorization.\n",
+        encoding="utf-8",
+    )
+
+    ok, results = run_readiness_gate(["specs/billing-export/security-notes.md"], tmp_path)
+
+    assert not ok
+    assert len(results) == 1
+    assert any("security-notes.md" in message for message in results[0].messages)
+    assert any("without updating readiness-review.json" in message for message in results[0].messages)
+
+
+def test_readiness_gate_allows_generated_markdown_changes_without_report(tmp_path: Path) -> None:
+    feature = write_ready_feature(tmp_path)
+    tests_dir = feature / "tests"
+    tests_dir.mkdir()
+    tests_dir.joinpath("generated-scenario.md").write_text("# Generated Scenario\n", encoding="utf-8")
+
+    ok, results = run_readiness_gate(["specs/billing-export/tests/generated-scenario.md"], tmp_path)
+
+    assert ok
+    assert len(results) == 1
+    assert results[0].ok
+
+
 def test_readiness_gate_fails_when_changed_package_is_not_ready(tmp_path: Path) -> None:
     feature = write_ready_feature(tmp_path)
     write_readiness_report(feature, blocked=True, implementation_ready=False)
