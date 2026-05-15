@@ -210,7 +210,7 @@ def _discovery_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         "",
         "- Decision: Review and strengthen the generated spec before running the pipeline.",
         "- Required artifacts: spec.md, technical-design.md, tests, contracts, and implementation-output.md.",
-        "- Stop condition: Do not start code implementation while Critical or Major Readiness Findings remain.",
+        "- Stop condition: Do not start code implementation while SpecGuard reports NOT_READY.",
         "",
     ]
     conversation = answers.get("conversation", "").strip()
@@ -342,7 +342,7 @@ def _tasks_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         "## Design And Validation",
         "",
         f"- [ ] Run `specguard run specs/{feature_slug} --force`.",
-        "- [ ] Convert every Critical or Major Readiness Finding into a spec, plan, task, or design update.",
+        "- [ ] Convert every blocking Readiness Finding into a spec, plan, task, or design update.",
         "- [ ] Re-run SpecGuard until SpecGuard Review reports implementation-ready status.",
         "",
         "## Implementation Handoff",
@@ -363,7 +363,7 @@ def _constitution_markdown(feature_slug: str, answers: dict[str, str]) -> str:
         "## Principles",
         "",
         "- Spec-first: implementation must follow the approved spec package, not inferred intent.",
-        "- Review-first: Critical and Major Readiness Findings block implementation readiness.",
+        "- Review-first: the active SpecGuard Review level decides whether findings block implementation readiness.",
         "- Testability: every meaningful requirement needs acceptance evidence or an explicit deferral.",
         "- Safety: authorization, data ownership, failure handling, and abuse cases must be explicit.",
         "- Determinism: generated artifacts must be reproducible enough for audit and review.",
@@ -404,8 +404,8 @@ def _readiness_checklist_markdown(feature_slug: str, answers: dict[str, str]) ->
         "## SpecGuard Readiness Gate",
         "",
         "- [ ] Critical findings: 0.",
-        "- [ ] Major findings: 0.",
-        "- [ ] Minor findings: 5 or fewer, with no unresolved ambiguity that blocks coding.",
+        "- [ ] Major and Minor findings are resolved or explicitly accepted according to the active review level.",
+        "- [ ] No unresolved warning hides ambiguity that blocks coding.",
         f"- [ ] Acceptance evidence is clear: {answers['acceptance']}.",
         "",
     ])

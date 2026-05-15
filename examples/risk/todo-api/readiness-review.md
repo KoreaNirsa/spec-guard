@@ -1,11 +1,14 @@
 # SpecGuard Review Result
 
 - Review mode: initial
+- Review level: low
 
 ## Readiness
 
-- Status: NOT READY
-- Criteria: Critical=0, Major=0, Minor<=5
+- Status: READY_WITH_WARNINGS
+- READY criteria: Critical=0, Major<=0, Minor<=0
+- READY_WITH_WARNINGS criteria: Critical=0; Major/Minor are warnings
+- Blockers: Critical=0; Warnings: Major=1, Minor=0 (non-blocking in low mode)
 - Current: Critical=0, Major=1, Minor=0
 
 ## Critical Issues
@@ -28,34 +31,25 @@ Fix: Choose hard or soft delete explicitly and define audit records, restore beh
 
 ## Improvement Suggestions
 
-- Convert every Critical and Major item into acceptance criteria before implementation.
+- Convert every Critical item into acceptance criteria before implementation.
+- Review Major warning items before implementation and either accept the risk or clarify the spec package.
 - Add tests for authorization, invalid state, retry, timeout, and duplicate request behavior.
 - Re-run `specguard run` after updating `spec.md` and `technical-design.md`.
 
 ## Prompt Mode
 
 ```text
-You are SpecGuard's readiness review board: a principal software architect, security reviewer, reliability engineer, API contract reviewer, and test strategist.
-
-Your task is NOT to approve the implementation basis.
-Your task is to BREAK the implementation basis before a coding agent sees it.
-
-Review every spec package artifact together: Discovery, spec, plan, tasks, constitution, checklists, technical design, and any other authored spec document.
-
-Use the SpecGuard Review method:
-- Find contradictions between artifacts.
-- Attack missing requirements, undefined state, ambiguous ownership, weak contracts, unsafe retries, auth gaps, versioning gaps, and untestable acceptance criteria.
-- Convert implementation guesses into Critical or Major findings.
-- Treat style-only improvements as Minor.
-
-Implementation-ready threshold:
-- Critical: 0
-- Major: 0
-- Minor: 5 or fewer, and none may hide a requirement ambiguity.
+Readiness policy for low review level: NOT_READY only when Critical>=1. READY when Critical=0 and there are no Major or Minor warnings. READY_WITH_WARNINGS when Critical=0 and Major or Minor warnings exist. Major and Minor findings are warning-level findings and do not block implementation in low mode.
 ```
 
 ## Input Summary
 
 - discovery.md: 1930 characters
 - spec.md: 865 characters
-- technical-design.md: 2006 characters
+- technical-design.md: 2005 characters
+
+## Review Input
+
+- Mode: heuristic
+- Artifacts sent to LLM: 3
+- Characters sent to LLM: 4800

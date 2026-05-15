@@ -37,4 +37,4 @@
 - Invalid input returns a clear error.
 - Unauthorized access is rejected before state change.
 - Ambiguous behavior becomes a spec update instead of implementation guesswork.
-- Critical or Major Readiness Findings block implementation handoff.
+- NOT_READY SpecGuard Review findings block implementation handoff.

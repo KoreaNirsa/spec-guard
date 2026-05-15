@@ -153,7 +153,7 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
         "- Invalid input returns a clear error.",
         "- Unauthorized access is rejected before state change.",
         "- Ambiguous behavior becomes a spec update instead of implementation guesswork.",
-        "- Critical or Major Readiness Findings block implementation handoff.",
+        "- NOT_READY SpecGuard Review findings block implementation handoff.",
         "",
     ])
     output.write_text(content, encoding="utf-8")
@@ -435,7 +435,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "- Implement or preserve the behavior described in `tests/`.",
         "- Keep API shape compatible with files under `contracts/`.",
         "- When implementation reveals missing behavior, update the spec and rerun SpecGuard.",
-        "- Do not ask the coding agent to resolve Critical or Major readiness blockers by assumption.",
+        "- Do not ask the coding agent to resolve blocking readiness findings or warning items by assumption.",
         "",
     ])
     output.write_text("\n".join(lines), encoding="utf-8")

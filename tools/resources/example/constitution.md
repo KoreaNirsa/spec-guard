@@ -3,7 +3,7 @@
 ## Principles
 
 - Spec-first: implementation must follow the approved spec package, not inferred intent.
-- Review-first: Critical and Major Readiness Findings block implementation readiness.
+- Review-first: the active SpecGuard Review level decides whether findings block implementation readiness.
 - Authorization-first: invite creation, revocation, and acceptance must enforce workspace boundaries before durable membership changes.
 - Ownership-first: invite acceptance requires the authenticated user's verified email to match the normalized invitee email.
 - Token safety: every invite token is single-purpose, workspace-scoped, versioned, expiring, and invalid after acceptance or revocation.
