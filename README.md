@@ -51,6 +51,16 @@ For review levels, LLM detail review, cache behavior, and experimental Spec Revi
 
 Currently, local Codex mode is the recommended and release-tested path for live SpecGuard Review. OpenAI Platform mode is implemented for the Responses API, including PR Review execution, but the clean end-to-end release test has not been completed yet. Treat OpenAI Platform mode as experimental until published-install validation is finished.
 
+## Language Support
+
+SpecGuard documentation supports Korean by default and also supports English for open-source users, contributors, and cross-language review.
+
+한국어 문서는 기본 지원 대상이며, 영어 문서도 함께 지원합니다.
+
+The current Korean benchmark claim is limited to deterministic low-mode coverage for explicit unsafe Korean wording, not full Korean production support.
+
+For the documentation language policy, required doc status, and Korean benchmark claim boundaries, see [Language Support](docs/language-support.md).
+
 ## Codex App Plugin
 
 SpecGuard includes a local Codex plugin scaffold under `plugins/specguard/`. The plugin does not replace the CLI; it helps Codex run the existing `specguard` command, read structured review artifacts, and summarize the next action.
@@ -131,6 +141,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 
 - [Setup To User Flow](docs/setup-to-user-flow.md): installation, Codex setup, example packages, validation loops, implementation handoff, and PR review setup.
 - [Core Reviews](docs/core-reviews.md): SpecGuard Review, SpecGuard PR Review, LLM detail review, cache behavior, and experimental Spec Revision.
+- [Language Support](docs/language-support.md): Korean default documentation support, English support, doc status, and Korean benchmark claim boundaries.
 - [Codex Plugin Guide](docs/codex-plugin.md): local Codex app plugin setup, MVP workflow, validation scenarios, and plugin boundaries.
 - [Plugin Result Contract](docs/plugin-result-contract.md): stable `readiness-review.json` fields and file-based states for Codex plugin consumers.
 - [Readiness Rules](docs/readiness-rules.md): review levels, READY thresholds, contract requirements, and Strict E2E verification rules.
