@@ -134,6 +134,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 - [Setup To User Flow](docs/setup-to-user-flow.md): installation, Codex setup, example packages, validation loops, implementation handoff, and PR review setup.
 - [Core Reviews](docs/core-reviews.md): SpecGuard Review, SpecGuard PR Review, LLM detail review, cache behavior, and experimental Spec Revision.
 - [Language Support](docs/language-support.md): Korean default documentation support, English support, doc status, and Korean benchmark claim boundaries.
+- [Plugin Result Contract](docs/plugin-result-contract.md): stable `readiness-review.json` fields and file-based states for Codex plugin consumers.
 - [Readiness Rules](docs/readiness-rules.md): review levels, READY thresholds, contract requirements, and Strict E2E verification rules.
 - [CI And PR Gates](docs/ci-and-pr-gates.md): readiness gate installation, required-check guidance, and PR review separation.
 - [CLI Reference](docs/cli-reference.md): common commands, `run` options, and CI-friendly examples.
