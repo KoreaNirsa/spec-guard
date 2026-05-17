@@ -53,6 +53,19 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
     assert "Plugin Result Contract" in readme
 
 
+def test_root_readme_documents_plugin_quickstart_steps() -> None:
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert "## Codex App Plugin" in readme
+    assert "pip install spec-guard" in readme
+    assert "specguard --help" in readme
+    assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in readme
+    assert "select the `SpecGuard Plugins` source and install `SpecGuard`" in readme
+    assert "Run SpecGuard on specs/my-feature." in readme
+    assert "Installing the plugin does not install the SpecGuard CLI" in readme
+    assert "not the official OpenAI Plugin Directory" in readme
+
+
 def test_specguard_plugin_documents_suggestion_only_spec_refinement_boundary() -> None:
     skill = SKILL_PATH.read_text(encoding="utf-8")
     readme = README_PATH.read_text(encoding="utf-8")
