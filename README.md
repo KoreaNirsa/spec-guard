@@ -67,12 +67,16 @@ SpecGuard includes a Codex plugin scaffold under `plugins/specguard/`. The plugi
 
 To use it from the Codex app:
 
+Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that supports `codex plugin marketplace`. This setup has been verified with Codex CLI 0.130.0.
+
 1. Install the SpecGuard CLI in the environment where Codex will run:
 
    ```bash
    pip install spec-guard
    specguard --help
    ```
+
+   만약, 샘플 패키지로 스펙가드의 테스트를 진행하고 싶다면 `specguard example copy your-feature-name --force`를 입력하여 샘플 스펙을 생성하십시오.
 
 2. Add the repo-scoped SpecGuard marketplace:
 
@@ -82,10 +86,13 @@ To use it from the Codex app:
 
 3. Restart or refresh Codex if the plugin directory does not update immediately.
 4. In the Codex plugin directory, select the `SpecGuard Plugins` source and install `SpecGuard`.
-5. Open a repository that contains a spec package such as `specs/my-feature/spec.md`, then ask Codex:
+
+   ![Codex plugin source selector showing SpecGuard Plugins](assets/codex-specguard-plugins-source.svg)
+
+5. Open a repository that contains a spec package such as `specs/your-feature-name/spec.md`, then ask Codex:
 
    ```text
-   Run SpecGuard on specs/my-feature.
+   Run SpecGuard on specs/your-feature-name.
    ```
 
 The default plugin path remains the heuristic CLI gate: `specguard run <package> --no-llm --no-follow-up`. Installing the plugin does not install the SpecGuard CLI. This is a custom repo marketplace, not the official OpenAI Plugin Directory.
