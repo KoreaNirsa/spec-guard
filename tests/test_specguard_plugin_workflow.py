@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-workflow" / "SKILL.md"
 README_PATH = ROOT / "plugins" / "specguard" / "README.md"
+CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
 
 
 def test_specguard_plugin_skill_defines_heuristic_first_cli_workflow() -> None:
@@ -64,3 +65,37 @@ def test_specguard_plugin_documents_suggestion_only_spec_refinement_boundary() -
     assert "not an applied patch" in combined
     assert "must not invent fields, requirements, states, error behavior, ownership rules, or product behavior" in readme
     assert "reruns SpecGuard" in combined
+
+
+def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
+    doc = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+
+    assert "plugins/specguard/" in doc
+    assert "plugins/specguard/.codex-plugin/plugin.json" in doc
+    assert "CLI is the canonical engine" in doc
+    assert "Create or select a spec package" in doc
+    assert "specguard run <package> --no-llm --no-follow-up" in doc
+    assert "manually edit the spec package" in doc
+    assert "implementation-output.md" in doc
+    assert "Codex-backed Detail Review is optional and advisory" in doc
+    assert "Plugin Result Contract](plugin-result-contract.md)" in doc
+    assert "Spec Refinement Safety Boundary" in doc
+
+
+def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
+    doc = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+
+    for scenario in (
+        "missing `specguard` CLI",
+        "existing spec package reaches `READY`",
+        "existing spec package is `NOT_READY` with Critical findings",
+        "`READY_WITH_WARNINGS` handoff guidance",
+        "optional detail review requested without provider setup",
+    ):
+        assert scenario in doc
+
+    assert "missing_cli" in doc
+    assert "missing_provider_for_llm" in doc
+    assert "Do not claim native plugin engine support" in doc
+    assert "Do not document full MCP support until it exists" in doc
+    assert "Do not document automatic spec rewriting" in doc
