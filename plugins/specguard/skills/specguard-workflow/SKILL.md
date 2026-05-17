@@ -18,6 +18,32 @@ Act as a Codex workflow assistant around the existing `specguard` CLI. Treat the
 - Use Codex-assisted detail review only when the user explicitly requests it, and present it as advisory.
 - Keep the default gate as the CLI heuristic path: `specguard run <package>`.
 
+## Suggestion-Only Spec Refinement
+
+The MVP plugin must not modify spec package files. When a user asks for help resolving readiness findings, provide proposals only:
+
+1. Read findings from `readiness-review.json` or `readiness-review.md`.
+2. Summarize Critical findings first without broadening feature scope.
+3. For every suggested change, identify the addressed finding by severity and title.
+4. Separate `SpecGuard evidence` from `Codex suggestion` so the user can see what came from the report and what is a proposed refinement.
+5. Suggest target artifact and section, for example `spec.md` `## Acceptance Criteria`, but do not write the file.
+6. Keep wording limited to behavior supported by the current spec package or by the finding. If a requirement, field, state, or error behavior is not supported by evidence, mark it as `Needs user decision` instead of inventing it.
+7. Tell the user they must approve and make any product requirement changes before the suggestion can become implementation input.
+8. After the user edits the spec manually, recommend rerunning `specguard run <path> --no-llm --no-follow-up`.
+
+Use this proposal shape:
+
+```text
+Addressed finding: <Severity> - <Finding title>
+SpecGuard evidence: <short evidence from readiness report or current spec>
+Target: <artifact and section>
+Codex suggestion: <plain-language proposed wording, not an applied patch>
+Scope check: <why this stays within current intent, or Needs user decision>
+Next step: User reviews/edits the spec, then reruns SpecGuard.
+```
+
+Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimental auto-revision flow from the plugin. Existing CLI auto-revision remains an explicit experimental CLI path with its own safeguards; it is not part of the plugin MVP.
+
 ## Heuristic-First Workflow
 
 1. Confirm the current issue, requested scope, repository state, and target spec package before running commands.
@@ -37,7 +63,7 @@ Act as a Codex workflow assistant around the existing `specguard` CLI. Treat the
 10. Read the result from structured files only. Use `readiness-review.json` as the machine result, `readiness-review.md` as the human report, and `implementation-output.md` as the handoff file when allowed.
 11. Derive stale, validation-failure, and handoff states from the Plugin Result Contract. Do not scrape terminal logs for readiness state.
 12. Report readiness status, Critical/Major/Minor finding counts, top findings, report paths, handoff availability, and next action.
-13. For `not_ready`, summarize Critical findings first and propose scoped edits for user review. Do not apply the edits automatically.
+13. For `not_ready`, summarize Critical findings first and propose scoped edits using the suggestion-only spec refinement format. Do not apply the edits automatically.
 14. For `ready` or `ready_with_warnings`, summarize warnings and direct implementation work to the generated handoff when `implementation-output.md` exists.
 
 ## Failure Categories

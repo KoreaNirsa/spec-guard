@@ -38,6 +38,23 @@ Common failure categories are `missing_cli`, `missing_spec_package`, `validation
 
 Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
 
+## Spec Refinement Safety Boundary
+
+The MVP plugin is suggestion-only. It can help users understand findings and draft proposed wording, but it does not automatically modify `spec.md`, `plan.md`, `tasks.md`, `technical-design.md`, or other spec package files.
+
+Every proposed change should include:
+
+- the addressed finding severity and title
+- `SpecGuard evidence` from the readiness report or current spec
+- `Codex suggestion` as proposed wording, not an applied patch
+- the target artifact and section
+- a scope check that explains whether the suggestion is supported by current intent or needs a user decision
+- a next step to manually edit the spec and rerun `specguard run <package> --no-llm --no-follow-up`
+
+The plugin must not invent fields, requirements, states, error behavior, ownership rules, or product behavior that are not supported by the user's spec or SpecGuard findings. If the evidence is insufficient, the plugin should say `Needs user decision` instead of filling the gap.
+
+Codex suggestions are not implementation input until the user approves them, edits the spec package, and reruns SpecGuard. Existing experimental CLI auto-revision remains outside the plugin MVP and must not be invoked by the plugin workflow.
+
 ## Supported CLI Commands
 
 ```bash
