@@ -67,7 +67,7 @@ SpecGuard includes a Codex plugin scaffold under `plugins/specguard/`. The plugi
 
 To use it from the Codex app:
 
-Supported versions: Python 3.11, 3.12, or 3.13, and Codex CLI 0.130.0 or newer. The plugin marketplace command requires a Codex CLI version that supports `codex plugin marketplace`.
+Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that supports `codex plugin marketplace`. This setup has been verified with Codex CLI 0.130.0.
 
 1. Install the SpecGuard CLI in the environment where Codex will run:
 

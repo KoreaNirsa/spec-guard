@@ -58,7 +58,8 @@ def test_root_readme_documents_plugin_quickstart_steps() -> None:
 
     assert "## Codex App Plugin" in readme
     assert "Python 3.11, 3.12, or 3.13" in readme
-    assert "Codex CLI 0.130.0 or newer" in readme
+    assert "a Codex CLI version that supports `codex plugin marketplace`" in readme
+    assert "verified with Codex CLI 0.130.0" in readme
     assert "pip install spec-guard" in readme
     assert "specguard --help" in readme
     assert "specguard example copy your-feature-name --force" in readme
@@ -92,7 +93,8 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
     doc = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
 
     assert "Python 3.11, 3.12, or 3.13" in doc
-    assert "Codex CLI 0.130.0 or newer" in doc
+    assert "a Codex CLI version that supports `codex plugin marketplace`" in doc
+    assert "verified with Codex CLI 0.130.0" in doc
     assert ".agents/plugins/marketplace.json" in doc
     assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in doc
     assert "SpecGuard Plugins" in doc

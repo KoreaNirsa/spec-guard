@@ -4,7 +4,7 @@ This guide documents the SpecGuard Codex plugin MVP. The plugin is a Codex workf
 
 The MVP does not provide a native SpecGuard engine inside Codex, does not expose a full MCP interface, and does not automatically rewrite specs.
 
-Supported versions: Python 3.11, 3.12, or 3.13, and Codex CLI 0.130.0 or newer. The plugin marketplace command requires a Codex CLI version that supports `codex plugin marketplace`.
+Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that supports `codex plugin marketplace`. This setup has been verified with Codex CLI 0.130.0.
 
 ## Install From The SpecGuard Marketplace
 
