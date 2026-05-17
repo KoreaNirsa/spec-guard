@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spec-guard"
-version = "0.3.1"
+version = "0.3.2"
 description = "Validation-first workflow for AI-assisted development."
 readme = "README.md"
 requires-python = ">=3.11"
