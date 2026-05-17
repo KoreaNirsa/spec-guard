@@ -64,7 +64,9 @@ The v0.3.2 Korean layer reports English and Korean gate-only metrics separately.
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
 | v0.3.1 gate-only timestamp | `2026-05-11T14:18:22.699591+00:00` to `2026-05-11T14:18:28.946457+00:00` |
 | v0.3.2 English/Korean gate-only timestamp | `2026-05-15T09:07:50.369407+00:00` to `2026-05-15T09:07:57.964756+00:00` |
-| SpecGuard package version | `0.3.0` |
+| Original full run package version | `0.3.0` |
+| v0.3.1 gate-only package version | `0.3.0` |
+| v0.3.2 English/Korean gate-only package version | `0.3.1` |
 | Original full run commit | `13218f58b9f1354b8fc059490c26f4a2a0b43c6a` |
 | v0.3.1 gate-only commit | `d06824784f023993094d239346a8c52d81af1396` |
 | v0.3.2 English/Korean gate-only commit | `f97f5f32faf894105dd770a78df626d86cadb18b` |
