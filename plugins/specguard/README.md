@@ -13,12 +13,30 @@ This plugin is a Codex workflow scaffold for SpecGuard. It helps Codex locate sp
 ## Typical Workflow
 
 1. Identify the current issue, repository state, and target spec package.
-2. Run `specguard run <package>` for the default readiness gate.
-3. Read `readiness-review.json` and `readiness-review.md` when they are produced.
-4. If the package is `READY` or `READY_WITH_WARNINGS`, point the user to `implementation-output.md`.
-5. If the package is `NOT_READY`, summarize the blockers and propose scoped spec edits for user review.
+2. Detect `specguard` with `specguard --help`, or use `python -m cli.specguard --help` from a source checkout.
+3. Locate the target package from the user path, the current directory, or `specs/*/spec.md`.
+4. Run `specguard run <package> --no-llm --no-follow-up` for the default heuristic gate.
+5. Read `readiness-review.json` and `readiness-review.md` when they are produced.
+6. If the package is `READY` or `READY_WITH_WARNINGS`, point the user to `implementation-output.md` when it exists.
+7. If the package is `NOT_READY`, summarize the blockers and propose scoped spec edits for user review.
 
 For the stable JSON fields and file-based states that plugin workflows can rely on, see [Plugin Result Contract](../../docs/plugin-result-contract.md).
+
+## Result Handling
+
+The plugin workflow reports from structured files, not terminal log scraping. It should summarize:
+
+- readiness status and review level
+- Critical, Major, and Minor finding counts
+- top readiness findings
+- `readiness-review.json` and `readiness-review.md` paths
+- whether implementation handoff is allowed
+- `implementation-output.md` path when available
+- failure category when a normal readiness result is unavailable
+
+Common failure categories are `missing_cli`, `missing_spec_package`, `validation_failed_before_review`, `stale_review`, `missing_provider_for_llm`, `timeout`, and `cli_execution_failed`.
+
+Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
 
 ## Supported CLI Commands
 

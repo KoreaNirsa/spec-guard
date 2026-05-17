@@ -18,17 +18,37 @@ Act as a Codex workflow assistant around the existing `specguard` CLI. Treat the
 - Use Codex-assisted detail review only when the user explicitly requests it, and present it as advisory.
 - Keep the default gate as the CLI heuristic path: `specguard run <package>`.
 
-## Workflow
+## Heuristic-First Workflow
 
 1. Confirm the current issue, requested scope, repository state, and target spec package before running commands.
-2. Check that the `specguard` CLI is available with `specguard --help` or `python -m cli.specguard --help`.
-3. Run `specguard run <package>` for the default readiness gate unless the user explicitly requests another mode.
-4. Use `--no-llm --no-follow-up` for deterministic scripted checks when automation or CI-style output is needed.
-5. Use `--llm` only when the user explicitly asks for provider-backed review.
-6. Read generated artifacts, especially `readiness-review.json`, `readiness-review.md`, and `implementation-output.md`.
-7. Report the readiness status, blocking findings, generated artifact paths, and the next action.
-8. For `NOT_READY`, summarize blockers and propose scoped edits for user review. Do not apply the edits automatically.
-9. For `READY` or `READY_WITH_WARNINGS`, summarize warnings and direct implementation work to the generated handoff.
+2. Detect CLI availability with `specguard --help`. When working from the SpecGuard source checkout, `python -m cli.specguard --help` is an acceptable fallback.
+3. Resolve the target package:
+   - use the user-provided path when it contains `spec.md`;
+   - otherwise use the current directory when it contains `spec.md`;
+   - otherwise scan `specs/*/spec.md` and use the only match;
+   - when multiple candidate packages exist, list them and ask the user to choose;
+   - when no candidate package exists, report `missing_spec_package`.
+4. Record the current time before invoking the run command so stale or missing reports can be distinguished after execution.
+5. Run the default plugin command as `specguard run <path> --no-llm --no-follow-up`. This preserves the heuristic low-mode gate and avoids requiring a Codex or OpenAI provider.
+6. If the user explicitly asks for provider-backed initial review, run `specguard run <path> --llm --no-follow-up` after confirming provider availability with `specguard auth status`.
+7. If the user explicitly asks for Detail Review, use the CLI follow-up menu path: run `specguard run <path> --llm --follow-up`, choose the review-only Detail Review action, then read `readiness-review-detail.json` and `readiness-review-detail.md`. Detail Review is advisory and must not replace the default fast readiness report.
+8. If an interactive follow-up menu cannot be driven in the current environment, report that Detail Review currently requires the CLI follow-up menu instead of pretending it ran.
+9. Do not add `--llm`, run detail review, or install PR Review workflows unless the user explicitly asks for that behavior.
+10. Read the result from structured files only. Use `readiness-review.json` as the machine result, `readiness-review.md` as the human report, and `implementation-output.md` as the handoff file when allowed.
+11. Derive stale, validation-failure, and handoff states from the Plugin Result Contract. Do not scrape terminal logs for readiness state.
+12. Report readiness status, Critical/Major/Minor finding counts, top findings, report paths, handoff availability, and next action.
+13. For `not_ready`, summarize Critical findings first and propose scoped edits for user review. Do not apply the edits automatically.
+14. For `ready` or `ready_with_warnings`, summarize warnings and direct implementation work to the generated handoff when `implementation-output.md` exists.
+
+## Failure Categories
+
+- `missing_cli`: `specguard --help` and the source checkout fallback both fail. Tell the user to install SpecGuard or run from a checkout that supports `python -m cli.specguard`.
+- `missing_spec_package`: no usable package path with `spec.md` was provided or discovered.
+- `validation_failed_before_review`: the CLI exits before writing a fresh `readiness-review.json`.
+- `stale_review`: the readiness JSON is older than current source artifacts or its reviewed artifact set differs from current authored Markdown.
+- `missing_provider_for_llm`: the user requested `--llm`, but `specguard auth status` shows no usable provider.
+- `timeout`: the CLI run exceeds the active command timeout. Report the command, whether it was heuristic or provider-backed, and the files that exist.
+- `cli_execution_failed`: the CLI exits non-zero for a reason that is not represented by a fresh `not_ready` report or a known pre-review state.
 
 ## Commands
 
@@ -49,6 +69,8 @@ Return concise, user-facing results:
 - command executed
 - readiness status
 - critical, major, and minor finding counts when available
+- handoff allowed: yes/no
 - paths to generated reports
+- failure category when the run cannot produce a normal readiness result
 - next action
 - suggested spec changes, if any, as suggestions only
