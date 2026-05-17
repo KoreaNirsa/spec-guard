@@ -47,20 +47,6 @@ SpecGuard has two review checkpoints:
 
 For review levels, LLM detail review, cache behavior, and experimental Spec Revision, see [Core Reviews](docs/core-reviews.md).
 
-## Current Support Status
-
-Currently, local Codex mode is the recommended and release-tested path for live SpecGuard Review. OpenAI Platform mode is implemented for the Responses API, including PR Review execution, but the clean end-to-end release test has not been completed yet. Treat OpenAI Platform mode as experimental until published-install validation is finished.
-
-## Language Support
-
-SpecGuard documentation supports Korean by default and also supports English for open-source users, contributors, and cross-language review.
-
-한국어 문서는 기본 지원 대상이며, 영어 문서도 함께 지원합니다.
-
-The current Korean benchmark claim is limited to deterministic low-mode coverage for explicit unsafe Korean wording, not full Korean production support.
-
-For the documentation language policy, required doc status, and Korean benchmark claim boundaries, see [Language Support](docs/language-support.md).
-
 ## Codex App Plugin
 
 SpecGuard includes a Codex plugin scaffold under `plugins/specguard/`. The plugin does not replace the CLI; it helps Codex run the existing `specguard` command, read structured review artifacts, and summarize the next action.
@@ -76,7 +62,8 @@ Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that sup
    specguard --help
    ```
 
-   만약, 샘플 패키지로 스펙가드의 테스트를 진행하고 싶다면 `specguard example copy your-feature-name --force`를 입력하여 샘플 스펙을 생성하십시오.
+    If you want to test SpecGuard with the sample package, run `specguard example copy your-feature-name --force` to generate the sample spec.
+
 
 2. Add the repo-scoped SpecGuard marketplace:
 
@@ -87,7 +74,8 @@ Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that sup
 3. Restart or refresh Codex if the plugin directory does not update immediately.
 4. In the Codex plugin directory, select the `SpecGuard Plugins` source and install `SpecGuard`.
 
-   ![Codex plugin source selector showing SpecGuard Plugins](assets/codex-specguard-plugins-source.svg)
+<img width="752" height="166" alt="image" src="https://github.com/user-attachments/assets/306ae9ea-bb2f-4996-b24f-c48acc130ef1" />
+
 
 5. Open a repository that contains a spec package such as `specs/your-feature-name/spec.md`, then ask Codex:
 
