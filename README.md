@@ -62,9 +62,6 @@ Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that sup
    specguard --help
    ```
 
-    If you want to test SpecGuard with the sample package, run `specguard example copy your-feature-name --force` to generate the sample spec.
-
-
 2. Add the repo-scoped SpecGuard marketplace:
 
    ```bash
@@ -77,7 +74,20 @@ Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that sup
 <img width="752" height="166" alt="image" src="https://github.com/user-attachments/assets/306ae9ea-bb2f-4996-b24f-c48acc130ef1" />
 
 
-5. Open a repository that contains a spec package such as `specs/your-feature-name/spec.md`, then ask Codex:
+5. Open your target project folder in Codex. If you do not have a project yet, create one first:
+
+   ```bash
+   mkdir your-codex-project-folder
+   cd your-codex-project-folder
+   ```
+
+6. Prepare a spec package. To test SpecGuard with the sample package, run:
+
+   ```bash
+   specguard example copy specs/your-feature-name --force
+   ```
+
+7. Ask Codex:
 
    ```text
    Run SpecGuard on specs/your-feature-name.
