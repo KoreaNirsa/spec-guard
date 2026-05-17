@@ -51,6 +51,16 @@ For review levels, LLM detail review, cache behavior, and experimental Spec Revi
 
 Currently, local Codex mode is the recommended and release-tested path for live SpecGuard Review. OpenAI Platform mode is implemented for the Responses API, including PR Review execution, but the clean end-to-end release test has not been completed yet. Treat OpenAI Platform mode as experimental until published-install validation is finished.
 
+## Language Support
+
+SpecGuard documentation supports Korean by default and also supports English for open-source users, contributors, and cross-language review.
+
+한국어 문서는 기본 지원 대상이며, 영어 문서도 함께 지원합니다.
+
+The current Korean benchmark claim is limited to deterministic low-mode coverage for explicit unsafe Korean wording, not full Korean production support.
+
+For the documentation language policy, required doc status, and Korean benchmark claim boundaries, see [Language Support](docs/language-support.md).
+
 ## Setup To User Flow
 
 This is the shortest path from installation to a reviewed implementation PR:
@@ -123,6 +133,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 
 - [Setup To User Flow](docs/setup-to-user-flow.md): installation, Codex setup, example packages, validation loops, implementation handoff, and PR review setup.
 - [Core Reviews](docs/core-reviews.md): SpecGuard Review, SpecGuard PR Review, LLM detail review, cache behavior, and experimental Spec Revision.
+- [Language Support](docs/language-support.md): Korean default documentation support, English support, doc status, and Korean benchmark claim boundaries.
 - [Readiness Rules](docs/readiness-rules.md): review levels, READY thresholds, contract requirements, and Strict E2E verification rules.
 - [CI And PR Gates](docs/ci-and-pr-gates.md): readiness gate installation, required-check guidance, and PR review separation.
 - [CLI Reference](docs/cli-reference.md): common commands, `run` options, and CI-friendly examples.
