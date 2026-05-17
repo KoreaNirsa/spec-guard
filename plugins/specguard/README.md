@@ -10,6 +10,14 @@ This plugin is a Codex workflow scaffold for SpecGuard. It helps Codex locate sp
 - Provide summaries and suggestions only; do not rewrite spec files or apply fixes automatically.
 - Do not duplicate readiness review, benchmark, PR review, artifact-generation, or contract-validation logic inside the plugin.
 
+## Codex App Setup
+
+Add this local plugin from the repository checkout by selecting the `plugins/specguard/` directory in the Codex app local plugin flow. The directory contains the required `.codex-plugin/plugin.json` manifest and the `specguard-workflow` skill.
+
+Before using the plugin in a target workspace, confirm `specguard --help` works there. From a SpecGuard source checkout, `python -m cli.specguard --help` is an acceptable fallback.
+
+For the full MVP setup, expected user flow, and validation scenarios, see [Codex Plugin Guide](../../docs/codex-plugin.md).
+
 ## Typical Workflow
 
 1. Identify the current issue, repository state, and target spec package.
