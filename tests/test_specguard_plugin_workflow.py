@@ -48,3 +48,19 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
     assert "structured files, not terminal log scraping" in readme
     assert "whether implementation handoff is allowed" in readme
     assert "Plugin Result Contract" in readme
+
+
+def test_specguard_plugin_documents_suggestion_only_spec_refinement_boundary() -> None:
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    combined = skill + "\n" + readme
+
+    assert "The MVP plugin must not modify spec package files" in skill
+    assert "The MVP plugin is suggestion-only" in readme
+    assert "Addressed finding: <Severity> - <Finding title>" in skill
+    assert "SpecGuard evidence" in combined
+    assert "Codex suggestion" in combined
+    assert "Needs user decision" in combined
+    assert "not an applied patch" in combined
+    assert "must not invent fields, requirements, states, error behavior, ownership rules, or product behavior" in readme
+    assert "reruns SpecGuard" in combined
