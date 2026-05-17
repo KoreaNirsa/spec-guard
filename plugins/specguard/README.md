@@ -12,9 +12,17 @@ This plugin is a Codex workflow scaffold for SpecGuard. It helps Codex locate sp
 
 ## Codex App Setup
 
-Add this local plugin from the repository checkout by selecting the `plugins/specguard/` directory in the Codex app local plugin flow. The directory contains the required `.codex-plugin/plugin.json` manifest and the `specguard-workflow` skill.
+Install this plugin from the repo-scoped SpecGuard marketplace with:
 
-Before using the plugin in a target workspace, confirm `specguard --help` works there. From a SpecGuard source checkout, `python -m cli.specguard --help` is an acceptable fallback.
+```bash
+codex plugin marketplace add KoreaNirsa/spec-guard --ref main
+```
+
+Then select the `SpecGuard Plugins` marketplace source in Codex and install `SpecGuard`. This is a custom repository marketplace, not the official OpenAI Plugin Directory.
+
+You can also add this local plugin from the repository checkout by selecting the `plugins/specguard/` directory in the Codex app local plugin flow. The directory contains the required `.codex-plugin/plugin.json` manifest and the `specguard-workflow` skill.
+
+Installing the plugin does not install the SpecGuard CLI. Before using the plugin in a target workspace, confirm `specguard --help` works there. If it is unavailable, install SpecGuard with `pip install spec-guard`. From a SpecGuard source checkout, `python -m cli.specguard --help` is an acceptable fallback.
 
 For the full MVP setup, expected user flow, and validation scenarios, see [Codex Plugin Guide](../../docs/codex-plugin.md).
 

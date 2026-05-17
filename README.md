@@ -63,9 +63,11 @@ For the documentation language policy, required doc status, and Korean benchmark
 
 ## Codex App Plugin
 
-SpecGuard includes a local Codex plugin scaffold under `plugins/specguard/`. The plugin does not replace the CLI; it helps Codex run the existing `specguard` command, read structured review artifacts, and summarize the next action.
+SpecGuard includes a Codex plugin scaffold under `plugins/specguard/`. The plugin does not replace the CLI; it helps Codex run the existing `specguard` command, read structured review artifacts, and summarize the next action.
 
-To try it in the Codex app, add the local plugin directory from this repository checkout and make sure `specguard --help` works in the target workspace. The default plugin path remains the heuristic CLI gate: `specguard run <package> --no-llm --no-follow-up`.
+To try it in the Codex app, add the repo-scoped marketplace with `codex plugin marketplace add KoreaNirsa/spec-guard --ref main`, then install the SpecGuard plugin from the `SpecGuard Plugins` source. This is a custom repo marketplace, not the official OpenAI Plugin Directory.
+
+Installing the plugin does not install the SpecGuard CLI. Make sure `specguard --help` works in the target workspace before running the plugin. The default plugin path remains the heuristic CLI gate: `specguard run <package> --no-llm --no-follow-up`.
 
 For setup details, validation scenarios, and plugin boundaries, see [Codex Plugin Guide](docs/codex-plugin.md).
 
