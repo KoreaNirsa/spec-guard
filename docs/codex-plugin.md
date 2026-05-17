@@ -28,7 +28,7 @@ After adding the marketplace:
 2. Open the Codex plugin directory.
 3. Select the `SpecGuard Plugins` marketplace source.
 4. Install the `SpecGuard` plugin.
-5. Open your target project folder in Codex. If you do not have a project yet, create one first:
+5. Prepare your target project folder. If you do not have a project yet, create one first:
 
    ```bash
    mkdir your-codex-project-folder
@@ -41,7 +41,7 @@ After adding the marketplace:
    specguard example copy specs/your-feature-name --force
    ```
 
-7. Ask Codex to run SpecGuard on the package:
+7. Open `your-codex-project-folder` in Codex, then ask it to run SpecGuard on the package:
 
    ```text
    Run SpecGuard on specs/your-feature-name.

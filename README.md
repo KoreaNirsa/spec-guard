@@ -74,7 +74,7 @@ Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that sup
 <img width="752" height="166" alt="image" src="https://github.com/user-attachments/assets/306ae9ea-bb2f-4996-b24f-c48acc130ef1" />
 
 
-5. Open your target project folder in Codex. If you do not have a project yet, create one first:
+5. Prepare your target project folder. If you do not have a project yet, create one first:
 
    ```bash
    mkdir your-codex-project-folder
@@ -87,7 +87,7 @@ Supported versions: Python 3.11, 3.12, or 3.13, and a Codex CLI version that sup
    specguard example copy specs/your-feature-name --force
    ```
 
-7. Ask Codex:
+7. Open `your-codex-project-folder` in Codex, then ask:
 
    ```text
    Run SpecGuard on specs/your-feature-name.
