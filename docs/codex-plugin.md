@@ -4,6 +4,8 @@ This guide documents the SpecGuard Codex plugin MVP. The plugin is a Codex workf
 
 The MVP does not provide a native SpecGuard engine inside Codex, does not expose a full MCP interface, and does not automatically rewrite specs.
 
+Supported versions: Python 3.11, 3.12, or 3.13, and Codex CLI 0.130.0 or newer. The plugin marketplace command requires a Codex CLI version that supports `codex plugin marketplace`.
+
 ## Install From The SpecGuard Marketplace
 
 The SpecGuard repository exposes a repo-scoped Codex plugin marketplace at:
@@ -30,7 +32,7 @@ After adding the marketplace:
 6. Ask Codex to run SpecGuard on a package, for example:
 
    ```text
-   Run SpecGuard on specs/my-feature.
+   Run SpecGuard on specs/your-feature-name.
    ```
 
 Installing the plugin does not install the `specguard` CLI. Before using the plugin in a target workspace, confirm:
@@ -85,7 +87,7 @@ To add it from a repository checkout:
 5. Ask Codex to run SpecGuard on a package, for example:
 
    ```text
-   Run SpecGuard on specs/my-feature.
+   Run SpecGuard on specs/your-feature-name.
    ```
 
 If a Codex workspace uses repo-local marketplace metadata instead of direct local plugin selection, the entry should point to the same plugin directory:
