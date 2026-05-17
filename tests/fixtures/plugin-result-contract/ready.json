@@ -1,0 +1,53 @@
+{
+  "schema_version": "0.1",
+  "review_mode": "initial",
+  "review_level": "low",
+  "blocked": false,
+  "readiness": {
+    "implementation_ready": true,
+    "criteria": {
+      "review_level": "low",
+      "ready": {
+        "critical": 0,
+        "major_max": 0,
+        "minor_max": 0
+      },
+      "not_ready": "requires no Critical findings; Major and Minor findings are warnings in low mode.",
+      "ready_with_warnings": {
+        "critical": 0,
+        "major_max": null,
+        "minor_max": null,
+        "note": "Major and Minor findings are warnings in low mode."
+      }
+    },
+    "status": "ready"
+  },
+  "summary": {
+    "critical": 0,
+    "major": 0,
+    "minor": 0
+  },
+  "issues": [],
+  "input": {
+    "artifact_count": 3,
+    "total_characters": 360,
+    "discovery_characters": 120,
+    "spec_characters": 120,
+    "technical_design_characters": 120,
+    "artifacts": [
+      {
+        "path": "discovery.md",
+        "characters": 120
+      },
+      {
+        "path": "spec.md",
+        "characters": 120
+      },
+      {
+        "path": "technical-design.md",
+        "characters": 120
+      }
+    ]
+  },
+  "prompt_mode": "Readiness policy for low review level."
+}
