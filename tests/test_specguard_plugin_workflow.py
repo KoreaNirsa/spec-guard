@@ -62,11 +62,13 @@ def test_root_readme_documents_plugin_quickstart_steps() -> None:
     assert "verified with Codex CLI 0.130.0" in readme
     assert "pip install spec-guard" in readme
     assert "specguard --help" in readme
-    assert "specguard example copy your-feature-name --force" in readme
     assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in readme
     assert "select the `SpecGuard Plugins` source and install `SpecGuard`" in readme
-    assert "assets/codex-specguard-plugins-source.svg" in readme
-    assert (ROOT / "assets" / "codex-specguard-plugins-source.svg").is_file()
+    assert "https://github.com/user-attachments/assets/306ae9ea-bb2f-4996-b24f-c48acc130ef1" in readme
+    assert "mkdir your-codex-project-folder" in readme
+    assert "cd your-codex-project-folder" in readme
+    assert "specguard example copy specs/your-feature-name --force" in readme
+    assert "Open `your-codex-project-folder` in Codex" in readme
     assert "Run SpecGuard on specs/your-feature-name." in readme
     assert "specs/my-feature" not in readme
     assert "Installing the plugin does not install the SpecGuard CLI" in readme
@@ -111,6 +113,10 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
     assert "Codex-backed Detail Review is optional and advisory" in doc
     assert "Plugin Result Contract](plugin-result-contract.md)" in doc
     assert "Spec Refinement Safety Boundary" in doc
+    assert "mkdir your-codex-project-folder" in doc
+    assert "cd your-codex-project-folder" in doc
+    assert "specguard example copy specs/your-feature-name --force" in doc
+    assert "Open `your-codex-project-folder` in Codex" in doc
     assert "Run SpecGuard on specs/your-feature-name." in doc
     assert "specs/my-feature" not in doc
 
