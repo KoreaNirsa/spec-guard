@@ -4,6 +4,53 @@ This guide documents the SpecGuard Codex plugin MVP. The plugin is a Codex workf
 
 The MVP does not provide a native SpecGuard engine inside Codex, does not expose a full MCP interface, and does not automatically rewrite specs.
 
+## Install From The SpecGuard Marketplace
+
+The SpecGuard repository exposes a repo-scoped Codex plugin marketplace at:
+
+```text
+.agents/plugins/marketplace.json
+```
+
+Add it to Codex with:
+
+```bash
+codex plugin marketplace add KoreaNirsa/spec-guard --ref main
+```
+
+This is a custom repository marketplace, not the official OpenAI Plugin Directory. Official public plugin publishing is outside the MVP scope.
+
+After adding the marketplace:
+
+1. Restart or refresh Codex if the plugin directory does not update immediately.
+2. Open the Codex plugin directory.
+3. Select the `SpecGuard Plugins` marketplace source.
+4. Install the `SpecGuard` plugin.
+5. Start a Codex session in the repository that contains the target spec package.
+6. Ask Codex to run SpecGuard on a package, for example:
+
+   ```text
+   Run SpecGuard on specs/my-feature.
+   ```
+
+Installing the plugin does not install the `specguard` CLI. Before using the plugin in a target workspace, confirm:
+
+```bash
+specguard --help
+```
+
+If that command is unavailable, install SpecGuard first:
+
+```bash
+pip install spec-guard
+```
+
+From this repository checkout, this fallback is also valid:
+
+```bash
+python -m cli.specguard --help
+```
+
 ## Add The Local Plugin To Codex App
 
 The repository-local plugin bundle lives at:
@@ -57,6 +104,8 @@ If a Codex workspace uses repo-local marketplace metadata instead of direct loca
   "category": "Developer Tools"
 }
 ```
+
+The checked-in repo marketplace already provides this entry through `.agents/plugins/marketplace.json`.
 
 ## Expected User Flow
 

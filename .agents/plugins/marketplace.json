@@ -1,0 +1,20 @@
+{
+  "name": "specguard-plugins",
+  "interface": {
+    "displayName": "SpecGuard Plugins"
+  },
+  "plugins": [
+    {
+      "name": "specguard",
+      "source": {
+        "source": "local",
+        "path": "./plugins/specguard"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

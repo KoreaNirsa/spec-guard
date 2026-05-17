@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+MARKETPLACE_PATH = ROOT / ".agents" / "plugins" / "marketplace.json"
 SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-workflow" / "SKILL.md"
 README_PATH = ROOT / "plugins" / "specguard" / "README.md"
 CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
@@ -70,6 +72,12 @@ def test_specguard_plugin_documents_suggestion_only_spec_refinement_boundary() -
 def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
     doc = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
 
+    assert ".agents/plugins/marketplace.json" in doc
+    assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in doc
+    assert "SpecGuard Plugins" in doc
+    assert "not the official OpenAI Plugin Directory" in doc
+    assert "Installing the plugin does not install the `specguard` CLI" in doc
+    assert "pip install spec-guard" in doc
     assert "plugins/specguard/" in doc
     assert "plugins/specguard/.codex-plugin/plugin.json" in doc
     assert "CLI is the canonical engine" in doc
@@ -99,3 +107,26 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
     assert "Do not claim native plugin engine support" in doc
     assert "Do not document full MCP support until it exists" in doc
     assert "Do not document automatic spec rewriting" in doc
+
+
+def test_specguard_plugin_marketplace_metadata_points_to_plugin() -> None:
+    marketplace = json.loads(MARKETPLACE_PATH.read_text(encoding="utf-8"))
+
+    assert marketplace["name"] == "specguard-plugins"
+    assert marketplace["interface"]["displayName"] == "SpecGuard Plugins"
+
+    plugins = marketplace["plugins"]
+    assert len(plugins) == 1
+
+    [plugin] = plugins
+    assert plugin["name"] == "specguard"
+    assert plugin["source"] == {
+        "source": "local",
+        "path": "./plugins/specguard",
+    }
+    assert plugin["policy"] == {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+    }
+    assert plugin["category"] == "Developer Tools"
+    assert (ROOT / "plugins" / "specguard" / ".codex-plugin" / "plugin.json").is_file()
