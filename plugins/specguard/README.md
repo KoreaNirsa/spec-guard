@@ -18,6 +18,8 @@ This plugin is a Codex workflow scaffold for SpecGuard. It helps Codex locate sp
 4. If the package is `READY` or `READY_WITH_WARNINGS`, point the user to `implementation-output.md`.
 5. If the package is `NOT_READY`, summarize the blockers and propose scoped spec edits for user review.
 
+For the stable JSON fields and file-based states that plugin workflows can rely on, see [Plugin Result Contract](../../docs/plugin-result-contract.md).
+
 ## Supported CLI Commands
 
 ```bash

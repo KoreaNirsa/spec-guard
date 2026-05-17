@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1",
+  "review_mode": "initial",
+  "review_level": "low",
+  "blocked": true,
+  "readiness": {
+    "implementation_ready": false,
+    "criteria": {
+      "review_level": "low",
+      "ready": {
+        "critical": 0,
+        "major_max": 0,
+        "minor_max": 0
+      },
+      "not_ready": "requires no Critical findings; Major and Minor findings are warnings in low mode.",
+      "ready_with_warnings": {
+        "critical": 0,
+        "major_max": null,
+        "minor_max": null,
+        "note": "Major and Minor findings are warnings in low mode."
+      }
+    },
+    "status": "not_ready"
+  },
+  "summary": {
+    "critical": 1,
+    "major": 1,
+    "minor": 0
+  },
+  "issues": [
+    {
+      "severity": "Critical",
+      "title": "Owner scope is missing",
+      "description": "The spec does not define how requests are scoped to the authenticated owner.",
+      "impact": "Implementation would require guessing authorization behavior.",
+      "fix": "Add owner-scoped requirements, acceptance criteria, and error cases."
+    },
+    {
+      "severity": "Major",
+      "title": "Error payload examples are absent",
+      "description": "The spec names errors but does not show response payload examples.",
+      "impact": "The implementation can proceed only after the Critical blocker is fixed.",
+      "fix": "Document error payload examples when strengthening the spec."
+    }
+  ],
+  "input": {
+    "artifact_count": 3,
+    "total_characters": 360,
+    "discovery_characters": 120,
+    "spec_characters": 120,
+    "technical_design_characters": 120,
+    "artifacts": [
+      {
+        "path": "discovery.md",
+        "characters": 120
+      },
+      {
+        "path": "spec.md",
+        "characters": 120
+      },
+      {
+        "path": "technical-design.md",
+        "characters": 120
+      }
+    ]
+  },
+  "prompt_mode": "Readiness policy for low review level."
+}

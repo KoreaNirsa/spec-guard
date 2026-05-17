@@ -1,0 +1,100 @@
+{
+  "schema_version": "0.1",
+  "review_mode": "initial",
+  "review_level": "medium",
+  "blocked": false,
+  "readiness": {
+    "implementation_ready": true,
+    "criteria": {
+      "review_level": "medium",
+      "ready": {
+        "critical": 0,
+        "major_max": 0,
+        "minor_max": 5
+      },
+      "not_ready": "requires Critical=0, Major<=2, Minor<=10.",
+      "ready_with_warnings": {
+        "critical": 0,
+        "major_max": 2,
+        "minor_max": 10
+      }
+    },
+    "status": "ready"
+  },
+  "summary": {
+    "critical": 0,
+    "major": 0,
+    "minor": 1
+  },
+  "issues": [
+    {
+      "severity": "Minor",
+      "title": "Naming can be more explicit",
+      "description": "A non-blocking name can be clarified.",
+      "impact": "Implementation remains deterministic.",
+      "fix": "Clarify the name in a future cleanup."
+    }
+  ],
+  "input": {
+    "artifact_count": 3,
+    "total_characters": 360,
+    "discovery_characters": 120,
+    "spec_characters": 120,
+    "technical_design_characters": 120,
+    "artifacts": [
+      {
+        "path": "discovery.md",
+        "characters": 120
+      },
+      {
+        "path": "spec.md",
+        "characters": 120
+      },
+      {
+        "path": "technical-design.md",
+        "characters": 120
+      }
+    ]
+  },
+  "review_input": {
+    "mode": "full",
+    "review_level": "medium",
+    "artifact_count": 3,
+    "total_characters": 360,
+    "artifacts": [
+      {
+        "path": "discovery.md",
+        "characters": 120
+      },
+      {
+        "path": "spec.md",
+        "characters": 120
+      },
+      {
+        "path": "technical-design.md",
+        "characters": 120
+      }
+    ]
+  },
+  "cache": {
+    "enabled": true,
+    "hit": false,
+    "cache_key": "0123456789abcdef",
+    "cache_key_prefix": "0123456789ab",
+    "stored": true,
+    "schema_version": "0.2",
+    "prompt_version": "readiness-review-v1",
+    "review_mode": "initial",
+    "review_level": "medium",
+    "provider": "codex",
+    "model": "gpt-test",
+    "client_class": "CountingReadinessLLM",
+    "input_fingerprint": "input-fingerprint",
+    "instructions_fingerprint": "instructions-fingerprint",
+    "artifact_fingerprint": "artifact-fingerprint",
+    "max_output_tokens": 2500,
+    "miss_reason": "no cache entry for this feature",
+    "cache_dir": ".specguard/readiness-cache/feature/0123456789abcdef"
+  },
+  "prompt_mode": "Readiness policy for medium review level."
+}
