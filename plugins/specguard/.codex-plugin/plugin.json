@@ -1,0 +1,37 @@
+{
+  "name": "specguard",
+  "version": "0.1.0",
+  "description": "CLI-backed Codex workflow plugin for SpecGuard.",
+  "author": {
+    "name": "SpecGuard contributors",
+    "url": "https://github.com/KoreaNirsa/spec-guard"
+  },
+  "homepage": "https://github.com/KoreaNirsa/spec-guard",
+  "repository": "https://github.com/KoreaNirsa/spec-guard",
+  "license": "Apache-2.0",
+  "keywords": [
+    "codex",
+    "cli",
+    "specguard",
+    "spec-driven-development",
+    "validation"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "SpecGuard",
+    "shortDescription": "Run SpecGuard CLI workflows from Codex.",
+    "longDescription": "SpecGuard helps Codex orchestrate the existing specguard CLI without embedding or replacing the SpecGuard engine. The default gate remains the heuristic low-mode SpecGuard Review path. Codex-assisted detail review is optional and advisory unless the user explicitly requests it. The plugin summarizes readiness results and proposes next actions, but it does not automatically rewrite spec files.",
+    "developerName": "SpecGuard contributors",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Interactive"
+    ],
+    "websiteURL": "https://github.com/KoreaNirsa/spec-guard",
+    "brandColor": "#2563EB",
+    "defaultPrompt": [
+      "Run SpecGuard on this spec package.",
+      "Summarize the latest SpecGuard readiness result.",
+      "Explain the next action for this NOT_READY spec."
+    ]
+  }
+}
