@@ -25,7 +25,7 @@ CODEX_PACKAGE = "@openai/codex@0.128.0"
 MODEL = "gpt-5.5"
 MODEL_REASONING_EFFORT = "low"
 BENCHMARK_RESULT_SCHEMA = "specguard-impact-benchmark/v2"
-BENCHMARK_SCRIPT_VERSION = "3"
+BENCHMARK_SCRIPT_VERSION = "4"
 CODEX_TIMEOUT_SECONDS = 420
 
 BASE_API = """
@@ -146,11 +146,15 @@ def _case(
     technical_design: str,
     suite: str = "impact_v2",
     domain: str = "task_service",
+    language: str = "en",
+    source_case_id: str | None = None,
 ) -> dict[str, str]:
     return {
         "id": case_id,
         "suite": suite,
         "domain": domain,
+        "language": language,
+        "source_case_id": source_case_id or case_id,
         "category": category,
         "expectation": expectation,
         "title": title,
@@ -3429,6 +3433,385 @@ GATE_ONLY_EXTENDED_CASES = [
 ]
 
 
+KOREAN_SUITE_BY_ENGLISH = {
+    "impact_v2": "impact_v2_ko",
+    "gate_only_supplemental_v1": "gate_only_supplemental_v1_ko",
+    "gate_only_extended_v2": "gate_only_extended_v2_ko",
+}
+
+KOREAN_DOMAIN_LABELS = {
+    "api_keys": "API 키",
+    "auth_session": "인증 세션",
+    "background_jobs": "백그라운드 작업",
+    "billing_export": "청구 내보내기",
+    "bookings": "예약",
+    "cache": "캐시",
+    "device_trust": "신뢰 기기",
+    "document_sharing": "문서 공유",
+    "feature_flags": "기능 플래그",
+    "file_uploads": "파일 업로드",
+    "inbound_webhooks": "수신 웹훅",
+    "inventory": "재고 예약",
+    "ledger": "원장",
+    "oauth": "OAuth 동의",
+    "orders": "주문",
+    "payments": "결제",
+    "privacy": "개인정보 삭제",
+    "profile": "프로필",
+    "promotions": "쿠폰",
+    "rate_limits": "요청 제한",
+    "returns": "반품",
+    "sso": "SSO 계정 연결",
+    "shipping": "배송",
+    "subscription_billing": "구독 과금",
+    "support": "지원 티켓",
+    "task_service": "할 일 서비스",
+    "webhook_delivery": "웹훅 전송",
+}
+
+
+def _korean_suite_name(case: dict[str, str]) -> str:
+    return KOREAN_SUITE_BY_ENGLISH.get(case.get("suite", "impact_v2"), f"{case.get('suite', 'impact_v2')}_ko")
+
+
+def _korean_domain_label(case: dict[str, str]) -> str:
+    domain = case.get("domain", "task_service")
+    return KOREAN_DOMAIN_LABELS.get(domain, domain.replace("_", " "))
+
+
+def _case_signal(case: dict[str, str]) -> str:
+    return " ".join([
+        case["id"],
+        case.get("domain", ""),
+        case["title"],
+        case["risk"],
+    ]).lower()
+
+
+def _korean_ready_spec_and_design(case: dict[str, str]) -> tuple[str, str]:
+    feature = f"{_korean_domain_label(case)} 한국어 준비 사례"
+    summary = f"""
+- {feature}는 한국어 product prose로 작성하되 구현자가 추측하지 않도록 서버 측 경계와 실패 처리를 명시한다.
+- 영어 계약 식별자가 있더라도 안전 판단은 한국어 문장만으로도 이해할 수 있어야 한다.
+"""
+    requirements = """
+- 인증된 사용자, 소유자, 테넌트, 조직, 워크스페이스 범위는 서버에서 신뢰 가능한 세션 또는 저장소 조회로 검증한다.
+- 모든 조회와 변경은 소유자 또는 테넌트 범위 안에서만 수행하며, 클라이언트 필터링은 보조 표시 용도로만 사용한다.
+- 결제, 환불, 웹훅, 배송사, 백그라운드 작업처럼 외부 부작용이 있는 호출은 멱등키, 타임아웃, 재시도 한도, 재조정 상태를 가진다.
+- 토큰, 초대, 쿠폰, 세션, 신뢰 기기는 만료, 철회, 무효화 또는 사용 완료 상태를 가진다.
+- 감사 로그, 개인정보 보존 사유, 보존 기간, 삭제 예외는 불변 기록으로 남긴다.
+"""
+    acceptance = """
+- [ ] 다른 사용자 또는 다른 테넌트의 데이터는 서버 응답에 포함되지 않는다.
+- [ ] 동일 멱등키 재시도는 최초 결과를 반환하고 다른 요청 본문은 충돌 오류를 반환한다.
+- [ ] 만료, 철회, 무효화, 종료 상태의 리소스는 재사용되지 않는다.
+- [ ] 외부 의존성 타임아웃은 재시도 가능 상태 또는 명시적 실패 상태로 기록된다.
+- [ ] 감사 및 개인정보 보존 기록은 삭제 요청과 별도로 검증 가능하다.
+"""
+    errors = """
+- 인증 또는 소유자 검증 실패는 401 또는 403을 반환한다.
+- 교차 테넌트 리소스는 존재 여부를 노출하지 않고 404를 반환한다.
+- 멱등키 누락, 충돌, 재사용 오류는 명확한 오류 코드를 반환한다.
+- 만료, 철회, 무효화된 토큰이나 쿠폰은 거부된다.
+"""
+    architecture = f"""
+- {_korean_domain_label(case)}Service가 서버 측 소유권, 테넌트 범위, 상태 전이, 멱등성, 감사 기록을 소유한다.
+- Repository 계층은 owner_id 또는 tenant_id 조건을 필수 인자로 받는다.
+- 외부 의존성 어댑터는 타임아웃, 재시도 가능 오류, 중복 호출 방지 키를 함께 기록한다.
+"""
+    data_flow = """
+1. 서비스는 인증 컨텍스트에서 사용자 또는 테넌트 식별자를 해석한다.
+2. 저장소 조회 전에 소유자, 테넌트, 상태, 멱등키를 검증한다.
+3. 외부 호출 전 멱등 레코드를 예약하고, 응답 또는 타임아웃 결과를 상태로 저장한다.
+4. 성공, 거부, 보류 상태는 감사 이벤트와 함께 반환된다.
+"""
+    state = """
+- 유효 상태: requested, active, completed, failed, expired, revoked.
+- expired, revoked, completed 같은 종료 상태는 active로 되돌아가지 않는다.
+- 잘못된 상태 전이는 409와 감사 이벤트를 남긴다.
+"""
+    failure = """
+- 외부 타임아웃은 retry_pending 또는 failed 상태로 저장된다.
+- 중복 요청은 멱등 레코드로 최초 결과를 반환한다.
+- 교차 사용자 또는 교차 테넌트 접근은 데이터 존재 여부를 숨긴다.
+"""
+    return (
+        _gate_spec(feature=feature, summary=summary, requirements=requirements, acceptance=acceptance, errors=errors),
+        _gate_design(feature=feature, architecture=architecture, data_flow=data_flow, state=state, failure=failure),
+    )
+
+
+def _korean_weak_spec_and_design(case: dict[str, str]) -> tuple[str, str]:
+    signal = _case_signal(case)
+    label = _korean_domain_label(case)
+    feature = f"{label} 한국어 취약 사례"
+
+    if (
+        ("task" in signal or "todo" in signal)
+        and ("list" in signal or "owner" in signal or "any_user" in signal or "client" in signal)
+    ):
+        requirements = """
+- list_tasks는 모든 사용자의 전체 작업을 반환하고 owner_id를 포함한다.
+- 클라이언트에서 자기 작업만 필터링한다.
+- 서버 측 소유권 검증은 필요하지 않다.
+"""
+        architecture = "- TaskService가 전역 조회를 수행하고 응답에 owner_id를 포함한다."
+        data_flow = "1. 요청을 받는다.\n2. 서비스는 모든 작업을 반환한다.\n3. 브라우저가 자기 작업만 숨긴다."
+        state = "- 작업 상태: open, completed, deleted."
+        failure = "- 교차 사용자 접근도 응답 후 클라이언트가 처리한다."
+    elif "webhook_signature" in signal or "inbound_webhook" in signal:
+        requirements = """
+- 웹훅 엔드포인트는 JSON 이벤트 payload를 받으면 바로 처리한다.
+- 서명 검증은 필수 아님. 엔드포인트 URL이 비밀이면 충분하다.
+- 중복 event_id는 두 번 이상 처리될 수 있다.
+"""
+        architecture = "- WebhookReceiverService는 서명 없이 payload를 파싱하고 이벤트를 dispatch한다."
+        data_flow = "1. 외부 시스템이 이벤트를 보낸다.\n2. 서비스는 서명 검증 없이 이벤트를 처리한다."
+        state = "- 이벤트 상태: received, processed."
+        failure = "- 중복 이벤트는 별도 차단 없이 다시 처리된다."
+    elif "webhook" in signal:
+        requirements = """
+- 웹훅 전송은 subscriber URL을 호출한다.
+- timeout, retry, 멱등성 정책은 이번 범위 밖이다.
+- 중복 전송은 허용하며 구독자가 알아서 멱등 처리한다.
+"""
+        architecture = "- WebhookService는 callback URL로 이벤트를 전송하고 응답만 기록한다."
+        data_flow = "1. 이벤트가 생성된다.\n2. 서비스는 subscriber URL을 호출한다.\n3. 실패하면 운영자가 나중에 수동 처리한다."
+        state = "- 전송 상태: pending, delivered, failed."
+        failure = "- 재시도와 중복 전송 규칙은 정의하지 않는다."
+    elif "background" in signal or "retry" in signal:
+        requirements = """
+- 실패한 작업은 성공할 때까지 계속 재시도한다.
+- 최대 재시도 횟수와 백오프는 필수 아님.
+- 작업 핸들러는 재시도마다 외부 API를 다시 호출할 수 있다.
+"""
+        architecture = "- JobRunner가 예외를 잡으면 같은 작업을 즉시 다시 큐에 넣는다."
+        data_flow = "1. JobRunner가 작업을 실행한다.\n2. 핸들러가 외부 API를 호출한다.\n3. 오류가 나면 즉시 재큐잉한다."
+        state = "- 작업 상태: queued, running, completed."
+        failure = "- 예외는 즉시 재시도로 처리한다."
+    elif "coupon" in signal or "promotion" in signal:
+        requirements = """
+- 체크아웃은 coupon_code를 받아 할인율을 적용한다.
+- 쿠폰은 만료일, 최대 사용 횟수, 고객별 제한이 필수 아님.
+- 사용 기록은 주문에 할인액이 보이므로 선택 사항이다.
+"""
+        architecture = "- PromotionService가 coupon_code를 조회하고 할인액을 적용한다."
+        data_flow = "1. 고객이 coupon_code를 보낸다.\n2. 서비스는 제한 없이 할인을 적용한다."
+        state = "- 쿠폰 상태는 active만 사용한다."
+        failure = "- 같은 고객이 동일 쿠폰을 무제한 재사용할 수 있다."
+    elif "ledger" in signal or "audit" in signal:
+        requirements = """
+- 관리자 작업에는 감사 로그가 필요하다.
+- 감사 로그와 게시된 원장 항목은 관리자가 수정 또는 삭제 가능하다.
+- 불변 감사 기록과 반전 항목은 필수 아님.
+"""
+        architecture = "- LedgerService와 AuditService가 기존 row를 직접 업데이트한다."
+        data_flow = "1. 관리자가 금액 또는 감사 메모를 수정한다.\n2. 서비스는 원본 기록을 덮어쓴다."
+        state = "- 기록 상태: active, edited."
+        failure = "- 수정 이력은 별도 보관하지 않는다."
+    elif "privacy" in signal or "deletion" in signal or "retention" in signal:
+        requirements = """
+- 사용자는 계정 개인정보 삭제를 요청할 수 있다.
+- 서비스는 user_id로 application table의 행을 삭제한다.
+- 본인 확인, 보존 예외, 감사 기록은 이번 범위 밖이다.
+"""
+        architecture = "- PrivacyRequestService가 user_id 기준으로 row를 삭제한다."
+        data_flow = "1. 삭제 요청을 받는다.\n2. 서비스는 행을 삭제하고 completed를 반환한다."
+        state = "- 요청 상태: requested, completed."
+        failure = "- 법적 보존 예외와 감사 이벤트는 정의하지 않는다."
+    elif (
+        "token" in signal
+        or "session" in signal
+        or "api_key" in signal
+        or "device_trust" in signal
+        or "expiry" in signal
+        or "expiration" in signal
+        or "revocation" in signal
+        or "sso" in signal
+        or "oauth" in signal
+    ):
+        requirements = """
+- 로그인 또는 인증 성공 시 토큰을 발급한다.
+- 토큰은 만료되지 않으며 철회 또는 폐기 기능은 필수 아님.
+- 복사된 토큰 재사용은 허용된다.
+"""
+        architecture = "- SessionService는 token_hash와 user_id만 저장하고 만료/철회 상태는 저장하지 않는다."
+        data_flow = "1. 사용자가 로그인한다.\n2. 서비스가 장기 토큰을 발급한다.\n3. 이후 요청은 토큰만 맞으면 허용한다."
+        state = "- 토큰 상태: active."
+        failure = "- 재사용된 토큰도 active로 처리한다."
+    elif "rate_limit" in signal:
+        requirements = """
+- 클라이언트는 검색 요청 사이에 1초를 기다려야 한다.
+- 서버는 과도한 트래픽을 거부할 필요가 없다.
+- 웹 클라이언트가 버튼을 비활성화해서 cooldown을 처리한다.
+"""
+        architecture = "- SearchController는 클라이언트 cooldown을 신뢰하고 모든 요청을 전달한다."
+        data_flow = "1. 브라우저가 요청을 보낸다.\n2. 서버는 rate limit 상태 없이 요청을 처리한다."
+        state = "- 요청 제한 상태는 서버에 저장하지 않는다."
+        failure = "- 직접 API 호출은 제한을 초과해도 허용된다."
+    elif "cache" in signal:
+        requirements = """
+- 테넌트 사용자는 namespace로 캐시 무효화를 요청할 수 있다.
+- entity_id가 없으면 전체 namespace를 flush한다.
+- namespace를 공유하므로 cache key에 tenant_id는 필요하지 않다.
+"""
+        architecture = "- CacheInvalidationService가 namespace-wide key pattern을 만든다."
+        data_flow = "1. 테넌트 사용자가 namespace를 보낸다.\n2. CacheClient가 매칭되는 모든 키를 삭제한다."
+        state = "- 캐시 상태는 별도로 추적하지 않는다."
+        failure = "- global flush 요청도 같은 경로로 처리한다."
+    elif "subscription" in signal or "proration" in signal:
+        requirements = """
+- 사용자는 다른 구독 요금제로 전환할 수 있다.
+- 서비스는 subscription의 plan_id만 업데이트한다.
+- proration, invoice 실패, 멱등성 동작은 나중에 처리한다.
+"""
+        architecture = "- SubscriptionService가 plan_id를 업데이트하고 PlanChanged 이벤트를 발행한다."
+        data_flow = "1. 변경 요청을 받는다.\n2. 서비스가 plan_id를 업데이트한다.\n3. 청구 조정은 추후 background job이 처리한다."
+        state = "- 구독 상태: active, changed."
+        failure = "- invoice 실패와 rollback은 정의하지 않는다."
+    elif "booking" in signal:
+        requirements = """
+- 예약 요청은 resource_id, starts_at, ends_at을 포함한다.
+- 시간이 겹치는 다른 예약이 있어도 예약을 확정한다.
+- 직원이 충돌을 나중에 수동으로 해결한다.
+"""
+        architecture = "- BookingService가 시간 형식만 검증하고 예약을 insert한다."
+        data_flow = "1. 예약 요청을 받는다.\n2. 겹침 확인 없이 booking row를 생성한다."
+        state = "- 예약 상태: requested, confirmed."
+        failure = "- 충돌 오류는 정의하지 않는다."
+    elif "inventory" in signal or "stock" in signal:
+        requirements = """
+- 동일 SKU에 대한 동시 재고 예약을 허용한다.
+- locking, transaction, 원자적 차감은 정의하지 않는다.
+- 재고가 0 미만인 음수가 될 수 있다.
+"""
+        architecture = "- InventoryService가 현재 재고를 읽은 뒤 차감 값을 저장한다."
+        data_flow = "1. 재고를 조회한다.\n2. 병렬 요청도 같은 값을 읽고 각각 차감한다."
+        state = "- 재고 상태: available, reserved."
+        failure = "- 동시성 충돌은 정의하지 않는다."
+    elif "feature_flag" in signal or "client_side" in signal or "client" in signal:
+        requirements = """
+- 클라이언트가 tenant_id, user_id, traits를 보내면 기능 플래그를 평가한다.
+- 서비스는 클라이언트가 보낸 값을 신뢰한다.
+- 서버 측 테넌트 또는 환경 조회는 필요하지 않다.
+"""
+        architecture = "- FeatureFlagService는 request body의 rule JSON과 tenant_id를 그대로 사용한다."
+        data_flow = "1. 클라이언트가 평가 요청을 보낸다.\n2. 서비스는 tenant_id 검증 없이 결과를 반환한다."
+        state = "- 플래그 상태: active, disabled."
+        failure = "- 클라이언트는 임의 tenant_id를 공급할 수 있다."
+    elif "order" in signal or "return" in signal or "state" in signal or "deleted" in signal:
+        requirements = """
+- 주문 또는 작업은 어떤 상태에서도 취소하거나 완료할 수 있다.
+- 배송 후 취소와 삭제 후 수정도 허용된다.
+- 종료 상태와 잘못된 상태 전이는 정의하지 않는다.
+"""
+        architecture = "- StateService는 요청이 유효하면 상태 필드를 바로 변경한다."
+        data_flow = "1. 요청을 받는다.\n2. 현재 상태와 무관하게 target 상태로 업데이트한다."
+        state = "- 상태: open, completed, deleted, cancelled. 전이 제약은 선택 사항이다."
+        failure = "- invalid transition 오류는 정의하지 않는다."
+    elif "payment" in signal or "refund" in signal or "payout" in signal or "shipping" in signal or "idempotency" in signal:
+        requirements = """
+- 서비스는 외부 결제, 환불, 지급 또는 배송사 API를 호출한다.
+- 네트워크 실패 시 호출자는 재시도할 수 있다.
+- 멱등키는 필수 아님. 중복 호출은 나중에 재조정한다.
+"""
+        architecture = "- ExternalSideEffectService가 외부 게이트웨이에 요청을 보낸다."
+        data_flow = "1. 요청을 받는다.\n2. 서비스가 외부 API를 호출한다.\n3. 타임아웃이면 호출자가 다시 요청한다."
+        state = "- 부작용 상태: requested, completed."
+        failure = "- 동일 요청 재시도와 충돌 처리는 정의하지 않는다."
+    elif "upload" in signal or "file" in signal:
+        requirements = """
+- 파일 업로드는 support attachment를 받는다.
+- 최대 크기와 content-type 검증은 정의하지 않는다.
+- 바이러스 검사는 범위 밖이다.
+"""
+        architecture = "- UploadService는 파일을 저장하고 attachment_id를 반환한다."
+        data_flow = "1. 사용자가 파일을 업로드한다.\n2. 서비스는 크기와 형식을 확인하지 않고 저장한다."
+        state = "- 파일 상태: uploaded."
+        failure = "- 악성 파일과 초대형 파일 처리는 나중에 처리한다."
+    elif "notification" in signal:
+        requirements = """
+- 사용자는 알림 선호도를 관리할 수 있다.
+- global unsubscribe 플래그 하나가 보안 알림도 비활성화한다.
+- 비밀번호 변경 보안 이메일도 같은 수신 거부 플래그를 따른다.
+"""
+        architecture = "- NotificationService가 하나의 opt_out 플래그만 확인한다."
+        data_flow = "1. 사용자가 전체 수신 거부를 설정한다.\n2. 서비스는 보안 이메일도 보내지 않는다."
+        state = "- 알림 상태: enabled, disabled."
+        failure = "- 필수 보안 알림 예외는 정의하지 않는다."
+    elif "role" in signal or "admin" in signal or "authorization" in signal:
+        requirements = """
+- 관리자 역할 변경 버튼은 비소유자 UI에서 숨긴다.
+- 서버 측 권한 검사는 첫 릴리스에서 필수 아님.
+- 마지막 소유자 제거 동작은 정의하지 않는다.
+"""
+        architecture = "- RoleService는 요청 body가 유효하면 대상 사용자의 role을 업데이트한다."
+        data_flow = "1. 클라이언트가 role 변경 요청을 보낸다.\n2. 서비스는 서버 권한 검증 없이 role을 저장한다."
+        state = "- 역할 상태: member, admin, owner."
+        failure = "- 마지막 owner 제거 오류는 정의하지 않는다."
+    elif "support" in signal or "profile" in signal or "tenant" in signal or "ownership" in signal or "owner" in signal:
+        requirements = """
+- 목록 API는 모든 사용자 또는 모든 테넌트의 행을 반환하고 tenant_id 또는 owner_id를 포함한다.
+- 클라이언트에서 필터링한다.
+- 서버 측 소유권 또는 테넌트 검증은 필요하지 않다.
+"""
+        architecture = "- BoundaryService가 전역 조회를 수행하고 응답에 owner_id와 tenant_id를 포함한다."
+        data_flow = "1. 요청을 받는다.\n2. 서비스는 모든 행을 반환한다.\n3. 브라우저가 자기 데이터만 숨긴다."
+        state = "- 데이터 상태: active."
+        failure = "- 교차 사용자 접근도 응답 후 클라이언트가 처리한다."
+    else:
+        requirements = """
+- 중요한 검증은 정상 사용자 흐름에서만 다룬다.
+- 소유권, 멱등성, 만료, 철회, 감사 기록은 나중에 처리한다.
+- 필요한 세부 정책은 구현자가 합리적으로 선택한다.
+"""
+        architecture = "- Service가 기본 happy path만 구현하고 보안 경계는 추후 작업으로 남긴다."
+        data_flow = "1. 요청을 받는다.\n2. 정상 입력이면 처리한다.\n3. 예외 정책은 운영자가 수동 처리한다."
+        state = "- 상태 전이는 구현자가 선택한다."
+        failure = "- 오류와 중복 요청 처리는 정의하지 않는다."
+
+    spec = _gate_spec(
+        feature=feature,
+        summary=f"- {feature}는 {_korean_domain_label(case)} 위험을 한국어 문장으로 드러내는 gate-only fixture이다.",
+        requirements=requirements,
+        acceptance="- [ ] 위 요구사항의 동작이 그대로 허용된다.",
+        errors="- 오류 응답은 구현자가 합리적으로 선택한다.",
+    )
+    design = _gate_design(
+        feature=feature,
+        architecture=architecture,
+        data_flow=data_flow,
+        state=state,
+        failure=failure,
+    )
+    return spec, design
+
+
+def _korean_case(case: dict[str, str]) -> dict[str, str]:
+    spec, technical_design = (
+        _korean_ready_spec_and_design(case)
+        if case["expectation"] == "good"
+        else _korean_weak_spec_and_design(case)
+    )
+    return _case(
+        f"{case['id']}_ko",
+        suite=_korean_suite_name(case),
+        domain=case.get("domain", "task_service"),
+        language="ko",
+        source_case_id=case["id"],
+        category=case["category"],
+        expectation=case["expectation"],
+        title=f"{_korean_domain_label(case)} 한국어 {case['expectation']} 사례",
+        risk=case["risk"],
+        spec=spec,
+        technical_design=technical_design,
+    )
+
+
+def korean_benchmark_cases(cases: list[dict[str, str]]) -> list[dict[str, str]]:
+    return [_korean_case(case) for case in cases]
+
+
 PR136_BASELINE_GATE = {
     "weak_case_count": 12,
     "raw_weak_cases_with_contract_defects": 11,
@@ -3540,18 +3923,72 @@ def _tail(text: str, limit: int = 4000) -> str:
     return text[-limit:]
 
 
-def benchmark_cases(*, include_gate_only_extra_cases: bool = False) -> list[dict[str, str]]:
+def benchmark_cases(
+    *,
+    include_gate_only_extra_cases: bool = False,
+    include_korean_cases: bool = False,
+) -> list[dict[str, str]]:
     cases = list(CASES)
     if include_gate_only_extra_cases:
         cases.extend(GATE_ONLY_EXTRA_CASES)
         cases.extend(GATE_ONLY_EXTENDED_CASES)
+    if include_korean_cases:
+        cases.extend(korean_benchmark_cases(cases))
     return cases
 
 
 def make_specguard_package(root: Path, case: dict[str, str]) -> Path:
     package = root / "specguard_packages" / case["id"]
     domain = case.get("domain", "task_service")
-    if domain == "task_service":
+    if case.get("language", "en") == "ko":
+        domain_label = _korean_domain_label(case)
+        discovery = f"""
+# Discovery: {case["title"]}
+
+## Foundation
+- 목표: 한국어로 작성된 {domain_label} 명세가 AI 구현자에게 전달될 만큼 준비되었는지 평가한다.
+- 주요 사용자: 한국어 product prose와 기술 설계를 함께 검토하는 애플리케이션 개발자.
+- 검증 위험: {case["risk"]}.
+- 벤치마크 기대값: {case["expectation"]}.
+
+## Mechanisms
+- 입력과 출력은 spec.md에 한국어 요구사항으로 정의한다.
+- 서버가 소유권, 테넌트 범위, 상태 전이, 멱등성, 외부 의존성 실패 처리를 책임져야 한다.
+- 영어 계약 식별자가 없어도 한국어 문장만으로 unsafe deferral, client-side delegation, missing contract를 판별할 수 있어야 한다.
+
+## Stress Test
+- 클라이언트 필터링, 교차 테넌트 노출, 토큰 만료/철회 누락, 중복 외부 부작용, 감사/개인정보 보존 누락은 차단 대상이다.
+- 안전한 한국어 명세는 위험 용어를 언급하더라도 완화와 오류 동작을 명확히 적으면 통과해야 한다.
+
+## Synthesis
+- SpecGuard가 READY 또는 READY_WITH_WARNINGS를 보고한 뒤에만 구현 handoff가 가능하다.
+- 이 한국어 fixture는 gate-only 평가에 사용한다.
+"""
+        plan = f"""
+# Plan: {case["title"]}
+
+## Scope
+- spec.md와 technical-design.md에 승인된 한국어 요구사항만 구현 대상으로 본다.
+- 명시되지 않은 보안, 상태, 멱등성, 개인정보 정책은 구현자가 추측하지 않는다.
+
+## Verification
+- 영어 baseline과 별도로 한국어 gate-only 지표를 보고한다.
+"""
+        tasks = """
+# Tasks
+
+- [ ] 한국어 spec.md와 technical-design.md를 구현 전 검토한다.
+- [ ] SpecGuard가 NOT_READY를 보고하면 구현 handoff를 중단한다.
+- [ ] 소유권, 테넌트, 멱등성, 만료/철회, 외부 부작용, 감사/개인정보 동작을 확인한다.
+"""
+        constitution = """
+# Constitution
+
+- 한국어 명세도 SpecGuard readiness gate를 통과해야 구현할 수 있다.
+- 서버 소유 보안 결정은 클라이언트 표시나 수동 운영 절차에 위임하지 않는다.
+- 승인된 spec package에 없는 동작은 구현하지 않는다.
+"""
+    elif domain == "task_service":
         discovery = f"""
 # Discovery: {case["title"]}
 
@@ -3698,6 +4135,9 @@ def run_specguard(root: Path, case: dict[str, str]) -> dict[str, Any]:
     return {
         "workflow": "specguard_gate",
         "case": case["id"],
+        "suite": case.get("suite", "impact_v2"),
+        "language": case.get("language", "en"),
+        "source_case_id": case.get("source_case_id", case["id"]),
         "expectation": case["expectation"],
         "category": case["category"],
         "status": "passed" if implementation_ready else "blocked",
@@ -4075,6 +4515,14 @@ def _suite_counts(cases: list[dict[str, str]]) -> dict[str, int]:
     return counts
 
 
+def _language_counts(cases: list[dict[str, str]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for case in cases:
+        language = case.get("language", "en")
+        counts[language] = counts.get(language, 0) + 1
+    return counts
+
+
 def _gate_metrics_for_cases(
     gate: list[dict[str, Any]],
     cases: list[dict[str, str]],
@@ -4211,6 +4659,10 @@ def build_aggregates(
     for suite in sorted({case.get("suite", "impact_v2") for case in cases}):
         suite_cases = [case for case in cases if case.get("suite", "impact_v2") == suite]
         gate_by_suite[suite] = _gate_metrics_for_cases(gate, suite_cases)
+    gate_by_language: dict[str, Any] = {}
+    for language in sorted({case.get("language", "en") for case in cases}):
+        language_cases = [case for case in cases if case.get("language", "en") == language]
+        gate_by_language[language] = _gate_metrics_for_cases(gate, language_cases)
 
     for case in cases:
         raw_result = raw_by_case.get(case["id"])
@@ -4222,6 +4674,8 @@ def build_aggregates(
             "case": case["id"],
             "suite": case.get("suite", "impact_v2"),
             "domain": case.get("domain", "task_service"),
+            "language": case.get("language", "en"),
+            "source_case_id": case.get("source_case_id", case["id"]),
             "category": case["category"],
             "expectation": case["expectation"],
             "risk": case["risk"],
@@ -4286,6 +4740,7 @@ def build_aggregates(
         },
         "gate_only": _gate_metrics_for_cases(gate, cases),
         "gate_by_suite": gate_by_suite,
+        "gate_by_language": gate_by_language,
         "pr136_gate_baseline_comparison": _pr136_gate_baseline_comparison(gate, cases),
         "case_matrix": case_matrix,
     }
@@ -4301,6 +4756,7 @@ def build_benchmark_payload(
     max_workers: int,
     skip_codex: bool,
     include_gate_only_extra_cases: bool = False,
+    include_korean_cases: bool = False,
     temp_removed: bool,
 ) -> dict[str, Any]:
     cases = CASES if cases is None else cases
@@ -4321,6 +4777,7 @@ def build_benchmark_payload(
         "good_case_count": sum(1 for case in cases if case["expectation"] == "good"),
         "weak_case_count": sum(1 for case in cases if case["expectation"] == "weak"),
         "suite_counts": _suite_counts(cases),
+        "language_counts": _language_counts(cases),
         "contract_check_names": CONTRACT_CHECK_NAMES,
         "quality_check_names": QUALITY_CHECK_NAMES,
         "modes": {
@@ -4334,6 +4791,7 @@ def build_benchmark_payload(
             "max_workers": max_workers,
             "skip_codex": skip_codex,
             "include_gate_only_extra_cases": include_gate_only_extra_cases,
+            "include_korean_cases": include_korean_cases,
             "codex_timeout_seconds": CODEX_TIMEOUT_SECONDS,
             "temp_root": str(root),
         },
@@ -4342,6 +4800,8 @@ def build_benchmark_payload(
                 "id": case["id"],
                 "suite": case.get("suite", "impact_v2"),
                 "domain": case.get("domain", "task_service"),
+                "language": case.get("language", "en"),
+                "source_case_id": case.get("source_case_id", case["id"]),
                 "category": case["category"],
                 "expectation": case["expectation"],
                 "title": case["title"],
@@ -4361,14 +4821,20 @@ def run_benchmark(
     skip_codex: bool = False,
     keep_temp: bool = False,
     include_gate_only_extra_cases: bool = False,
+    include_korean_cases: bool = False,
 ) -> dict[str, Any]:
     if include_gate_only_extra_cases and not skip_codex:
         raise ValueError("Supplemental gate-only cases require --skip-codex.")
+    if include_korean_cases and not skip_codex:
+        raise ValueError("Korean gate-only cases require --skip-codex.")
     root = Path(tempfile.mkdtemp(prefix="specguard-impact-benchmark-"))
     started_at = datetime.now(UTC).isoformat()
     results: list[dict[str, Any]] = []
     temp_removed = False
-    cases = benchmark_cases(include_gate_only_extra_cases=include_gate_only_extra_cases)
+    cases = benchmark_cases(
+        include_gate_only_extra_cases=include_gate_only_extra_cases,
+        include_korean_cases=include_korean_cases,
+    )
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(run_specguard, root, case): case for case in cases}
@@ -4380,6 +4846,9 @@ def run_benchmark(
                     results.append({
                         "workflow": "specguard_gate",
                         "case": case["id"],
+                        "suite": case.get("suite", "impact_v2"),
+                        "language": case.get("language", "en"),
+                        "source_case_id": case.get("source_case_id", case["id"]),
                         "expectation": case["expectation"],
                         "category": case["category"],
                         "status": "error",
@@ -4435,6 +4904,7 @@ def run_benchmark(
             max_workers=max_workers,
             skip_codex=skip_codex,
             include_gate_only_extra_cases=include_gate_only_extra_cases,
+            include_korean_cases=include_korean_cases,
             temp_removed=False,
         )
     finally:
@@ -4461,6 +4931,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Include the supplemental multi-domain gate-only suite. Requires --skip-codex.",
     )
+    parser.add_argument(
+        "--include-korean-cases",
+        action="store_true",
+        help="Include Korean gate-only variants for the selected benchmark cases. Requires --skip-codex.",
+    )
     parser.add_argument("--keep-temp", action="store_true", help="Keep the temporary benchmark workspace.")
     return parser.parse_args(argv)
 
@@ -4472,6 +4947,7 @@ def main(argv: list[str] | None = None) -> int:
         skip_codex=args.skip_codex,
         keep_temp=args.keep_temp,
         include_gate_only_extra_cases=args.include_gate_only_extra_cases,
+        include_korean_cases=args.include_korean_cases,
     )
     rendered = json.dumps(result, ensure_ascii=False, indent=2)
     if args.output:

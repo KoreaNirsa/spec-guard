@@ -87,25 +87,24 @@ For Codex setup, example packages, LLM review options, follow-up menus, implemen
 
 ## Benchmark Summary
 
-The calibrated v0.3.1 gate-only benchmark evaluates 98 spec packages across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs.
+The calibrated gate-only benchmark evaluates 98 English spec packages across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs. The v0.3.2 benchmark path adds 98 corresponding Korean gate-only cases and reports English and Korean metrics separately.
 
 The benchmark asks one practical question: how much of the implementation handoff can SpecGuard guard before an AI coding agent starts writing code?
 
-| 98-Case Guard Signal | Result |
-| --- | ---: |
-| Total specs evaluated | 98 |
-| Weak specs blocked before implementation | 63/65 |
-| Weak-spec block rate | 96.9% |
-| Ready specs incorrectly blocked | 0/33 |
-| False positive rate | 0.0% |
-| Weak specs missed | 2/65 |
-| False negative rate | 3.1% |
+| Gate-Only Guard Signal | English 98 | Korean 98 |
+| --- | ---: | ---: |
+| Weak specs blocked before implementation | 63/65 | 65/65 |
+| Weak-spec block rate | 96.9% | 100.0% |
+| Ready specs incorrectly blocked | 0/33 | 0/33 |
+| False positive rate | 0.0% | 0.0% |
+| Weak specs missed | 2/65 | 0/65 |
+| False negative rate | 3.1% | 0.0% |
 
 In the original #136 code-generation baseline, raw weak specs exposed contract defects in 11 of 12 cases. With the calibrated local gate, SpecGuard now blocks 10 of those 11 observed exposure paths before implementation handoff, increasing prevented exposure from 27.3% to 90.9%.
 
-This means SpecGuard is acting as a strong pre-implementation guard layer: it stops most unsafe or underspecified inputs before code generation, while leaving all 33 ready-reference specs implementation-allowed in the current 98-case run.
+This means SpecGuard is acting as a strong pre-implementation guard layer: it stops most unsafe or underspecified inputs before code generation, while leaving all ready-reference specs implementation-allowed in the current English and Korean gate-only runs.
 
-The remaining known gate-only misses are `fault_title_no_trim` and `weak_document_share_client_enforced`. Full methodology, suite breakdown, case-level results, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
+The remaining known English gate-only misses are `fault_title_no_trim` and `weak_document_share_client_enforced`. Korean support is currently a deterministic low-mode claim for explicit unsafe wording, not a full Korean production-support claim. Full methodology, suite breakdown, case-level results, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
 ## Core Value
 

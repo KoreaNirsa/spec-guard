@@ -61,6 +61,60 @@ def test_benchmark_cases_can_include_supplemental_gate_only_suite() -> None:
     assert {case["suite"] for case in GATE_ONLY_EXTENDED_CASES} == {"gate_only_extended_v2"}
 
 
+def test_benchmark_cases_can_include_korean_gate_only_layer() -> None:
+    cases = benchmark_cases(include_gate_only_extra_cases=True, include_korean_cases=True)
+    korean_cases = [case for case in cases if case["language"] == "ko"]
+
+    assert len(cases) == 196
+    assert len(korean_cases) == 98
+    assert {case["suite"] for case in korean_cases} == {
+        "impact_v2_ko",
+        "gate_only_supplemental_v1_ko",
+        "gate_only_extended_v2_ko",
+    }
+    assert sum(1 for case in korean_cases if case["expectation"] == "good") == 33
+    assert sum(1 for case in korean_cases if case["expectation"] == "weak") == 65
+    assert {case["source_case_id"] for case in korean_cases} == {
+        case["id"]
+        for case in benchmark_cases(include_gate_only_extra_cases=True)
+    }
+    assert all("한국어" in case["title"] for case in korean_cases)
+
+
+def test_benchmark_payload_reports_language_metrics() -> None:
+    cases = benchmark_cases(include_gate_only_extra_cases=True, include_korean_cases=True)
+    results = [
+        {
+            "workflow": "specguard_gate",
+            "case": "ready_canonical_task_service",
+            "implementation_ready": True,
+        },
+        {
+            "workflow": "specguard_gate",
+            "case": "fault_ownership_leak_ko",
+            "implementation_ready": False,
+        },
+    ]
+
+    payload = build_benchmark_payload(
+        root=Path("benchmark-root"),
+        results=results,
+        cases=cases,
+        started_at="2026-05-07T00:00:00Z",
+        finished_at="2026-05-07T00:10:00Z",
+        max_workers=1,
+        skip_codex=True,
+        include_gate_only_extra_cases=True,
+        include_korean_cases=True,
+        temp_removed=False,
+    )
+
+    assert payload["language_counts"] == {"en": 98, "ko": 98}
+    assert payload["aggregates"]["gate_by_language"]["en"]["evaluated_cases"] == 1
+    assert payload["aggregates"]["gate_by_language"]["ko"]["evaluated_cases"] == 1
+    assert payload["aggregates"]["gate_by_language"]["ko"]["blocked_weak_cases"] == 1
+
+
 def test_impact_aggregates_track_prevented_exposure_and_gate_errors() -> None:
     results = [
         {
