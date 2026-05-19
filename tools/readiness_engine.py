@@ -827,22 +827,45 @@ def _task_error_contract_is_too_generic(contexts: list[str]) -> bool:
     return covered < 5
 
 
+def _has_non_blank_task_title_validation_context(contexts: list[str]) -> bool:
+    safe_patterns = (
+        r"\brejects?\s+title\s+when\s+title\.strip\(\)\s+is\s+empty\b",
+        r"\btitle\.strip\(\)\s+is\s+empty\b.*\b(raise|raises|reject|rejected|invalid|taskerror)\b",
+        r"\b(raise|raises|reject|rejected|invalid|taskerror)\b.*\btitle\.strip\(\)\s+is\s+empty\b",
+        r"\bif\s+not\s+title\.strip\(\)",
+        r"\btitle\b.*\bempty\s+after\s+(trim|trimming|strip|stripping)\b.*\b(raise|raises|reject|rejected|invalid|taskerror)\b",
+        r"\bspace[-\s]+only\s+titles?\s+(raise|raises|reject|rejected|invalid)\b",
+        r"\bspace[-\s]+only\s+title\b.*\b(taskerror|error|invalid|reject|rejected)\b",
+        r"\b공백만\s+있는\s+title\b.*\b(거부|오류|에러|taskerror|허용하지)",
+        r"\btitle\b.*\bstrip\(\)\b.*\b(비어|빈)\b.*\b(거부|오류|에러|taskerror)",
+    )
+    return any(_context_matches_any(context, safe_patterns) for context in contexts)
+
+
 def _task_title_validation_context(contexts: list[str]) -> str | None:
-    unsafe_patterns = (
+    unsafe_allowance_patterns = (
         r"\btitle\s+made\s+only\s+of\s+spaces\s+is\s+allowed\b",
         r"\bspace[-\s]+only\s+titles?\s+(are\s+)?(allowed|stored|accepted|permitted)\b",
+        r"\b공백만\s+있는\s+title\b.*\b허용",
+    )
+    preservation_patterns = (
         r"\bcreate_task\b.*\bpreserves?\b.*\b(leading|trailing)\b.*\bspaces?\b",
         r"\bcreate_task\b.*\bstores?\s+title\s+exactly\s+as\s+provided\b",
         r"\bstores?\s+title\s+exactly\s+as\s+provided\b",
         r"\bstore\s+title\s+without\s+trimming\b",
         r"\btitle\b.*\bwithout\s+trimming\b",
-        r"\b공백만\s+있는\s+title\b.*\b허용",
         r"\btitle\b.*\b앞뒤\s+공백\b.*\b보존",
         r"\btitle\b.*\b그대로\s+저장",
     )
     for context in contexts:
-        if _context_matches_any(context, unsafe_patterns):
+        if _context_matches_any(context, unsafe_allowance_patterns):
             return context
+    preservation_context = next(
+        (context for context in contexts if _context_matches_any(context, preservation_patterns)),
+        None,
+    )
+    if preservation_context is not None and not _has_non_blank_task_title_validation_context(contexts):
+        return preservation_context
     return None
 
 

@@ -229,6 +229,60 @@ def test_mixed_korean_prose_with_english_identifiers_blocks_task_title_validatio
     assert "공백만 있는 title" in " ".join(issue.get("evidence", []))
 
 
+def test_task_title_preservation_after_non_blank_validation_remains_ready(
+    tmp_path: Path,
+) -> None:
+    package = _write_feature(
+        tmp_path,
+        spec_lines=[
+            "# Spec: safe task title preservation",
+            "",
+            "## Requirements",
+            "",
+            "- TaskService exposes create_task.",
+            "- create_task rejects title when title.strip() is empty.",
+            "- create_task preserves leading and trailing spaces in the stored title after validation succeeds.",
+            "- The title `  buy milk  ` remains exactly `  buy milk  `.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] A space-only title raises TaskError.",
+            "- [ ] A valid title with leading and trailing spaces is stored unchanged.",
+            "",
+            "## Error Cases",
+            "",
+            "- Empty or space-only title raises TaskError.",
+        ],
+        design_lines=[
+            "# Technical Design: safe task title preservation",
+            "",
+            "## Architecture",
+            "",
+            "- TaskService owns create_task validation and persistence.",
+            "",
+            "## Data Flow",
+            "",
+            "1. create_task validates title.strip() before persistence.",
+            "2. It stores the original title only after non-blank validation succeeds.",
+            "",
+            "## State",
+            "",
+            "- Task states: open, completed, deleted.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Space-only title raises TaskError.",
+        ],
+    )
+
+    result = run_readiness_review(package)
+    payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+
+    assert result.ok
+    assert payload["summary"]["critical"] == 0
+    assert "Task title validation is unsafe" not in {issue["title"] for issue in payload["issues"]}
+
+
 @pytest.mark.parametrize(
     ("language", "case_id", "expected_status"),
     [
