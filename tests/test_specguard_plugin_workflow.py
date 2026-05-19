@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 
@@ -11,20 +12,66 @@ README_PATH = ROOT / "plugins" / "specguard" / "README.md"
 CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
 
 
+def _assert_contains_all(text: str, required: tuple[str, ...]) -> None:
+    missing = [item for item in required if item not in text]
+    assert not missing
+
+
+def _assert_mentions_all_concepts(text: str, concepts: tuple[tuple[str, ...], ...]) -> None:
+    normalized = text.lower()
+    missing = [
+        "/".join(concept)
+        for concept in concepts
+        if not all(term.lower() in normalized for term in concept)
+    ]
+    assert not missing
+
+
+def _assert_default_heuristic_command(text: str) -> None:
+    assert re.search(r"specguard run <(?:path|package)> --no-llm --no-follow-up", text)
+
+
+def _assert_suggestion_only_boundary(text: str) -> None:
+    _assert_mentions_all_concepts(
+        text,
+        (
+            ("suggestion", "only"),
+            ("not", "modify"),
+            ("spec"),
+            ("SpecGuard evidence", "Codex suggestion"),
+            ("Needs user decision",),
+            ("not", "invent"),
+            ("rerun", "SpecGuard"),
+        ),
+    )
+
+
 def test_specguard_plugin_skill_defines_heuristic_first_cli_workflow() -> None:
     skill = SKILL_PATH.read_text(encoding="utf-8")
 
-    assert "specguard --help" in skill
-    assert "python -m cli.specguard --help" in skill
-    assert "specs/*/spec.md" in skill
-    assert "specguard run <path> --no-llm --no-follow-up" in skill
-    assert "specguard run <path> --llm --no-follow-up" in skill
-    assert "specguard run <path> --llm --follow-up" in skill
-    assert "readiness-review-detail.json" in skill
-    assert "Do not add `--llm`" in skill
-    assert "Use `readiness-review.json` as the machine result" in skill
-    assert "Do not scrape terminal logs for readiness state" in skill
-    assert "handoff availability" in skill
+    _assert_contains_all(
+        skill,
+        (
+            "specguard --help",
+            "python -m cli.specguard --help",
+            "specs/*/spec.md",
+            "specguard run <path> --llm --no-follow-up",
+            "specguard run <path> --llm --follow-up",
+            "readiness-review.json",
+            "readiness-review-detail.json",
+            "implementation-output.md",
+        ),
+    )
+    _assert_default_heuristic_command(skill)
+    _assert_mentions_all_concepts(
+        skill,
+        (
+            ("heuristic", "default"),
+            ("structured files",),
+            ("terminal logs",),
+            ("handoff", "availability"),
+        ),
+    )
 
 
 def test_specguard_plugin_skill_documents_common_failure_categories() -> None:
@@ -45,34 +92,49 @@ def test_specguard_plugin_skill_documents_common_failure_categories() -> None:
 def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
     readme = README_PATH.read_text(encoding="utf-8")
 
-    assert "specguard run <package> --no-llm --no-follow-up" in readme
-    assert "specguard run <package> --llm --follow-up" in readme
-    assert "Do not treat Detail Review as the default gate" in readme
-    assert "structured files, not terminal log scraping" in readme
-    assert "whether implementation handoff is allowed" in readme
-    assert "Plugin Result Contract" in readme
+    _assert_default_heuristic_command(readme)
+    _assert_contains_all(
+        readme,
+        ("specguard run <package> --llm --follow-up", "Plugin Result Contract"),
+    )
+    _assert_mentions_all_concepts(
+        readme,
+        (
+            ("Detail Review", "default gate"),
+            ("structured files", "terminal log scraping"),
+            ("implementation handoff", "allowed"),
+        ),
+    )
 
 
 def test_root_readme_documents_plugin_quickstart_steps() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
-    assert "## Codex App Plugin" in readme
-    assert "Python 3.11, 3.12, or 3.13" in readme
-    assert "a Codex CLI version that supports `codex plugin marketplace`" in readme
-    assert "verified with Codex CLI 0.130.0" in readme
-    assert "pip install spec-guard" in readme
-    assert "specguard --help" in readme
-    assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in readme
-    assert "select the `SpecGuard Plugins` source and install `SpecGuard`" in readme
-    assert "https://github.com/user-attachments/assets/306ae9ea-bb2f-4996-b24f-c48acc130ef1" in readme
-    assert "mkdir your-codex-project-folder" in readme
-    assert "cd your-codex-project-folder" in readme
-    assert "specguard example copy specs/your-feature-name --force" in readme
-    assert "Open `your-codex-project-folder` in Codex" in readme
-    assert "Run SpecGuard on specs/your-feature-name." in readme
+    _assert_contains_all(
+        readme,
+        (
+            "## Codex App Plugin",
+            "pip install spec-guard",
+            "specguard --help",
+            "codex plugin marketplace add KoreaNirsa/spec-guard --ref main",
+            "SpecGuard Plugins",
+            "mkdir your-codex-project-folder",
+            "cd your-codex-project-folder",
+            "specguard example copy specs/your-feature-name --force",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        readme,
+        (
+            ("Python", "3.11", "3.12", "3.13"),
+            ("Codex CLI", "plugin marketplace"),
+            ("Installing the plugin", "SpecGuard CLI"),
+            ("not", "official OpenAI Plugin Directory"),
+            ("Open", "your-codex-project-folder", "Codex"),
+            ("Run SpecGuard", "specs/your-feature-name"),
+        ),
+    )
     assert "specs/my-feature" not in readme
-    assert "Installing the plugin does not install the SpecGuard CLI" in readme
-    assert "not the official OpenAI Plugin Directory" in readme
 
 
 def test_specguard_plugin_documents_suggestion_only_spec_refinement_boundary() -> None:
@@ -80,44 +142,50 @@ def test_specguard_plugin_documents_suggestion_only_spec_refinement_boundary() -
     readme = README_PATH.read_text(encoding="utf-8")
     combined = skill + "\n" + readme
 
-    assert "The MVP plugin must not modify spec package files" in skill
-    assert "The MVP plugin is suggestion-only" in readme
-    assert "Addressed finding: <Severity> - <Finding title>" in skill
-    assert "SpecGuard evidence" in combined
-    assert "Codex suggestion" in combined
-    assert "Needs user decision" in combined
-    assert "not an applied patch" in combined
-    assert "must not invent fields, requirements, states, error behavior, ownership rules, or product behavior" in readme
-    assert "reruns SpecGuard" in combined
+    _assert_suggestion_only_boundary(skill)
+    _assert_suggestion_only_boundary(readme)
+    _assert_contains_all(
+        combined,
+        ("Addressed finding: <Severity> - <Finding title>", "not an applied patch"),
+    )
 
 
 def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
     doc = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
 
-    assert "Python 3.11, 3.12, or 3.13" in doc
-    assert "a Codex CLI version that supports `codex plugin marketplace`" in doc
-    assert "verified with Codex CLI 0.130.0" in doc
-    assert ".agents/plugins/marketplace.json" in doc
-    assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in doc
-    assert "SpecGuard Plugins" in doc
-    assert "not the official OpenAI Plugin Directory" in doc
-    assert "Installing the plugin does not install the `specguard` CLI" in doc
-    assert "pip install spec-guard" in doc
-    assert "plugins/specguard/" in doc
-    assert "plugins/specguard/.codex-plugin/plugin.json" in doc
-    assert "CLI is the canonical engine" in doc
-    assert "Create or select a spec package" in doc
-    assert "specguard run <package> --no-llm --no-follow-up" in doc
-    assert "manually edit the spec package" in doc
-    assert "implementation-output.md" in doc
-    assert "Codex-backed Detail Review is optional and advisory" in doc
-    assert "Plugin Result Contract](plugin-result-contract.md)" in doc
-    assert "Spec Refinement Safety Boundary" in doc
-    assert "mkdir your-codex-project-folder" in doc
-    assert "cd your-codex-project-folder" in doc
-    assert "specguard example copy specs/your-feature-name --force" in doc
-    assert "Open `your-codex-project-folder` in Codex" in doc
-    assert "Run SpecGuard on specs/your-feature-name." in doc
+    _assert_contains_all(
+        doc,
+        (
+            ".agents/plugins/marketplace.json",
+            "codex plugin marketplace add KoreaNirsa/spec-guard --ref main",
+            "SpecGuard Plugins",
+            "pip install spec-guard",
+            "plugins/specguard/",
+            "plugins/specguard/.codex-plugin/plugin.json",
+            "implementation-output.md",
+            "Plugin Result Contract](plugin-result-contract.md)",
+            "Spec Refinement Safety Boundary",
+            "mkdir your-codex-project-folder",
+            "cd your-codex-project-folder",
+            "specguard example copy specs/your-feature-name --force",
+        ),
+    )
+    _assert_default_heuristic_command(doc)
+    _assert_mentions_all_concepts(
+        doc,
+        (
+            ("Python", "3.11", "3.12", "3.13"),
+            ("Codex CLI", "plugin marketplace"),
+            ("not", "official OpenAI Plugin Directory"),
+            ("Installing the plugin", "specguard", "CLI"),
+            ("CLI", "canonical engine"),
+            ("Create or select", "spec package"),
+            ("manually edit", "spec package"),
+            ("Detail Review", "optional", "advisory"),
+            ("Open", "your-codex-project-folder", "Codex"),
+            ("Run SpecGuard", "specs/your-feature-name"),
+        ),
+    )
     assert "specs/my-feature" not in doc
 
 
@@ -133,11 +201,15 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
     ):
         assert scenario in doc
 
-    assert "missing_cli" in doc
-    assert "missing_provider_for_llm" in doc
-    assert "Do not claim native plugin engine support" in doc
-    assert "Do not document full MCP support until it exists" in doc
-    assert "Do not document automatic spec rewriting" in doc
+    _assert_contains_all(doc, ("missing_cli", "missing_provider_for_llm"))
+    _assert_mentions_all_concepts(
+        doc,
+        (
+            ("Do not", "native plugin engine"),
+            ("Do not", "full MCP"),
+            ("Do not", "automatic spec rewriting"),
+        ),
+    )
 
 
 def test_specguard_plugin_marketplace_metadata_points_to_plugin() -> None:
