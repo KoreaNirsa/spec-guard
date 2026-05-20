@@ -29,6 +29,7 @@ READINESS_REVIEW_LEVELS = {"low", "medium", "high"}
 DELTA_REVIEW_CORE_ARTIFACTS = {"spec.md", "technical-design.md"}
 DELTA_REVIEW_MAX_EXCERPTS_PER_ARTIFACT = 3
 DELTA_REVIEW_EXCERPT_RADIUS = 450
+READINESS_EVIDENCE_EXCERPT_LIMIT = 260
 GENERATED_ARTIFACT_MANIFEST_PATH = "generated-artifacts.md"
 LOW_REVIEW_FULL_ARTIFACTS = {"spec.md", "technical-design.md"}
 LOW_REVIEW_ARTIFACT_LIMITS = {
@@ -91,6 +92,7 @@ class ReadinessIssue:
     description: str
     impact: str
     fix: str
+    evidence: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -214,6 +216,13 @@ def _context_fragments(context: str) -> list[str]:
         if normalized and not normalized.startswith("#"):
             fragments.add(normalized)
     return list(fragments)
+
+
+def _evidence_excerpt(context: str) -> tuple[str, ...]:
+    excerpt = re.sub(r"\s+", " ", context.strip())
+    if len(excerpt) > READINESS_EVIDENCE_EXCERPT_LIMIT:
+        excerpt = excerpt[: READINESS_EVIDENCE_EXCERPT_LIMIT - 3].rstrip() + "..."
+    return (excerpt,)
 
 
 def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
@@ -818,9 +827,64 @@ def _task_error_contract_is_too_generic(contexts: list[str]) -> bool:
     return covered < 5
 
 
+def _has_non_blank_task_title_validation_context(contexts: list[str]) -> bool:
+    safe_patterns = (
+        r"\brejects?\s+title\s+when\s+title\.strip\(\)\s+is\s+empty\b",
+        r"\btitle\.strip\(\)\s+is\s+empty\b.*\b(raise|raises|reject|rejected|invalid|taskerror)\b",
+        r"\b(raise|raises|reject|rejected|invalid|taskerror)\b.*\btitle\.strip\(\)\s+is\s+empty\b",
+        r"\bif\s+not\s+title\.strip\(\)",
+        r"\btitle\b.*\bempty\s+after\s+(trim|trimming|strip|stripping)\b.*\b(raise|raises|reject|rejected|invalid|taskerror)\b",
+        r"\bspace[-\s]+only\s+titles?\s+(raise|raises|reject|rejected|invalid)\b",
+        r"\bspace[-\s]+only\s+title\b.*\b(taskerror|error|invalid|reject|rejected)\b",
+        r"\b공백만\s+있는\s+title\b.*\b(거부|오류|에러|taskerror|허용하지)",
+        r"\btitle\b.*\bstrip\(\)\b.*\b(비어|빈)\b.*\b(거부|오류|에러|taskerror)",
+    )
+    return any(_context_matches_any(context, safe_patterns) for context in contexts)
+
+
+def _task_title_validation_context(contexts: list[str]) -> str | None:
+    unsafe_allowance_patterns = (
+        r"\btitle\s+made\s+only\s+of\s+spaces\s+is\s+allowed\b",
+        r"\bspace[-\s]+only\s+titles?\s+(are\s+)?(allowed|stored|accepted|permitted)\b",
+        r"\b공백만\s+있는\s+title\b.*\b허용",
+    )
+    preservation_patterns = (
+        r"\bcreate_task\b.*\bpreserves?\b.*\b(leading|trailing)\b.*\bspaces?\b",
+        r"\bcreate_task\b.*\bstores?\s+title\s+exactly\s+as\s+provided\b",
+        r"\bstores?\s+title\s+exactly\s+as\s+provided\b",
+        r"\bstore\s+title\s+without\s+trimming\b",
+        r"\btitle\b.*\bwithout\s+trimming\b",
+        r"\btitle\b.*\b앞뒤\s+공백\b.*\b보존",
+        r"\btitle\b.*\b그대로\s+저장",
+    )
+    for context in contexts:
+        if _context_matches_any(context, unsafe_allowance_patterns):
+            return context
+    preservation_context = next(
+        (context for context in contexts if _context_matches_any(context, preservation_patterns)),
+        None,
+    )
+    if preservation_context is not None and not _has_non_blank_task_title_validation_context(contexts):
+        return preservation_context
+    return None
+
+
 def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
     if not _has_task_service_scope(contexts):
         return None
+
+    title_validation_context = _task_title_validation_context(contexts)
+    if title_validation_context is not None:
+        return ReadinessIssue(
+            "Critical",
+            "Task title validation is unsafe",
+            f"The spec package allows blank-looking task titles or preserves unsafe whitespace: {title_validation_context}",
+            "Generated code can accept space-only task titles or preserve ambiguous display data despite a task title "
+            "validation contract.",
+            "Require non-blank title validation and define whether stored titles are normalized or preserved after "
+            "validation.",
+            evidence=_evidence_excerpt(title_validation_context),
+        )
 
     for context in contexts:
         if (
@@ -1312,12 +1376,70 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
     return None
 
 
+def _document_share_owner_context(contexts: list[str]) -> str | None:
+    for context in contexts:
+        in_document_share_scope = _context_has_any(
+            context,
+            (
+                "document share",
+                "document sharing",
+                "share link",
+                "share_link",
+                "create_share_link",
+                "documents by document_id",
+                "document_id",
+                "문서 공유",
+            ),
+        )
+        if not in_document_share_scope:
+            continue
+
+        if _context_matches_any(
+            context,
+            (
+                r"\bowners?\s+checks?\b.*\bclient\b",
+                r"\bclient\s+.*\bresponsible\b.*\b(owner|ownership|owner_id|authenticated user)\b",
+                r"\bserver\s+does\s+not\s+need\s+to\s+check\b.*\b(user|owner|owns|document)\b",
+                r"\bresolves?\s+documents?\s+by\s+document_id\s+only\b",
+                r"\bwithout\s+owner\s+predicate\b",
+                r"\bowner\s+predicate\b.*\b(not required|optional|out of scope|without|omitted)\b",
+            ),
+        ):
+            return context
+
+        korean_client_delegation = (
+            _context_has_any(context, ("클라이언트", "브라우저", "프론트"))
+            and _context_has_any(context, ("owner_id", "소유자", "소유권"))
+            and _context_has_any(context, ("책임", "확인", "검증"))
+        )
+        korean_server_omission = (
+            _context_has_any(context, ("서버", "서비스"))
+            and _context_has_any(context, ("owner_id", "소유자", "소유권", "document_id", "owner predicate"))
+            and _context_has_any(context, ("필요하지", "검증하지", "확인하지", "검증 없이", "사용하지"))
+        )
+        if korean_client_delegation or korean_server_omission:
+            return context
+    return None
+
+
 def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
     text = "\n".join(contexts)
 
     extended_blocker = _extended_practical_domain_blocker(contexts)
     if extended_blocker is not None:
         return extended_blocker
+
+    document_share_owner_context = _document_share_owner_context(contexts)
+    if document_share_owner_context is not None:
+        return ReadinessIssue(
+            "Critical",
+            "Document share ownership boundary is unsafe",
+            "The spec package delegates document-share owner checks to the client or resolves documents without an "
+            f"owner predicate: {document_share_owner_context}",
+            "Generated code can create share links for documents the caller does not own.",
+            "Require server-side owner-scoped document lookup before creating, listing, or revoking share links.",
+            evidence=_evidence_excerpt(document_share_owner_context),
+        )
 
     for context in contexts:
         tenant_scope = _context_has_any(context, ("tenant", "tenant_id", "workspace", "organization_id"))
@@ -2447,12 +2569,20 @@ def _parse_llm_issues(text: str, review_level: str = DEFAULT_REVIEW_LEVEL) -> li
         severity = str(raw.get("severity", "Minor")).title()
         if severity not in {"Critical", "Major", "Minor"}:
             severity = "Minor"
+        raw_evidence = raw.get("evidence", ())
+        if isinstance(raw_evidence, str):
+            evidence = (raw_evidence,)
+        elif isinstance(raw_evidence, list):
+            evidence = tuple(str(item) for item in raw_evidence if str(item).strip())
+        else:
+            evidence = ()
         issues.append(ReadinessIssue(
             severity=severity,
             title=str(raw.get("title", "Untitled LLM finding")),
             description=str(raw.get("description", "No description provided.")),
             impact=str(raw.get("impact", "Impact is not specified.")),
             fix=str(raw.get("fix", "Update the spec or technical design to make this explicit.")),
+            evidence=evidence,
         ))
     if not issues:
         issues.append(ReadinessIssue(
@@ -2475,6 +2605,7 @@ def _calibrate_issues(issues: list[ReadinessIssue], review_level: str = DEFAULT_
                 issue.description,
                 issue.impact,
                 issue.fix,
+                issue.evidence,
             ))
             continue
         calibrated.append(issue)
@@ -2668,7 +2799,22 @@ def _render_group(title: str, issues: list[ReadinessIssue]) -> str:
             f"Fix: {issue.fix}",
             "",
         ])
+        if issue.evidence:
+            lines.extend([
+                "Evidence:",
+                *[f"- {excerpt}" for excerpt in issue.evidence],
+                "",
+            ])
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _issue_to_dict(issue: ReadinessIssue) -> dict[str, object]:
+    payload = asdict(issue)
+    if issue.evidence:
+        payload["evidence"] = list(issue.evidence)
+    else:
+        payload.pop("evidence", None)
+    return payload
 
 
 def _build_summary(issues: list[ReadinessIssue]) -> dict[str, int]:
@@ -2866,7 +3012,7 @@ def _build_json_report(
             "status": status,
         },
         "summary": summary,
-        "issues": [asdict(issue) for issue in issues],
+        "issues": [_issue_to_dict(issue) for issue in issues],
         "input": {
             "artifact_count": len(artifacts),
             "total_characters": total_characters,

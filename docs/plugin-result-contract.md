@@ -34,7 +34,7 @@ This page defines the structured SpecGuard result contract that Codex plugin wor
 | `review_input` | no | LLM or compact-review input summary when available. |
 | `cache` | no | LLM readiness-review cache diagnostics when cache is enabled. |
 
-Each `issues[]` item exposes the stable fields `severity`, `title`, `description`, `impact`, and `fix`. `severity` is one of `Critical`, `Major`, or `Minor`.
+Each `issues[]` item exposes the stable fields `severity`, `title`, `description`, `impact`, and `fix`. `severity` is one of `Critical`, `Major`, or `Minor`. An issue may also include optional `evidence[]` excerpts when a deterministic finding is grounded in specific authored source text.
 
 `prompt_mode`, exact character counts, cache fingerprints, cache keys, and local cache directories are diagnostic fields. They are safe to display for troubleshooting, but plugin UX must not require exact values or path formats from those diagnostics.
 
