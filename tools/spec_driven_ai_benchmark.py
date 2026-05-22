@@ -26,6 +26,13 @@ MODEL = "gpt-5.5"
 MODEL_REASONING_EFFORT = "low"
 BENCHMARK_RESULT_SCHEMA = "specguard-impact-benchmark/v2"
 BENCHMARK_SCRIPT_VERSION = "4"
+READINESS_COVERAGE_MATRIX_SCHEMA = "specguard-readiness-coverage-matrix/v1"
+READINESS_COVERAGE_GAP_TYPES = (
+    "english_only_source",
+    "korean_only_source",
+    "weak_only_domain_language",
+    "ready_only_domain_language",
+)
 CODEX_TIMEOUT_SECONDS = 420
 
 BASE_API = """
@@ -4523,6 +4530,228 @@ def _language_counts(cases: list[dict[str, str]]) -> dict[str, int]:
     return counts
 
 
+def _expectation_counts(cases: list[dict[str, str]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for case in cases:
+        expectation = case["expectation"]
+        counts[expectation] = counts.get(expectation, 0) + 1
+    return counts
+
+
+def _readiness_status(result: dict[str, Any] | None) -> str | None:
+    if not result:
+        return None
+    readiness = result.get("readiness")
+    if isinstance(readiness, dict):
+        status = readiness.get("status")
+        return str(status) if status is not None else None
+    if readiness is not None:
+        return str(readiness)
+    status = result.get("status")
+    return str(status) if status is not None else None
+
+
+def _implementation_ready(result: dict[str, Any] | None) -> bool | None:
+    if not result or result.get("implementation_ready") is None:
+        return None
+    return bool(result["implementation_ready"])
+
+
+def _critical_count(result: dict[str, Any] | None) -> int | None:
+    if not result:
+        return None
+    issue_summary = result.get("issue_summary")
+    if isinstance(issue_summary, dict) and issue_summary.get("critical") is not None:
+        return int(issue_summary["critical"])
+    summary = result.get("summary")
+    if isinstance(summary, dict) and summary.get("critical") is not None:
+        return int(summary["critical"])
+    findings = result.get("findings")
+    if findings is None:
+        findings = result.get("issues")
+    if isinstance(findings, list):
+        return sum(
+            1
+            for finding in findings
+            if isinstance(finding, dict) and finding.get("severity") == "Critical"
+        )
+    return None
+
+
+def _finding_has_evidence(finding: dict[str, Any]) -> bool:
+    evidence_keys = (
+        "evidence",
+        "evidence_excerpt",
+        "source_excerpt",
+        "source_evidence",
+        "excerpt",
+    )
+    for key in evidence_keys:
+        value = finding.get(key)
+        if isinstance(value, str) and value.strip():
+            return True
+        if isinstance(value, list) and any(str(item).strip() for item in value):
+            return True
+    source = finding.get("source")
+    if isinstance(source, dict):
+        return any(str(value).strip() for value in source.values())
+    return False
+
+
+def _evidence_present(result: dict[str, Any] | None) -> bool | None:
+    if not result:
+        return None
+    explicit = result.get("evidence_present")
+    if isinstance(explicit, bool):
+        return explicit
+    findings = result.get("findings")
+    if findings is None:
+        findings = result.get("issues")
+    if not isinstance(findings, list):
+        return None
+    critical_findings = [
+        finding
+        for finding in findings
+        if isinstance(finding, dict) and finding.get("severity") == "Critical"
+    ]
+    if not critical_findings:
+        return False
+    return all(_finding_has_evidence(finding) for finding in critical_findings)
+
+
+def _readiness_coverage_gap_types(
+    case: dict[str, str],
+    *,
+    languages_by_source: dict[str, set[str]],
+    expectations_by_domain_language: dict[tuple[str, str], set[str]],
+) -> list[str]:
+    gap_types: list[str] = []
+    language = case.get("language", "en")
+    source_case_id = case.get("source_case_id", case["id"])
+    domain = case.get("domain", "task_service")
+    source_languages = languages_by_source[source_case_id]
+    domain_language_expectations = expectations_by_domain_language[(domain, language)]
+
+    if language == "en" and "ko" not in source_languages:
+        gap_types.append("english_only_source")
+    if language == "ko" and "en" not in source_languages:
+        gap_types.append("korean_only_source")
+    if "good" not in domain_language_expectations:
+        gap_types.append("weak_only_domain_language")
+    if "weak" not in domain_language_expectations:
+        gap_types.append("ready_only_domain_language")
+    return gap_types or ["coverage_complete"]
+
+
+def build_readiness_coverage_matrix(
+    *,
+    cases: list[dict[str, str]] | None = None,
+    results: list[dict[str, Any]] | None = None,
+    include_gate_only_extra_cases: bool = False,
+    include_korean_cases: bool = False,
+) -> dict[str, Any]:
+    cases = benchmark_cases(
+        include_gate_only_extra_cases=include_gate_only_extra_cases,
+        include_korean_cases=include_korean_cases,
+    ) if cases is None else cases
+    gate_results = _by_case(results or [], "specguard_gate")
+    languages_by_source: dict[str, set[str]] = {}
+    expectations_by_domain_language: dict[tuple[str, str], set[str]] = {}
+    for case in cases:
+        source_case_id = case.get("source_case_id", case["id"])
+        language = case.get("language", "en")
+        domain = case.get("domain", "task_service")
+        languages_by_source.setdefault(source_case_id, set()).add(language)
+        expectations_by_domain_language.setdefault((domain, language), set()).add(case["expectation"])
+
+    rows = []
+    gap_counts: dict[str, int] = {gap_type: 0 for gap_type in READINESS_COVERAGE_GAP_TYPES}
+    coverage_gaps: dict[str, list[str]] = {gap_type: [] for gap_type in READINESS_COVERAGE_GAP_TYPES}
+    for case in sorted(
+        cases,
+        key=lambda item: (
+            item.get("domain", "task_service"),
+            item.get("source_case_id", item["id"]),
+            item.get("language", "en"),
+            item["id"],
+        ),
+    ):
+        result = gate_results.get(case["id"])
+        gap_types = _readiness_coverage_gap_types(
+            case,
+            languages_by_source=languages_by_source,
+            expectations_by_domain_language=expectations_by_domain_language,
+        )
+        for gap_type in gap_types:
+            gap_counts[gap_type] = gap_counts.get(gap_type, 0) + 1
+            if gap_type != "coverage_complete":
+                coverage_gaps.setdefault(gap_type, []).append(case["id"])
+
+        rows.append({
+            "case_id": case["id"],
+            "suite": case.get("suite", "impact_v2"),
+            "domain": case.get("domain", "task_service"),
+            "language": case.get("language", "en"),
+            "source_case_id": case.get("source_case_id", case["id"]),
+            "category": case["category"],
+            "expectation": case["expectation"],
+            "title": case["title"],
+            "risk": case["risk"],
+            "expected_readiness": (
+                "implementation_ready" if case["expectation"] == "good" else "not_ready"
+            ),
+            "actual_readiness_status": _readiness_status(result),
+            "actual_implementation_ready": _implementation_ready(result),
+            "critical_count": _critical_count(result),
+            "evidence_present": _evidence_present(result),
+            "gap_type": ",".join(gap_types),
+            "gap_types": gap_types,
+        })
+
+    domain_language_coverage = []
+    for domain, language in sorted(expectations_by_domain_language):
+        scoped_cases = [
+            case
+            for case in cases
+            if case.get("domain", "task_service") == domain
+            and case.get("language", "en") == language
+        ]
+        expectations = expectations_by_domain_language[(domain, language)]
+        gap_type = "coverage_complete"
+        if "good" not in expectations:
+            gap_type = "weak_only_domain_language"
+        elif "weak" not in expectations:
+            gap_type = "ready_only_domain_language"
+        domain_language_coverage.append({
+            "domain": domain,
+            "language": language,
+            "ready_case_count": sum(1 for case in scoped_cases if case["expectation"] == "good"),
+            "weak_case_count": sum(1 for case in scoped_cases if case["expectation"] == "weak"),
+            "gap_type": gap_type,
+        })
+
+    return {
+        "schema": READINESS_COVERAGE_MATRIX_SCHEMA,
+        "benchmark_script_version": BENCHMARK_SCRIPT_VERSION,
+        "source": {
+            "path": "tools/spec_driven_ai_benchmark.py",
+            "case_source": "benchmark_cases",
+        },
+        "case_count": len(cases),
+        "suite_counts": _suite_counts(cases),
+        "language_counts": _language_counts(cases),
+        "expectation_counts": _expectation_counts(cases),
+        "domain_count": len({case.get("domain", "task_service") for case in cases}),
+        "gap_counts": {key: gap_counts[key] for key in sorted(gap_counts)},
+        "coverage_gaps": {
+            key: sorted(case_ids)
+            for key, case_ids in sorted(coverage_gaps.items())
+        },
+        "domain_language_coverage": domain_language_coverage,
+        "rows": rows,
+    }
+
+
 def _gate_metrics_for_cases(
     gate: list[dict[str, Any]],
     cases: list[dict[str, str]],
@@ -4924,17 +5153,28 @@ def run_benchmark(
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run the SpecGuard impact benchmark.")
     parser.add_argument("--output", type=Path, help="Write benchmark JSON to this path.")
+    parser.add_argument(
+        "--coverage-matrix",
+        action="store_true",
+        help="Print readiness fixture coverage metadata without running the benchmark.",
+    )
     parser.add_argument("--max-workers", type=int, default=3, help="Concurrent SpecGuard/Codex jobs.")
     parser.add_argument("--skip-codex", action="store_true", help="Run only the SpecGuard gate phase.")
     parser.add_argument(
         "--include-gate-only-extra-cases",
         action="store_true",
-        help="Include the supplemental multi-domain gate-only suite. Requires --skip-codex.",
+        help=(
+            "Include the supplemental multi-domain gate-only suite. "
+            "Requires --skip-codex for benchmark runs; also valid with --coverage-matrix."
+        ),
     )
     parser.add_argument(
         "--include-korean-cases",
         action="store_true",
-        help="Include Korean gate-only variants for the selected benchmark cases. Requires --skip-codex.",
+        help=(
+            "Include Korean gate-only variants for the selected benchmark cases. "
+            "Requires --skip-codex for benchmark runs; also valid with --coverage-matrix."
+        ),
     )
     parser.add_argument("--keep-temp", action="store_true", help="Keep the temporary benchmark workspace.")
     return parser.parse_args(argv)
@@ -4942,13 +5182,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    result = run_benchmark(
-        max_workers=max(1, args.max_workers),
-        skip_codex=args.skip_codex,
-        keep_temp=args.keep_temp,
-        include_gate_only_extra_cases=args.include_gate_only_extra_cases,
-        include_korean_cases=args.include_korean_cases,
-    )
+    if args.coverage_matrix:
+        result = build_readiness_coverage_matrix(
+            include_gate_only_extra_cases=args.include_gate_only_extra_cases,
+            include_korean_cases=args.include_korean_cases,
+        )
+    else:
+        result = run_benchmark(
+            max_workers=max(1, args.max_workers),
+            skip_codex=args.skip_codex,
+            keep_temp=args.keep_temp,
+            include_gate_only_extra_cases=args.include_gate_only_extra_cases,
+            include_korean_cases=args.include_korean_cases,
+        )
     rendered = json.dumps(result, ensure_ascii=False, indent=2)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

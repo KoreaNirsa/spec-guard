@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from tools.spec_driven_ai_benchmark import (
     BENCHMARK_RESULT_SCHEMA,
     GATE_ONLY_EXTENDED_CASES,
     GATE_ONLY_EXTRA_CASES,
+    READINESS_COVERAGE_GAP_TYPES,
+    READINESS_COVERAGE_MATRIX_SCHEMA,
     build_benchmark_metadata,
     build_aggregates,
     build_benchmark_payload,
+    build_readiness_coverage_matrix,
     benchmark_cases,
+    main,
 )
 
 
@@ -79,6 +84,126 @@ def test_benchmark_cases_can_include_korean_gate_only_layer() -> None:
         for case in benchmark_cases(include_gate_only_extra_cases=True)
     }
     assert all("한국어" in case["title"] for case in korean_cases)
+
+
+def test_readiness_coverage_matrix_reports_fixture_gaps_without_running_gate() -> None:
+    matrix = build_readiness_coverage_matrix(
+        include_gate_only_extra_cases=True,
+        include_korean_cases=True,
+    )
+    rows = matrix["rows"]
+    first_row = rows[0]
+
+    assert matrix["schema"] == READINESS_COVERAGE_MATRIX_SCHEMA
+    assert matrix["case_count"] == 196
+    assert matrix["language_counts"] == {"en": 98, "ko": 98}
+    assert matrix["expectation_counts"] == {"good": 66, "weak": 130}
+    assert set(READINESS_COVERAGE_GAP_TYPES) <= set(matrix["coverage_gaps"])
+    assert matrix["coverage_gaps"]["english_only_source"] == []
+    assert matrix["coverage_gaps"]["korean_only_source"] == []
+    assert rows == sorted(
+        rows,
+        key=lambda row: (
+            row["domain"],
+            row["source_case_id"],
+            row["language"],
+            row["case_id"],
+        ),
+    )
+    assert {
+        "domain",
+        "language",
+        "case_id",
+        "expectation",
+        "source_case_id",
+        "actual_readiness_status",
+        "critical_count",
+        "evidence_present",
+        "gap_type",
+        "gap_types",
+    } <= set(first_row)
+    assert all(row["actual_readiness_status"] is None for row in rows)
+    assert all(row["critical_count"] is None for row in rows)
+    assert all(row["evidence_present"] is None for row in rows)
+
+
+def test_readiness_coverage_matrix_can_surface_results_when_available() -> None:
+    cases = [{
+        "id": "ready_fixture",
+        "suite": "impact_v2",
+        "domain": "task_service",
+        "language": "en",
+        "source_case_id": "ready_fixture",
+        "category": "ready_reference",
+        "expectation": "good",
+        "title": "Ready fixture",
+        "risk": "Baseline ready fixture.",
+        "spec": "Spec.",
+        "technical_design": "Design.",
+    }]
+    matrix = build_readiness_coverage_matrix(
+        cases=cases,
+        results=[{
+            "workflow": "specguard_gate",
+            "case": "ready_fixture",
+            "readiness": "ready",
+            "implementation_ready": True,
+            "issue_summary": {"critical": 0, "major": 0, "minor": 0},
+            "findings": [],
+        }],
+    )
+    row = matrix["rows"][0]
+
+    assert row["actual_readiness_status"] == "ready"
+    assert row["actual_implementation_ready"] is True
+    assert row["critical_count"] == 0
+    assert row["evidence_present"] is False
+    assert row["gap_types"] == ["english_only_source", "ready_only_domain_language"]
+
+
+def test_readiness_coverage_matrix_preserves_missing_implementation_ready() -> None:
+    cases = [{
+        "id": "ready_fixture",
+        "suite": "impact_v2",
+        "domain": "task_service",
+        "language": "en",
+        "source_case_id": "ready_fixture",
+        "category": "ready_reference",
+        "expectation": "good",
+        "title": "Ready fixture",
+        "risk": "Baseline ready fixture.",
+        "spec": "Spec.",
+        "technical_design": "Design.",
+    }]
+    matrix = build_readiness_coverage_matrix(
+        cases=cases,
+        results=[{
+            "workflow": "specguard_gate",
+            "case": "ready_fixture",
+            "readiness": "ready",
+        }],
+    )
+    row = matrix["rows"][0]
+
+    assert row["actual_readiness_status"] == "ready"
+    assert row["actual_implementation_ready"] is None
+
+
+def test_readiness_coverage_matrix_cli_writes_documented_json(tmp_path: Path) -> None:
+    output = tmp_path / "readiness-coverage-matrix.json"
+
+    assert main([
+        "--coverage-matrix",
+        "--include-gate-only-extra-cases",
+        "--include-korean-cases",
+        "--output",
+        str(output),
+    ]) == 0
+
+    payload = json.loads(output.read_text(encoding="utf-8"))
+    assert payload["schema"] == READINESS_COVERAGE_MATRIX_SCHEMA
+    assert payload["case_count"] == 196
+    assert payload["rows"][0]["actual_readiness_status"] is None
 
 
 def test_benchmark_payload_reports_language_metrics() -> None:
