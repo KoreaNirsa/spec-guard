@@ -100,6 +100,7 @@ def test_readiness_coverage_matrix_reports_fixture_gaps_without_running_gate() -
     assert matrix["language_counts"] == {"en": 98, "ko": 98}
     assert matrix["expectation_counts"] == {"good": 66, "weak": 130}
     assert matrix["actual_readiness_status_counts"] == {}
+    assert matrix["readiness_result_coverage"] is None
     assert matrix["readiness_result_baseline"] is None
     assert set(READINESS_COVERAGE_GAP_TYPES) <= set(matrix["coverage_gaps"])
     assert matrix["coverage_gaps"]["english_only_source"] == []
@@ -166,6 +167,13 @@ def test_readiness_coverage_matrix_can_surface_results_when_available() -> None:
     assert row["gap_types"] == ["english_only_source", "ready_only_domain_language"]
     assert row["follow_up_issue"] == "#182"
     assert matrix["actual_readiness_status_counts"] == {"ready": 1}
+    assert matrix["readiness_result_coverage"] == {
+        "expected_cases": 1,
+        "evaluated_cases": 1,
+        "missing_cases": 0,
+        "unexpected_cases": 0,
+        "is_complete": True,
+    }
     assert matrix["readiness_result_baseline"]["evaluated_cases"] == 1
     assert matrix["readiness_result_baseline"]["false_positive_rate"] == 0.0
 
@@ -229,6 +237,15 @@ def test_readiness_coverage_matrix_cli_writes_documented_json(tmp_path: Path) ->
     assert payload["case_count"] == 196
     assert payload["source"]["results_path"] == str(results).replace("\\", "/")
     assert payload["actual_readiness_status_counts"] == {"ready_with_warnings": 1}
+    assert payload["readiness_result_coverage"] == {
+        "expected_cases": 196,
+        "evaluated_cases": 1,
+        "missing_cases": 195,
+        "unexpected_cases": 0,
+        "is_complete": False,
+    }
+    assert payload["readiness_result_baseline"] is None
+    assert payload["readiness_result_baseline_by_language"] is None
     assert payload["rows"][0]["actual_readiness_status"] == "ready_with_warnings"
 
 

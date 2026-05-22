@@ -28,6 +28,13 @@
     "not_ready": 130,
     "ready_with_warnings": 66
   },
+  "readiness_result_coverage": {
+    "expected_cases": 196,
+    "evaluated_cases": 196,
+    "missing_cases": 0,
+    "unexpected_cases": 0,
+    "is_complete": true
+  },
   "readiness_result_baseline": {
     "evaluated_cases": 196,
     "good_cases": 66,

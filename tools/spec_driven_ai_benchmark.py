@@ -4669,6 +4669,30 @@ def load_readiness_coverage_results(path: Path | None) -> list[dict[str, Any]] |
     raise ValueError(f"Coverage matrix results file has no results list: {path}")
 
 
+def _coverage_matrix_result_coverage(
+    gate: list[dict[str, Any]],
+    cases: list[dict[str, str]],
+) -> dict[str, Any] | None:
+    if not gate:
+        return None
+    expected_case_ids = {case["id"] for case in cases}
+    result_case_ids = {
+        result_case
+        for result in gate
+        if isinstance((result_case := result.get("case")), str)
+    }
+    evaluated_case_ids = expected_case_ids & result_case_ids
+    missing_case_ids = expected_case_ids - evaluated_case_ids
+    unexpected_case_ids = result_case_ids - expected_case_ids
+    return {
+        "expected_cases": len(expected_case_ids),
+        "evaluated_cases": len(evaluated_case_ids),
+        "missing_cases": len(missing_case_ids),
+        "unexpected_cases": len(unexpected_case_ids),
+        "is_complete": not missing_case_ids,
+    }
+
+
 def build_readiness_coverage_matrix(
     *,
     cases: list[dict[str, str]] | None = None,
@@ -4767,14 +4791,20 @@ def build_readiness_coverage_matrix(
         })
 
     gate = _workflow_results(results or [], "specguard_gate")
-    readiness_result_baseline = _gate_metrics_for_cases(gate, cases) if gate else None
+    readiness_result_coverage = _coverage_matrix_result_coverage(gate, cases)
+    has_complete_gate_coverage = bool(
+        readiness_result_coverage and readiness_result_coverage["is_complete"]
+    )
+    readiness_result_baseline = (
+        _gate_metrics_for_cases(gate, cases) if has_complete_gate_coverage else None
+    )
     readiness_result_baseline_by_language = {
         language: _gate_metrics_for_cases(
             gate,
             [case for case in cases if case.get("language", "en") == language],
         )
         for language in sorted({case.get("language", "en") for case in cases})
-    } if gate else None
+    } if has_complete_gate_coverage else None
     source = {
         "path": "tools/spec_driven_ai_benchmark.py",
         "case_source": "benchmark_cases",
@@ -4795,6 +4825,7 @@ def build_readiness_coverage_matrix(
             key: actual_readiness_status_counts[key]
             for key in sorted(actual_readiness_status_counts)
         },
+        "readiness_result_coverage": readiness_result_coverage,
         "readiness_result_baseline": readiness_result_baseline,
         "readiness_result_baseline_by_language": readiness_result_baseline_by_language,
         "gap_counts": {key: gap_counts[key] for key in sorted(gap_counts)},
