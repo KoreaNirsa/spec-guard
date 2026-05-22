@@ -55,6 +55,39 @@ Common failure categories are `missing_cli`, `missing_spec_package`, `validation
 
 Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
 
+## PR Review Setup
+
+PR Review setup is opt-in and advisory. A user can ask:
+
+```text
+@SpecGuard PR Review를 설정해줘.
+```
+
+The plugin should check the current repository and branch, detect the GitHub remote when possible, and verify `specguard --help` before installing anything. Installing this plugin does not install the SpecGuard CLI; if the CLI is missing, report `missing_cli` and ask before helping with `pip install spec-guard`.
+
+Before writing repository workflow files, ask for confirmation. After confirmation, run:
+
+```bash
+specguard actions install-pr-review
+```
+
+Then confirm whether `.github/workflows/specguard-pr-review.yml` was created, updated, or already existed.
+
+Required GitHub Actions secret:
+
+```text
+SPECGUARD_OPENAI_API_KEY
+```
+
+Optional repository variables:
+
+```text
+SPECGUARD_PR_REVIEW_MODEL
+SPECGUARD_REVIEW_SPEC_PATHS
+```
+
+The plugin must not invent, generate, store, echo, or commit API keys. If `gh auth status` succeeds, Codex can offer a user-approved `gh secret set SPECGUARD_OPENAI_API_KEY --repo <owner/name>` path so the user enters the key through GitHub CLI without putting it in command history. If GitHub integration is missing or unsafe, stop before secret handling and tell the user to add the secret and optional variables in GitHub Settings > Secrets and variables > Actions.
+
 ## Spec Refinement Safety Boundary
 
 The MVP plugin is suggestion-only. It can help users understand findings and draft proposed wording, but it does not automatically modify `spec.md`, `plan.md`, `tasks.md`, `technical-design.md`, or other spec package files.

@@ -108,6 +108,70 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
     )
 
 
+def test_specguard_plugin_skill_documents_pr_review_setup_workflow() -> None:
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+
+    _assert_contains_all(
+        skill,
+        (
+            "## PR Review Setup Workflow",
+            "PR Review를 설정해줘",
+            "git status --short --branch",
+            "git remote -v",
+            "specguard actions install-pr-review",
+            ".github/workflows/specguard-pr-review.yml",
+            "SPECGUARD_OPENAI_API_KEY",
+            "SPECGUARD_PR_REVIEW_MODEL",
+            "SPECGUARD_REVIEW_SPEC_PATHS",
+            "gh auth status",
+            "gh secret set SPECGUARD_OPENAI_API_KEY --repo <owner/name>",
+            "GitHub repository Settings > Secrets and variables > Actions",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        skill,
+        (
+            ("ask", "before", "writing", "workflow"),
+            ("Installing", "plugin", "does not install", "CLI"),
+            ("Required", "secret", "Optional", "variables"),
+            ("do not", "invent", "generate", "store", "commit", "API keys"),
+            ("do not", "echo", "API key"),
+            ("manual setup instructions",),
+        ),
+    )
+
+
+def test_specguard_plugin_docs_cover_pr_review_setup_boundaries() -> None:
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    combined = guide + "\n" + readme
+
+    _assert_contains_all(
+        combined,
+        (
+            "@SpecGuard PR Review를 설정해줘",
+            "specguard actions install-pr-review",
+            ".github/workflows/specguard-pr-review.yml",
+            "SPECGUARD_OPENAI_API_KEY",
+            "SPECGUARD_PR_REVIEW_MODEL",
+            "SPECGUARD_REVIEW_SPEC_PATHS",
+            "gh secret set SPECGUARD_OPENAI_API_KEY --repo <owner/name>",
+            "GitHub Settings > Secrets and variables > Actions",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        combined,
+        (
+            ("PR Review setup", "opt-in", "advisory"),
+            ("Installing", "plugin", "does not install", "CLI"),
+            ("ask", "before", "workflow"),
+            ("Required", "secret", "Optional", "variables"),
+            ("must not", "invent", "generate", "store", "commit", "API keys"),
+            ("manual", "GitHub Settings"),
+        ),
+    )
+
+
 def test_root_readme_documents_plugin_quickstart_steps() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
 
@@ -231,10 +295,11 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
         "existing spec package is `NOT_READY` with Critical findings",
         "`READY_WITH_WARNINGS` handoff guidance",
         "optional detail review requested without provider setup",
+        "PR Review setup requested",
     ):
         assert scenario in doc
 
-    _assert_contains_all(doc, ("missing_cli", "missing_provider_for_llm"))
+    _assert_contains_all(doc, ("missing_cli", "missing_provider_for_llm", "SPECGUARD_OPENAI_API_KEY"))
     _assert_mentions_all_concepts(
         doc,
         (
