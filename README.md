@@ -180,6 +180,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 - [Workflow Guide](docs/workflow.md)
 - [Discovery Guide](docs/deep-discovery.md)
 - [Spec-Driven Benchmark](docs/spec-driven-benchmark.md)
+- [Readiness Coverage Audit](docs/readiness-coverage-audit.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## License
