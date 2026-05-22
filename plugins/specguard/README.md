@@ -25,6 +25,7 @@ You can also add this local plugin from the repository checkout by selecting the
 Installing the plugin does not install the SpecGuard CLI. Before using the plugin in a target workspace, confirm `specguard --help` works there. If it is unavailable, install SpecGuard with `pip install spec-guard`. From a SpecGuard source checkout, `python -m cli.specguard --help` is an acceptable fallback.
 
 For the full MVP setup, expected user flow, and validation scenarios, see [Codex Plugin Guide](../../docs/codex-plugin.md).
+For the v0.4.x hardening backlog, see [Codex Plugin Hardening Roadmap](../../docs/codex-plugin-hardening-roadmap.md).
 
 ## Typical Workflow
 

@@ -148,6 +148,8 @@ The plugin orchestrates the CLI. It must not embed, fork, or reimplement SpecGua
 
 For stable fields and file-based states, see [Plugin Result Contract](plugin-result-contract.md).
 
+For the v0.4.x plugin hardening backlog and missing contracts, see [Codex Plugin Hardening Roadmap](codex-plugin-hardening-roadmap.md).
+
 For the suggestion-only spec refinement boundary, see [SpecGuard Codex Plugin: Spec Refinement Safety Boundary](../plugins/specguard/README.md#spec-refinement-safety-boundary).
 
 ## Default Gate
