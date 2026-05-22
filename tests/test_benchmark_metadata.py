@@ -14,6 +14,7 @@ from tools.spec_driven_ai_benchmark import (
     build_benchmark_payload,
     build_readiness_coverage_matrix,
     benchmark_cases,
+    load_readiness_coverage_results,
     main,
 )
 
@@ -98,6 +99,8 @@ def test_readiness_coverage_matrix_reports_fixture_gaps_without_running_gate() -
     assert matrix["case_count"] == 196
     assert matrix["language_counts"] == {"en": 98, "ko": 98}
     assert matrix["expectation_counts"] == {"good": 66, "weak": 130}
+    assert matrix["actual_readiness_status_counts"] == {}
+    assert matrix["readiness_result_baseline"] is None
     assert set(READINESS_COVERAGE_GAP_TYPES) <= set(matrix["coverage_gaps"])
     assert matrix["coverage_gaps"]["english_only_source"] == []
     assert matrix["coverage_gaps"]["korean_only_source"] == []
@@ -121,6 +124,8 @@ def test_readiness_coverage_matrix_reports_fixture_gaps_without_running_gate() -
         "evidence_present",
         "gap_type",
         "gap_types",
+        "follow_up_issue",
+        "follow_up_issues",
     } <= set(first_row)
     assert all(row["actual_readiness_status"] is None for row in rows)
     assert all(row["critical_count"] is None for row in rows)
@@ -159,6 +164,10 @@ def test_readiness_coverage_matrix_can_surface_results_when_available() -> None:
     assert row["critical_count"] == 0
     assert row["evidence_present"] is False
     assert row["gap_types"] == ["english_only_source", "ready_only_domain_language"]
+    assert row["follow_up_issue"] == "#182"
+    assert matrix["actual_readiness_status_counts"] == {"ready": 1}
+    assert matrix["readiness_result_baseline"]["evaluated_cases"] == 1
+    assert matrix["readiness_result_baseline"]["false_positive_rate"] == 0.0
 
 
 def test_readiness_coverage_matrix_preserves_missing_implementation_ready() -> None:
@@ -191,9 +200,24 @@ def test_readiness_coverage_matrix_preserves_missing_implementation_ready() -> N
 
 def test_readiness_coverage_matrix_cli_writes_documented_json(tmp_path: Path) -> None:
     output = tmp_path / "readiness-coverage-matrix.json"
+    results = tmp_path / "results.json"
+    results.write_text(
+        json.dumps({
+            "results": [{
+                "workflow": "specguard_gate",
+                "case": "ready_admin_role_audit",
+                "readiness": "ready_with_warnings",
+                "implementation_ready": True,
+                "issue_summary": {"critical": 0, "major": 1, "minor": 0},
+            }],
+        }),
+        encoding="utf-8",
+    )
 
     assert main([
         "--coverage-matrix",
+        "--coverage-matrix-results",
+        str(results),
         "--include-gate-only-extra-cases",
         "--include-korean-cases",
         "--output",
@@ -203,7 +227,24 @@ def test_readiness_coverage_matrix_cli_writes_documented_json(tmp_path: Path) ->
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["schema"] == READINESS_COVERAGE_MATRIX_SCHEMA
     assert payload["case_count"] == 196
-    assert payload["rows"][0]["actual_readiness_status"] is None
+    assert payload["source"]["results_path"] == str(results).replace("\\", "/")
+    assert payload["actual_readiness_status_counts"] == {"ready_with_warnings": 1}
+    assert payload["rows"][0]["actual_readiness_status"] == "ready_with_warnings"
+
+
+def test_checked_in_readiness_coverage_matrix_matches_fixture_source() -> None:
+    matrix_path = Path("docs/benchmark-results/readiness-coverage-matrix.json")
+    results_path = Path("docs/benchmark-results/specguard-gate-only-v0.4.0.json")
+
+    payload = json.loads(matrix_path.read_text(encoding="utf-8"))
+    expected = build_readiness_coverage_matrix(
+        results=load_readiness_coverage_results(results_path),
+        results_source="docs/benchmark-results/specguard-gate-only-v0.4.0.json",
+        include_gate_only_extra_cases=True,
+        include_korean_cases=True,
+    )
+
+    assert payload == expected
 
 
 def test_benchmark_payload_reports_language_metrics() -> None:
