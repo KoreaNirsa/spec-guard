@@ -182,6 +182,49 @@ specguard run <package> --llm --follow-up
 
 Then choose the review-only Detail Review action and read `readiness-review-detail.json` plus `readiness-review-detail.md`.
 
+## Codex-Assisted PR Review Setup
+
+After implementation, a user can ask Codex to guide optional SpecGuard PR Review setup:
+
+```text
+@SpecGuard PR Review를 설정해줘.
+```
+
+This setup path still uses the CLI as the source of truth. Installing the Codex plugin does not install the `specguard` CLI and does not configure GitHub secrets automatically.
+
+The plugin workflow should:
+
+1. Check repository state with `git status --short --branch`.
+2. Detect the GitHub remote with `git remote -v` or equivalent repository metadata when available.
+3. Check whether `specguard --help` works, with `python -m cli.specguard --help` as the source-checkout fallback.
+4. If the CLI is missing, report `missing_cli`; when the environment allows it, ask before helping the user run `pip install spec-guard`.
+5. Ask before writing repository workflow files.
+6. After confirmation, run:
+
+   ```bash
+   specguard actions install-pr-review
+   ```
+
+7. Confirm whether `.github/workflows/specguard-pr-review.yml` was created, updated, or already existed.
+8. Explain that the workflow file must be committed and pushed before GitHub Actions can use it.
+
+Required secret setup is separate from workflow installation:
+
+```text
+SPECGUARD_OPENAI_API_KEY
+```
+
+Optional repository variables:
+
+```text
+SPECGUARD_PR_REVIEW_MODEL
+SPECGUARD_REVIEW_SPEC_PATHS
+```
+
+The plugin must not invent, generate, store, print, or commit API keys. If `gh` is installed and authenticated, Codex may offer a user-approved registration path that uses `gh secret set SPECGUARD_OPENAI_API_KEY --repo <owner/name>` so the user can enter the key through GitHub CLI without echoing it. Optional variables can be set with `gh variable set` after the user confirms the values.
+
+When GitHub integration or `gh` authentication is unavailable, stop before secret handling and give manual setup instructions: open GitHub repository Settings > Secrets and variables > Actions, add `SPECGUARD_OPENAI_API_KEY` as a repository secret, and add `SPECGUARD_PR_REVIEW_MODEL` or `SPECGUARD_REVIEW_SPEC_PATHS` as repository variables only when needed.
+
 ## Validation Scenarios
 
 | Scenario | Plugin action | Expected result |
@@ -191,10 +234,12 @@ Then choose the review-only Detail Review action and read `readiness-review-deta
 | existing spec package is `NOT_READY` with Critical findings | Read `readiness-review.json` and `readiness-review.md`. | Summarize Critical findings first and provide suggestion-only spec refinement proposals without editing files. |
 | `READY_WITH_WARNINGS` handoff guidance | Read structured result files and check handoff availability. | Report warnings, confirm implementation is allowed, and point to `implementation-output.md` when present. |
 | optional detail review requested without provider setup | Run `specguard auth status` before detail review. | Report `missing_provider_for_llm`; do not run or claim provider-backed review. |
+| PR Review setup requested | Check repository state, remote, and CLI availability; ask before running `specguard actions install-pr-review`; explain required secret and optional variables. | Confirm `.github/workflows/specguard-pr-review.yml` status and provide safe `gh` or manual GitHub Settings instructions without exposing API keys. |
 
 ## Non-Goals
 
 - Do not claim native plugin engine support.
 - Do not document full MCP support until it exists.
 - Do not document automatic spec rewriting as a supported plugin behavior.
+- Do not claim that PR Review setup creates or stores API keys automatically.
 - Do not treat Codex suggestions as implementation input until the user approves and updates the spec.
