@@ -5159,12 +5159,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--include-gate-only-extra-cases",
         action="store_true",
-        help="Include the supplemental multi-domain gate-only suite. Requires --skip-codex.",
+        help=(
+            "Include the supplemental multi-domain gate-only suite. "
+            "Requires --skip-codex for benchmark runs; also valid with --coverage-matrix."
+        ),
     )
     parser.add_argument(
         "--include-korean-cases",
         action="store_true",
-        help="Include Korean gate-only variants for the selected benchmark cases. Requires --skip-codex.",
+        help=(
+            "Include Korean gate-only variants for the selected benchmark cases. "
+            "Requires --skip-codex for benchmark runs; also valid with --coverage-matrix."
+        ),
     )
     parser.add_argument("--keep-temp", action="store_true", help="Keep the temporary benchmark workspace.")
     return parser.parse_args(argv)
