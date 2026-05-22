@@ -9,6 +9,10 @@ from tools.readiness_engine import run_readiness_review
 from tools.spec_driven_ai_benchmark import benchmark_cases, make_specguard_package
 
 
+ROOT = Path(__file__).resolve().parents[1]
+LANGUAGE_SUPPORT_DOC = ROOT / "docs" / "language-support.md"
+
+
 def _benchmark_case(case_id: str) -> dict[str, str]:
     return next(
         case
@@ -28,6 +32,12 @@ def _issue_by_title(payload: dict[str, object], title: str) -> dict[str, object]
     issues = payload["issues"]
     assert isinstance(issues, list)
     return next(issue for issue in issues if issue["title"] == title)
+
+
+def _first_issue_by_severity(payload: dict[str, object], severity: str) -> dict[str, object]:
+    issues = payload["issues"]
+    assert isinstance(issues, list)
+    return next(issue for issue in issues if issue["severity"] == severity)
 
 
 def _write_feature(
@@ -120,6 +130,51 @@ def test_korean_safe_complete_case_remains_implementation_ready(tmp_path: Path) 
     assert ok
     assert payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
     assert payload["summary"]["critical"] == 0
+
+
+@pytest.mark.parametrize(
+    "case_id",
+    [
+        "fault_ownership_leak_ko",
+        "fault_idempotency_conflict_allows_new_task_ko",
+        "weak_document_share_client_enforced_ko",
+    ],
+)
+def test_korean_critical_findings_are_evidence_grounded_and_actionable(
+    tmp_path: Path,
+    case_id: str,
+) -> None:
+    ok, payload = _run_benchmark_case(tmp_path, case_id)
+
+    assert not ok
+    assert payload["readiness"]["status"] == "not_ready"
+    issue = _first_issue_by_severity(payload, "Critical")
+    evidence = issue.get("evidence")
+    assert isinstance(evidence, list)
+    assert evidence
+    assert all(isinstance(excerpt, str) and excerpt.strip() for excerpt in evidence)
+    assert all(len(excerpt) <= 260 for excerpt in evidence)
+    assert issue["impact"].startswith("Generated code")
+    assert issue["fix"].startswith(("Require", "Define", "Specify", "Replace", "Separate"))
+
+
+def test_korean_weak_cases_do_not_emit_critical_findings_without_evidence(tmp_path: Path) -> None:
+    missing_evidence: list[tuple[str, str]] = []
+    korean_weak_cases = [
+        case
+        for case in benchmark_cases(include_gate_only_extra_cases=True, include_korean_cases=True)
+        if case.get("language") == "ko" and case.get("expectation") == "weak"
+    ]
+
+    for case in korean_weak_cases:
+        package = make_specguard_package(tmp_path, case)
+        run_readiness_review(package)
+        payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+        for issue in payload["issues"]:
+            if issue["severity"] == "Critical" and not issue.get("evidence"):
+                missing_evidence.append((case["id"], issue["title"]))
+
+    assert missing_evidence == []
 
 
 def test_mixed_korean_prose_with_english_identifiers_blocks_document_share_boundary(
@@ -284,22 +339,37 @@ def test_task_title_preservation_after_non_blank_validation_remains_ready(
 
 
 @pytest.mark.parametrize(
-    ("language", "case_id", "expected_status"),
+    ("language", "case_id", "review_level", "expected_status"),
     [
-        ("en", "ready_canonical_task_service", "ready_with_warnings"),
-        ("ko", "ready_canonical_task_service_ko", "ready_with_warnings"),
-        ("en", "fault_title_no_trim", "not_ready"),
-        ("ko", "fault_title_no_trim_ko", "not_ready"),
+        ("ko", "ready_canonical_task_service_ko", "medium", "ready"),
+        ("ko", "ready_canonical_task_service_ko", "low", "ready_with_warnings"),
+        ("ko", "fault_title_no_trim_ko", "low", "not_ready"),
     ],
 )
-def test_calibration_fixture_matrix_covers_language_and_readiness_statuses(
+def test_korean_calibration_fixture_matrix_covers_readiness_statuses(
     tmp_path: Path,
     language: str,
     case_id: str,
+    review_level: str,
     expected_status: str,
 ) -> None:
     case = _benchmark_case(case_id)
-    _, payload = _run_benchmark_case(tmp_path, case_id)
+    package = make_specguard_package(tmp_path, case)
+    run_readiness_review(package, review_level=review_level)
+    payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
 
     assert case.get("language", "en") == language
+    assert payload["review_level"] == review_level
     assert payload["readiness"]["status"] == expected_status
+
+
+def test_language_support_documents_korean_finding_quality_scope() -> None:
+    doc = LANGUAGE_SUPPORT_DOC.read_text(encoding="utf-8")
+
+    assert "## Korean Finding Quality Calibration" in doc
+    assert "Current known Korean false positives" in doc
+    assert "Current known Korean false negatives" in doc
+    assert "None in the v0.4.0 Korean 98-case gate-only layer" in doc
+    assert "missing `evidence[]` excerpts" in doc
+    assert "READY_WITH_WARNINGS" in doc
+    assert "NOT_READY" in doc

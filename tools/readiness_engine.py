@@ -205,6 +205,13 @@ def _context_matches_any(context: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, context) for pattern in patterns)
 
 
+def _first_context_with_any(contexts: list[str], markers: tuple[str, ...]) -> str:
+    return next(
+        (context for context in contexts if _context_has_any(context, markers)),
+        contexts[0] if contexts else "",
+    )
+
+
 def _context_fragments(context: str) -> list[str]:
     has_multiple_list_items = bool(re.search(r"\s+-\s+|\s+\d+\.\s+", context))
     candidates = [] if has_multiple_list_items else [context]
@@ -241,6 +248,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package allows task data to be returned across users before server-side owner scoping.",
                 "Generated code can expose cross-user task data through list, update, or delete operations.",
                 "Require server-side owner-scoped queries and authorization checks for every todo read/write path.",
+                evidence=_evidence_excerpt(context),
             )
 
         tenant_scope = _context_has_any(context, ("테넌트", "조직", "워크스페이스", "tenant_id", "owner_id", "소유권"))
@@ -271,6 +279,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package allows cross-tenant or cross-owner rows to be returned before server-side scoping.",
                 "Generated code can expose billing, search, profile, or task data across tenant boundaries.",
                 "Require every export, list, and read path to apply tenant or user scope on the server before data is returned.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("캐시", "cache", "namespace")) and _context_matches_any(
@@ -287,6 +296,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package can flush shared namespaces or omit tenant-scoped cache keys.",
                 "Generated code can delete or expose cache data across tenants.",
                 "Require tenant-scoped cache keys and reject tenant-initiated global flush requests.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("토큰", "세션", "초대", "신뢰 기기", "api 키", "api키")) and (
@@ -305,6 +315,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 f"Authentication token behavior permits an unsafe Korean lifecycle decision: {context}",
                 "Leaked, replayed, or copied tokens can remain valid or reusable longer than intended.",
                 "Define token expiration, revocation, rotation or replay detection, and copied-token rejection.",
+                evidence=_evidence_excerpt(context),
             )
 
         payment_scope = _context_has_any(context, ("결제", "환불", "지급", "정산", "게이트웨이", "배송사", "외부 api"))
@@ -324,6 +335,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package leaves idempotency, duplicate side effects, or gateway timeout state undefined.",
                 "Generated code can retry unsafe operations and produce duplicate financial or external side effects.",
                 "Specify idempotency scope, conflict response, timeout reconciliation, and retry boundaries.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("구독", "요금제", "plan_id", "청구", "invoice")) and _context_matches_any(
@@ -339,6 +351,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package omits proration, idempotency, invoice timing, or rollback semantics.",
                 "Generated code can update subscription state without a defensible billing contract.",
                 "Define proration calculation, invoice failure rollback, idempotency replay, and conflict behavior.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("예약", "booking", "resource_id", "겹치는")) and _context_matches_any(
@@ -354,6 +367,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package allows overlapping reservations or defers conflict handling until after confirmation.",
                 "Generated code can double-book scarce resources.",
                 "Require transactional overlap checks and a 409 response for conflicting reservations.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("재고", "inventory", "stock", "sku", "예약")) and _context_matches_any(
@@ -370,6 +384,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package can oversell because concurrency or atomic stock mutation behavior is undefined.",
                 "Generated code can reserve the same units multiple times or allow negative stock.",
                 "Define atomic reservation semantics, concurrency conflict behavior, and rejection for insufficient stock.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("웹훅", "webhook", "subscriber", "구독자")) and (
@@ -390,6 +405,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                     "The Korean spec package trusts unsigned or replayed inbound webhook payloads.",
                     "Generated code can process forged external events.",
                     "Require raw-body signature verification, timestamp tolerance, event_id idempotency, and replay rejection.",
+                    evidence=_evidence_excerpt(context),
                 )
             return ReadinessIssue(
                 "Critical",
@@ -397,6 +413,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package leaves webhook timeout, retry, or idempotency policy undefined.",
                 "Generated code can hang on subscriber calls or duplicate external side effects.",
                 "Define timeout budgets, retry policy, delivery idempotency key, and duplicate delivery handling.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("상태", "주문", "배송", "반품", "삭제", "취소")) and (
@@ -415,6 +432,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package allows unsafe or undefined terminal-state transitions.",
                 "Generated code can violate fulfillment, deletion, refund, or return invariants.",
                 "Define allowed transitions, terminal states, invalid transition errors, and side effects for each state.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("감사 로그", "감사 기록", "감사 이벤트", "감사", "원장", "ledger")) and (
@@ -433,6 +451,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package allows audit or ledger records to be edited, deleted, or overwritten.",
                 "Generated code can destroy compliance evidence or financial auditability.",
                 "Require append-only audit records, immutable posted entries, and explicit retention behavior.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("개인정보", "삭제 요청", "보존", "retention")) and (
@@ -450,6 +469,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package omits identity verification, retention exceptions, or audit evidence for deletion.",
                 "Generated code can delete or retain personal data without a reviewable privacy contract.",
                 "Define requester verification, eligible deletion scope, retained-record reasons, retention_until, and audit.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("파일", "업로드", "attachment", "첨부")) and (
@@ -467,6 +487,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package leaves file size, content type, or scanning requirements undefined.",
                 "Generated code can accept unsafe or unbounded files.",
                 "Define maximum size, allowed content types, storage path constraints, and malware scanning policy.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("rate limit", "요청 제한", "쿨다운", "cooldown", "검색 요청")) and _context_matches_any(
@@ -483,6 +504,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package delegates rate limiting to the client while direct API calls remain unrestricted.",
                 "Generated code can allow abusive traffic despite documented cooldowns.",
                 "Require server-side rate limit state, rejection behavior, and retry-after semantics.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("알림", "notification", "unsubscribe", "구독 해지")) and _context_matches_any(
@@ -498,6 +520,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package can disable security notifications through a generic unsubscribe or preference.",
                 "Generated code can suppress account-security alerts unexpectedly.",
                 "Separate mandatory security notifications from marketing or product notification preferences.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("쿠폰", "coupon", "프로모션", "할인")) and (
@@ -515,6 +538,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package lacks expiration, redemption, or per-customer limits.",
                 "Generated code can allow unbounded promotion reuse.",
                 "Define expiration, redemption records, max_redemptions, per-customer limits, and conflict behavior.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("작업", "백그라운드", "jobrunner", "job")) and (
@@ -534,6 +558,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package allows indefinite retries without backoff, max attempts, or idempotent side-effect bounds.",
                 "Generated code can cause retry storms or duplicate external side effects.",
                 "Define max attempts, backoff, dead-letter behavior, and idempotency for side-effecting handlers.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("권한", "역할", "관리자", "owner", "소유자")) and (
@@ -552,6 +577,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package relies on client visibility or leaves privileged mutation checks undefined.",
                 "Generated code can allow unauthorized role changes or removal of the last owner.",
                 "Require server-side authorization for every privileged action and define last-owner protection.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("나중에 처리", "추후 작업", "수동 처리", "구현자가 합리적으로 선택")) and _context_has_any(
@@ -564,6 +590,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "The Korean spec package defers ownership, idempotency, lifecycle, audit, or authorization policy to later work.",
                 "Generated code must guess important contract behavior before implementation starts.",
                 "Replace vague acceptance language with explicit owner-scope, idempotency, validation, lifecycle, and state criteria.",
+                evidence=_evidence_excerpt(context),
             )
 
     return None
@@ -902,6 +929,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "The spec package allows list_tasks to return cross-user task data for callers to filter.",
                 "Generated code can expose task data across users before client-side filtering occurs.",
                 "Require list_tasks to return only caller-owned tasks from the service boundary.",
+                evidence=_evidence_excerpt(context),
             )
 
     for context in contexts:
@@ -915,6 +943,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "The spec package mentions idempotency but leaves replay scope or conflict behavior undefined.",
                 "Generated code can create duplicate tasks or share idempotency records across users.",
                 "Define idempotency key scope, same-request replay behavior, and conflicting-replay rejection.",
+                evidence=_evidence_excerpt(context),
             )
         if (
             "idempotency" in context
@@ -927,6 +956,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "The spec package does not require a clear error for reused idempotency keys with different task data.",
                 "Conflicting retries can create duplicate or inconsistent tasks.",
                 "Require TaskError for conflicting idempotency-key reuse and define the response for exact replay.",
+                evidence=_evidence_excerpt(context),
             )
     for context in contexts:
         if (
@@ -951,6 +981,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "Generated code can expose deleted records or revive terminal state.",
                 "Define deleted tasks as hidden from normal lists and terminal for later completion unless the spec "
                 "explicitly defines a safer lifecycle.",
+                evidence=_evidence_excerpt(context),
             )
     if _task_error_contract_is_too_generic(contexts):
         return ReadinessIssue(
@@ -976,6 +1007,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "Generated code can hide validation, ownership, or missing-task failures from callers.",
                 "Require TaskError with a clear reason for validation, ownership, missing task, deleted task, and "
                 "idempotency conflicts.",
+                evidence=_evidence_excerpt(context),
             )
     for context in contexts:
         if (
@@ -1100,12 +1132,19 @@ def _has_payment_idempotency_context(contexts: list[str]) -> bool:
 
 
 def _has_payment_side_effect_context(contexts: list[str]) -> bool:
-    return any(
-        _is_payment_side_effect_context(fragment)
-        for context in contexts
-        for fragment in _context_fragments(context)
-    )
+    return _payment_side_effect_context(contexts) is not None
 
+
+def _payment_side_effect_context(contexts: list[str]) -> str | None:
+    return next(
+        (
+            fragment
+            for context in contexts
+            for fragment in _context_fragments(context)
+            if _is_payment_side_effect_context(fragment)
+        ),
+        None,
+    )
 
 def _webhook_contexts(contexts: list[str]) -> list[str]:
     return [
@@ -1476,6 +1515,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Generated code can expose billing, search, or profile data across tenant boundaries.",
                 "Require every export, list, and read path to apply tenant or user scope on the server before data is "
                 "returned.",
+                evidence=_evidence_excerpt(context),
             )
 
         if (
@@ -1499,16 +1539,18 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "The cache key omits tenant or user context for tenant-scoped data.",
                 "Generated code can reuse cached search or export results across tenants.",
                 "Include tenant or user identity in every cache key for tenant-scoped reads and exports.",
+                evidence=_evidence_excerpt(context),
             )
 
-    payment_side_effect = _has_payment_side_effect_context(contexts)
-    if payment_side_effect and not _has_payment_idempotency_context(contexts):
+    payment_side_effect_context = _payment_side_effect_context(contexts)
+    if payment_side_effect_context is not None and not _has_payment_idempotency_context(contexts):
         return ReadinessIssue(
             "Critical",
             "Payment idempotency contract is ambiguous",
             "The spec package defines payment or refund side effects without an idempotency key contract.",
             "Generated code can duplicate charges, refunds, or captures when callers retry.",
             "Define idempotency key requirements, replay behavior, and conflict handling for every payment side effect.",
+            evidence=_evidence_excerpt(payment_side_effect_context),
         )
 
     for context in contexts:
@@ -1545,6 +1587,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "undefined.",
                 "Generated code can retry unsafe operations and produce duplicate financial side effects.",
                 "Specify idempotency scope, conflict response, timeout reconciliation, and retry boundaries.",
+                evidence=_evidence_excerpt(context),
             )
 
     inventory_scope = any(_context_has_any(context, ("inventory", "stock", "sku", "reservation")) for context in contexts)
@@ -1587,6 +1630,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Inventory reservation can oversell because concurrency or atomic stock mutation behavior is undefined.",
                 "Generated code can reserve the same units multiple times or allow negative stock.",
                 "Define atomic reservation semantics, concurrency conflict behavior, and rejection for insufficient stock.",
+                evidence=_evidence_excerpt(" ".join(inventory_fragments) or text),
             )
 
     for context in contexts:
@@ -1614,6 +1658,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Role or admin behavior relies on client visibility or leaves privileged mutation checks undefined.",
                 "Generated code can allow unauthorized role changes or removal of the last owner.",
                 "Require server-side authorization for every privileged action and define last-owner protection.",
+                evidence=_evidence_excerpt(context),
             )
 
     webhook_contexts = _webhook_contexts(contexts)
@@ -1632,6 +1677,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Webhook delivery is in scope without timeout, retry, or idempotency policy.",
                 "Generated code can hang on subscriber calls or duplicate external side effects.",
                 "Define timeout budgets, retry policy, delivery idempotency key, and duplicate delivery handling.",
+                evidence=_evidence_excerpt(webhook_contexts[0]),
             )
         for context in webhook_contexts:
             if _context_has_any(context, ("webhook", "subscriber", "callback url")) and _context_matches_any(
@@ -1651,6 +1697,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                     "Webhook behavior leaves duplicate delivery or side-effect retry semantics undefined.",
                     "Generated code can duplicate downstream effects or lose delivery status on timeouts.",
                     "Define retryable failures, non-retryable failures, dedupe keys, and subscriber timeout handling.",
+                    evidence=_evidence_excerpt(context),
                 )
 
     for context in contexts:
@@ -2457,6 +2504,7 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
             "Leaked, replayed, or copied tokens can remain valid or reusable longer than intended.",
             "Define token expiration, revocation, rotation or replay detection, and copied-token rejection in the same "
             "authentication-token contract.",
+            evidence=_evidence_excerpt(token_danger_context),
         ))
     elif _has_token_issuance_context(contexts):
         if not _has_token_lifecycle_control_context(contexts):
@@ -2490,6 +2538,7 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
                 f"The spec package permits or designs unsafe todo ownership behavior: {unsafe_todo_context}",
                 "A generated API may expose cross-user todo data through list, update, or delete operations.",
                 "Require server-side owner-scoped queries and authorization checks for every todo read/write path.",
+                evidence=_evidence_excerpt(unsafe_todo_context),
             ))
         elif not _has_safe_todo_owner_context(contexts):
             issues.append(ReadinessIssue(
@@ -2499,6 +2548,7 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
                 "mutate their own todos.",
                 "A generated API may expose cross-user data through list, update, or delete operations.",
                 "Require owner-scoped queries and authorization checks for every todo read/write path.",
+                evidence=_evidence_excerpt(_first_context_with_any(contexts, ("todo", "task", "taskservice"))),
             ))
         if _contains(text, "delete") and not _contains(technical_design_text, "soft delete", "restore", "audit"):
             issues.append(ReadinessIssue(

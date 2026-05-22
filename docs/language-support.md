@@ -42,6 +42,27 @@ Korean support claims must stay within measured evidence:
 - Mixed Korean/English specs with English contract identifiers are supported when the relevant risk is explicit.
 - Full Korean production support is not claimed until broader benchmark and product validation exist.
 
+## Korean Finding Quality Calibration
+
+Current known Korean false positives:
+
+- None in the v0.4.0 Korean 98-case gate-only layer.
+
+Current known Korean false negatives:
+
+- None in the v0.4.0 Korean 98-case gate-only layer.
+
+The #175 finding-quality work targets representative Korean weak specs that already block correctly but can produce weaker findings than English/general heuristic cases. The concrete quality gap is missing `evidence[]` excerpts on Korean-specific deterministic blockers. Without source evidence, a finding can be less actionable even when its severity and readiness decision are correct.
+
+Focused regression coverage should protect:
+
+- Korean `READY` behavior through the medium review policy.
+- Korean `READY_WITH_WARNINGS` behavior through the default low review policy.
+- Korean `NOT_READY` behavior for explicit unsafe Korean wording.
+- Critical Korean findings with concrete `evidence[]`, specific impact, and an actionable fix.
+
+These tests should not snapshot exact Korean prose unless the phrase is intentionally part of a stable public contract.
+
 ## Maintenance Rule
 
 Any PR that changes user-facing documentation should check whether this language policy needs an update. If a workflow is documented in both Korean and English, the PR should keep the behavior and support limits consistent in both languages.
