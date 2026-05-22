@@ -76,6 +76,47 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 - `timeout`: the CLI run exceeds the active command timeout. Report the command, whether it was heuristic or provider-backed, and the files that exist.
 - `cli_execution_failed`: the CLI exits non-zero for a reason that is not represented by a fresh `not_ready` report or a known pre-review state.
 
+## PR Review Setup Workflow
+
+Use this workflow when the user asks for SpecGuard PR Review setup, for example `PR Review를 설정해줘` or `set up SpecGuard PR Review`.
+
+1. Confirm repository context before making changes:
+   - run `git status --short --branch`;
+   - inspect `git remote -v` or equivalent repository metadata when available;
+   - tell the user when no GitHub remote can be detected.
+2. Confirm CLI availability:
+   - run `specguard --help`;
+   - when working from a SpecGuard source checkout, fall back to `python -m cli.specguard --help`;
+   - if both fail, report `missing_cli` and explain that installing the Codex plugin does not install the SpecGuard CLI;
+   - if the environment allows package installation and the user wants Codex to help, ask before running `pip install spec-guard`.
+3. Ask before writing repository workflow files. State that `specguard actions install-pr-review` writes or keeps `.github/workflows/specguard-pr-review.yml`.
+4. After the user confirms, run:
+
+   ```bash
+   specguard actions install-pr-review
+   ```
+
+5. Confirm whether `.github/workflows/specguard-pr-review.yml` was created, updated, or already existed. If it already exists and the user did not ask to overwrite it, do not force replacement.
+6. Report the required secret separately from optional variables:
+   - Required GitHub Actions secret: `SPECGUARD_OPENAI_API_KEY`
+   - Optional repository variables: `SPECGUARD_PR_REVIEW_MODEL`, `SPECGUARD_REVIEW_SPEC_PATHS`
+7. Preserve the secret boundary:
+   - do not invent, generate, store, print, or commit API keys;
+   - do not ask the user to put API keys in files;
+   - do not echo an API key in terminal commands, logs, or final output;
+   - if the user provides a key in chat, do not repeat it back.
+8. When `gh` is installed and authenticated, offer a safe, user-approved registration path:
+   - run `gh auth status` before proposing write commands;
+   - for the secret, prefer `gh secret set SPECGUARD_OPENAI_API_KEY --repo <owner/name>` so the user can enter the value through GitHub CLI without the key appearing in command history;
+   - for optional variables, use `gh variable set SPECGUARD_PR_REVIEW_MODEL --body <model> --repo <owner/name>` and `gh variable set SPECGUARD_REVIEW_SPEC_PATHS --body <paths> --repo <owner/name>` only after the user confirms the values;
+   - if safe registration is not possible, stop before secret handling and give manual setup instructions.
+9. When GitHub integration or `gh` authentication is unavailable, provide manual setup instructions:
+   - commit and push `.github/workflows/specguard-pr-review.yml`;
+   - open GitHub repository Settings > Secrets and variables > Actions;
+   - add `SPECGUARD_OPENAI_API_KEY` as a repository secret;
+   - optionally add `SPECGUARD_PR_REVIEW_MODEL` and `SPECGUARD_REVIEW_SPEC_PATHS` as repository variables.
+10. End by reporting workflow path, repository remote if known, whether secret registration was completed or deferred, and the next commit/push step. Keep SpecGuard PR Review advisory and do not tell the user to make it required by default.
+
 ## Commands
 
 ```bash
