@@ -10,6 +10,7 @@ MARKETPLACE_PATH = ROOT / ".agents" / "plugins" / "marketplace.json"
 SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-workflow" / "SKILL.md"
 README_PATH = ROOT / "plugins" / "specguard" / "README.md"
 CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
+CODEX_PLUGIN_ROADMAP_PATH = ROOT / "docs" / "codex-plugin-hardening-roadmap.md"
 
 
 def _assert_contains_all(text: str, required: tuple[str, ...]) -> None:
@@ -164,6 +165,7 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             "plugins/specguard/.codex-plugin/plugin.json",
             "implementation-output.md",
             "Plugin Result Contract](plugin-result-contract.md)",
+            "Codex Plugin Hardening Roadmap](codex-plugin-hardening-roadmap.md)",
             "Spec Refinement Safety Boundary",
             "mkdir your-codex-project-folder",
             "cd your-codex-project-folder",
@@ -187,6 +189,37 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
         ),
     )
     assert "specs/my-feature" not in doc
+
+
+def test_codex_plugin_hardening_roadmap_prioritizes_v04x_work() -> None:
+    roadmap = CODEX_PLUGIN_ROADMAP_PATH.read_text(encoding="utf-8")
+
+    _assert_contains_all(
+        roadmap,
+        (
+            "## Immediate v0.4.1",
+            "## Should-Have v0.4.x",
+            "## Later v0.4.x",
+            "Related issue: #174",
+            "Related issue: #175",
+            "Plugin Run And Recovery States",
+            "Result Summary UX",
+            "Native Plugin Or MCP Exploration",
+            "readiness-review.json",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        roadmap,
+        (
+            ("user problem", "expected behavior", "non-goals"),
+            ("missing contracts",),
+            ("CLI", "canonical engine"),
+            ("default", "plugin gate", "--no-llm", "--no-follow-up"),
+            ("Do not", "automatic spec rewriting"),
+            ("Do not", "LLM review", "default gate"),
+            ("Do not", "official plugin directory"),
+        ),
+    )
 
 
 def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
