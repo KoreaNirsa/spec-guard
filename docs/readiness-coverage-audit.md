@@ -31,6 +31,9 @@ The v0.4.0 gate-only result used for this audit reports:
 | English | 98 | 65/65 | 0/33 | 0.0% | 0.0% |
 | Korean | 98 | 65/65 | 0/33 | 0.0% | 0.0% |
 
+The matrix emits these FP/FN baseline fields only when the supplied gate results
+cover the full selected fixture set. This audit uses complete 196/196 coverage.
+
 All 66 ready/reference rows have actual readiness status `ready_with_warnings`.
 All 130 weak rows have actual readiness status `not_ready`. Critical counts are
 present in the recorded benchmark artifact: 66 rows have 0 Critical findings,
