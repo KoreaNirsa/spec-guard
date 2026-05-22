@@ -4551,6 +4551,12 @@ def _readiness_status(result: dict[str, Any] | None) -> str | None:
     return str(status) if status is not None else None
 
 
+def _implementation_ready(result: dict[str, Any] | None) -> bool | None:
+    if not result or result.get("implementation_ready") is None:
+        return None
+    return bool(result["implementation_ready"])
+
+
 def _critical_count(result: dict[str, Any] | None) -> int | None:
     if not result:
         return None
@@ -4695,9 +4701,7 @@ def build_readiness_coverage_matrix(
                 "implementation_ready" if case["expectation"] == "good" else "not_ready"
             ),
             "actual_readiness_status": _readiness_status(result),
-            "actual_implementation_ready": (
-                bool(result.get("implementation_ready")) if result else None
-            ),
+            "actual_implementation_ready": _implementation_ready(result),
             "critical_count": _critical_count(result),
             "evidence_present": _evidence_present(result),
             "gap_type": ",".join(gap_types),

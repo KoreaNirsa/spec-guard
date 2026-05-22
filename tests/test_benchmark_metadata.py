@@ -161,6 +161,34 @@ def test_readiness_coverage_matrix_can_surface_results_when_available() -> None:
     assert row["gap_types"] == ["english_only_source", "ready_only_domain_language"]
 
 
+def test_readiness_coverage_matrix_preserves_missing_implementation_ready() -> None:
+    cases = [{
+        "id": "ready_fixture",
+        "suite": "impact_v2",
+        "domain": "task_service",
+        "language": "en",
+        "source_case_id": "ready_fixture",
+        "category": "ready_reference",
+        "expectation": "good",
+        "title": "Ready fixture",
+        "risk": "Baseline ready fixture.",
+        "spec": "Spec.",
+        "technical_design": "Design.",
+    }]
+    matrix = build_readiness_coverage_matrix(
+        cases=cases,
+        results=[{
+            "workflow": "specguard_gate",
+            "case": "ready_fixture",
+            "readiness": "ready",
+        }],
+    )
+    row = matrix["rows"][0]
+
+    assert row["actual_readiness_status"] == "ready"
+    assert row["actual_implementation_ready"] is None
+
+
 def test_readiness_coverage_matrix_cli_writes_documented_json(tmp_path: Path) -> None:
     output = tmp_path / "readiness-coverage-matrix.json"
 
