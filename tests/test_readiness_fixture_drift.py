@@ -117,15 +117,18 @@ def test_readiness_fixture_drift_summary_matches_checked_in_snapshot() -> None:
     assert actual == expected
 
 
-def test_readiness_fixture_drift_summary_keeps_paired_language_mapping() -> None:
+def test_readiness_fixture_drift_summary_keeps_language_mapping_shape() -> None:
     summary = _build_fixture_drift_summary()
+    languages = set(summary["language_counts"])
 
-    assert summary["language_counts"] == {"en": 98, "ko": 98}
-    assert summary["expectation_counts_by_language"] == {
-        "en": {"good": 33, "weak": 65},
-        "ko": {"good": 33, "weak": 65},
-    }
-    assert all(
-        source_mapping["languages"] == ["en", "ko"]
-        for source_mapping in summary["source_case_mappings"]
-    )
+    assert languages == {"en", "ko"}
+    assert all(count > 0 for count in summary["language_counts"].values())
+    assert set(summary["expectation_counts_by_language"]) == languages
+    for source_mapping in summary["source_case_mappings"]:
+        mapping_languages = set(source_mapping["languages"])
+
+        assert mapping_languages
+        assert mapping_languages <= languages
+        assert set(source_mapping["case_ids_by_language"]) == mapping_languages
+        assert set(source_mapping["categories_by_language"]) == mapping_languages
+        assert set(source_mapping["suites_by_language"]) == mapping_languages
