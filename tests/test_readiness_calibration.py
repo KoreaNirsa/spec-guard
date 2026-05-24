@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from tools.readiness_engine import READINESS_EVIDENCE_EXCERPT_LIMIT, run_readiness_review
+from tools.readiness_engine import (
+    READINESS_EVIDENCE_EXCERPT_LIMIT,
+    is_review_source_artifact,
+    run_readiness_review,
+)
 from tools.spec_driven_ai_benchmark import benchmark_cases, make_specguard_package
 
 
@@ -76,20 +80,10 @@ def _write_feature(
 
 
 def _normalized_source_text(package: Path) -> str:
-    generated = {
-        "readiness-review.md",
-        "readiness-review.json",
-        "readiness-review-detail.md",
-        "readiness-review-detail.json",
-        "implementation-output.md",
-        "spec.proposed.md",
-        "grill.md",
-        "grill.json",
-    }
     source = "\n".join(
         path.read_text(encoding="utf-8")
         for path in package.rglob("*.md")
-        if path.name not in generated
+        if is_review_source_artifact(path.relative_to(package))
     )
     return " ".join(source.lower().split())
 
@@ -242,9 +236,9 @@ def test_deterministic_critical_findings_have_actionable_source_evidence(tmp_pat
         package = make_specguard_package(tmp_path, case)
         run_readiness_review(package)
         payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
-        for issue in payload["issues"]:
-            if issue["severity"] != "Critical":
-                continue
+        critical_issues = [issue for issue in payload["issues"] if issue["severity"] == "Critical"]
+        assert critical_issues, case["id"]
+        for issue in critical_issues:
             checked_critical += 1
             _assert_critical_issue_shape(issue, package)
 
