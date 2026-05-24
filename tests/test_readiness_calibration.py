@@ -177,6 +177,56 @@ def test_korean_weak_cases_do_not_emit_critical_findings_without_evidence(tmp_pa
     assert missing_evidence == []
 
 
+def test_audit_domain_has_paired_ready_and_weak_guards(tmp_path: Path) -> None:
+    ready_case = _benchmark_case("ready_audit_append_only_events")
+    ready_ok, ready_payload = _run_benchmark_case(tmp_path, ready_case["id"])
+
+    assert ready_case["domain"] == "audit"
+    assert ready_ok
+    assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert ready_payload["summary"]["critical"] == 0
+
+    weak_ok, weak_payload = _run_benchmark_case(tmp_path, "weak_audit_log_mutable")
+
+    assert not weak_ok
+    assert weak_payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(weak_payload, "Audit evidence is mutable")
+    evidence = issue.get("evidence")
+    assert issue["severity"] == "Critical"
+    assert isinstance(evidence, list)
+    assert evidence
+    assert all(isinstance(excerpt, str) and excerpt.strip() for excerpt in evidence)
+    assert all(len(excerpt) <= 260 for excerpt in evidence)
+    assert issue["impact"].startswith("Generated code")
+    assert issue["fix"].startswith("Require")
+
+
+def test_korean_audit_counterpart_preserves_source_mapping_and_guard_shape(tmp_path: Path) -> None:
+    ready_case = _benchmark_case("ready_audit_append_only_events_ko")
+    ready_ok, ready_payload = _run_benchmark_case(tmp_path, ready_case["id"])
+
+    assert ready_case["language"] == "ko"
+    assert ready_case["domain"] == "audit"
+    assert ready_case["source_case_id"] == "ready_audit_append_only_events"
+    assert ready_ok
+    assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert ready_payload["summary"]["critical"] == 0
+
+    weak_case = _benchmark_case("weak_audit_log_mutable_ko")
+    weak_ok, weak_payload = _run_benchmark_case(tmp_path, weak_case["id"])
+
+    assert weak_case["source_case_id"] == "weak_audit_log_mutable"
+    assert not weak_ok
+    assert weak_payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(weak_payload, "Audit evidence is mutable")
+    evidence = issue.get("evidence")
+    assert issue["severity"] == "Critical"
+    assert isinstance(evidence, list)
+    assert evidence
+    assert issue["impact"].startswith("Generated code")
+    assert issue["fix"].startswith("Require")
+
+
 def test_mixed_korean_prose_with_english_identifiers_blocks_document_share_boundary(
     tmp_path: Path,
 ) -> None:

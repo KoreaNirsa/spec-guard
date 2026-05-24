@@ -15,10 +15,10 @@ python tools/spec_driven_ai_benchmark.py --coverage-matrix --coverage-matrix-res
 | Matrix output | [`docs/benchmark-results/readiness-coverage-matrix.json`](benchmark-results/readiness-coverage-matrix.json) |
 | Fixture source | `tools/spec_driven_ai_benchmark.py` `benchmark_cases` |
 | Result source | [`docs/benchmark-results/specguard-gate-only-v0.4.0.json`](benchmark-results/specguard-gate-only-v0.4.0.json) |
-| Total fixtures | 196 |
-| English fixtures | 98 |
-| Korean fixtures | 98 |
-| Ready/reference fixtures | 66 |
+| Total fixtures | 198 |
+| English fixtures | 99 |
+| Korean fixtures | 99 |
+| Ready/reference fixtures | 68 |
 | Weak/blocking fixtures | 130 |
 
 ## Baseline
@@ -32,12 +32,17 @@ The v0.4.0 gate-only result used for this audit reports:
 | Korean | 98 | 65/65 | 0/33 | 0.0% | 0.0% |
 
 The matrix emits these FP/FN baseline fields only when the supplied gate results
-cover the full selected fixture set. This audit uses complete 196/196 coverage.
+cover the full selected fixture set. The original #181 audit used complete
+196/196 coverage. After the #182 audit-domain fixture pair, the checked-in
+matrix has 198 fixtures while the v0.4.0 result artifact still covers 196
+cases, so the matrix baseline fields stay `null` until #186 refreshes the
+benchmark artifact.
 
-All 66 ready/reference rows have actual readiness status `ready_with_warnings`.
-All 130 weak rows have actual readiness status `not_ready`. Critical counts are
-present in the recorded benchmark artifact: 66 rows have 0 Critical findings,
-123 rows have 1 Critical finding, and 7 rows have 2 Critical findings.
+In the v0.4.0 result artifact, all 66 evaluated ready/reference rows have
+actual readiness status `ready_with_warnings`. All 130 weak rows have actual
+readiness status `not_ready`. Critical counts are present in the recorded
+benchmark artifact: 66 rows have 0 Critical findings, 123 rows have 1 Critical
+finding, and 7 rows have 2 Critical findings.
 
 The matrix also records domain/language summary fields so future fixture and
 heuristic work can triage gaps without scanning every case row:
@@ -61,7 +66,7 @@ therefore report those evidence counts as `unknown` for this baseline.
 ## Coverage Gaps
 
 No English-only or Korean-only source-case gaps are present in the current
-196-case matrix. No ready-only domain/language gaps are present.
+198-case matrix. No ready-only domain/language gaps are present.
 
 The remaining coverage imbalance is weak-only domain/language coverage. These
 domains have weak/blocking fixtures in both English and Korean, but no paired
@@ -69,7 +74,6 @@ ready/reference fixture yet:
 
 | Domain | English Weak Cases | Korean Weak Cases | Follow-up |
 | --- | ---: | ---: | --- |
-| `audit` | 1 | 1 | #182 |
 | `background_jobs` | 1 | 1 | #182 |
 | `device_trust` | 1 | 1 | #182 |
 | `ledger` | 1 | 1 | #182 |
@@ -90,7 +94,7 @@ fixtures so false-positive protection exists in both English and Korean.
 | Idempotency and duplicate effects | `task_service`, `payments`, `webhook_delivery` | Paired ready/weak coverage exists. |
 | Payment, refund, subscription, booking | `payments`, `returns`, `subscriptions`, `booking` | Paired ready/weak coverage exists. |
 | Webhook, cache, and rate limit | `webhook_delivery`, `inbound_webhooks`, `cache`, `rate_limits` | Covered, but `rate_limits` is weak-only. |
-| Privacy deletion, audit, and ledger | `privacy`, `audit`, `ledger` | Covered, but `audit` and `ledger` are weak-only. |
+| Privacy deletion, audit, and ledger | `privacy`, `audit`, `ledger` | Covered, but `ledger` is weak-only. |
 | Inventory, notification, coupon, jobs | `inventory`, `notifications`, `promotions`, `background_jobs` | Covered, but `promotions` and `background_jobs` are weak-only. |
 
 ## Follow-up Use

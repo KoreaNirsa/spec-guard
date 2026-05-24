@@ -1718,6 +1718,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Audit records can be edited, deleted, or overwritten after creation.",
                 "Generated code can destroy compliance evidence or hide privileged actions.",
                 "Require append-only audit records with immutable event fields and explicit retention behavior.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("profile", "account", "email")) and (

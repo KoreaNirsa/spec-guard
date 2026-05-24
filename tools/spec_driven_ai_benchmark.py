@@ -1264,6 +1264,50 @@ GATE_ONLY_EXTRA_CASES = [
 """,
     ),
     _gate_case(
+        "ready_audit_append_only_events",
+        domain="audit",
+        category="ready_reference_extra",
+        expectation="good",
+        title="ready append-only audit events",
+        risk="audit evidence preservation",
+        feature="Append-only Audit Events",
+        summary="- Privileged actions write immutable audit events with correction records.",
+        requirements="""
+- Audit events record actor_id, action, target_id, occurred_at, request_id, and reason.
+- Audit events are append-only and cannot be edited, overwritten, or deleted after creation.
+- Corrections create a separate correction event that references the original audit_event_id.
+- Retention policy keeps audit events for seven years before archival.
+""",
+        acceptance="""
+- [ ] Privileged action success appends exactly one audit event.
+- [ ] Correction requests append a correction event instead of mutating the original event.
+- [ ] Attempts to update or delete an audit event return 409.
+""",
+        errors="""
+- Missing actor_id returns 401.
+- Missing reason for a privileged action returns 400.
+- Audit event mutation attempts return 409.
+""",
+        architecture="""
+- AuditService owns append-only event creation, correction event creation, and retention metadata.
+- AuditRepository exposes append and read methods only; no update or delete path exists for audit events.
+""",
+        data_flow="""
+1. Service validates actor_id, action, target_id, request_id, and reason.
+2. Service appends an audit event before returning privileged action success.
+3. Correction requests append a new event linked by original audit_event_id.
+4. Retention archival copies immutable events without changing source event fields.
+""",
+        state="""
+- Audit event states: recorded, archived.
+- Recorded and archived events remain immutable.
+""",
+        failure="""
+- Audit write failure rolls back the privileged action.
+- Mutation attempts return 409 and leave the original event unchanged.
+""",
+    ),
+    _gate_case(
         "ready_profile_privacy_update",
         domain="profile",
         category="ready_reference_extra",
