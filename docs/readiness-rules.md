@@ -23,6 +23,12 @@ Readiness states are interpreted by the selected review level:
 
 Critical findings always block implementation. Major findings should represent an implementation-critical product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
 
+For heuristic calibration work, use the
+[Readiness Calibration Triage Protocol](readiness-calibration-triage.md) before
+changing deterministic rules. The protocol defines how to classify false
+positives, false negatives, evidence-quality issues, fixture gaps, documentation
+gaps, and Korean counterpart gaps.
+
 ## Language Coverage
 
 The deterministic low-mode gate is calibrated primarily on English specs. v0.3.2 adds a Korean gate-only benchmark layer for explicit unsafe Korean wording around ownership and tenant scope, idempotency and replay, expiry and revocation, client-side delegation, external side effects, state transitions, audit mutability, privacy retention, webhook policy, cache scope, rate limits, coupons, and background job retries.

@@ -95,6 +95,10 @@ fixtures so false-positive protection exists in both English and Korean.
 
 ## Follow-up Use
 
+- Use the
+  [Readiness Calibration Triage Protocol](readiness-calibration-triage.md) to
+  classify fixture gaps, false positives, false negatives, evidence-quality
+  issues, documentation gaps, and Korean counterpart gaps before changing rules.
 - Use #182 to add paired ready/reference fixtures for weak-only domains before
   changing heuristics in those areas.
 - Use #183 only if a future matrix or benchmark run reports ready/reference rows

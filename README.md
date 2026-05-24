@@ -174,6 +174,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 - [Codex Plugin Hardening Roadmap](docs/codex-plugin-hardening-roadmap.md): v0.4.x plugin backlog, priorities, missing contracts, and non-goals.
 - [Plugin Result Contract](docs/plugin-result-contract.md): stable `readiness-review.json` fields and file-based states for Codex plugin consumers.
 - [Readiness Rules](docs/readiness-rules.md): review levels, READY thresholds, contract requirements, and Strict E2E verification rules.
+- [Readiness Calibration Triage](docs/readiness-calibration-triage.md): false-positive, false-negative, evidence-quality, fixture-gap, and Korean counterpart triage protocol.
 - [CI And PR Gates](docs/ci-and-pr-gates.md): readiness gate installation, required-check guidance, and PR review separation.
 - [CLI Reference](docs/cli-reference.md): common commands, `run` options, and CI-friendly examples.
 - [Development](docs/development.md): local source setup, tests, and packaged-example smoke testing.
