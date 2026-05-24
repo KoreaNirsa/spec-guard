@@ -170,8 +170,12 @@ For documentation-only triage updates:
 For fixture changes:
 
 - Run targeted readiness calibration tests.
-- Run benchmark metadata or drift-guard tests when fixture counts or metadata
-  change.
+- Run `pytest tests/test_readiness_fixture_drift.py` when fixture counts,
+  language splits, expectation splits, or source-case mappings change.
+- Update `tests/fixtures/readiness-fixture-drift-summary.json` in the same PR
+  only when the fixture metadata drift is intentional.
+- Run benchmark metadata tests when coverage-matrix metadata or checked-in
+  benchmark artifacts are touched.
 
 For heuristic changes:
 

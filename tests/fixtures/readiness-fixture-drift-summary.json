@@ -1,0 +1,2921 @@
+{
+  "schema": "specguard-readiness-fixture-drift-summary/v1",
+  "benchmark_script_version": "4",
+  "case_source": "tools/spec_driven_ai_benchmark.py::benchmark_cases",
+  "include_gate_only_extra_cases": true,
+  "include_korean_cases": true,
+  "case_count": 196,
+  "source_case_count": 98,
+  "suite_counts": {
+    "gate_only_extended_v2": 30,
+    "gate_only_extended_v2_ko": 30,
+    "gate_only_supplemental_v1": 50,
+    "gate_only_supplemental_v1_ko": 50,
+    "impact_v2": 18,
+    "impact_v2_ko": 18
+  },
+  "language_counts": {
+    "en": 98,
+    "ko": 98
+  },
+  "expectation_counts": {
+    "good": 66,
+    "weak": 130
+  },
+  "expectation_counts_by_language": {
+    "en": {
+      "good": 33,
+      "weak": 65
+    },
+    "ko": {
+      "good": 33,
+      "weak": 65
+    }
+  },
+  "domain_language_summary": [
+    {
+      "domain": "admin_roles",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "admin_roles",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "api_keys",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "api_keys",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "audit",
+      "language": "en",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "audit",
+      "language": "ko",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "auth_session",
+      "language": "en",
+      "good": 1,
+      "weak": 5
+    },
+    {
+      "domain": "auth_session",
+      "language": "ko",
+      "good": 1,
+      "weak": 5
+    },
+    {
+      "domain": "background_jobs",
+      "language": "en",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "background_jobs",
+      "language": "ko",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "billing_export",
+      "language": "en",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "billing_export",
+      "language": "ko",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "booking",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "booking",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "cache",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "cache",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "data_export",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "data_export",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "device_trust",
+      "language": "en",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "device_trust",
+      "language": "ko",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "document_sharing",
+      "language": "en",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "document_sharing",
+      "language": "ko",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "feature_flags",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "feature_flags",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "file_upload",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "file_upload",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "inbound_webhooks",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "inbound_webhooks",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "inventory",
+      "language": "en",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "inventory",
+      "language": "ko",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "ledger",
+      "language": "en",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "ledger",
+      "language": "ko",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "notifications",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "notifications",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "oauth_consent",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "oauth_consent",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "orders",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "orders",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "password_reset",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "password_reset",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "payments",
+      "language": "en",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "payments",
+      "language": "ko",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "payouts",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "payouts",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "privacy",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "privacy",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "profile",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "profile",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "promotions",
+      "language": "en",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "promotions",
+      "language": "ko",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "rate_limits",
+      "language": "en",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "rate_limits",
+      "language": "ko",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "returns",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "returns",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "search",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "search",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "shipping",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "shipping",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "sso",
+      "language": "en",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "sso",
+      "language": "ko",
+      "good": 0,
+      "weak": 1
+    },
+    {
+      "domain": "subscriptions",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "subscriptions",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "support",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "support",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "task_service",
+      "language": "en",
+      "good": 6,
+      "weak": 20
+    },
+    {
+      "domain": "task_service",
+      "language": "ko",
+      "good": 6,
+      "weak": 20
+    },
+    {
+      "domain": "todo",
+      "language": "en",
+      "good": 0,
+      "weak": 2
+    },
+    {
+      "domain": "todo",
+      "language": "ko",
+      "good": 0,
+      "weak": 2
+    },
+    {
+      "domain": "webhook_delivery",
+      "language": "en",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "webhook_delivery",
+      "language": "ko",
+      "good": 1,
+      "weak": 2
+    },
+    {
+      "domain": "workspace_invites",
+      "language": "en",
+      "good": 1,
+      "weak": 1
+    },
+    {
+      "domain": "workspace_invites",
+      "language": "ko",
+      "good": 1,
+      "weak": 1
+    }
+  ],
+  "source_case_mappings": [
+    {
+      "source_case_id": "fault_client_side_filtering",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_client_side_filtering",
+        "ko": "fault_client_side_filtering_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "fault_deleted_mutable",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_deleted_mutable",
+        "ko": "fault_deleted_mutable_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "fault_deleted_visible",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_deleted_visible",
+        "ko": "fault_deleted_visible_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "fault_error_schema_freeform",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_error_schema_freeform",
+        "ko": "fault_error_schema_freeform_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "fault_external_dependency",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_external_dependency",
+        "ko": "fault_external_dependency_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "fault_idempotency_conflict_allows_new_task",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_idempotency_conflict_allows_new_task",
+        "ko": "fault_idempotency_conflict_allows_new_task_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "fault_ownership_leak",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_ownership_leak",
+        "ko": "fault_ownership_leak_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "fault_title_no_trim",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "fault_title_no_trim",
+        "ko": "fault_title_no_trim_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected",
+        "ko": "fault_injected"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "incomplete_acceptance_missing",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "incomplete_acceptance_missing",
+        "ko": "incomplete_acceptance_missing_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete",
+        "ko": "incomplete"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "incomplete_error_contract",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "incomplete_error_contract",
+        "ko": "incomplete_error_contract_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete",
+        "ko": "incomplete"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "incomplete_idempotency",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "incomplete_idempotency",
+        "ko": "incomplete_idempotency_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete",
+        "ko": "incomplete"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "incomplete_state_transition",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "incomplete_state_transition",
+        "ko": "incomplete_state_transition_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete",
+        "ko": "incomplete"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_admin_role_audit",
+      "domains": [
+        "admin_roles"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_admin_role_audit",
+        "ko": "ready_admin_role_audit_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_api_key_rotation",
+      "domains": [
+        "api_keys"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_api_key_rotation",
+        "ko": "ready_api_key_rotation_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_api_tenant_invoice_export",
+      "domains": [
+        "billing_export"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_api_tenant_invoice_export",
+        "ko": "ready_api_tenant_invoice_export_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_audit_soft_delete",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_audit_soft_delete",
+        "ko": "ready_audit_soft_delete_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference",
+        "ko": "ready_reference"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_auth_session_rotation",
+      "domains": [
+        "auth_session"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_auth_session_rotation",
+        "ko": "ready_auth_session_rotation_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_booking_conflict_prevention",
+      "domains": [
+        "booking"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_booking_conflict_prevention",
+        "ko": "ready_booking_conflict_prevention_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_cache_invalidation_tenant_scope",
+      "domains": [
+        "cache"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_cache_invalidation_tenant_scope",
+        "ko": "ready_cache_invalidation_tenant_scope_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_canonical_task_service",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_canonical_task_service",
+        "ko": "ready_canonical_task_service_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference",
+        "ko": "ready_reference"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_data_export_redaction",
+      "domains": [
+        "data_export"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_data_export_redaction",
+        "ko": "ready_data_export_redaction_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_data_retention_delete_request",
+      "domains": [
+        "privacy"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_data_retention_delete_request",
+        "ko": "ready_data_retention_delete_request_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_document_share_expiry",
+      "domains": [
+        "document_sharing"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_document_share_expiry",
+        "ko": "ready_document_share_expiry_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_feature_flag_targeting",
+      "domains": [
+        "feature_flags"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_feature_flag_targeting",
+        "ko": "ready_feature_flag_targeting_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_file_upload_validation",
+      "domains": [
+        "file_upload"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_file_upload_validation",
+        "ko": "ready_file_upload_validation_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_idempotency_contract",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_idempotency_contract",
+        "ko": "ready_idempotency_contract_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference",
+        "ko": "ready_reference"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_inventory_reservation_concurrency",
+      "domains": [
+        "inventory"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_inventory_reservation_concurrency",
+        "ko": "ready_inventory_reservation_concurrency_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_notification_preferences",
+      "domains": [
+        "notifications"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_notification_preferences",
+        "ko": "ready_notification_preferences_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_oauth_consent_scope_review",
+      "domains": [
+        "oauth_consent"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_oauth_consent_scope_review",
+        "ko": "ready_oauth_consent_scope_review_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_order_cancellation_state",
+      "domains": [
+        "orders"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_order_cancellation_state",
+        "ko": "ready_order_cancellation_state_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_password_reset_token_lifecycle",
+      "domains": [
+        "password_reset"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_password_reset_token_lifecycle",
+        "ko": "ready_password_reset_token_lifecycle_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_payment_refund_idempotency",
+      "domains": [
+        "payments"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_payment_refund_idempotency",
+        "ko": "ready_payment_refund_idempotency_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_payout_reconciliation",
+      "domains": [
+        "payouts"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_payout_reconciliation",
+        "ko": "ready_payout_reconciliation_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_profile_privacy_update",
+      "domains": [
+        "profile"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_profile_privacy_update",
+        "ko": "ready_profile_privacy_update_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_return_authorization_state",
+      "domains": [
+        "returns"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_return_authorization_state",
+        "ko": "ready_return_authorization_state_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_search_index_tenant_scope",
+      "domains": [
+        "search"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_search_index_tenant_scope",
+        "ko": "ready_search_index_tenant_scope_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_shipping_label_purchase",
+      "domains": [
+        "shipping"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_shipping_label_purchase",
+        "ko": "ready_shipping_label_purchase_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_state_machine_detail",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_state_machine_detail",
+        "ko": "ready_state_machine_detail_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference",
+        "ko": "ready_reference"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_subscription_proration_idempotency",
+      "domains": [
+        "subscriptions"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_subscription_proration_idempotency",
+        "ko": "ready_subscription_proration_idempotency_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_support_ticket_owner_scope",
+      "domains": [
+        "support"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_support_ticket_owner_scope",
+        "ko": "ready_support_ticket_owner_scope_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_support_view_out_of_scope",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_support_view_out_of_scope",
+        "ko": "ready_support_view_out_of_scope_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference",
+        "ko": "ready_reference"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_trimmed_validation_contract",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_trimmed_validation_contract",
+        "ko": "ready_trimmed_validation_contract_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference",
+        "ko": "ready_reference"
+      },
+      "suites_by_language": {
+        "en": "impact_v2",
+        "ko": "impact_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_webhook_retry_idempotency",
+      "domains": [
+        "webhook_delivery"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_webhook_retry_idempotency",
+        "ko": "ready_webhook_retry_idempotency_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_webhook_signature_verification",
+      "domains": [
+        "inbound_webhooks"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_webhook_signature_verification",
+        "ko": "ready_webhook_signature_verification_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_workspace_invite_expiry",
+      "domains": [
+        "workspace_invites"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_workspace_invite_expiry",
+        "ko": "ready_workspace_invite_expiry_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_admin_role_client_hidden_actions",
+      "domains": [
+        "admin_roles"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_admin_role_client_hidden_actions",
+        "ko": "weak_admin_role_client_hidden_actions_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_api_key_no_expiration",
+      "domains": [
+        "api_keys"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_api_key_no_expiration",
+        "ko": "weak_api_key_no_expiration_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_audit_log_mutable",
+      "domains": [
+        "audit"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_audit_log_mutable",
+        "ko": "weak_audit_log_mutable_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_auth_client_only_session_timeout",
+      "domains": [
+        "auth_session"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_auth_client_only_session_timeout",
+        "ko": "weak_auth_client_only_session_timeout_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_auth_copied_token_reuse",
+      "domains": [
+        "auth_session"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_auth_copied_token_reuse",
+        "ko": "weak_auth_copied_token_reuse_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_auth_no_expiration",
+      "domains": [
+        "auth_session"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_auth_no_expiration",
+        "ko": "weak_auth_no_expiration_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_auth_no_revocation",
+      "domains": [
+        "auth_session"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_auth_no_revocation",
+        "ko": "weak_auth_no_revocation_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_auth_replay_accepted",
+      "domains": [
+        "auth_session"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_auth_replay_accepted",
+        "ko": "weak_auth_replay_accepted_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_background_job_retry_unbounded",
+      "domains": [
+        "background_jobs"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_background_job_retry_unbounded",
+        "ko": "weak_background_job_retry_unbounded_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_booking_double_book_allowed",
+      "domains": [
+        "booking"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_booking_double_book_allowed",
+        "ko": "weak_booking_double_book_allowed_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_cache_invalidation_global_flush",
+      "domains": [
+        "cache"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_cache_invalidation_global_flush",
+        "ko": "weak_cache_invalidation_global_flush_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_coupon_unbounded_reuse",
+      "domains": [
+        "promotions"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_coupon_unbounded_reuse",
+        "ko": "weak_coupon_unbounded_reuse_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_data_deletion_no_retention_boundary",
+      "domains": [
+        "privacy"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_data_deletion_no_retention_boundary",
+        "ko": "weak_data_deletion_no_retention_boundary_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extended",
+        "ko": "incomplete_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_data_export_no_pii_redaction",
+      "domains": [
+        "data_export"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_data_export_no_pii_redaction",
+        "ko": "weak_data_export_no_pii_redaction_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_device_trust_never_expires",
+      "domains": [
+        "device_trust"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_device_trust_never_expires",
+        "ko": "weak_device_trust_never_expires_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_document_public_link_no_expiry",
+      "domains": [
+        "document_sharing"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_document_public_link_no_expiry",
+        "ko": "weak_document_public_link_no_expiry_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_document_share_client_enforced",
+      "domains": [
+        "document_sharing"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_document_share_client_enforced",
+        "ko": "weak_document_share_client_enforced_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_feature_flag_client_only_targeting",
+      "domains": [
+        "feature_flags"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_feature_flag_client_only_targeting",
+        "ko": "weak_feature_flag_client_only_targeting_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_file_upload_no_type_size_validation",
+      "domains": [
+        "file_upload"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_file_upload_no_type_size_validation",
+        "ko": "weak_file_upload_no_type_size_validation_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extra",
+        "ko": "incomplete_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_inventory_negative_stock_allowed",
+      "domains": [
+        "inventory"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_inventory_negative_stock_allowed",
+        "ko": "weak_inventory_negative_stock_allowed_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_inventory_no_reservation_lock",
+      "domains": [
+        "inventory"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_inventory_no_reservation_lock",
+        "ko": "weak_inventory_no_reservation_lock_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extra",
+        "ko": "incomplete_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_invoice_client_filtering",
+      "domains": [
+        "billing_export"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_invoice_client_filtering",
+        "ko": "weak_invoice_client_filtering_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_invoice_export_all_tenants",
+      "domains": [
+        "billing_export"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_invoice_export_all_tenants",
+        "ko": "weak_invoice_export_all_tenants_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_ledger_entry_mutable",
+      "domains": [
+        "ledger"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_ledger_entry_mutable",
+        "ko": "weak_ledger_entry_mutable_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_notification_global_unsubscribe",
+      "domains": [
+        "notifications"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_notification_global_unsubscribe",
+        "ko": "weak_notification_global_unsubscribe_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_oauth_consent_all_scopes",
+      "domains": [
+        "oauth_consent"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_oauth_consent_all_scopes",
+        "ko": "weak_oauth_consent_all_scopes_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_order_cancel_after_shipped",
+      "domains": [
+        "orders"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_order_cancel_after_shipped",
+        "ko": "weak_order_cancel_after_shipped_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_password_reset_reusable_token",
+      "domains": [
+        "password_reset"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_password_reset_reusable_token",
+        "ko": "weak_password_reset_reusable_token_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_payment_no_idempotency",
+      "domains": [
+        "payments"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_payment_no_idempotency",
+        "ko": "weak_payment_no_idempotency_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extra",
+        "ko": "incomplete_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_payment_refund_external_timeout",
+      "domains": [
+        "payments"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_payment_refund_external_timeout",
+        "ko": "weak_payment_refund_external_timeout_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extra",
+        "ko": "incomplete_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_payout_retry_duplicate_transfer",
+      "domains": [
+        "payouts"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_payout_retry_duplicate_transfer",
+        "ko": "weak_payout_retry_duplicate_transfer_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_profile_email_update_no_verification",
+      "domains": [
+        "profile"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_profile_email_update_no_verification",
+        "ko": "weak_profile_email_update_no_verification_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_rate_limit_client_enforced",
+      "domains": [
+        "rate_limits"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_rate_limit_client_enforced",
+        "ko": "weak_rate_limit_client_enforced_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_return_after_refund_accepted",
+      "domains": [
+        "returns"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_return_after_refund_accepted",
+        "ko": "weak_return_after_refund_accepted_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_search_cross_tenant_cache",
+      "domains": [
+        "search"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_search_cross_tenant_cache",
+        "ko": "weak_search_cross_tenant_cache_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_shipping_label_duplicate_purchase",
+      "domains": [
+        "shipping"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_shipping_label_duplicate_purchase",
+        "ko": "weak_shipping_label_duplicate_purchase_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_sso_account_linking_no_domain_verification",
+      "domains": [
+        "sso"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_sso_account_linking_no_domain_verification",
+        "ko": "weak_sso_account_linking_no_domain_verification_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_subscription_proration_undefined",
+      "domains": [
+        "subscriptions"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_subscription_proration_undefined",
+        "ko": "weak_subscription_proration_undefined_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extended",
+        "ko": "incomplete_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_support_ticket_cross_org_read",
+      "domains": [
+        "support"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_support_ticket_cross_org_read",
+        "ko": "weak_support_ticket_cross_org_read_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_acceptance_vague",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_acceptance_vague",
+        "ko": "weak_task_acceptance_vague_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extra",
+        "ko": "incomplete_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_deleted_restore",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_deleted_restore",
+        "ko": "weak_task_deleted_restore_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_deleted_visible",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_deleted_visible",
+        "ko": "weak_task_deleted_visible_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_error_none",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_error_none",
+        "ko": "weak_task_error_none_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_idempotency_undefined",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_idempotency_undefined",
+        "ko": "weak_task_idempotency_undefined_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extra",
+        "ko": "incomplete_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_list_all_active",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_list_all_active",
+        "ko": "weak_task_list_all_active_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_missing_server_owner_check",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_missing_server_owner_check",
+        "ko": "weak_task_missing_server_owner_check_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_task_space_titles_allowed",
+      "domains": [
+        "task_service"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_task_space_titles_allowed",
+        "ko": "weak_task_space_titles_allowed_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_todo_any_user_update",
+      "domains": [
+        "todo"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_todo_any_user_update",
+        "ko": "weak_todo_any_user_update_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_todo_client_filtering",
+      "domains": [
+        "todo"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_todo_client_filtering",
+        "ko": "weak_todo_client_filtering_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_webhook_duplicate_delivery_allowed",
+      "domains": [
+        "webhook_delivery"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_webhook_duplicate_delivery_allowed",
+        "ko": "weak_webhook_duplicate_delivery_allowed_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_webhook_no_retry_timeout",
+      "domains": [
+        "webhook_delivery"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_webhook_no_retry_timeout",
+        "ko": "weak_webhook_no_retry_timeout_ko"
+      },
+      "categories_by_language": {
+        "en": "incomplete_extra",
+        "ko": "incomplete_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_webhook_signature_not_verified",
+      "domains": [
+        "inbound_webhooks"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_webhook_signature_not_verified",
+        "ko": "weak_webhook_signature_not_verified_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_workspace_invite_no_expiration",
+      "domains": [
+        "workspace_invites"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_workspace_invite_no_expiration",
+        "ko": "weak_workspace_invite_no_expiration_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extra",
+        "ko": "fault_injected_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    }
+  ]
+}

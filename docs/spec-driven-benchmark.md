@@ -144,6 +144,14 @@ before tuning deterministic readiness rules. It defines the required baseline
 recording, paired fixture guards, evidence checks, Korean counterpart review,
 and benchmark-refresh decision points.
 
+The lightweight fixture drift guard compares stable benchmark fixture metadata
+against `tests/fixtures/readiness-fixture-drift-summary.json`. It catches
+unintended changes to fixture count, language split, expectation split,
+domain/language coverage, and English/Korean source-case mappings without
+running the full benchmark. Intentional fixture expansion should update that
+summary snapshot in the same PR and record whether #186 needs a benchmark
+artifact refresh.
+
 ## Aggregate Results
 
 ### Original Full Impact Run From #136
