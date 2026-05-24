@@ -4782,11 +4782,43 @@ def build_readiness_coverage_matrix(
             gap_type = "weak_only_domain_language"
         elif "weak" not in expectations:
             gap_type = "ready_only_domain_language"
+        scoped_actual_readiness_status_counts: dict[str, int] = {}
+        critical_case_count = 0
+        evidence_present_counts = {"true": 0, "false": 0, "unknown": 0}
+        source_counterpart_gap_count = 0
+        counterpart_language = "ko" if language == "en" else "en"
+        for case in scoped_cases:
+            result = gate_results.get(case["id"])
+            actual_readiness_status = _readiness_status(result)
+            if actual_readiness_status is not None:
+                scoped_actual_readiness_status_counts[actual_readiness_status] = (
+                    scoped_actual_readiness_status_counts.get(actual_readiness_status, 0) + 1
+                )
+            critical_count = _critical_count(result)
+            if critical_count and critical_count > 0:
+                critical_case_count += 1
+            evidence_present = _evidence_present(result)
+            if evidence_present is True:
+                evidence_present_counts["true"] += 1
+            elif evidence_present is False:
+                evidence_present_counts["false"] += 1
+            else:
+                evidence_present_counts["unknown"] += 1
+            source_case_id = case.get("source_case_id", case["id"])
+            if counterpart_language not in languages_by_source[source_case_id]:
+                source_counterpart_gap_count += 1
         domain_language_coverage.append({
             "domain": domain,
             "language": language,
             "ready_case_count": sum(1 for case in scoped_cases if case["expectation"] == "good"),
             "weak_case_count": sum(1 for case in scoped_cases if case["expectation"] == "weak"),
+            "actual_readiness_status_counts": {
+                key: scoped_actual_readiness_status_counts[key]
+                for key in sorted(scoped_actual_readiness_status_counts)
+            },
+            "critical_case_count": critical_case_count,
+            "evidence_present_counts": evidence_present_counts,
+            "source_counterpart_gap_count": source_counterpart_gap_count,
             "gap_type": gap_type,
         })
 
