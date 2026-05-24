@@ -1333,6 +1333,54 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Define trust expiry, revocation, re-verification triggers, and compromised-device handling.",
             )
 
+        workspace_invite_scope = (
+            _context_has_any(
+                context,
+                (
+                    "workspace invite",
+                    "workspace invites",
+                    "invite token",
+                    "invite_id",
+                    "invited_email",
+                    "target_email",
+                    "recipient_email",
+                    "token_hash",
+                    "workspace_id",
+                ),
+            )
+            or (
+                _context_has_any(context, ("invite", "invitation"))
+                and _context_has_any(context, ("workspace", "email", "token"))
+            )
+            or (
+                _context_has_any(context, ("초대",))
+                and _context_has_any(context, ("워크스페이스", "이메일", "토큰"))
+            )
+        )
+        if workspace_invite_scope and _context_matches_any(
+            context,
+            (
+                r"\b(any|every)\s+(authenticated\s+)?users?\s+(can|may|is\s+allowed\s+to)\s+accept\b.*\binvite\b.*\btoken\b",
+                r"\busers?\s+with\s+(the\s+)?(invite\s+)?token\s+(can|may|is\s+allowed\s+to)\s+(accept|join|be\s+added)\b",
+                r"\baccept\s+flow\s+does\s+not\s+need\s+to\s+(verify|check|compare)\b.*\b(email|recipient|target)\b",
+                r"\b(current\s+user'?s?\s+email|authenticated\s+user'?s?\s+email)\b.*\bdoes\s+not\s+need\s+to\s+(match|equal|be\s+verified)\b",
+                r"\bresolves?\s+invite\s+by\s+token_hash\s+only\b",
+                r"\bwithout\s+comparing\s+(target_email|invited_email|recipient_email|email)\b",
+                r"토큰을\s*아는\s*모든\s*사용자.*초대.*수락.*수\s*있",
+                r"초대.*수락.*현재\s*사용자\s*이메일.*(검증하지|확인하지|비교하지|필요하지)",
+                r"(현재\s*사용자\s*이메일|인증된\s*사용자\s*이메일).*(초대|대상|수신자).*이메일.*(일치.*필요하지|검증하지|확인하지|비교하지)",
+                r"token_hash만.*(조회|해결|사용).*(이메일|target_email|invited_email).*(비교하지|검증하지|확인하지)",
+            ),
+        ):
+            return ReadinessIssue(
+                "Critical",
+                "Workspace invite recipient binding is unsafe",
+                f"Workspace invite acceptance can bind a token to the wrong user: {context}",
+                "Generated code can let any authenticated user claim an invite intended for another email address.",
+                "Require server-side recipient email verification before creating membership from an invite token.",
+                evidence=_evidence_excerpt(context),
+            )
+
         if _context_has_any(context, ("ledger", "ledger entry", "ledger entries", "posted")) and (
             _context_matches_any(
                 context,
