@@ -139,6 +139,11 @@ The Korean layer adds corresponding gate-only fixtures for the same 98 cases. Th
 
 For stabilization triage, the `--coverage-matrix` command emits deterministic fixture metadata without running SpecGuard, Codex, or any LLM provider. The matrix includes domain, language, case id, expectation, source case mapping, nullable readiness-result fields, and coverage gap categories for English-only, Korean-only, weak-only, and ready-only coverage gaps. The current English/Korean coverage audit is recorded in [`readiness-coverage-audit.md`](readiness-coverage-audit.md).
 
+Use the [Readiness Calibration Triage Protocol](readiness-calibration-triage.md)
+before tuning deterministic readiness rules. It defines the required baseline
+recording, paired fixture guards, evidence checks, Korean counterpart review,
+and benchmark-refresh decision points.
+
 ## Aggregate Results
 
 ### Original Full Impact Run From #136
