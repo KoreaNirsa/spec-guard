@@ -313,7 +313,7 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 "Critical",
                 "Token lifecycle is missing",
                 f"Authentication token behavior permits an unsafe Korean lifecycle decision: {context}",
-                "Leaked, replayed, or copied tokens can remain valid or reusable longer than intended.",
+                "Generated code can leave leaked, replayed, or copied tokens valid longer than intended.",
                 "Define token expiration, revocation, rotation or replay detection, and copied-token rejection.",
                 evidence=_evidence_excerpt(context),
             )
@@ -954,7 +954,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "Critical",
                 "Task idempotency contract is ambiguous",
                 "The spec package does not require a clear error for reused idempotency keys with different task data.",
-                "Conflicting retries can create duplicate or inconsistent tasks.",
+                "Generated code can let conflicting retries create duplicate or inconsistent tasks.",
                 "Require TaskError for conflicting idempotency-key reuse and define the response for exact replay.",
                 evidence=_evidence_excerpt(context),
             )
@@ -991,6 +991,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
             "Generated code must guess validation, ownership, missing-task, deleted-task, or idempotency failure behavior.",
             "Define TaskError behavior with clear reasons for validation, ownership, missing task, deleted task, and "
             "idempotency conflicts.",
+            evidence=_evidence_excerpt(_first_context_with_any(contexts, ("taskerror", "task error", "error", "taskservice", "task"))),
         )
     for context in contexts:
         if _context_has_any(context, (
@@ -1022,6 +1023,7 @@ def _task_service_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None
                 "Generated code must guess important contract behavior before implementation starts.",
                 "Replace vague acceptance language with explicit owner-scope, idempotency, validation, and "
                 "deleted-state criteria.",
+                evidence=_evidence_excerpt(context),
             )
     return None
 
@@ -1214,6 +1216,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "OAuth consent grants every registered client scope instead of the exact requested and approved scope set.",
                 "Generated code can over-authorize third-party clients.",
                 "Require consent review for each requested scope and bind authorization codes to the approved scope set.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("subscription", "plan change", "plan_id", "target_plan")) and (
@@ -1233,6 +1236,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Subscription plan change behavior omits proration, idempotency, invoice timing, or rollback semantics.",
                 "Generated code can update subscription state without a defensible billing contract.",
                 "Define proration calculation, invoice failure rollback, idempotency replay, and conflict behavior.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("booking", "reservation", "resource_id")) and _context_matches_any(
@@ -1250,6 +1254,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Booking creation allows overlapping reservations or defers conflict handling until after confirmation.",
                 "Generated code can double-book scarce resources.",
                 "Require transactional overlap checks and a 409 response for conflicting reservations.",
+                evidence=_evidence_excerpt(context),
             )
 
         if feature_flag_scope and (
@@ -1269,6 +1274,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Feature flag evaluation trusts client-provided tenant or user traits instead of server-side targeting.",
                 "Generated code can expose tenant-scoped features to the wrong users.",
                 "Resolve flag rules by authenticated tenant and environment before evaluating server-known traits.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("delete request", "privacy", "personal data", "retention")) and (
@@ -1288,6 +1294,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Privacy deletion omits identity verification, retention exceptions, or audit evidence.",
                 "Generated code can delete or retain personal data without a reviewable privacy contract.",
                 "Define requester verification, eligible deletion scope, retained-record reasons, retention_until, and audit.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("cache", "invalidation", "namespace")) and (
@@ -1319,6 +1326,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Tenant cache invalidation can flush shared namespaces or omit tenant-scoped cache keys.",
                 "Generated code can delete or expose cache data across tenants.",
                 "Require tenant-scoped cache keys and reject tenant-initiated global flush requests.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("rate limit", "rate limiting", "cooldown", "search requests")) and (
@@ -1339,6 +1347,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Rate limiting is delegated to the client while direct API calls remain unrestricted.",
                 "Generated code can allow abusive traffic despite documented cooldowns.",
                 "Require server-side rate limit state, rejection behavior, and retry-after semantics.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("device trust", "trusted device", "trusted devices", "mfa")) and (
@@ -1358,6 +1367,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Trusted devices can skip MFA indefinitely without server-side expiry or revocation.",
                 "Generated code can preserve MFA bypass after device compromise.",
                 "Define trust expiry, revocation, re-verification triggers, and compromised-device handling.",
+                evidence=_evidence_excerpt(context),
             )
 
         workspace_invite_scope = (
@@ -1430,6 +1440,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Posted financial ledger entries can be edited in place instead of corrected through immutable reversals.",
                 "Generated code can destroy financial auditability.",
                 "Require immutable posted entries, reversal entries for corrections, and append-only audit evidence.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("coupon", "coupon_code", "promotion", "discount")) and (
@@ -1450,6 +1461,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Coupon redemption lacks expiration, redemption, or per-customer limits.",
                 "Generated code can allow unbounded promotion reuse.",
                 "Define expiration, redemption records, max_redemptions, per-customer limits, and conflict behavior.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("background job", "jobrunner", "failed jobs", "job handlers")) and (
@@ -1471,6 +1483,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Background jobs can retry indefinitely without backoff, max attempts, or idempotent side-effect bounds.",
                 "Generated code can cause retry storms or duplicate external side effects.",
                 "Define max attempts, backoff, dead-letter behavior, and idempotency for side-effecting handlers.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("webhook", "signature", "endpoint secret", "event_id")) and _context_matches_any(
@@ -1489,6 +1502,7 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 "Inbound webhook processing trusts unsigned or replayed payloads.",
                 "Generated code can process forged external events.",
                 "Require raw-body signature verification, timestamp tolerance, event_id idempotency, and replay rejection.",
+                evidence=_evidence_excerpt(context),
             )
 
     return None
@@ -1821,6 +1835,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Profile or email mutation behavior omits ownership or verification requirements.",
                 "Generated code can let users take over account communications or mutate another user's profile.",
                 "Require verified email-change flow and owner-scoped profile mutation checks.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("upload", "uploaded file", "file upload", "attachment")) and _context_matches_any(
@@ -1837,6 +1852,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "File upload behavior leaves size, content type, or scanning requirements undefined.",
                 "Generated code can accept unsafe or unbounded files.",
                 "Define maximum size, allowed content types, storage path constraints, and malware scanning policy.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("notification", "notifications", "email alert", "security email")) and (
@@ -1860,6 +1876,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Security notifications can be disabled through a generic unsubscribe or notification preference.",
                 "Generated code can suppress account-security alerts unexpectedly.",
                 "Separate mandatory security notifications from marketing or product notification preferences.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("support ticket", "ticket_id", "customer ticket")) and (
@@ -1875,6 +1892,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 "Support-ticket reads or mutations are not scoped by customer or assignee on the server.",
                 "Generated code can expose private ticket data across customers.",
                 "Require server-side customer or assignee scope checks before returning or mutating ticket data.",
+                evidence=_evidence_excerpt(context),
             )
 
         if _context_has_any(context, ("order", "orders")) and _context_has_any(context, ("cancel", "cancellation")):
@@ -1898,6 +1916,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                     "Order cancellation can apply to shipped, delivered, fulfilled, or otherwise undefined states.",
                     "Generated code can violate fulfillment and refund invariants.",
                     "Define allowed cancellation states, invalid transition errors, and side effects for each state.",
+                    evidence=_evidence_excerpt(context),
                 )
 
     return None
@@ -2555,6 +2574,7 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
             "The technical design does not name concrete components, ownership boundaries, or persistence responsibilities.",
             "AI implementation can invent architecture that conflicts with the intended workflow.",
             "Define the API layer, service layer, data store, external dependencies, and ownership for each decision.",
+            evidence=_evidence_excerpt(architecture or technical_design),
         ))
 
     if _is_placeholder(state):
@@ -2581,7 +2601,7 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
             "Critical",
             "Token lifecycle is missing",
             f"Authentication token behavior permits an unsafe lifecycle decision: {token_danger_context}",
-            "Leaked, replayed, or copied tokens can remain valid or reusable longer than intended.",
+            "Generated code can leave leaked, replayed, or copied tokens valid longer than intended.",
             "Define token expiration, revocation, rotation or replay detection, and copied-token rejection in the same "
             "authentication-token contract.",
             evidence=_evidence_excerpt(token_danger_context),
@@ -2592,8 +2612,9 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
                 "Critical",
                 "Token lifecycle is missing",
                 "Authentication is described without token expiration, refresh, revocation, or replay handling.",
-                "Leaked or replayed tokens can remain valid longer than intended.",
+                "Generated code can leave leaked or replayed tokens valid longer than intended.",
                 "Define access token TTL, refresh token rotation, revocation, and replay detection.",
+                evidence=_evidence_excerpt(_first_context_with_any(contexts, ("token", "authentication", "login", "password"))),
             ))
     if _contains(text, "login", "password", "refresh token"):
         if not _contains(text, "rate limit", "lockout", "brute"):

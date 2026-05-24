@@ -23,6 +23,12 @@ Readiness states are interpreted by the selected review level:
 
 Critical findings always block implementation. Major findings should represent an implementation-critical product, security, state, contract, persistence, or ownership decision. Best-practice suggestions, optional hardening, future extensibility, broad reliability improvements, and weakly evidenced risks should be Minor or omitted.
 
+## Critical Evidence Quality
+
+Deterministic Critical findings must include `evidence[]` excerpts when authored source artifacts contain the triggering text. The excerpts must be non-empty, bounded, and derived from reviewed source artifacts rather than generated report prose. Their `impact` text must explain why implementation should stop before handoff, and their `fix` text must point to an actionable spec change direction without inventing product behavior.
+
+There are currently no deterministic Critical exceptions that are allowed to omit `evidence[]`. The public `readiness-review.json` contract still treats `evidence[]` as optional so existing plugin consumers remain compatible, but deterministic local rules are held to this internal quality bar.
+
 For heuristic calibration work, use the
 [Readiness Calibration Triage Protocol](readiness-calibration-triage.md) before
 changing deterministic rules. The protocol defines how to classify false
