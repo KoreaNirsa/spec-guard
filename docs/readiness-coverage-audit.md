@@ -39,9 +39,24 @@ All 130 weak rows have actual readiness status `not_ready`. Critical counts are
 present in the recorded benchmark artifact: 66 rows have 0 Critical findings,
 123 rows have 1 Critical finding, and 7 rows have 2 Critical findings.
 
+The matrix also records domain/language summary fields so future fixture and
+heuristic work can triage gaps without scanning every case row:
+
+- `ready_case_count` and `weak_case_count` show fixture balance for each
+  domain/language pair.
+- `actual_readiness_status_counts` shows whether the recorded gate result
+  produced `ready_with_warnings` or `not_ready` for that domain/language pair.
+- `critical_case_count` shows how many cases in that domain/language pair
+  produced at least one Critical finding.
+- `evidence_present_counts` shows whether detailed Critical evidence was
+  present, absent, or unknown in the available benchmark artifact.
+- `source_counterpart_gap_count` shows missing English/Korean source-case
+  counterparts.
+
 The historical v0.4.0 JSON does not persist full finding evidence payloads, so
 the matrix keeps `evidence_present` as `null` for every row. Detailed Critical
-evidence shape is tracked separately in #185.
+evidence shape is tracked separately in #185. The domain/language summaries
+therefore report those evidence counts as `unknown` for this baseline.
 
 ## Coverage Gaps
 

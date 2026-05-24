@@ -117,6 +117,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -124,6 +135,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -131,6 +153,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -138,6 +171,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -145,6 +189,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -152,6 +206,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -159,6 +223,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 5,
+      "actual_readiness_status_counts": {
+        "not_ready": 5,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 5,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 6
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -166,6 +241,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 5,
+      "actual_readiness_status_counts": {
+        "not_ready": 5,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 5,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 6
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -173,6 +259,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -180,6 +276,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -187,6 +293,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -194,6 +311,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -201,6 +329,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -208,6 +347,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -215,6 +365,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -222,6 +383,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -229,6 +401,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -236,6 +419,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -243,6 +437,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -250,6 +454,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -257,6 +471,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -264,6 +489,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -271,6 +507,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -278,6 +525,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -285,6 +543,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -292,6 +561,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -299,6 +579,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -306,6 +597,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -313,6 +615,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -320,6 +633,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -327,6 +651,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -334,6 +668,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -341,6 +685,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -348,6 +703,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -355,6 +721,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -362,6 +739,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -369,6 +757,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -376,6 +775,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -383,6 +793,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -390,6 +811,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -397,6 +829,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -404,6 +847,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -411,6 +865,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -418,6 +883,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -425,6 +901,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -432,6 +919,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -439,6 +937,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -446,6 +955,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -453,6 +973,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -460,6 +990,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -467,6 +1007,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -474,6 +1024,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -481,6 +1041,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -488,6 +1059,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -495,6 +1077,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -502,6 +1095,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -509,6 +1113,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -516,6 +1131,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -523,6 +1149,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -530,6 +1166,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 1
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -537,6 +1183,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -544,6 +1201,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -551,6 +1219,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -558,6 +1237,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -565,6 +1255,17 @@
       "language": "en",
       "ready_case_count": 6,
       "weak_case_count": 20,
+      "actual_readiness_status_counts": {
+        "not_ready": 20,
+        "ready_with_warnings": 6
+      },
+      "critical_case_count": 20,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 26
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -572,6 +1273,17 @@
       "language": "ko",
       "ready_case_count": 6,
       "weak_case_count": 20,
+      "actual_readiness_status_counts": {
+        "not_ready": 20,
+        "ready_with_warnings": 6
+      },
+      "critical_case_count": 20,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 26
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -579,6 +1291,16 @@
       "language": "en",
       "ready_case_count": 0,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -586,6 +1308,16 @@
       "language": "ko",
       "ready_case_count": 0,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "weak_only_domain_language"
     },
     {
@@ -593,6 +1325,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -600,6 +1343,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 2,
+      "actual_readiness_status_counts": {
+        "not_ready": 2,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 2,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 3
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -607,6 +1361,17 @@
       "language": "en",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     },
     {
@@ -614,6 +1379,17 @@
       "language": "ko",
       "ready_case_count": 1,
       "weak_case_count": 1,
+      "actual_readiness_status_counts": {
+        "not_ready": 1,
+        "ready_with_warnings": 1
+      },
+      "critical_case_count": 1,
+      "evidence_present_counts": {
+        "true": 0,
+        "false": 0,
+        "unknown": 2
+      },
+      "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
     }
   ],

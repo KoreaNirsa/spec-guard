@@ -131,6 +131,24 @@ def test_readiness_coverage_matrix_reports_fixture_gaps_without_running_gate() -
     assert all(row["actual_readiness_status"] is None for row in rows)
     assert all(row["critical_count"] is None for row in rows)
     assert all(row["evidence_present"] is None for row in rows)
+    first_domain_row = matrix["domain_language_coverage"][0]
+    assert {
+        "domain",
+        "language",
+        "ready_case_count",
+        "weak_case_count",
+        "actual_readiness_status_counts",
+        "critical_case_count",
+        "evidence_present_counts",
+        "source_counterpart_gap_count",
+        "gap_type",
+    } <= set(first_domain_row)
+    assert first_domain_row["actual_readiness_status_counts"] == {}
+    assert first_domain_row["critical_case_count"] == 0
+    assert first_domain_row["evidence_present_counts"]["unknown"] == (
+        first_domain_row["ready_case_count"] + first_domain_row["weak_case_count"]
+    )
+    assert first_domain_row["source_counterpart_gap_count"] == 0
 
 
 def test_readiness_coverage_matrix_can_surface_results_when_available() -> None:
@@ -167,6 +185,17 @@ def test_readiness_coverage_matrix_can_surface_results_when_available() -> None:
     assert row["gap_types"] == ["english_only_source", "ready_only_domain_language"]
     assert row["follow_up_issue"] == "#182"
     assert matrix["actual_readiness_status_counts"] == {"ready": 1}
+    assert matrix["domain_language_coverage"] == [{
+        "domain": "task_service",
+        "language": "en",
+        "ready_case_count": 1,
+        "weak_case_count": 0,
+        "actual_readiness_status_counts": {"ready": 1},
+        "critical_case_count": 0,
+        "evidence_present_counts": {"true": 0, "false": 1, "unknown": 0},
+        "source_counterpart_gap_count": 1,
+        "gap_type": "ready_only_domain_language",
+    }]
     assert matrix["readiness_result_coverage"] == {
         "expected_cases": 1,
         "evaluated_cases": 1,
