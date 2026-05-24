@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tools.readiness_engine import run_readiness_review
+from tools.readiness_engine import READINESS_EVIDENCE_EXCERPT_LIMIT, run_readiness_review
 from tools.spec_driven_ai_benchmark import benchmark_cases, make_specguard_package
 
 
@@ -73,6 +73,59 @@ def _write_feature(
     package.joinpath("spec.md").write_text("\n".join(spec_lines), encoding="utf-8")
     package.joinpath("technical-design.md").write_text("\n".join(design_lines), encoding="utf-8")
     return package
+
+
+def _normalized_source_text(package: Path) -> str:
+    generated = {
+        "readiness-review.md",
+        "readiness-review.json",
+        "readiness-review-detail.md",
+        "readiness-review-detail.json",
+        "implementation-output.md",
+        "spec.proposed.md",
+        "grill.md",
+        "grill.json",
+    }
+    source = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in package.rglob("*.md")
+        if path.name not in generated
+    )
+    return " ".join(source.lower().split())
+
+
+def _excerpt_is_source_derived(excerpt: str, source_text: str) -> bool:
+    normalized = " ".join(excerpt.lower().replace("[...]", " ").split()).strip()
+    normalized = normalized.removesuffix("...").strip()
+    if not normalized:
+        return False
+    if normalized in source_text:
+        return True
+    words = normalized.split()
+    if len(words) < 6:
+        return False
+    return any(" ".join(words[index:index + 6]) in source_text for index in range(len(words) - 5))
+
+
+def _assert_critical_issue_shape(issue: dict[str, object], package: Path) -> None:
+    assert issue["severity"] == "Critical"
+
+    evidence = issue.get("evidence")
+    assert isinstance(evidence, list)
+    assert evidence
+    assert all(isinstance(excerpt, str) and excerpt.strip() for excerpt in evidence)
+    assert all(len(excerpt) <= READINESS_EVIDENCE_EXCERPT_LIMIT for excerpt in evidence)
+
+    source_text = _normalized_source_text(package)
+    assert all(_excerpt_is_source_derived(excerpt, source_text) for excerpt in evidence)
+
+    impact = issue.get("impact")
+    assert isinstance(impact, str)
+    assert impact.startswith(("Generated code", "A generated API", "AI implementation"))
+
+    fix = issue.get("fix")
+    assert isinstance(fix, str)
+    assert fix.startswith(("Require", "Define", "Specify", "Replace", "Separate", "Resolve", "Include"))
 
 
 @pytest.mark.parametrize(
@@ -175,6 +228,78 @@ def test_korean_weak_cases_do_not_emit_critical_findings_without_evidence(tmp_pa
                 missing_evidence.append((case["id"], issue["title"]))
 
     assert missing_evidence == []
+
+
+def test_deterministic_critical_findings_have_actionable_source_evidence(tmp_path: Path) -> None:
+    checked_critical = 0
+    weak_cases = [
+        case
+        for case in benchmark_cases(include_gate_only_extra_cases=True, include_korean_cases=True)
+        if case.get("expectation") == "weak"
+    ]
+
+    for case in weak_cases:
+        package = make_specguard_package(tmp_path, case)
+        run_readiness_review(package)
+        payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+        for issue in payload["issues"]:
+            if issue["severity"] != "Critical":
+                continue
+            checked_critical += 1
+            _assert_critical_issue_shape(issue, package)
+
+    assert checked_critical > 0
+
+
+def test_placeholder_critical_finding_has_source_evidence(tmp_path: Path) -> None:
+    package = _write_feature(
+        tmp_path,
+        spec_lines=[
+            "# Spec: placeholder architecture",
+            "",
+            "## Requirements",
+            "",
+            "- TaskService creates tasks for the authenticated user.",
+            "- Title must be non-blank after trimming.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Non-blank title creates a task.",
+            "- [ ] Blank title returns TaskError.",
+            "",
+            "## Error Cases",
+            "",
+            "- Blank title returns TaskError.",
+        ],
+        design_lines=[
+            "# Technical Design: placeholder architecture",
+            "",
+            "## Architecture",
+            "",
+            "- TBD",
+            "",
+            "## Data Flow",
+            "",
+            "1. Controller receives create request.",
+            "2. Service trims title and stores the task.",
+            "",
+            "## State",
+            "",
+            "- Task states: active, deleted.",
+            "",
+            "## Failure Handling",
+            "",
+            "- Blank title returns TaskError.",
+        ],
+    )
+
+    result = run_readiness_review(package)
+    payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(payload, "Architecture is still a placeholder")
+    _assert_critical_issue_shape(issue, package)
 
 
 def test_audit_domain_has_paired_ready_and_weak_guards(tmp_path: Path) -> None:
