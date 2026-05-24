@@ -56,10 +56,10 @@ def test_benchmark_payload_includes_metadata_and_result_schema() -> None:
 def test_benchmark_cases_can_include_supplemental_gate_only_suite() -> None:
     cases = benchmark_cases(include_gate_only_extra_cases=True)
 
-    assert len(GATE_ONLY_EXTRA_CASES) == 50
+    assert len(GATE_ONLY_EXTRA_CASES) == 51
     assert len(GATE_ONLY_EXTENDED_CASES) == 30
-    assert len(cases) == 98
-    assert sum(1 for case in GATE_ONLY_EXTRA_CASES if case["expectation"] == "good") == 15
+    assert len(cases) == 99
+    assert sum(1 for case in GATE_ONLY_EXTRA_CASES if case["expectation"] == "good") == 16
     assert sum(1 for case in GATE_ONLY_EXTRA_CASES if case["expectation"] == "weak") == 35
     assert sum(1 for case in GATE_ONLY_EXTENDED_CASES if case["expectation"] == "good") == 12
     assert sum(1 for case in GATE_ONLY_EXTENDED_CASES if case["expectation"] == "weak") == 18
@@ -71,14 +71,14 @@ def test_benchmark_cases_can_include_korean_gate_only_layer() -> None:
     cases = benchmark_cases(include_gate_only_extra_cases=True, include_korean_cases=True)
     korean_cases = [case for case in cases if case["language"] == "ko"]
 
-    assert len(cases) == 196
-    assert len(korean_cases) == 98
+    assert len(cases) == 198
+    assert len(korean_cases) == 99
     assert {case["suite"] for case in korean_cases} == {
         "impact_v2_ko",
         "gate_only_supplemental_v1_ko",
         "gate_only_extended_v2_ko",
     }
-    assert sum(1 for case in korean_cases if case["expectation"] == "good") == 33
+    assert sum(1 for case in korean_cases if case["expectation"] == "good") == 34
     assert sum(1 for case in korean_cases if case["expectation"] == "weak") == 65
     assert {case["source_case_id"] for case in korean_cases} == {
         case["id"]
@@ -96,9 +96,9 @@ def test_readiness_coverage_matrix_reports_fixture_gaps_without_running_gate() -
     first_row = rows[0]
 
     assert matrix["schema"] == READINESS_COVERAGE_MATRIX_SCHEMA
-    assert matrix["case_count"] == 196
-    assert matrix["language_counts"] == {"en": 98, "ko": 98}
-    assert matrix["expectation_counts"] == {"good": 66, "weak": 130}
+    assert matrix["case_count"] == 198
+    assert matrix["language_counts"] == {"en": 99, "ko": 99}
+    assert matrix["expectation_counts"] == {"good": 68, "weak": 130}
     assert matrix["actual_readiness_status_counts"] == {}
     assert matrix["readiness_result_coverage"] is None
     assert matrix["readiness_result_baseline"] is None
@@ -263,13 +263,13 @@ def test_readiness_coverage_matrix_cli_writes_documented_json(tmp_path: Path) ->
 
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert payload["schema"] == READINESS_COVERAGE_MATRIX_SCHEMA
-    assert payload["case_count"] == 196
+    assert payload["case_count"] == 198
     assert payload["source"]["results_path"] == str(results).replace("\\", "/")
     assert payload["actual_readiness_status_counts"] == {"ready_with_warnings": 1}
     assert payload["readiness_result_coverage"] == {
-        "expected_cases": 196,
+        "expected_cases": 198,
         "evaluated_cases": 1,
-        "missing_cases": 195,
+        "missing_cases": 197,
         "unexpected_cases": 0,
         "is_complete": False,
     }
@@ -321,7 +321,7 @@ def test_benchmark_payload_reports_language_metrics() -> None:
         temp_removed=False,
     )
 
-    assert payload["language_counts"] == {"en": 98, "ko": 98}
+    assert payload["language_counts"] == {"en": 99, "ko": 99}
     assert payload["aggregates"]["gate_by_language"]["en"]["evaluated_cases"] == 1
     assert payload["aggregates"]["gate_by_language"]["ko"]["evaluated_cases"] == 1
     assert payload["aggregates"]["gate_by_language"]["ko"]["blocked_weak_cases"] == 1

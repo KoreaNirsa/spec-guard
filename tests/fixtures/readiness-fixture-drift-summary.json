@@ -4,31 +4,31 @@
   "case_source": "tools/spec_driven_ai_benchmark.py::benchmark_cases",
   "include_gate_only_extra_cases": true,
   "include_korean_cases": true,
-  "case_count": 196,
-  "source_case_count": 98,
+  "case_count": 198,
+  "source_case_count": 99,
   "suite_counts": {
     "gate_only_extended_v2": 30,
     "gate_only_extended_v2_ko": 30,
-    "gate_only_supplemental_v1": 50,
-    "gate_only_supplemental_v1_ko": 50,
+    "gate_only_supplemental_v1": 51,
+    "gate_only_supplemental_v1_ko": 51,
     "impact_v2": 18,
     "impact_v2_ko": 18
   },
   "language_counts": {
-    "en": 98,
-    "ko": 98
+    "en": 99,
+    "ko": 99
   },
   "expectation_counts": {
-    "good": 66,
+    "good": 68,
     "weak": 130
   },
   "expectation_counts_by_language": {
     "en": {
-      "good": 33,
+      "good": 34,
       "weak": 65
     },
     "ko": {
-      "good": 33,
+      "good": 34,
       "weak": 65
     }
   },
@@ -60,13 +60,13 @@
     {
       "domain": "audit",
       "language": "en",
-      "good": 0,
+      "good": 1,
       "weak": 1
     },
     {
       "domain": "audit",
       "language": "ko",
-      "good": 0,
+      "good": 1,
       "weak": 1
     },
     {
@@ -832,6 +832,31 @@
       "case_ids_by_language": {
         "en": "ready_api_tenant_invoice_export",
         "ko": "ready_api_tenant_invoice_export_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_reference_extra",
+        "ko": "ready_reference_extra"
+      },
+      "suites_by_language": {
+        "en": "gate_only_supplemental_v1",
+        "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_audit_append_only_events",
+      "domains": [
+        "audit"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_audit_append_only_events",
+        "ko": "ready_audit_append_only_events_ko"
       },
       "categories_by_language": {
         "en": "ready_reference_extra",
