@@ -6,6 +6,7 @@ import importlib.util
 import inspect
 import json
 import os
+import platform
 import shutil
 import statistics
 import subprocess
@@ -25,7 +26,7 @@ CODEX_PACKAGE = "@openai/codex@0.128.0"
 MODEL = "gpt-5.5"
 MODEL_REASONING_EFFORT = "low"
 BENCHMARK_RESULT_SCHEMA = "specguard-impact-benchmark/v2"
-BENCHMARK_SCRIPT_VERSION = "4"
+BENCHMARK_SCRIPT_VERSION = "5"
 READINESS_COVERAGE_MATRIX_SCHEMA = "specguard-readiness-coverage-matrix/v1"
 READINESS_COVERAGE_GAP_TYPES = (
     "english_only_source",
@@ -3942,8 +3943,14 @@ def _git_dirty() -> bool:
     return bool(_git_output(["status", "--short"]))
 
 
-def build_benchmark_metadata(run_started_at: str, run_finished_at: str | None = None) -> dict[str, Any]:
-    return {
+def build_benchmark_metadata(
+    run_started_at: str,
+    run_finished_at: str | None = None,
+    *,
+    run_config: dict[str, Any] | None = None,
+    fixture_counts: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
         "schema": BENCHMARK_RESULT_SCHEMA,
         "run_started_at": run_started_at,
         "run_finished_at": run_finished_at,
@@ -3962,7 +3969,22 @@ def build_benchmark_metadata(run_started_at: str, run_finished_at: str | None = 
             "model": MODEL,
             "reasoning_effort": MODEL_REASONING_EFFORT,
         },
+        "environment": {
+            "python_version": platform.python_version(),
+            "python_implementation": platform.python_implementation(),
+            "platform": platform.platform(),
+            "os_name": os.name,
+            "notes": [
+                "Local provider-free readiness gate benchmark.",
+                "The temporary benchmark package root is recorded in run_config.temp_root.",
+            ],
+        },
     }
+    if run_config is not None:
+        metadata["run_config"] = run_config
+    if fixture_counts is not None:
+        metadata["fixture_counts"] = fixture_counts
+    return metadata
 
 
 def _npx_command() -> str:
@@ -5152,9 +5174,31 @@ def build_benchmark_payload(
     temp_removed: bool,
 ) -> dict[str, Any]:
     cases = CASES if cases is None else cases
+    suite_counts = _suite_counts(cases)
+    language_counts = _language_counts(cases)
+    fixture_counts = {
+        "case_count": len(cases),
+        "good_case_count": sum(1 for case in cases if case["expectation"] == "good"),
+        "weak_case_count": sum(1 for case in cases if case["expectation"] == "weak"),
+        "suite_counts": suite_counts,
+        "language_counts": language_counts,
+    }
+    run_config = {
+        "max_workers": max_workers,
+        "skip_codex": skip_codex,
+        "include_gate_only_extra_cases": include_gate_only_extra_cases,
+        "include_korean_cases": include_korean_cases,
+        "codex_timeout_seconds": CODEX_TIMEOUT_SECONDS,
+        "temp_root": str(root),
+    }
     return {
         "schema": BENCHMARK_RESULT_SCHEMA,
-        "metadata": build_benchmark_metadata(started_at, finished_at),
+        "metadata": build_benchmark_metadata(
+            started_at,
+            finished_at,
+            run_config=run_config,
+            fixture_counts=fixture_counts,
+        ),
         "benchmark_script_version": BENCHMARK_SCRIPT_VERSION,
         "started_at": started_at,
         "finished_at": finished_at,
@@ -5165,11 +5209,11 @@ def build_benchmark_payload(
         "codex_package": CODEX_PACKAGE,
         "model_reasoning_effort": MODEL_REASONING_EFFORT,
         "question": "How much does SpecGuard reduce exposed implementation defects from weak specs?",
-        "case_count": len(cases),
-        "good_case_count": sum(1 for case in cases if case["expectation"] == "good"),
-        "weak_case_count": sum(1 for case in cases if case["expectation"] == "weak"),
-        "suite_counts": _suite_counts(cases),
-        "language_counts": _language_counts(cases),
+        "case_count": fixture_counts["case_count"],
+        "good_case_count": fixture_counts["good_case_count"],
+        "weak_case_count": fixture_counts["weak_case_count"],
+        "suite_counts": suite_counts,
+        "language_counts": language_counts,
         "contract_check_names": CONTRACT_CHECK_NAMES,
         "quality_check_names": QUALITY_CHECK_NAMES,
         "modes": {
@@ -5179,14 +5223,7 @@ def build_benchmark_payload(
             "future_llm_specguard_review": "Reserved for a later LLM-backed SpecGuard Review benchmark mode.",
             "future_strict_e2e": "Reserved for a later Strict E2E refinement benchmark mode.",
         },
-        "run_config": {
-            "max_workers": max_workers,
-            "skip_codex": skip_codex,
-            "include_gate_only_extra_cases": include_gate_only_extra_cases,
-            "include_korean_cases": include_korean_cases,
-            "codex_timeout_seconds": CODEX_TIMEOUT_SECONDS,
-            "temp_root": str(root),
-        },
+        "run_config": run_config,
         "cases": [
             {
                 "id": case["id"],

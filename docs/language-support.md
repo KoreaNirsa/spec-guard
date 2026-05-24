@@ -46,11 +46,11 @@ Korean support claims must stay within measured evidence:
 
 Current known Korean false positives:
 
-- None in the v0.4.0 Korean 98-case gate-only layer.
+- None in the v0.4.1 Korean 99-case gate-only layer.
 
 Current known Korean false negatives:
 
-- None in the v0.4.0 Korean 98-case gate-only layer.
+- None in the v0.4.1 Korean 99-case gate-only layer.
 
 The #175 finding-quality work targets representative Korean weak specs that already block correctly but can produce weaker findings than English/general heuristic cases. The concrete quality gap is missing `evidence[]` excerpts on Korean-specific deterministic blockers. Without source evidence, a finding can be less actionable even when its severity and readiness decision are correct.
 
