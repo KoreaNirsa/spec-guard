@@ -4643,10 +4643,61 @@ def _readiness_coverage_gap_types(
     return gap_types or ["coverage_complete"]
 
 
+def _coverage_matrix_follow_up_issues(
+    case: dict[str, str],
+    result: dict[str, Any] | None,
+    gap_types: list[str],
+) -> list[str]:
+    issues: list[str] = []
+    if any(gap_type != "coverage_complete" for gap_type in gap_types):
+        issues.append("#182")
+    if result and case["expectation"] == "good" and result.get("implementation_ready") is False:
+        issues.append("#183")
+    if result and case["expectation"] == "weak" and result.get("implementation_ready") is True:
+        issues.append("#184")
+    return issues
+
+
+def load_readiness_coverage_results(path: Path | None) -> list[dict[str, Any]] | None:
+    if path is None:
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(payload, dict) and isinstance(payload.get("results"), list):
+        return payload["results"]
+    if isinstance(payload, list):
+        return payload
+    raise ValueError(f"Coverage matrix results file has no results list: {path}")
+
+
+def _coverage_matrix_result_coverage(
+    gate: list[dict[str, Any]],
+    cases: list[dict[str, str]],
+) -> dict[str, Any] | None:
+    if not gate:
+        return None
+    expected_case_ids = {case["id"] for case in cases}
+    result_case_ids = {
+        result_case
+        for result in gate
+        if isinstance((result_case := result.get("case")), str)
+    }
+    evaluated_case_ids = expected_case_ids & result_case_ids
+    missing_case_ids = expected_case_ids - evaluated_case_ids
+    unexpected_case_ids = result_case_ids - expected_case_ids
+    return {
+        "expected_cases": len(expected_case_ids),
+        "evaluated_cases": len(evaluated_case_ids),
+        "missing_cases": len(missing_case_ids),
+        "unexpected_cases": len(unexpected_case_ids),
+        "is_complete": not missing_case_ids,
+    }
+
+
 def build_readiness_coverage_matrix(
     *,
     cases: list[dict[str, str]] | None = None,
     results: list[dict[str, Any]] | None = None,
+    results_source: str | None = None,
     include_gate_only_extra_cases: bool = False,
     include_korean_cases: bool = False,
 ) -> dict[str, Any]:
@@ -4665,6 +4716,7 @@ def build_readiness_coverage_matrix(
         expectations_by_domain_language.setdefault((domain, language), set()).add(case["expectation"])
 
     rows = []
+    actual_readiness_status_counts: dict[str, int] = {}
     gap_counts: dict[str, int] = {gap_type: 0 for gap_type in READINESS_COVERAGE_GAP_TYPES}
     coverage_gaps: dict[str, list[str]] = {gap_type: [] for gap_type in READINESS_COVERAGE_GAP_TYPES}
     for case in sorted(
@@ -4687,6 +4739,12 @@ def build_readiness_coverage_matrix(
             if gap_type != "coverage_complete":
                 coverage_gaps.setdefault(gap_type, []).append(case["id"])
 
+        actual_readiness_status = _readiness_status(result)
+        if actual_readiness_status is not None:
+            actual_readiness_status_counts[actual_readiness_status] = (
+                actual_readiness_status_counts.get(actual_readiness_status, 0) + 1
+            )
+        follow_up_issues = _coverage_matrix_follow_up_issues(case, result, gap_types)
         rows.append({
             "case_id": case["id"],
             "suite": case.get("suite", "impact_v2"),
@@ -4700,12 +4758,14 @@ def build_readiness_coverage_matrix(
             "expected_readiness": (
                 "implementation_ready" if case["expectation"] == "good" else "not_ready"
             ),
-            "actual_readiness_status": _readiness_status(result),
+            "actual_readiness_status": actual_readiness_status,
             "actual_implementation_ready": _implementation_ready(result),
             "critical_count": _critical_count(result),
             "evidence_present": _evidence_present(result),
             "gap_type": ",".join(gap_types),
             "gap_types": gap_types,
+            "follow_up_issue": follow_up_issues[0] if follow_up_issues else None,
+            "follow_up_issues": follow_up_issues,
         })
 
     domain_language_coverage = []
@@ -4730,18 +4790,44 @@ def build_readiness_coverage_matrix(
             "gap_type": gap_type,
         })
 
+    gate = _workflow_results(results or [], "specguard_gate")
+    readiness_result_coverage = _coverage_matrix_result_coverage(gate, cases)
+    has_complete_gate_coverage = bool(
+        readiness_result_coverage and readiness_result_coverage["is_complete"]
+    )
+    readiness_result_baseline = (
+        _gate_metrics_for_cases(gate, cases) if has_complete_gate_coverage else None
+    )
+    readiness_result_baseline_by_language = {
+        language: _gate_metrics_for_cases(
+            gate,
+            [case for case in cases if case.get("language", "en") == language],
+        )
+        for language in sorted({case.get("language", "en") for case in cases})
+    } if has_complete_gate_coverage else None
+    source = {
+        "path": "tools/spec_driven_ai_benchmark.py",
+        "case_source": "benchmark_cases",
+    }
+    if results_source:
+        source["results_path"] = results_source
+
     return {
         "schema": READINESS_COVERAGE_MATRIX_SCHEMA,
         "benchmark_script_version": BENCHMARK_SCRIPT_VERSION,
-        "source": {
-            "path": "tools/spec_driven_ai_benchmark.py",
-            "case_source": "benchmark_cases",
-        },
+        "source": source,
         "case_count": len(cases),
         "suite_counts": _suite_counts(cases),
         "language_counts": _language_counts(cases),
         "expectation_counts": _expectation_counts(cases),
         "domain_count": len({case.get("domain", "task_service") for case in cases}),
+        "actual_readiness_status_counts": {
+            key: actual_readiness_status_counts[key]
+            for key in sorted(actual_readiness_status_counts)
+        },
+        "readiness_result_coverage": readiness_result_coverage,
+        "readiness_result_baseline": readiness_result_baseline,
+        "readiness_result_baseline_by_language": readiness_result_baseline_by_language,
         "gap_counts": {key: gap_counts[key] for key in sorted(gap_counts)},
         "coverage_gaps": {
             key: sorted(case_ids)
@@ -5158,6 +5244,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="Print readiness fixture coverage metadata without running the benchmark.",
     )
+    parser.add_argument(
+        "--coverage-matrix-results",
+        type=Path,
+        help="Benchmark JSON or result-list JSON used to enrich --coverage-matrix with gate results.",
+    )
     parser.add_argument("--max-workers", type=int, default=3, help="Concurrent SpecGuard/Codex jobs.")
     parser.add_argument("--skip-codex", action="store_true", help="Run only the SpecGuard gate phase.")
     parser.add_argument(
@@ -5183,7 +5274,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.coverage_matrix:
+        coverage_results = load_readiness_coverage_results(args.coverage_matrix_results)
         result = build_readiness_coverage_matrix(
+            results=coverage_results,
+            results_source=(
+                str(args.coverage_matrix_results).replace("\\", "/")
+                if args.coverage_matrix_results else None
+            ),
             include_gate_only_extra_cases=args.include_gate_only_extra_cases,
             include_korean_cases=args.include_korean_cases,
         )

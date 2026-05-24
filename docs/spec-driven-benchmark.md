@@ -85,7 +85,7 @@ The v0.4.0 English/Korean layer reports language metrics separately. In this wor
 | Supplemental and extended run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.3.1.json` |
 | English/Korean run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.3.2.json` |
 | #172 calibration run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.0.json` |
-| Readiness coverage matrix command | `python tools/spec_driven_ai_benchmark.py --coverage-matrix --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/readiness-coverage-matrix.json` |
+| Readiness coverage matrix command | `python tools/spec_driven_ai_benchmark.py --coverage-matrix --coverage-matrix-results docs/benchmark-results/specguard-gate-only-v0.4.0.json --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/readiness-coverage-matrix.json` |
 
 The v0.3.1, v0.3.2, and v0.4.0 gate-only runs are intentionally recorded as working-tree runs because their benchmark result artifacts and benchmark case expansion are part of their PR updates. A later release-quality benchmark can rerun from a clean tag after the benchmark changes merge.
 
@@ -137,7 +137,7 @@ The supplemental 50-case suite and extended 30-case suite add practical specific
 
 The Korean layer adds corresponding gate-only fixtures for the same 98 cases. The Korean cases keep the benchmark domains and expected ready/weak classification, but rewrite the implementation-risk prose in realistic Korean wording. The benchmark output carries `language`, `source_case_id`, `suite_counts`, `language_counts`, `gate_by_suite`, and `gate_by_language` so English and Korean results can be compared without merging their claims.
 
-For stabilization triage, the `--coverage-matrix` command emits deterministic fixture metadata without running SpecGuard, Codex, or any LLM provider. The matrix includes domain, language, case id, expectation, source case mapping, nullable readiness-result fields, and coverage gap categories for English-only, Korean-only, weak-only, and ready-only coverage gaps.
+For stabilization triage, the `--coverage-matrix` command emits deterministic fixture metadata without running SpecGuard, Codex, or any LLM provider. The matrix includes domain, language, case id, expectation, source case mapping, nullable readiness-result fields, and coverage gap categories for English-only, Korean-only, weak-only, and ready-only coverage gaps. The current English/Korean coverage audit is recorded in [`readiness-coverage-audit.md`](readiness-coverage-audit.md).
 
 ## Aggregate Results
 

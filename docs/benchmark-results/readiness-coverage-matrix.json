@@ -1,0 +1,4970 @@
+{
+  "schema": "specguard-readiness-coverage-matrix/v1",
+  "benchmark_script_version": "4",
+  "source": {
+    "path": "tools/spec_driven_ai_benchmark.py",
+    "case_source": "benchmark_cases",
+    "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.0.json"
+  },
+  "case_count": 196,
+  "suite_counts": {
+    "impact_v2": 18,
+    "gate_only_supplemental_v1": 50,
+    "gate_only_extended_v2": 30,
+    "impact_v2_ko": 18,
+    "gate_only_supplemental_v1_ko": 50,
+    "gate_only_extended_v2_ko": 30
+  },
+  "language_counts": {
+    "en": 98,
+    "ko": 98
+  },
+  "expectation_counts": {
+    "good": 66,
+    "weak": 130
+  },
+  "domain_count": 36,
+  "actual_readiness_status_counts": {
+    "not_ready": 130,
+    "ready_with_warnings": 66
+  },
+  "readiness_result_coverage": {
+    "expected_cases": 196,
+    "evaluated_cases": 196,
+    "missing_cases": 0,
+    "unexpected_cases": 0,
+    "is_complete": true
+  },
+  "readiness_result_baseline": {
+    "evaluated_cases": 196,
+    "good_cases": 66,
+    "weak_cases": 130,
+    "blocked_before_codegen": 130,
+    "blocked_weak_cases": 130,
+    "blocked_good_cases": 0,
+    "blocked_weak_rate": 100.0,
+    "block_rate": 66.3,
+    "false_positive_rate": 0.0,
+    "false_positive_cases": [],
+    "false_negative_rate": 0.0,
+    "false_negative_cases": []
+  },
+  "readiness_result_baseline_by_language": {
+    "en": {
+      "evaluated_cases": 98,
+      "good_cases": 33,
+      "weak_cases": 65,
+      "blocked_before_codegen": 65,
+      "blocked_weak_cases": 65,
+      "blocked_good_cases": 0,
+      "blocked_weak_rate": 100.0,
+      "block_rate": 66.3,
+      "false_positive_rate": 0.0,
+      "false_positive_cases": [],
+      "false_negative_rate": 0.0,
+      "false_negative_cases": []
+    },
+    "ko": {
+      "evaluated_cases": 98,
+      "good_cases": 33,
+      "weak_cases": 65,
+      "blocked_before_codegen": 65,
+      "blocked_weak_cases": 65,
+      "blocked_good_cases": 0,
+      "blocked_weak_rate": 100.0,
+      "block_rate": 66.3,
+      "false_positive_rate": 0.0,
+      "false_positive_cases": [],
+      "false_negative_rate": 0.0,
+      "false_negative_cases": []
+    }
+  },
+  "gap_counts": {
+    "coverage_complete": 178,
+    "english_only_source": 0,
+    "korean_only_source": 0,
+    "ready_only_domain_language": 0,
+    "weak_only_domain_language": 18
+  },
+  "coverage_gaps": {
+    "english_only_source": [],
+    "korean_only_source": [],
+    "ready_only_domain_language": [],
+    "weak_only_domain_language": [
+      "weak_audit_log_mutable",
+      "weak_audit_log_mutable_ko",
+      "weak_background_job_retry_unbounded",
+      "weak_background_job_retry_unbounded_ko",
+      "weak_coupon_unbounded_reuse",
+      "weak_coupon_unbounded_reuse_ko",
+      "weak_device_trust_never_expires",
+      "weak_device_trust_never_expires_ko",
+      "weak_ledger_entry_mutable",
+      "weak_ledger_entry_mutable_ko",
+      "weak_rate_limit_client_enforced",
+      "weak_rate_limit_client_enforced_ko",
+      "weak_sso_account_linking_no_domain_verification",
+      "weak_sso_account_linking_no_domain_verification_ko",
+      "weak_todo_any_user_update",
+      "weak_todo_any_user_update_ko",
+      "weak_todo_client_filtering",
+      "weak_todo_client_filtering_ko"
+    ]
+  },
+  "domain_language_coverage": [
+    {
+      "domain": "admin_roles",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "admin_roles",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "api_keys",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "api_keys",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "audit",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "audit",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "auth_session",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 5,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "auth_session",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 5,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "background_jobs",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "background_jobs",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "billing_export",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "billing_export",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "booking",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "booking",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "cache",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "cache",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "data_export",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "data_export",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "device_trust",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "device_trust",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "document_sharing",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "document_sharing",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "feature_flags",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "feature_flags",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "file_upload",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "file_upload",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "inbound_webhooks",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "inbound_webhooks",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "inventory",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "inventory",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "ledger",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "ledger",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "notifications",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "notifications",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "oauth_consent",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "oauth_consent",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "orders",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "orders",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "password_reset",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "password_reset",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "payments",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "payments",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "payouts",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "payouts",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "privacy",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "privacy",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "profile",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "profile",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "promotions",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "promotions",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "rate_limits",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "rate_limits",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "returns",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "returns",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "search",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "search",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "shipping",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "shipping",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "sso",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "sso",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 1,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "subscriptions",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "subscriptions",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "support",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "support",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "task_service",
+      "language": "en",
+      "ready_case_count": 6,
+      "weak_case_count": 20,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "task_service",
+      "language": "ko",
+      "ready_case_count": 6,
+      "weak_case_count": 20,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "todo",
+      "language": "en",
+      "ready_case_count": 0,
+      "weak_case_count": 2,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "todo",
+      "language": "ko",
+      "ready_case_count": 0,
+      "weak_case_count": 2,
+      "gap_type": "weak_only_domain_language"
+    },
+    {
+      "domain": "webhook_delivery",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "webhook_delivery",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 2,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "workspace_invites",
+      "language": "en",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    },
+    {
+      "domain": "workspace_invites",
+      "language": "ko",
+      "ready_case_count": 1,
+      "weak_case_count": 1,
+      "gap_type": "coverage_complete"
+    }
+  ],
+  "rows": [
+    {
+      "case_id": "ready_admin_role_audit",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "admin_roles",
+      "language": "en",
+      "source_case_id": "ready_admin_role_audit",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready admin role audit",
+      "risk": "privileged role changes",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_admin_role_audit_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "admin_roles",
+      "language": "ko",
+      "source_case_id": "ready_admin_role_audit",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "admin roles 한국어 good 사례",
+      "risk": "privileged role changes",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_admin_role_client_hidden_actions",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "admin_roles",
+      "language": "en",
+      "source_case_id": "weak_admin_role_client_hidden_actions",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "admin role client hidden actions",
+      "risk": "server-side authorization gap",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_admin_role_client_hidden_actions_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "admin_roles",
+      "language": "ko",
+      "source_case_id": "weak_admin_role_client_hidden_actions",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "admin roles 한국어 weak 사례",
+      "risk": "server-side authorization gap",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_api_key_rotation",
+      "suite": "gate_only_extended_v2",
+      "domain": "api_keys",
+      "language": "en",
+      "source_case_id": "ready_api_key_rotation",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready api key rotation",
+      "risk": "long-lived credential compromise",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_api_key_rotation_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "api_keys",
+      "language": "ko",
+      "source_case_id": "ready_api_key_rotation",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "API 키 한국어 good 사례",
+      "risk": "long-lived credential compromise",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_api_key_no_expiration",
+      "suite": "gate_only_extended_v2",
+      "domain": "api_keys",
+      "language": "en",
+      "source_case_id": "weak_api_key_no_expiration",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak api key no expiration",
+      "risk": "permanent credential compromise",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_api_key_no_expiration_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "api_keys",
+      "language": "ko",
+      "source_case_id": "weak_api_key_no_expiration",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "API 키 한국어 weak 사례",
+      "risk": "permanent credential compromise",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_audit_log_mutable",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "audit",
+      "language": "en",
+      "source_case_id": "weak_audit_log_mutable",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "mutable audit log",
+      "risk": "audit evidence can be altered",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_audit_log_mutable_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "audit",
+      "language": "ko",
+      "source_case_id": "weak_audit_log_mutable",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "audit 한국어 weak 사례",
+      "risk": "audit evidence can be altered",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "ready_auth_session_rotation",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "auth_session",
+      "language": "en",
+      "source_case_id": "ready_auth_session_rotation",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready auth session rotation",
+      "risk": "token lifecycle and replay control",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_auth_session_rotation_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "auth_session",
+      "language": "ko",
+      "source_case_id": "ready_auth_session_rotation",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "인증 세션 한국어 good 사례",
+      "risk": "token lifecycle and replay control",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_client_only_session_timeout",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "auth_session",
+      "language": "en",
+      "source_case_id": "weak_auth_client_only_session_timeout",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "client-only session timeout",
+      "risk": "server accepts stale sessions",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_client_only_session_timeout_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "auth_session",
+      "language": "ko",
+      "source_case_id": "weak_auth_client_only_session_timeout",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "인증 세션 한국어 weak 사례",
+      "risk": "server accepts stale sessions",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_copied_token_reuse",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "auth_session",
+      "language": "en",
+      "source_case_id": "weak_auth_copied_token_reuse",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "copied token reuse",
+      "risk": "session theft remains valid",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_copied_token_reuse_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "auth_session",
+      "language": "ko",
+      "source_case_id": "weak_auth_copied_token_reuse",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "인증 세션 한국어 weak 사례",
+      "risk": "session theft remains valid",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_no_expiration",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "auth_session",
+      "language": "en",
+      "source_case_id": "weak_auth_no_expiration",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "auth token without expiration",
+      "risk": "stolen token remains valid",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_no_expiration_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "auth_session",
+      "language": "ko",
+      "source_case_id": "weak_auth_no_expiration",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "인증 세션 한국어 weak 사례",
+      "risk": "stolen token remains valid",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_no_revocation",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "auth_session",
+      "language": "en",
+      "source_case_id": "weak_auth_no_revocation",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "auth token without revocation",
+      "risk": "compromised token cannot be invalidated",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_no_revocation_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "auth_session",
+      "language": "ko",
+      "source_case_id": "weak_auth_no_revocation",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "인증 세션 한국어 weak 사례",
+      "risk": "compromised token cannot be invalidated",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_replay_accepted",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "auth_session",
+      "language": "en",
+      "source_case_id": "weak_auth_replay_accepted",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "auth token replay accepted",
+      "risk": "copied token can be reused",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_auth_replay_accepted_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "auth_session",
+      "language": "ko",
+      "source_case_id": "weak_auth_replay_accepted",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "인증 세션 한국어 weak 사례",
+      "risk": "copied token can be reused",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_background_job_retry_unbounded",
+      "suite": "gate_only_extended_v2",
+      "domain": "background_jobs",
+      "language": "en",
+      "source_case_id": "weak_background_job_retry_unbounded",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak background job retry unbounded",
+      "risk": "retry storms and duplicate side effects",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_background_job_retry_unbounded_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "background_jobs",
+      "language": "ko",
+      "source_case_id": "weak_background_job_retry_unbounded",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "백그라운드 작업 한국어 weak 사례",
+      "risk": "retry storms and duplicate side effects",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "ready_api_tenant_invoice_export",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "billing_export",
+      "language": "en",
+      "source_case_id": "ready_api_tenant_invoice_export",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready tenant invoice export",
+      "risk": "tenant-scoped export",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_api_tenant_invoice_export_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "billing_export",
+      "language": "ko",
+      "source_case_id": "ready_api_tenant_invoice_export",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "청구 내보내기 한국어 good 사례",
+      "risk": "tenant-scoped export",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_invoice_client_filtering",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "billing_export",
+      "language": "en",
+      "source_case_id": "weak_invoice_client_filtering",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "invoice client filtering",
+      "risk": "tenant filtering outside service boundary",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_invoice_client_filtering_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "billing_export",
+      "language": "ko",
+      "source_case_id": "weak_invoice_client_filtering",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "청구 내보내기 한국어 weak 사례",
+      "risk": "tenant filtering outside service boundary",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_invoice_export_all_tenants",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "billing_export",
+      "language": "en",
+      "source_case_id": "weak_invoice_export_all_tenants",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "invoice export all tenants",
+      "risk": "cross-tenant invoice exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_invoice_export_all_tenants_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "billing_export",
+      "language": "ko",
+      "source_case_id": "weak_invoice_export_all_tenants",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "청구 내보내기 한국어 weak 사례",
+      "risk": "cross-tenant invoice exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_booking_conflict_prevention",
+      "suite": "gate_only_extended_v2",
+      "domain": "booking",
+      "language": "en",
+      "source_case_id": "ready_booking_conflict_prevention",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready booking conflict prevention",
+      "risk": "double booking scarce resources",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_booking_conflict_prevention_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "booking",
+      "language": "ko",
+      "source_case_id": "ready_booking_conflict_prevention",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "booking 한국어 good 사례",
+      "risk": "double booking scarce resources",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_booking_double_book_allowed",
+      "suite": "gate_only_extended_v2",
+      "domain": "booking",
+      "language": "en",
+      "source_case_id": "weak_booking_double_book_allowed",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak booking double book allowed",
+      "risk": "double booking scarce resources",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_booking_double_book_allowed_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "booking",
+      "language": "ko",
+      "source_case_id": "weak_booking_double_book_allowed",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "booking 한국어 weak 사례",
+      "risk": "double booking scarce resources",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_cache_invalidation_tenant_scope",
+      "suite": "gate_only_extended_v2",
+      "domain": "cache",
+      "language": "en",
+      "source_case_id": "ready_cache_invalidation_tenant_scope",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready cache invalidation tenant scope",
+      "risk": "cross-tenant cache mutation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_cache_invalidation_tenant_scope_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "cache",
+      "language": "ko",
+      "source_case_id": "ready_cache_invalidation_tenant_scope",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "캐시 한국어 good 사례",
+      "risk": "cross-tenant cache mutation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_cache_invalidation_global_flush",
+      "suite": "gate_only_extended_v2",
+      "domain": "cache",
+      "language": "en",
+      "source_case_id": "weak_cache_invalidation_global_flush",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak cache invalidation global flush",
+      "risk": "cross-tenant cache mutation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_cache_invalidation_global_flush_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "cache",
+      "language": "ko",
+      "source_case_id": "weak_cache_invalidation_global_flush",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "캐시 한국어 weak 사례",
+      "risk": "cross-tenant cache mutation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_data_export_redaction",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "data_export",
+      "language": "en",
+      "source_case_id": "ready_data_export_redaction",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready data export redaction",
+      "risk": "PII minimization",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_data_export_redaction_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "data_export",
+      "language": "ko",
+      "source_case_id": "ready_data_export_redaction",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "data export 한국어 good 사례",
+      "risk": "PII minimization",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_data_export_no_pii_redaction",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "data_export",
+      "language": "en",
+      "source_case_id": "weak_data_export_no_pii_redaction",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "data export no PII redaction",
+      "risk": "sensitive data over-export",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_data_export_no_pii_redaction_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "data_export",
+      "language": "ko",
+      "source_case_id": "weak_data_export_no_pii_redaction",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "data export 한국어 weak 사례",
+      "risk": "sensitive data over-export",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_device_trust_never_expires",
+      "suite": "gate_only_extended_v2",
+      "domain": "device_trust",
+      "language": "en",
+      "source_case_id": "weak_device_trust_never_expires",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak device trust never expires",
+      "risk": "persistent bypass after device compromise",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_device_trust_never_expires_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "device_trust",
+      "language": "ko",
+      "source_case_id": "weak_device_trust_never_expires",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "신뢰 기기 한국어 weak 사례",
+      "risk": "persistent bypass after device compromise",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "ready_document_share_expiry",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "document_sharing",
+      "language": "en",
+      "source_case_id": "ready_document_share_expiry",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready document share expiry",
+      "risk": "share link lifetime and owner scope",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_document_share_expiry_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "document_sharing",
+      "language": "ko",
+      "source_case_id": "ready_document_share_expiry",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "문서 공유 한국어 good 사례",
+      "risk": "share link lifetime and owner scope",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_document_public_link_no_expiry",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "document_sharing",
+      "language": "en",
+      "source_case_id": "weak_document_public_link_no_expiry",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "document public link without expiry",
+      "risk": "indefinite document access",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_document_public_link_no_expiry_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "document_sharing",
+      "language": "ko",
+      "source_case_id": "weak_document_public_link_no_expiry",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "문서 공유 한국어 weak 사례",
+      "risk": "indefinite document access",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_document_share_client_enforced",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "document_sharing",
+      "language": "en",
+      "source_case_id": "weak_document_share_client_enforced",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "document share client enforced",
+      "risk": "cross-owner document access",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_document_share_client_enforced_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "document_sharing",
+      "language": "ko",
+      "source_case_id": "weak_document_share_client_enforced",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "문서 공유 한국어 weak 사례",
+      "risk": "cross-owner document access",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_feature_flag_targeting",
+      "suite": "gate_only_extended_v2",
+      "domain": "feature_flags",
+      "language": "en",
+      "source_case_id": "ready_feature_flag_targeting",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready feature flag targeting",
+      "risk": "cross-tenant feature exposure",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_feature_flag_targeting_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "feature_flags",
+      "language": "ko",
+      "source_case_id": "ready_feature_flag_targeting",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "기능 플래그 한국어 good 사례",
+      "risk": "cross-tenant feature exposure",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_feature_flag_client_only_targeting",
+      "suite": "gate_only_extended_v2",
+      "domain": "feature_flags",
+      "language": "en",
+      "source_case_id": "weak_feature_flag_client_only_targeting",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak feature flag client only targeting",
+      "risk": "client-side access control bypass",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_feature_flag_client_only_targeting_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "feature_flags",
+      "language": "ko",
+      "source_case_id": "weak_feature_flag_client_only_targeting",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "기능 플래그 한국어 weak 사례",
+      "risk": "client-side access control bypass",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_file_upload_validation",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "file_upload",
+      "language": "en",
+      "source_case_id": "ready_file_upload_validation",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready file upload validation",
+      "risk": "file type and size boundary",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_file_upload_validation_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "file_upload",
+      "language": "ko",
+      "source_case_id": "ready_file_upload_validation",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "file upload 한국어 good 사례",
+      "risk": "file type and size boundary",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_file_upload_no_type_size_validation",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "file_upload",
+      "language": "en",
+      "source_case_id": "weak_file_upload_no_type_size_validation",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "file upload missing validation",
+      "risk": "unsafe file acceptance",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_file_upload_no_type_size_validation_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "file_upload",
+      "language": "ko",
+      "source_case_id": "weak_file_upload_no_type_size_validation",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "file upload 한국어 weak 사례",
+      "risk": "unsafe file acceptance",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_webhook_signature_verification",
+      "suite": "gate_only_extended_v2",
+      "domain": "inbound_webhooks",
+      "language": "en",
+      "source_case_id": "ready_webhook_signature_verification",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready webhook signature verification",
+      "risk": "forged inbound events",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_webhook_signature_verification_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "inbound_webhooks",
+      "language": "ko",
+      "source_case_id": "ready_webhook_signature_verification",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "수신 웹훅 한국어 good 사례",
+      "risk": "forged inbound events",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_webhook_signature_not_verified",
+      "suite": "gate_only_extended_v2",
+      "domain": "inbound_webhooks",
+      "language": "en",
+      "source_case_id": "weak_webhook_signature_not_verified",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak webhook signature not verified",
+      "risk": "forged inbound events",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_webhook_signature_not_verified_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "inbound_webhooks",
+      "language": "ko",
+      "source_case_id": "weak_webhook_signature_not_verified",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "수신 웹훅 한국어 weak 사례",
+      "risk": "forged inbound events",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_inventory_reservation_concurrency",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "inventory",
+      "language": "en",
+      "source_case_id": "ready_inventory_reservation_concurrency",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready inventory reservation concurrency",
+      "risk": "oversell prevention",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_inventory_reservation_concurrency_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "inventory",
+      "language": "ko",
+      "source_case_id": "ready_inventory_reservation_concurrency",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "재고 예약 한국어 good 사례",
+      "risk": "oversell prevention",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_inventory_negative_stock_allowed",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "inventory",
+      "language": "en",
+      "source_case_id": "weak_inventory_negative_stock_allowed",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "inventory negative stock allowed",
+      "risk": "stock count below zero",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_inventory_negative_stock_allowed_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "inventory",
+      "language": "ko",
+      "source_case_id": "weak_inventory_negative_stock_allowed",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "재고 예약 한국어 weak 사례",
+      "risk": "stock count below zero",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 2,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_inventory_no_reservation_lock",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "inventory",
+      "language": "en",
+      "source_case_id": "weak_inventory_no_reservation_lock",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "inventory no reservation lock",
+      "risk": "oversell under concurrency",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_inventory_no_reservation_lock_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "inventory",
+      "language": "ko",
+      "source_case_id": "weak_inventory_no_reservation_lock",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "재고 예약 한국어 weak 사례",
+      "risk": "oversell under concurrency",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_ledger_entry_mutable",
+      "suite": "gate_only_extended_v2",
+      "domain": "ledger",
+      "language": "en",
+      "source_case_id": "weak_ledger_entry_mutable",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak ledger entry mutable",
+      "risk": "financial audit trail tampering",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_ledger_entry_mutable_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "ledger",
+      "language": "ko",
+      "source_case_id": "weak_ledger_entry_mutable",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "원장 한국어 weak 사례",
+      "risk": "financial audit trail tampering",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "ready_notification_preferences",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "notifications",
+      "language": "en",
+      "source_case_id": "ready_notification_preferences",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready notification preferences",
+      "risk": "user-scoped preference mutation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_notification_preferences_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "notifications",
+      "language": "ko",
+      "source_case_id": "ready_notification_preferences",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "notifications 한국어 good 사례",
+      "risk": "user-scoped preference mutation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_notification_global_unsubscribe",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "notifications",
+      "language": "en",
+      "source_case_id": "weak_notification_global_unsubscribe",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "notification global unsubscribe",
+      "risk": "security notification disabled",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_notification_global_unsubscribe_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "notifications",
+      "language": "ko",
+      "source_case_id": "weak_notification_global_unsubscribe",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "notifications 한국어 weak 사례",
+      "risk": "security notification disabled",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_oauth_consent_scope_review",
+      "suite": "gate_only_extended_v2",
+      "domain": "oauth_consent",
+      "language": "en",
+      "source_case_id": "ready_oauth_consent_scope_review",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready oauth consent scope review",
+      "risk": "overbroad third-party authorization",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_oauth_consent_scope_review_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "oauth_consent",
+      "language": "ko",
+      "source_case_id": "ready_oauth_consent_scope_review",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "oauth consent 한국어 good 사례",
+      "risk": "overbroad third-party authorization",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_oauth_consent_all_scopes",
+      "suite": "gate_only_extended_v2",
+      "domain": "oauth_consent",
+      "language": "en",
+      "source_case_id": "weak_oauth_consent_all_scopes",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak oauth consent all scopes",
+      "risk": "overbroad third-party authorization",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_oauth_consent_all_scopes_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "oauth_consent",
+      "language": "ko",
+      "source_case_id": "weak_oauth_consent_all_scopes",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "oauth consent 한국어 weak 사례",
+      "risk": "overbroad third-party authorization",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_order_cancellation_state",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "orders",
+      "language": "en",
+      "source_case_id": "ready_order_cancellation_state",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready order cancellation state",
+      "risk": "invalid cancellation transition",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_order_cancellation_state_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "orders",
+      "language": "ko",
+      "source_case_id": "ready_order_cancellation_state",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "주문 한국어 good 사례",
+      "risk": "invalid cancellation transition",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_order_cancel_after_shipped",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "orders",
+      "language": "en",
+      "source_case_id": "weak_order_cancel_after_shipped",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "order cancel after shipped",
+      "risk": "invalid order state transition",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_order_cancel_after_shipped_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "orders",
+      "language": "ko",
+      "source_case_id": "weak_order_cancel_after_shipped",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "주문 한국어 weak 사례",
+      "risk": "invalid order state transition",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_password_reset_token_lifecycle",
+      "suite": "gate_only_extended_v2",
+      "domain": "password_reset",
+      "language": "en",
+      "source_case_id": "ready_password_reset_token_lifecycle",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready password reset token lifecycle",
+      "risk": "account takeover through reset token reuse",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_password_reset_token_lifecycle_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "password_reset",
+      "language": "ko",
+      "source_case_id": "ready_password_reset_token_lifecycle",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "password reset 한국어 good 사례",
+      "risk": "account takeover through reset token reuse",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_password_reset_reusable_token",
+      "suite": "gate_only_extended_v2",
+      "domain": "password_reset",
+      "language": "en",
+      "source_case_id": "weak_password_reset_reusable_token",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak password reset reusable token",
+      "risk": "account takeover through reset token reuse",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_password_reset_reusable_token_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "password_reset",
+      "language": "ko",
+      "source_case_id": "weak_password_reset_reusable_token",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "password reset 한국어 weak 사례",
+      "risk": "account takeover through reset token reuse",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_payment_refund_idempotency",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "payments",
+      "language": "en",
+      "source_case_id": "ready_payment_refund_idempotency",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready payment refund idempotency",
+      "risk": "duplicate refund prevention",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_payment_refund_idempotency_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "payments",
+      "language": "ko",
+      "source_case_id": "ready_payment_refund_idempotency",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "결제 한국어 good 사례",
+      "risk": "duplicate refund prevention",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payment_no_idempotency",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "payments",
+      "language": "en",
+      "source_case_id": "weak_payment_no_idempotency",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "payment no idempotency",
+      "risk": "duplicate charge or refund",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payment_no_idempotency_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "payments",
+      "language": "ko",
+      "source_case_id": "weak_payment_no_idempotency",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "결제 한국어 weak 사례",
+      "risk": "duplicate charge or refund",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payment_refund_external_timeout",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "payments",
+      "language": "en",
+      "source_case_id": "weak_payment_refund_external_timeout",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "payment refund timeout ambiguous",
+      "risk": "unknown refund state after timeout",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payment_refund_external_timeout_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "payments",
+      "language": "ko",
+      "source_case_id": "weak_payment_refund_external_timeout",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "결제 한국어 weak 사례",
+      "risk": "unknown refund state after timeout",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 2,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_payout_reconciliation",
+      "suite": "gate_only_extended_v2",
+      "domain": "payouts",
+      "language": "en",
+      "source_case_id": "ready_payout_reconciliation",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready payout reconciliation",
+      "risk": "duplicate external money movement",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_payout_reconciliation_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "payouts",
+      "language": "ko",
+      "source_case_id": "ready_payout_reconciliation",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "payouts 한국어 good 사례",
+      "risk": "duplicate external money movement",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payout_retry_duplicate_transfer",
+      "suite": "gate_only_extended_v2",
+      "domain": "payouts",
+      "language": "en",
+      "source_case_id": "weak_payout_retry_duplicate_transfer",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak payout retry duplicate transfer",
+      "risk": "duplicate external money movement",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payout_retry_duplicate_transfer_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "payouts",
+      "language": "ko",
+      "source_case_id": "weak_payout_retry_duplicate_transfer",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "payouts 한국어 weak 사례",
+      "risk": "duplicate external money movement",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_data_retention_delete_request",
+      "suite": "gate_only_extended_v2",
+      "domain": "privacy",
+      "language": "en",
+      "source_case_id": "ready_data_retention_delete_request",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready data retention delete request",
+      "risk": "privacy deletion without retention boundaries",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_data_retention_delete_request_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "privacy",
+      "language": "ko",
+      "source_case_id": "ready_data_retention_delete_request",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "개인정보 삭제 한국어 good 사례",
+      "risk": "privacy deletion without retention boundaries",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_data_deletion_no_retention_boundary",
+      "suite": "gate_only_extended_v2",
+      "domain": "privacy",
+      "language": "en",
+      "source_case_id": "weak_data_deletion_no_retention_boundary",
+      "category": "incomplete_extended",
+      "expectation": "weak",
+      "title": "weak data deletion no retention boundary",
+      "risk": "privacy delete without auditable retention policy",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_data_deletion_no_retention_boundary_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "privacy",
+      "language": "ko",
+      "source_case_id": "weak_data_deletion_no_retention_boundary",
+      "category": "incomplete_extended",
+      "expectation": "weak",
+      "title": "개인정보 삭제 한국어 weak 사례",
+      "risk": "privacy delete without auditable retention policy",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_profile_privacy_update",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "profile",
+      "language": "en",
+      "source_case_id": "ready_profile_privacy_update",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready profile privacy update",
+      "risk": "profile ownership and email verification",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_profile_privacy_update_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "profile",
+      "language": "ko",
+      "source_case_id": "ready_profile_privacy_update",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "프로필 한국어 good 사례",
+      "risk": "profile ownership and email verification",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_profile_email_update_no_verification",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "profile",
+      "language": "en",
+      "source_case_id": "weak_profile_email_update_no_verification",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "profile email update no verification",
+      "risk": "account takeover via unverified email",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_profile_email_update_no_verification_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "profile",
+      "language": "ko",
+      "source_case_id": "weak_profile_email_update_no_verification",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "프로필 한국어 weak 사례",
+      "risk": "account takeover via unverified email",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_coupon_unbounded_reuse",
+      "suite": "gate_only_extended_v2",
+      "domain": "promotions",
+      "language": "en",
+      "source_case_id": "weak_coupon_unbounded_reuse",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak coupon unbounded reuse",
+      "risk": "promotion abuse and revenue loss",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_coupon_unbounded_reuse_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "promotions",
+      "language": "ko",
+      "source_case_id": "weak_coupon_unbounded_reuse",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "쿠폰 한국어 weak 사례",
+      "risk": "promotion abuse and revenue loss",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_rate_limit_client_enforced",
+      "suite": "gate_only_extended_v2",
+      "domain": "rate_limits",
+      "language": "en",
+      "source_case_id": "weak_rate_limit_client_enforced",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak rate limit client enforced",
+      "risk": "abusive traffic bypasses client controls",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_rate_limit_client_enforced_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "rate_limits",
+      "language": "ko",
+      "source_case_id": "weak_rate_limit_client_enforced",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "요청 제한 한국어 weak 사례",
+      "risk": "abusive traffic bypasses client controls",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "ready_return_authorization_state",
+      "suite": "gate_only_extended_v2",
+      "domain": "returns",
+      "language": "en",
+      "source_case_id": "ready_return_authorization_state",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready return authorization state",
+      "risk": "refund or return after terminal order state",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_return_authorization_state_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "returns",
+      "language": "ko",
+      "source_case_id": "ready_return_authorization_state",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "반품 한국어 good 사례",
+      "risk": "refund or return after terminal order state",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_return_after_refund_accepted",
+      "suite": "gate_only_extended_v2",
+      "domain": "returns",
+      "language": "en",
+      "source_case_id": "weak_return_after_refund_accepted",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak return after refund accepted",
+      "risk": "invalid return after terminal refund state",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_return_after_refund_accepted_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "returns",
+      "language": "ko",
+      "source_case_id": "weak_return_after_refund_accepted",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "반품 한국어 weak 사례",
+      "risk": "invalid return after terminal refund state",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 2,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_search_index_tenant_scope",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "search",
+      "language": "en",
+      "source_case_id": "ready_search_index_tenant_scope",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready search index tenant scope",
+      "risk": "cross-tenant cached search result",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_search_index_tenant_scope_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "search",
+      "language": "ko",
+      "source_case_id": "ready_search_index_tenant_scope",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "search 한국어 good 사례",
+      "risk": "cross-tenant cached search result",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_search_cross_tenant_cache",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "search",
+      "language": "en",
+      "source_case_id": "weak_search_cross_tenant_cache",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "search cross tenant cache",
+      "risk": "cached tenant data leak",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_search_cross_tenant_cache_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "search",
+      "language": "ko",
+      "source_case_id": "weak_search_cross_tenant_cache",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "search 한국어 weak 사례",
+      "risk": "cached tenant data leak",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_shipping_label_purchase",
+      "suite": "gate_only_extended_v2",
+      "domain": "shipping",
+      "language": "en",
+      "source_case_id": "ready_shipping_label_purchase",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready shipping label purchase",
+      "risk": "duplicate carrier purchases",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_shipping_label_purchase_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "shipping",
+      "language": "ko",
+      "source_case_id": "ready_shipping_label_purchase",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "배송 한국어 good 사례",
+      "risk": "duplicate carrier purchases",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_shipping_label_duplicate_purchase",
+      "suite": "gate_only_extended_v2",
+      "domain": "shipping",
+      "language": "en",
+      "source_case_id": "weak_shipping_label_duplicate_purchase",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak shipping label duplicate purchase",
+      "risk": "duplicate carrier label charges",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_shipping_label_duplicate_purchase_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "shipping",
+      "language": "ko",
+      "source_case_id": "weak_shipping_label_duplicate_purchase",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "배송 한국어 weak 사례",
+      "risk": "duplicate carrier label charges",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_sso_account_linking_no_domain_verification",
+      "suite": "gate_only_extended_v2",
+      "domain": "sso",
+      "language": "en",
+      "source_case_id": "weak_sso_account_linking_no_domain_verification",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak sso account linking no domain verification",
+      "risk": "cross-tenant account takeover",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_sso_account_linking_no_domain_verification_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "sso",
+      "language": "ko",
+      "source_case_id": "weak_sso_account_linking_no_domain_verification",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "SSO 계정 연결 한국어 weak 사례",
+      "risk": "cross-tenant account takeover",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "ready_subscription_proration_idempotency",
+      "suite": "gate_only_extended_v2",
+      "domain": "subscriptions",
+      "language": "en",
+      "source_case_id": "ready_subscription_proration_idempotency",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready subscription proration idempotency",
+      "risk": "duplicate or incorrect billing on plan changes",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_subscription_proration_idempotency_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "subscriptions",
+      "language": "ko",
+      "source_case_id": "ready_subscription_proration_idempotency",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "subscriptions 한국어 good 사례",
+      "risk": "duplicate or incorrect billing on plan changes",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_subscription_proration_undefined",
+      "suite": "gate_only_extended_v2",
+      "domain": "subscriptions",
+      "language": "en",
+      "source_case_id": "weak_subscription_proration_undefined",
+      "category": "incomplete_extended",
+      "expectation": "weak",
+      "title": "weak subscription proration undefined",
+      "risk": "incorrect subscription billing",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_subscription_proration_undefined_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "subscriptions",
+      "language": "ko",
+      "source_case_id": "weak_subscription_proration_undefined",
+      "category": "incomplete_extended",
+      "expectation": "weak",
+      "title": "subscriptions 한국어 weak 사례",
+      "risk": "incorrect subscription billing",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_support_ticket_owner_scope",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "support",
+      "language": "en",
+      "source_case_id": "ready_support_ticket_owner_scope",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready support ticket owner scope",
+      "risk": "organization-scoped ticket access",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_support_ticket_owner_scope_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "support",
+      "language": "ko",
+      "source_case_id": "ready_support_ticket_owner_scope",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "지원 티켓 한국어 good 사례",
+      "risk": "organization-scoped ticket access",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_support_ticket_cross_org_read",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "support",
+      "language": "en",
+      "source_case_id": "weak_support_ticket_cross_org_read",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "support ticket cross org read",
+      "risk": "cross-organization ticket exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_support_ticket_cross_org_read_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "support",
+      "language": "ko",
+      "source_case_id": "weak_support_ticket_cross_org_read",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "지원 티켓 한국어 weak 사례",
+      "risk": "cross-organization ticket exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_client_side_filtering",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_client_side_filtering",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "client-side filtering defect",
+      "risk": "service returns cross-user data for callers to filter",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_client_side_filtering_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_client_side_filtering",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "service returns cross-user data for callers to filter",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_deleted_mutable",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_deleted_mutable",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "deleted task remains mutable",
+      "risk": "terminal state not preserved",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_deleted_mutable_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_deleted_mutable",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "terminal state not preserved",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_deleted_visible",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_deleted_visible",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "deleted task visibility defect",
+      "risk": "terminal deleted tasks remain exposed",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_deleted_visible_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_deleted_visible",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "terminal deleted tasks remain exposed",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_error_schema_freeform",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_error_schema_freeform",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "freeform error schema",
+      "risk": "callers cannot reliably handle validation failure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_error_schema_freeform_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_error_schema_freeform",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "callers cannot reliably handle validation failure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_external_dependency",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_external_dependency",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "external dependency ambiguity",
+      "risk": "undefined side effects after completion",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_external_dependency_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_external_dependency",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "undefined side effects after completion",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_idempotency_conflict_allows_new_task",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_idempotency_conflict_allows_new_task",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "idempotency conflict creates new task",
+      "risk": "duplicate tasks from conflicting replay",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_idempotency_conflict_allows_new_task_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_idempotency_conflict_allows_new_task",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "duplicate tasks from conflicting replay",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_ownership_leak",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_ownership_leak",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "ownership boundary defect",
+      "risk": "cross-user data exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_ownership_leak_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_ownership_leak",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "cross-user data exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_title_no_trim",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "fault_title_no_trim",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "untrimmed title defect",
+      "risk": "blank-looking titles enter implementation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "fault_title_no_trim_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "fault_title_no_trim",
+      "category": "fault_injected",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "blank-looking titles enter implementation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_acceptance_missing",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "incomplete_acceptance_missing",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "missing acceptance evidence",
+      "risk": "unchecked ownership, idempotency, and deletion contracts",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_acceptance_missing_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "incomplete_acceptance_missing",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "unchecked ownership, idempotency, and deletion contracts",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_error_contract",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "incomplete_error_contract",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "missing error contract",
+      "risk": "implementation-specific error behavior",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_error_contract_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "incomplete_error_contract",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "implementation-specific error behavior",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_idempotency",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "incomplete_idempotency",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "incomplete idempotency contract",
+      "risk": "duplicate creation or cross-user replay",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_idempotency_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "incomplete_idempotency",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "duplicate creation or cross-user replay",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_state_transition",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "incomplete_state_transition",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "incomplete state transition contract",
+      "risk": "deleted task can be completed or listed",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "incomplete_state_transition_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "incomplete_state_transition",
+      "category": "incomplete",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "deleted task can be completed or listed",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 2,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_audit_soft_delete",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "ready_audit_soft_delete",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "audit soft delete ready case",
+      "risk": "deleted state and audit preservation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_audit_soft_delete_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "ready_audit_soft_delete",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "할 일 서비스 한국어 good 사례",
+      "risk": "deleted state and audit preservation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_canonical_task_service",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "ready_canonical_task_service",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "canonical ready task service",
+      "risk": "baseline complete specification",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_canonical_task_service_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "ready_canonical_task_service",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "할 일 서비스 한국어 good 사례",
+      "risk": "baseline complete specification",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_idempotency_contract",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "ready_idempotency_contract",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "idempotency ready case",
+      "risk": "owner-scoped idempotency key behavior",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_idempotency_contract_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "ready_idempotency_contract",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "할 일 서비스 한국어 good 사례",
+      "risk": "owner-scoped idempotency key behavior",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_state_machine_detail",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "ready_state_machine_detail",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "state machine ready case",
+      "risk": "explicit state transitions",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_state_machine_detail_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "ready_state_machine_detail",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "할 일 서비스 한국어 good 사례",
+      "risk": "explicit state transitions",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_support_view_out_of_scope",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "ready_support_view_out_of_scope",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "support view out of scope ready case",
+      "risk": "explicit non-goal boundary",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_support_view_out_of_scope_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "ready_support_view_out_of_scope",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "할 일 서비스 한국어 good 사례",
+      "risk": "explicit non-goal boundary",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_trimmed_validation_contract",
+      "suite": "impact_v2",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "ready_trimmed_validation_contract",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "trimmed validation ready case",
+      "risk": "input normalization and validation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_trimmed_validation_contract_ko",
+      "suite": "impact_v2_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "ready_trimmed_validation_contract",
+      "category": "ready_reference",
+      "expectation": "good",
+      "title": "할 일 서비스 한국어 good 사례",
+      "risk": "input normalization and validation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_acceptance_vague",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_acceptance_vague",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "task vague acceptance",
+      "risk": "untestable task semantics",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_acceptance_vague_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_acceptance_vague",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "untestable task semantics",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_deleted_restore",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_deleted_restore",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "task deleted restore",
+      "risk": "deleted terminal state is violated",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_deleted_restore_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_deleted_restore",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "deleted terminal state is violated",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_deleted_visible",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_deleted_visible",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "task deleted visible",
+      "risk": "deleted task remains exposed",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_deleted_visible_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_deleted_visible",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "deleted task remains exposed",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_error_none",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_error_none",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "task errors return none",
+      "risk": "non-actionable task errors",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_error_none_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_error_none",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "non-actionable task errors",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_idempotency_undefined",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_idempotency_undefined",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "task idempotency undefined",
+      "risk": "duplicate task creation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_idempotency_undefined_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_idempotency_undefined",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "duplicate task creation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_list_all_active",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_list_all_active",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "task list all active",
+      "risk": "cross-user task list exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_list_all_active_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_list_all_active",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "cross-user task list exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_missing_server_owner_check",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_missing_server_owner_check",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "task missing server owner check",
+      "risk": "cross-user mutation by task_id",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_missing_server_owner_check_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_missing_server_owner_check",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "cross-user mutation by task_id",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_space_titles_allowed",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "task_service",
+      "language": "en",
+      "source_case_id": "weak_task_space_titles_allowed",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "task space titles allowed",
+      "risk": "blank-looking task titles",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_task_space_titles_allowed_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "task_service",
+      "language": "ko",
+      "source_case_id": "weak_task_space_titles_allowed",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "할 일 서비스 한국어 weak 사례",
+      "risk": "blank-looking task titles",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_todo_any_user_update",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "todo",
+      "language": "en",
+      "source_case_id": "weak_todo_any_user_update",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "todo any user update",
+      "risk": "cross-user todo mutation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_todo_any_user_update_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "todo",
+      "language": "ko",
+      "source_case_id": "weak_todo_any_user_update",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "todo 한국어 weak 사례",
+      "risk": "cross-user todo mutation",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_todo_client_filtering",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "todo",
+      "language": "en",
+      "source_case_id": "weak_todo_client_filtering",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "todo client-side filtering",
+      "risk": "cross-user todo list exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "weak_todo_client_filtering_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "todo",
+      "language": "ko",
+      "source_case_id": "weak_todo_client_filtering",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "todo 한국어 weak 사례",
+      "risk": "cross-user todo list exposure",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 2,
+      "evidence_present": null,
+      "gap_type": "weak_only_domain_language",
+      "gap_types": [
+        "weak_only_domain_language"
+      ],
+      "follow_up_issue": "#182",
+      "follow_up_issues": [
+        "#182"
+      ]
+    },
+    {
+      "case_id": "ready_webhook_retry_idempotency",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "webhook_delivery",
+      "language": "en",
+      "source_case_id": "ready_webhook_retry_idempotency",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready webhook retry idempotency",
+      "risk": "external delivery retries",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_webhook_retry_idempotency_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "webhook_delivery",
+      "language": "ko",
+      "source_case_id": "ready_webhook_retry_idempotency",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "웹훅 전송 한국어 good 사례",
+      "risk": "external delivery retries",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_webhook_duplicate_delivery_allowed",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "webhook_delivery",
+      "language": "en",
+      "source_case_id": "weak_webhook_duplicate_delivery_allowed",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "webhook duplicate delivery allowed",
+      "risk": "duplicate side effects",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_webhook_duplicate_delivery_allowed_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "webhook_delivery",
+      "language": "ko",
+      "source_case_id": "weak_webhook_duplicate_delivery_allowed",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "웹훅 전송 한국어 weak 사례",
+      "risk": "duplicate side effects",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 2,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_webhook_no_retry_timeout",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "webhook_delivery",
+      "language": "en",
+      "source_case_id": "weak_webhook_no_retry_timeout",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "webhook missing retry timeout",
+      "risk": "undefined external failure path",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_webhook_no_retry_timeout_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "webhook_delivery",
+      "language": "ko",
+      "source_case_id": "weak_webhook_no_retry_timeout",
+      "category": "incomplete_extra",
+      "expectation": "weak",
+      "title": "웹훅 전송 한국어 weak 사례",
+      "risk": "undefined external failure path",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 2,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_workspace_invite_expiry",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "workspace_invites",
+      "language": "en",
+      "source_case_id": "ready_workspace_invite_expiry",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "ready workspace invite expiry",
+      "risk": "invite token lifetime and role scope",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_workspace_invite_expiry_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "workspace_invites",
+      "language": "ko",
+      "source_case_id": "ready_workspace_invite_expiry",
+      "category": "ready_reference_extra",
+      "expectation": "good",
+      "title": "workspace invites 한국어 good 사례",
+      "risk": "invite token lifetime and role scope",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_workspace_invite_no_expiration",
+      "suite": "gate_only_supplemental_v1",
+      "domain": "workspace_invites",
+      "language": "en",
+      "source_case_id": "weak_workspace_invite_no_expiration",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "workspace invite no expiration",
+      "risk": "old invite grants access",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_workspace_invite_no_expiration_ko",
+      "suite": "gate_only_supplemental_v1_ko",
+      "domain": "workspace_invites",
+      "language": "ko",
+      "source_case_id": "weak_workspace_invite_no_expiration",
+      "category": "fault_injected_extra",
+      "expectation": "weak",
+      "title": "workspace invites 한국어 weak 사례",
+      "risk": "old invite grants access",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    }
+  ]
+}
