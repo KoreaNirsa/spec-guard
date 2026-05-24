@@ -1189,7 +1189,7 @@ def _workspace_invite_has_safe_recipient_binding(context: str) -> bool:
             r"\b(can|may)\s+accept\s+only\s+after\b.*\bemail\b.*\b(match|matches|verified|verification)\b",
             r"\b(verif|check|compar|match)\w*\b.*\b(authenticated|current|verified)\s+user'?s?\s+(verified\s+)?email\b.*\b(invited_email|target_email|recipient_email)\b",
             r"\b(invited_email|target_email|recipient_email)\b.*\b(verif|check|compar|match)\w*\b.*\b(authenticated|current|verified)\s+user'?s?\s+(verified\s+)?email\b",
-            r"\bemail\s+(comparison|verification)\s+(succeeds|passes)\b",
+            r"\bemail\s+(comparison|verification)\s+(succeeds|passes)\b.*\b(invited_email|target_email|recipient_email)\b",
         ),
     )
 

@@ -347,6 +347,53 @@ def test_workspace_invite_recipient_false_negative_blocks_with_evidence(
     assert issue["fix"].startswith("Require")
 
 
+def test_workspace_invite_ambiguous_email_verification_still_blocks(tmp_path: Path) -> None:
+    package = _write_feature(
+        tmp_path,
+        spec_lines=[
+            "# Spec: ambiguous workspace invite recipient binding",
+            "",
+            "## Requirements",
+            "",
+            "- InviteService creates workspace invite tokens.",
+            "- Users with the invite token can accept the invite.",
+            "- Email verification succeeds before membership creation.",
+            "",
+            "## Acceptance Criteria",
+            "",
+            "- [ ] Valid invite token creates membership.",
+            "- [ ] Expired token returns 410.",
+            "",
+            "## Error Cases",
+            "",
+            "- Missing token returns 400.",
+            "- Expired token returns 410.",
+        ],
+        design_lines=[
+            "# Technical Design: ambiguous workspace invite recipient binding",
+            "",
+            "## Architecture",
+            "",
+            "- InviteService owns invite lookup and acceptance.",
+            "- InviteRepository stores token_hash and workspace_id.",
+            "",
+            "## Data Flow",
+            "",
+            "1. User submits token.",
+            "2. Service resolves token_hash.",
+            "3. Service creates membership after email verification succeeds.",
+        ],
+    )
+
+    result = run_readiness_review(package)
+    payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(payload, "Workspace invite recipient binding is unsafe")
+    assert issue["severity"] == "Critical"
+
+
 @pytest.mark.parametrize(
     ("language", "spec_lines", "design_lines"),
     [
