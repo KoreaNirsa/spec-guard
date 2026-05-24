@@ -53,6 +53,11 @@ def _build_fixture_drift_summary() -> dict[str, Any]:
         source_mapping["domains"].add(domain)
         source_mapping["expectations"].add(expectation)
         source_mapping["languages"].add(language)
+        if language in source_mapping["case_ids_by_language"]:
+            raise AssertionError(
+                "Duplicate source_case_id/language mapping: "
+                f"{source_case_id}/{language}"
+            )
         source_mapping["case_ids_by_language"][language] = case["id"]
         source_mapping["categories_by_language"][language] = case["category"]
         source_mapping["suites_by_language"][language] = case.get("suite", "impact_v2")
