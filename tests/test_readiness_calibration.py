@@ -229,6 +229,249 @@ def test_korean_audit_counterpart_preserves_source_mapping_and_guard_shape(tmp_p
     assert issue["fix"].startswith("Require")
 
 
+@pytest.mark.parametrize(
+    ("language", "spec_lines", "design_lines", "expected_evidence"),
+    [
+        (
+            "en",
+            [
+                "# Spec: workspace invite recipient binding",
+                "",
+                "## Requirements",
+                "",
+                "- InviteService creates workspace invite tokens for a target email.",
+                "- Any authenticated user can accept an invite when they know the token.",
+                "- The accept flow does not need to verify that the current user's email matches the target email.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] A user with the token is added to the workspace.",
+                "",
+                "## Error Cases",
+                "",
+                "- Missing token returns 400.",
+            ],
+            [
+                "# Technical Design: workspace invite recipient binding",
+                "",
+                "## Architecture",
+                "",
+                "- InviteService owns invite creation and acceptance.",
+                "- InviteRepository stores invite_id, token_hash, workspace_id, target_email, role, expires_at, accepted_at.",
+                "",
+                "## Data Flow",
+                "",
+                "1. Admin creates an invite for target_email.",
+                "2. User submits token.",
+                "3. Service resolves invite by token_hash only and creates membership for the current user without comparing target_email.",
+                "",
+                "## State",
+                "",
+                "- Invite states: pending, accepted, expired.",
+                "- accepted and expired are terminal.",
+                "",
+                "## Failure Handling",
+                "",
+                "- Missing token returns 400.",
+                "- Expired token returns 410.",
+            ],
+            "any authenticated user can accept an invite",
+        ),
+        (
+            "ko",
+            [
+                "# Spec: workspace invite recipient binding",
+                "",
+                "## Requirements",
+                "",
+                "- InviteService는 target_email로 워크스페이스 초대 토큰을 만든다.",
+                "- 토큰을 아는 모든 사용자가 초대를 수락할 수 있다.",
+                "- 수락 흐름은 현재 사용자 이메일이 target_email과 일치하는지 검증하지 않는다.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] 토큰을 제출한 사용자가 워크스페이스 멤버가 된다.",
+                "",
+                "## Error Cases",
+                "",
+                "- 토큰 누락은 400을 반환한다.",
+            ],
+            [
+                "# Technical Design: workspace invite recipient binding",
+                "",
+                "## Architecture",
+                "",
+                "- InviteService가 초대 생성과 수락을 담당한다.",
+                "- InviteRepository는 invite_id, token_hash, workspace_id, target_email, role, expires_at, accepted_at을 저장한다.",
+                "",
+                "## Data Flow",
+                "",
+                "1. 관리자가 target_email로 초대를 만든다.",
+                "2. 사용자가 토큰을 제출한다.",
+                "3. 서비스는 token_hash만 조회하고 현재 사용자 이메일과 target_email을 비교하지 않은 채 멤버십을 생성한다.",
+                "",
+                "## State",
+                "",
+                "- 초대 상태는 pending, accepted, expired이다.",
+                "- accepted와 expired는 terminal이다.",
+                "",
+                "## Failure Handling",
+                "",
+                "- 토큰 누락은 400을 반환한다.",
+                "- 만료된 토큰은 410을 반환한다.",
+            ],
+            "토큰을 아는 모든 사용자가 초대를 수락할 수 있다",
+        ),
+    ],
+)
+def test_workspace_invite_recipient_false_negative_blocks_with_evidence(
+    tmp_path: Path,
+    language: str,
+    spec_lines: list[str],
+    design_lines: list[str],
+    expected_evidence: str,
+) -> None:
+    package = _write_feature(tmp_path, spec_lines=spec_lines, design_lines=design_lines)
+
+    result = run_readiness_review(package)
+    payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+
+    assert language in {"en", "ko"}
+    assert not result.ok
+    assert payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(payload, "Workspace invite recipient binding is unsafe")
+    evidence = " ".join(issue.get("evidence", []))
+    assert issue["severity"] == "Critical"
+    assert expected_evidence in evidence
+    assert issue["impact"].startswith("Generated code")
+    assert issue["fix"].startswith("Require")
+
+
+@pytest.mark.parametrize(
+    ("language", "spec_lines", "design_lines"),
+    [
+        (
+            "en",
+            [
+                "# Spec: safe workspace invite recipient binding",
+                "",
+                "## Requirements",
+                "",
+                "- InviteService creates workspace invite tokens for invited_email.",
+                "- Invite tokens expire after 7 days.",
+                "- Accepting an invite verifies that the authenticated user's verified email matches invited_email.",
+                "- Email mismatch returns 403 and leaves the invite pending.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] Matching invited_email creates membership.",
+                "- [ ] Mismatched email returns 403.",
+                "- [ ] Expired invite returns 410.",
+                "",
+                "## Error Cases",
+                "",
+                "- Missing token returns 400.",
+                "- Email mismatch returns 403.",
+                "- Expired token returns 410.",
+            ],
+            [
+                "# Technical Design: safe workspace invite recipient binding",
+                "",
+                "## Architecture",
+                "",
+                "- InviteService owns invite creation, recipient verification, expiry, and acceptance.",
+                "- InviteRepository stores invite_id, token_hash, workspace_id, invited_email, role, expires_at, accepted_at.",
+                "",
+                "## Data Flow",
+                "",
+                "1. Admin creates an invite for invited_email.",
+                "2. User submits token.",
+                "3. Service resolves token_hash, checks expiry, and compares invited_email to the authenticated user's verified email.",
+                "4. Service creates membership only after the email comparison succeeds.",
+                "",
+                "## State",
+                "",
+                "- Invite states: pending, accepted, expired.",
+                "- accepted and expired are terminal.",
+                "",
+                "## Failure Handling",
+                "",
+                "- Missing token returns 400.",
+                "- Email mismatch returns 403.",
+                "- Expired token returns 410.",
+            ],
+        ),
+        (
+            "ko",
+            [
+                "# Spec: safe workspace invite recipient binding",
+                "",
+                "## Requirements",
+                "",
+                "- InviteService는 invited_email에 묶인 워크스페이스 초대 토큰을 만든다.",
+                "- 초대 토큰은 7일 후 만료된다.",
+                "- 초대 수락은 인증된 사용자의 검증된 이메일이 invited_email과 일치하는지 서버에서 검증한다.",
+                "- 이메일 불일치는 403을 반환하고 초대는 pending 상태로 남긴다.",
+                "",
+                "## Acceptance Criteria",
+                "",
+                "- [ ] invited_email이 일치하면 멤버십을 만든다.",
+                "- [ ] 이메일이 일치하지 않으면 403을 반환한다.",
+                "- [ ] 만료된 초대는 410을 반환한다.",
+                "",
+                "## Error Cases",
+                "",
+                "- 토큰 누락은 400을 반환한다.",
+                "- 이메일 불일치는 403을 반환한다.",
+                "- 만료된 토큰은 410을 반환한다.",
+            ],
+            [
+                "# Technical Design: safe workspace invite recipient binding",
+                "",
+                "## Architecture",
+                "",
+                "- InviteService가 초대 생성, 수신자 검증, 만료, 수락을 담당한다.",
+                "- InviteRepository는 invite_id, token_hash, workspace_id, invited_email, role, expires_at, accepted_at을 저장한다.",
+                "",
+                "## Data Flow",
+                "",
+                "1. 관리자가 invited_email로 초대를 만든다.",
+                "2. 사용자가 토큰을 제출한다.",
+                "3. 서비스는 token_hash를 조회하고 만료를 확인한 뒤 invited_email과 인증된 사용자의 검증된 이메일을 비교한다.",
+                "4. 이메일 비교가 성공한 뒤에만 멤버십을 만든다.",
+                "",
+                "## State",
+                "",
+                "- 초대 상태는 pending, accepted, expired이다.",
+                "- accepted와 expired는 terminal이다.",
+                "",
+                "## Failure Handling",
+                "",
+                "- 토큰 누락은 400을 반환한다.",
+                "- 이메일 불일치는 403을 반환한다.",
+                "- 만료된 토큰은 410을 반환한다.",
+            ],
+        ),
+    ],
+)
+def test_workspace_invite_recipient_ready_reference_remains_allowed(
+    tmp_path: Path,
+    language: str,
+    spec_lines: list[str],
+    design_lines: list[str],
+) -> None:
+    package = _write_feature(tmp_path, spec_lines=spec_lines, design_lines=design_lines)
+
+    result = run_readiness_review(package)
+    payload = json.loads(package.joinpath("readiness-review.json").read_text(encoding="utf-8"))
+
+    assert language in {"en", "ko"}
+    assert result.ok
+    assert payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert payload["summary"]["critical"] == 0
+    assert "Workspace invite recipient binding is unsafe" not in {issue["title"] for issue in payload["issues"]}
+
+
 def test_mixed_korean_prose_with_english_identifiers_blocks_document_share_boundary(
     tmp_path: Path,
 ) -> None:
