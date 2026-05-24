@@ -223,6 +223,8 @@ def test_korean_audit_counterpart_preserves_source_mapping_and_guard_shape(tmp_p
     assert issue["severity"] == "Critical"
     assert isinstance(evidence, list)
     assert evidence
+    assert all(isinstance(excerpt, str) and excerpt.strip() for excerpt in evidence)
+    assert all(len(excerpt) <= 260 for excerpt in evidence)
     assert issue["impact"].startswith("Generated code")
     assert issue["fix"].startswith("Require")
 

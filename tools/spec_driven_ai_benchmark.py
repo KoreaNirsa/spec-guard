@@ -3492,6 +3492,7 @@ KOREAN_SUITE_BY_ENGLISH = {
 
 KOREAN_DOMAIN_LABELS = {
     "api_keys": "API 키",
+    "audit": "감사 로그",
     "auth_session": "인증 세션",
     "background_jobs": "백그라운드 작업",
     "billing_export": "청구 내보내기",
