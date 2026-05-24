@@ -1167,6 +1167,33 @@ def _has_webhook_policy_dimension(contexts: list[str], markers: tuple[str, ...])
     return any(_context_has_any(context, markers) for context in contexts)
 
 
+def _workspace_invite_has_safe_recipient_binding(context: str) -> bool:
+    if not _context_has_any(context, ("invite", "invitation", "workspace", "token", "email")):
+        return False
+    if not _context_has_any(context, ("invited_email", "target_email", "recipient_email", "email")):
+        return False
+    if _context_matches_any(
+        context,
+        (
+            r"\bdoes\s+not\s+need\s+to\s+(verify|check|compare)\b",
+            r"\bwithout\s+comparing\b",
+            r"\bverification\s+is\s+(not\s+required|optional|out\s+of\s+scope)\b",
+            r"\bemail\s+match\s+.*\b(not\s+required|optional|out\s+of\s+scope)\b",
+        ),
+    ):
+        return False
+    return _context_matches_any(
+        context,
+        (
+            r"\baccept\b.*\bonly\s+after\b.*\b(verif|check|compar|match)\w*\b.*\bemail\b",
+            r"\b(can|may)\s+accept\s+only\s+after\b.*\bemail\b.*\b(match|matches|verified|verification)\b",
+            r"\b(verif|check|compar|match)\w*\b.*\b(authenticated|current|verified)\s+user'?s?\s+(verified\s+)?email\b.*\b(invited_email|target_email|recipient_email)\b",
+            r"\b(invited_email|target_email|recipient_email)\b.*\b(verif|check|compar|match)\w*\b.*\b(authenticated|current|verified)\s+user'?s?\s+(verified\s+)?email\b",
+            r"\bemail\s+(comparison|verification)\s+(succeeds|passes)\b.*\b(invited_email|target_email|recipient_email)\b",
+        ),
+    )
+
+
 def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | None:
     text = "\n".join(contexts)
     feature_flag_scope = _context_has_any(text, ("feature flag", "featureflagservice", "flag evaluation", "flag_key", "targeting"))
@@ -1357,9 +1384,12 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 and _context_has_any(context, ("워크스페이스", "이메일", "토큰"))
             )
         )
-        if workspace_invite_scope and _context_matches_any(
-            context,
-            (
+        if (
+            workspace_invite_scope
+            and not _workspace_invite_has_safe_recipient_binding(context)
+            and _context_matches_any(
+                context,
+                (
                 r"\b(any|every)\s+(authenticated\s+)?users?\s+(can|may|is\s+allowed\s+to)\s+accept\b.*\binvite\b.*\btoken\b",
                 r"\busers?\s+with\s+(the\s+)?(invite\s+)?token\s+(can|may|is\s+allowed\s+to)\s+(accept|join|be\s+added)\b",
                 r"\baccept\s+flow\s+does\s+not\s+need\s+to\s+(verify|check|compare)\b.*\b(email|recipient|target)\b",
@@ -1370,7 +1400,8 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 r"초대.*수락.*현재\s*사용자\s*이메일.*(검증하지|확인하지|비교하지|필요하지)",
                 r"(현재\s*사용자\s*이메일|인증된\s*사용자\s*이메일).*(초대|대상|수신자).*이메일.*(일치.*필요하지|검증하지|확인하지|비교하지)",
                 r"token_hash만.*(조회|해결|사용).*(이메일|target_email|invited_email).*(비교하지|검증하지|확인하지)",
-            ),
+                ),
+            )
         ):
             return ReadinessIssue(
                 "Critical",
