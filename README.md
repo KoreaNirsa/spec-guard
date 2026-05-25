@@ -167,6 +167,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 
 ## Documentation
 
+- [v0.4.1 Release Notes](docs/release-notes-v0.4.1.md): package bump, readiness stabilization, benchmark evidence, plugin documentation, and known limits.
 - [Setup To User Flow](docs/setup-to-user-flow.md): installation, Codex setup, example packages, validation loops, implementation handoff, and PR review setup.
 - [Core Reviews](docs/core-reviews.md): SpecGuard Review, SpecGuard PR Review, LLM detail review, cache behavior, and experimental Spec Revision.
 - [Language Support](docs/language-support.md): Korean default documentation support, English support, doc status, and Korean benchmark claim boundaries.
