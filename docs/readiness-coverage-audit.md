@@ -1,8 +1,9 @@
 # Readiness Coverage Audit
 
 This audit records the English and Korean readiness fixture coverage after the
-v0.4.1 stabilization refresh. It is derived from checked-in benchmark fixture
-source and the recorded v0.4.1 gate-only benchmark result, not manual memory.
+v0.4.1 stabilization refresh and the current fixture-source expansion. It is
+derived from checked-in benchmark fixture source and the recorded v0.4.1
+gate-only benchmark result, not manual memory.
 
 ## Regeneration
 
@@ -15,15 +16,15 @@ python tools/spec_driven_ai_benchmark.py --coverage-matrix --coverage-matrix-res
 | Matrix output | [`docs/benchmark-results/readiness-coverage-matrix.json`](benchmark-results/readiness-coverage-matrix.json) |
 | Fixture source | `tools/spec_driven_ai_benchmark.py` `benchmark_cases` |
 | Result source | [`docs/benchmark-results/specguard-gate-only-v0.4.1.json`](benchmark-results/specguard-gate-only-v0.4.1.json) |
-| Total fixtures | 198 |
-| English fixtures | 99 |
-| Korean fixtures | 99 |
-| Ready/reference fixtures | 68 |
+| Total fixtures | 200 |
+| English fixtures | 100 |
+| Korean fixtures | 100 |
+| Ready/reference fixtures | 70 |
 | Weak/blocking fixtures | 130 |
 
 ## Baseline
 
-The v0.4.1 gate-only result used for this audit reports:
+The v0.4.1 gate-only result used for this audit reports 198 evaluated cases:
 
 | Scope | Evaluated | Weak Blocked | Ready Blocked | False Positive Rate | False Negative Rate |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -31,8 +32,9 @@ The v0.4.1 gate-only result used for this audit reports:
 | English | 99 | 65/65 | 0/34 | 0.0% | 0.0% |
 | Korean | 99 | 65/65 | 0/34 | 0.0% | 0.0% |
 
-The matrix baseline fields are complete because the supplied gate result covers
-the full selected 198-case fixture set.
+The current matrix contains 200 selected fixture-source cases. The supplied
+v0.4.1 gate result covers 198 of them, so the matrix records
+`missing_cases=2` and `is_complete=false` until the next benchmark refresh.
 
 In the v0.4.1 result artifact, all 68 evaluated ready/reference rows have
 actual readiness status `ready_with_warnings`. All 130 weak rows have actual
@@ -63,7 +65,7 @@ for this baseline.
 ## Coverage Gaps
 
 No English-only or Korean-only source-case gaps are present in the current
-198-case matrix. No ready-only domain/language gaps are present.
+200-case matrix. No ready-only domain/language gaps are present.
 
 The remaining coverage imbalance is weak-only domain/language coverage. These
 domains have weak/blocking fixtures in both English and Korean, but no paired
@@ -71,7 +73,6 @@ ready/reference fixture yet:
 
 | Domain | English Weak Cases | Korean Weak Cases | Follow-up |
 | --- | ---: | ---: | --- |
-| `background_jobs` | 1 | 1 | #182 |
 | `device_trust` | 1 | 1 | #182 |
 | `ledger` | 1 | 1 | #182 |
 | `promotions` | 1 | 1 | #182 |
@@ -92,7 +93,7 @@ fixtures so false-positive protection exists in both English and Korean.
 | Payment, refund, subscription, booking | `payments`, `returns`, `subscriptions`, `booking` | Paired ready/weak coverage exists. |
 | Webhook, cache, and rate limit | `webhook_delivery`, `inbound_webhooks`, `cache`, `rate_limits` | Covered, but `rate_limits` is weak-only. |
 | Privacy deletion, audit, and ledger | `privacy`, `audit`, `ledger` | Covered, but `ledger` is weak-only. |
-| Inventory, notification, coupon, jobs | `inventory`, `notifications`, `promotions`, `background_jobs` | Covered, but `promotions` and `background_jobs` are weak-only. |
+| Inventory, notification, coupon, jobs | `inventory`, `notifications`, `promotions`, `background_jobs` | Covered, but `promotions` is weak-only. |
 
 ## Follow-up Use
 
