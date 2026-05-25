@@ -357,15 +357,17 @@ def test_background_job_domain_has_paired_ready_and_weak_guards(tmp_path: Path) 
     assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
     assert ready_payload["summary"]["critical"] == 0
 
-    weak_ok, weak_payload = _run_benchmark_case(tmp_path, "weak_background_job_retry_unbounded")
+    weak_case = _benchmark_case("weak_background_job_retry_unbounded")
+    weak_package = make_specguard_package(tmp_path, weak_case)
+    weak_result = run_readiness_review(weak_package)
+    weak_payload = json.loads(
+        weak_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
 
-    assert not weak_ok
+    assert not weak_result.ok
     assert weak_payload["readiness"]["status"] == "not_ready"
     issue = _issue_by_title(weak_payload, "Background job retry contract is unsafe")
-    _assert_critical_issue_shape(
-        issue,
-        tmp_path / "specguard_packages" / "weak_background_job_retry_unbounded",
-    )
+    _assert_critical_issue_shape(issue, weak_package)
 
 
 def test_korean_background_job_counterpart_preserves_source_mapping_and_guard_shape(
@@ -382,16 +384,17 @@ def test_korean_background_job_counterpart_preserves_source_mapping_and_guard_sh
     assert ready_payload["summary"]["critical"] == 0
 
     weak_case = _benchmark_case("weak_background_job_retry_unbounded_ko")
-    weak_ok, weak_payload = _run_benchmark_case(tmp_path, weak_case["id"])
+    weak_package = make_specguard_package(tmp_path, weak_case)
+    weak_result = run_readiness_review(weak_package)
+    weak_payload = json.loads(
+        weak_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
 
     assert weak_case["source_case_id"] == "weak_background_job_retry_unbounded"
-    assert not weak_ok
+    assert not weak_result.ok
     assert weak_payload["readiness"]["status"] == "not_ready"
     issue = _issue_by_title(weak_payload, "Background job retry contract is unsafe")
-    _assert_critical_issue_shape(
-        issue,
-        tmp_path / "specguard_packages" / "weak_background_job_retry_unbounded_ko",
-    )
+    _assert_critical_issue_shape(issue, weak_package)
 
 
 @pytest.mark.parametrize(

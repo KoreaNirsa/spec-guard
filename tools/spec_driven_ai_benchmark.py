@@ -3038,7 +3038,7 @@ GATE_ONLY_EXTENDED_CASES = [
         summary="- Background jobs define bounded retry, backoff, dead-letter, and idempotency behavior.",
         requirements="""
 - Each job has a job_id used as the idempotency key for side-effecting handlers.
-- Failed jobs retry at most 5 times with exponential backoff.
+- Failed jobs attempt at most 5 times with exponential backoff (initial attempt plus up to 4 retries).
 - Exhausted retries move the job to a dead_letter state without calling the external API again.
 - Non-retryable validation errors fail permanently without retry.
 """,
