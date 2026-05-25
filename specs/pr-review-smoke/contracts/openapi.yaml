@@ -1,0 +1,23 @@
+openapi: 3.1.0
+info:
+  title: PR Review Smoke API
+  version: 0.1.0
+paths:
+  /notes:
+    get:
+      summary: List private notes for the authenticated owner
+      x-specguard-coverage:
+        acceptanceCriteria:
+          - Given owner `alice`, the list operation returns only notes with `owner_id=alice`.
+          - Given owner `bob`, the list operation returns only notes with `owner_id=bob`.
+          - Missing owner id returns `401 Unauthorized`.
+        errorCases:
+          - Missing owner id returns `401 Unauthorized`.
+          - Cross-owner note exposure is forbidden.
+      responses:
+        "200":
+          description: Owner-scoped notes returned
+        "401":
+          description: Missing owner id
+        "403":
+          description: Cross-owner note exposure is forbidden

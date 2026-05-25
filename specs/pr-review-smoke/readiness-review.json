@@ -1,0 +1,37 @@
+{
+  "schema_version": "0.1",
+  "review_mode": "verification",
+  "blocked": false,
+  "readiness": {
+    "implementation_ready": true,
+    "criteria": {
+      "critical": 0,
+      "major": 0,
+      "minor_max": 5
+    },
+    "status": "ready"
+  },
+  "summary": {
+    "critical": 0,
+    "major": 0,
+    "minor": 0
+  },
+  "issues": [],
+  "input": {
+    "artifacts": [
+      {
+        "path": "discovery.md",
+        "characters": 645
+      },
+      {
+        "path": "spec.md",
+        "characters": 703
+      },
+      {
+        "path": "technical-design.md",
+        "characters": 941
+      }
+    ]
+  },
+  "prompt_mode": "Smoke test READY report for exercising SpecGuard PR Reviewer against a deliberately flawed implementation PR."
+}
