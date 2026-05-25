@@ -30,6 +30,10 @@ def test_benchmark_metadata_contains_version_traceability_keys() -> None:
     assert metadata["specguard"]["git_commit"] != ""
     assert "git_tag" in metadata["specguard"]
     assert "git_dirty" in metadata["specguard"]
+    assert metadata["environment"]["python_version"] != ""
+    assert metadata["environment"]["python_implementation"] != ""
+    assert metadata["environment"]["platform"] != ""
+    assert metadata["environment"]["notes"]
 
 
 def test_benchmark_payload_includes_metadata_and_result_schema() -> None:
@@ -47,6 +51,10 @@ def test_benchmark_payload_includes_metadata_and_result_schema() -> None:
     assert payload["metadata"]["schema"] == BENCHMARK_RESULT_SCHEMA
     assert payload["metadata"]["specguard"]["package_version"] != ""
     assert payload["metadata"]["specguard"]["git_commit"] != ""
+    assert payload["metadata"]["run_config"]["max_workers"] == 1
+    assert payload["metadata"]["run_config"]["skip_codex"] is True
+    assert payload["metadata"]["fixture_counts"]["case_count"] == payload["case_count"]
+    assert payload["metadata"]["fixture_counts"]["language_counts"] == payload["language_counts"]
     assert payload["temp_removed"] is False
     assert "aggregates" in payload
     assert payload["aggregates"]["impact"]["raw_contract_defect_rate"] is None
@@ -280,17 +288,39 @@ def test_readiness_coverage_matrix_cli_writes_documented_json(tmp_path: Path) ->
 
 def test_checked_in_readiness_coverage_matrix_matches_fixture_source() -> None:
     matrix_path = Path("docs/benchmark-results/readiness-coverage-matrix.json")
-    results_path = Path("docs/benchmark-results/specguard-gate-only-v0.4.0.json")
+    results_path = Path("docs/benchmark-results/specguard-gate-only-v0.4.1.json")
 
     payload = json.loads(matrix_path.read_text(encoding="utf-8"))
     expected = build_readiness_coverage_matrix(
         results=load_readiness_coverage_results(results_path),
-        results_source="docs/benchmark-results/specguard-gate-only-v0.4.0.json",
+        results_source="docs/benchmark-results/specguard-gate-only-v0.4.1.json",
         include_gate_only_extra_cases=True,
         include_korean_cases=True,
     )
 
     assert payload == expected
+
+
+def test_checked_in_gate_only_benchmark_records_refresh_metadata() -> None:
+    results_path = Path("docs/benchmark-results/specguard-gate-only-v0.4.1.json")
+
+    payload = json.loads(results_path.read_text(encoding="utf-8"))
+    metadata = payload["metadata"]
+
+    assert metadata["benchmark_script"]["version"] == payload["benchmark_script_version"]
+    assert metadata["benchmark_script"]["version"] == "5"
+    assert metadata["run_config"] == payload["run_config"]
+    assert metadata["run_config"]["max_workers"] == 6
+    assert metadata["run_config"]["skip_codex"] is True
+    assert metadata["run_config"]["include_gate_only_extra_cases"] is True
+    assert metadata["run_config"]["include_korean_cases"] is True
+    assert metadata["fixture_counts"]["case_count"] == payload["case_count"] == 198
+    assert metadata["fixture_counts"]["language_counts"] == payload["language_counts"] == {
+        "en": 99,
+        "ko": 99,
+    }
+    assert metadata["environment"]["python_version"]
+    assert metadata["environment"]["notes"]
 
 
 def test_benchmark_payload_reports_language_metrics() -> None:

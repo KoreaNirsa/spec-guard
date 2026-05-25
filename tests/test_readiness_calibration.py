@@ -832,7 +832,7 @@ def test_language_support_documents_korean_finding_quality_scope() -> None:
     assert "## Korean Finding Quality Calibration" in doc
     assert "Current known Korean false positives" in doc
     assert "Current known Korean false negatives" in doc
-    assert "None in the v0.4.0 Korean 98-case gate-only layer" in doc
+    assert "None in the v0.4.1 Korean 99-case gate-only layer" in doc
     assert "missing `evidence[]` excerpts" in doc
     assert "READY_WITH_WARNINGS" in doc
     assert "NOT_READY" in doc

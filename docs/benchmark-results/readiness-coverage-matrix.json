@@ -1,10 +1,10 @@
 {
   "schema": "specguard-readiness-coverage-matrix/v1",
-  "benchmark_script_version": "4",
+  "benchmark_script_version": "5",
   "source": {
     "path": "tools/spec_driven_ai_benchmark.py",
     "case_source": "benchmark_cases",
-    "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.0.json"
+    "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.1.json"
   },
   "case_count": 198,
   "suite_counts": {
@@ -26,17 +26,59 @@
   "domain_count": 36,
   "actual_readiness_status_counts": {
     "not_ready": 130,
-    "ready_with_warnings": 66
+    "ready_with_warnings": 68
   },
   "readiness_result_coverage": {
     "expected_cases": 198,
-    "evaluated_cases": 196,
-    "missing_cases": 2,
+    "evaluated_cases": 198,
+    "missing_cases": 0,
     "unexpected_cases": 0,
-    "is_complete": false
+    "is_complete": true
   },
-  "readiness_result_baseline": null,
-  "readiness_result_baseline_by_language": null,
+  "readiness_result_baseline": {
+    "evaluated_cases": 198,
+    "good_cases": 68,
+    "weak_cases": 130,
+    "blocked_before_codegen": 130,
+    "blocked_weak_cases": 130,
+    "blocked_good_cases": 0,
+    "blocked_weak_rate": 100.0,
+    "block_rate": 65.7,
+    "false_positive_rate": 0.0,
+    "false_positive_cases": [],
+    "false_negative_rate": 0.0,
+    "false_negative_cases": []
+  },
+  "readiness_result_baseline_by_language": {
+    "en": {
+      "evaluated_cases": 99,
+      "good_cases": 34,
+      "weak_cases": 65,
+      "blocked_before_codegen": 65,
+      "blocked_weak_cases": 65,
+      "blocked_good_cases": 0,
+      "blocked_weak_rate": 100.0,
+      "block_rate": 65.7,
+      "false_positive_rate": 0.0,
+      "false_positive_cases": [],
+      "false_negative_rate": 0.0,
+      "false_negative_cases": []
+    },
+    "ko": {
+      "evaluated_cases": 99,
+      "good_cases": 34,
+      "weak_cases": 65,
+      "blocked_before_codegen": 65,
+      "blocked_weak_cases": 65,
+      "blocked_good_cases": 0,
+      "blocked_weak_rate": 100.0,
+      "block_rate": 65.7,
+      "false_positive_rate": 0.0,
+      "false_positive_cases": [],
+      "false_negative_rate": 0.0,
+      "false_negative_cases": []
+    }
+  },
   "gap_counts": {
     "coverage_complete": 182,
     "english_only_source": 0,
@@ -146,7 +188,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -163,7 +206,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -1537,9 +1581,9 @@
       "title": "ready append-only audit events",
       "risk": "audit evidence preservation",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -1559,9 +1603,9 @@
       "title": "감사 로그 한국어 good 사례",
       "risk": "audit evidence preservation",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
