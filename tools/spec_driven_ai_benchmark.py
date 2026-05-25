@@ -3028,6 +3028,53 @@ GATE_ONLY_EXTENDED_CASES = [
 """,
     ),
     _extended_gate_case(
+        "ready_background_job_retry_budget",
+        domain="background_jobs",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready background job retry budget",
+        risk="retry storms and duplicate side effects",
+        feature="Background Job Retry Budget",
+        summary="- Background jobs define bounded retry, backoff, dead-letter, and idempotency behavior.",
+        requirements="""
+- Each job has a job_id used as the idempotency key for side-effecting handlers.
+- Failed jobs retry at most 5 times with exponential backoff.
+- Exhausted retries move the job to a dead_letter state without calling the external API again.
+- Non-retryable validation errors fail permanently without retry.
+""",
+        acceptance="""
+- [ ] Duplicate job_id returns the existing job result without repeating side effects.
+- [ ] Retryable failures are retried only within the 5-attempt budget.
+- [ ] Exhausted retries store the last_error and dead_letter state.
+""",
+        errors="""
+- Missing job_id returns 400.
+- Non-retryable validation error records failed state.
+- Exhausted retry budget records dead_letter state.
+""",
+        architecture="""
+- JobRunner owns idempotency lookup, retry budget accounting, backoff scheduling, and dead-letter transitions.
+- JobRepository stores job_id, attempt_count, next_retry_at, last_error, and terminal state.
+- External API calls are wrapped by the handler idempotency key.
+""",
+        data_flow="""
+1. JobRunner resolves job_id and checks whether a terminal result already exists.
+2. Retryable handler failure increments attempt_count and schedules next_retry_at with exponential backoff.
+3. Attempt 5 failure records dead_letter and stops external API calls.
+4. Non-retryable validation errors record failed without retry.
+""",
+        state="""
+- Job states: queued, running, retry_pending, completed, failed, dead_letter.
+- completed, failed, and dead_letter are terminal.
+""",
+        dependencies="- External API called by job handlers with idempotency and retry boundaries.",
+        failure="""
+- Retryable timeout or 5xx schedules retry until the 5-attempt budget is exhausted.
+- Non-retryable validation errors fail permanently.
+- Duplicate job_id returns the existing terminal result.
+""",
+    ),
+    _extended_gate_case(
         "weak_oauth_consent_all_scopes",
         domain="oauth_consent",
         category="fault_injected_extended",

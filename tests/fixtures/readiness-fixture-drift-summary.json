@@ -4,31 +4,31 @@
   "case_source": "tools/spec_driven_ai_benchmark.py::benchmark_cases",
   "include_gate_only_extra_cases": true,
   "include_korean_cases": true,
-  "case_count": 198,
-  "source_case_count": 99,
+  "case_count": 200,
+  "source_case_count": 100,
   "suite_counts": {
-    "gate_only_extended_v2": 30,
-    "gate_only_extended_v2_ko": 30,
+    "gate_only_extended_v2": 31,
+    "gate_only_extended_v2_ko": 31,
     "gate_only_supplemental_v1": 51,
     "gate_only_supplemental_v1_ko": 51,
     "impact_v2": 18,
     "impact_v2_ko": 18
   },
   "language_counts": {
-    "en": 99,
-    "ko": 99
+    "en": 100,
+    "ko": 100
   },
   "expectation_counts": {
-    "good": 68,
+    "good": 70,
     "weak": 130
   },
   "expectation_counts_by_language": {
     "en": {
-      "good": 34,
+      "good": 35,
       "weak": 65
     },
     "ko": {
-      "good": 34,
+      "good": 35,
       "weak": 65
     }
   },
@@ -84,13 +84,13 @@
     {
       "domain": "background_jobs",
       "language": "en",
-      "good": 0,
+      "good": 1,
       "weak": 1
     },
     {
       "domain": "background_jobs",
       "language": "ko",
-      "good": 0,
+      "good": 1,
       "weak": 1
     },
     {
@@ -915,6 +915,31 @@
       "suites_by_language": {
         "en": "gate_only_supplemental_v1",
         "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_background_job_retry_budget",
+      "domains": [
+        "background_jobs"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_background_job_retry_budget",
+        "ko": "ready_background_job_retry_budget_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
       }
     },
     {
