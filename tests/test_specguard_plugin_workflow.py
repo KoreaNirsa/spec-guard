@@ -11,6 +11,7 @@ SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-workflow" / 
 README_PATH = ROOT / "plugins" / "specguard" / "README.md"
 CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
 CODEX_PLUGIN_ROADMAP_PATH = ROOT / "docs" / "codex-plugin-hardening-roadmap.md"
+CODEX_PLUGIN_GRILL_LOOP_DOC_PATH = ROOT / "docs" / "cli-grill-me-loop.md"
 
 
 def _assert_contains_all(text: str, required: tuple[str, ...]) -> None:
@@ -230,6 +231,7 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             "implementation-output.md",
             "Plugin Result Contract](plugin-result-contract.md)",
             "Codex Plugin Hardening Roadmap](codex-plugin-hardening-roadmap.md)",
+            "CLI-Driven Grill Me Loop Design](cli-grill-me-loop.md)",
             "Spec Refinement Safety Boundary",
             "mkdir your-codex-project-folder",
             "cd your-codex-project-folder",
@@ -248,6 +250,7 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             ("Create or select", "spec package"),
             ("manually edit", "spec package"),
             ("Detail Review", "optional", "advisory"),
+            ("Grill me", "not", "current MVP"),
             ("Open", "your-codex-project-folder", "Codex"),
             ("Run SpecGuard", "specs/your-feature-name"),
         ),
@@ -268,8 +271,10 @@ def test_codex_plugin_hardening_roadmap_prioritizes_v04x_work() -> None:
             "Related issue: #175",
             "Plugin Run And Recovery States",
             "Result Summary UX",
+            "CLI-Driven Grill Me Loop",
             "Native Plugin Or MCP Exploration",
             "readiness-review.json",
+            "Related issue: #194",
         ),
     )
     _assert_mentions_all_concepts(
@@ -282,6 +287,37 @@ def test_codex_plugin_hardening_roadmap_prioritizes_v04x_work() -> None:
             ("Do not", "automatic spec rewriting"),
             ("Do not", "LLM review", "default gate"),
             ("Do not", "official plugin directory"),
+        ),
+    )
+
+
+def test_cli_grill_me_loop_design_documents_traceable_decision_workflow() -> None:
+    doc = CODEX_PLUGIN_GRILL_LOOP_DOC_PATH.read_text(encoding="utf-8")
+
+    _assert_contains_all(
+        doc,
+        (
+            "Related issue: #194",
+            "spec review -> Grill me questions -> decision record -> spec patch -> spec review rerun",
+            "\"id\": \"SG-001\"",
+            "\"allowed_resolution\": [\"update-spec\", \"mark-intentional\", \"defer\"]",
+            "\"source\": \"user-confirmed\"",
+            "specguard run <package> --no-llm --no-follow-up",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        doc,
+        (
+            ("CLI", "canonical review engine"),
+            ("stable", "review ids"),
+            ("severity", "evidence", "location", "question"),
+            ("User", "Confirm", "defer", "reject"),
+            ("patch", "only", "confirmed decisions"),
+            ("show", "before/after diff"),
+            ("rerun", "SpecGuard"),
+            ("not", "current supported plugin feature"),
+            ("Do not", "implement", "design issue"),
+            ("Do not", "LLM review", "default gate"),
         ),
     )
 

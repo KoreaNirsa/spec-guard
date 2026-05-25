@@ -161,6 +161,38 @@ Non-goals:
 - Do not modify `spec.md`, `technical-design.md`, or related spec files automatically.
 - Do not invoke experimental auto-revision from the plugin workflow.
 
+### CLI-Driven Grill Me Loop
+
+Related issue: #194
+
+Design reference: [CLI-Driven Grill Me Loop Design](cli-grill-me-loop.md)
+
+User problem: Static readiness findings can tell users what is missing, but they do not by themselves capture the user's product decisions or turn those decisions into traceable spec updates.
+
+Expected behavior:
+
+- The CLI emits structured findings with stable review ids, severity, evidence, source location, and a suggested clarification question.
+- The Codex skill asks Grill me questions from those findings, starting with blocker or high-severity gaps.
+- User answers are stored as explicit decision records before they can drive any spec edit.
+- Codex patches only target spec locations backed by user-confirmed decisions.
+- The workflow reruns `specguard run <package> --no-llm --no-follow-up` after patching and reports whether the original findings were resolved or remain open.
+
+Missing contracts:
+
+- Schema version and storage path for Grill me review findings.
+- Stable review id generation rules.
+- Decision record schema, storage path, and source-of-truth boundary.
+- Mapping from OpenAPI, YAML, and Markdown findings to patch targets.
+- Rerun comparison rules for resolved, unresolved, deferred, and new findings.
+
+Non-goals:
+
+- Do not implement the CLI command or Codex skill in the design issue.
+- Do not make LLM review the default gate.
+- Do not patch a spec from unconfirmed Codex suggestions.
+- Do not treat deferred answers as implementation-ready requirements.
+- Do not replace `readiness-review.json` without an explicit schema migration.
+
 ### Plugin Examples And Contributor Fixtures
 
 User problem: Contributors need durable examples that cover install, run, blocked, warning, handoff, and recovery paths without depending on screenshots or brittle prose.

@@ -150,6 +150,8 @@ For stable fields and file-based states, see [Plugin Result Contract](plugin-res
 
 For the v0.4.x plugin hardening backlog and missing contracts, see [Codex Plugin Hardening Roadmap](codex-plugin-hardening-roadmap.md).
 
+For the planned CLI-driven Grill me loop, see [CLI-Driven Grill Me Loop Design](cli-grill-me-loop.md). That workflow is not part of the current MVP; it requires a stable finding schema, decision record, confirmed-decision patch rules, and a mandatory CLI rerun before implementation handoff.
+
 For the suggestion-only spec refinement boundary, see [SpecGuard Codex Plugin: Spec Refinement Safety Boundary](../plugins/specguard/README.md#spec-refinement-safety-boundary).
 
 ## Default Gate
@@ -235,6 +237,7 @@ When GitHub integration or `gh` authentication is unavailable, stop before secre
 | `READY_WITH_WARNINGS` handoff guidance | Read structured result files and check handoff availability. | Report warnings, confirm implementation is allowed, and point to `implementation-output.md` when present. |
 | optional detail review requested without provider setup | Run `specguard auth status` before detail review. | Report `missing_provider_for_llm`; do not run or claim provider-backed review. |
 | PR Review setup requested | Check repository state, remote, and CLI availability; ask before running `specguard actions install-pr-review`; explain required secret and optional variables. | Confirm `.github/workflows/specguard-pr-review.yml` status and provide safe `gh` or manual GitHub Settings instructions without exposing API keys. |
+| future Grill me loop design reviewed | Read `readiness-review.json` findings through the proposed design contract and collect user-confirmed decisions before patching. | Treat the flow as planned only; do not patch specs from unconfirmed suggestions and require a follow-up `specguard run <package> --no-llm --no-follow-up` after any confirmed patch implementation. |
 
 ## Non-Goals
 
