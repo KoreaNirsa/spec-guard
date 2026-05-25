@@ -133,7 +133,7 @@ For Codex setup, example packages, LLM review options, follow-up menus, implemen
 
 ## Benchmark Summary
 
-The calibrated gate-only benchmark evaluates 99 English spec packages across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs. The refreshed v0.4.1 benchmark path includes 99 corresponding Korean gate-only cases and reports English and Korean metrics separately.
+The recorded v0.4.1 gate-only benchmark evaluates 99 English spec packages across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs. It includes 99 corresponding Korean gate-only cases and reports English and Korean metrics separately. The current fixture source contains 100 English and 100 Korean cases; the 2 new ready/reference fixture results are pending the next benchmark refresh, so the table below reports only the recorded v0.4.1 artifact.
 
 The benchmark asks one practical question: how much of the implementation handoff can SpecGuard guard before an AI coding agent starts writing code?
 
@@ -148,9 +148,9 @@ The benchmark asks one practical question: how much of the implementation handof
 
 In the original #136 code-generation baseline, raw weak specs exposed contract defects in 11 of 12 cases. With the calibrated local gate, SpecGuard now blocks all 11 observed exposure paths before implementation handoff, increasing prevented exposure from 27.3% to 100.0%.
 
-This means SpecGuard is acting as a strong pre-implementation guard layer: it stops most unsafe or underspecified inputs before code generation, while leaving all ready-reference specs implementation-allowed in the current English and Korean gate-only runs.
+This means SpecGuard is acting as a strong pre-implementation guard layer: it stops most unsafe or underspecified inputs before code generation, while leaving all evaluated ready-reference specs implementation-allowed in the recorded English and Korean gate-only runs.
 
-The refreshed v0.4.1 gate-only run has no known English or Korean false positives and no known false negatives. Korean support is currently a deterministic low-mode claim for explicit unsafe wording, not a full Korean production-support claim. Full methodology, suite breakdown, case-level results, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
+The refreshed v0.4.1 gate-only run has no known English or Korean false positives and no known false negatives in the recorded 198 evaluated cases. Korean support is currently a deterministic low-mode claim for explicit unsafe wording, not a full Korean production-support claim or a full CLI localization claim. Full methodology, suite breakdown, case-level results, version metadata, and limitations are available in the [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
 ## Core Value
 
