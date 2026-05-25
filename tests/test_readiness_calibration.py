@@ -348,6 +348,55 @@ def test_korean_audit_counterpart_preserves_source_mapping_and_guard_shape(tmp_p
     assert issue["fix"].startswith("Require")
 
 
+def test_background_job_domain_has_paired_ready_and_weak_guards(tmp_path: Path) -> None:
+    ready_case = _benchmark_case("ready_background_job_retry_budget")
+    ready_ok, ready_payload = _run_benchmark_case(tmp_path, ready_case["id"])
+
+    assert ready_case["domain"] == "background_jobs"
+    assert ready_ok
+    assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert ready_payload["summary"]["critical"] == 0
+
+    weak_case = _benchmark_case("weak_background_job_retry_unbounded")
+    weak_package = make_specguard_package(tmp_path, weak_case)
+    weak_result = run_readiness_review(weak_package)
+    weak_payload = json.loads(
+        weak_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert not weak_result.ok
+    assert weak_payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(weak_payload, "Background job retry contract is unsafe")
+    _assert_critical_issue_shape(issue, weak_package)
+
+
+def test_korean_background_job_counterpart_preserves_source_mapping_and_guard_shape(
+    tmp_path: Path,
+) -> None:
+    ready_case = _benchmark_case("ready_background_job_retry_budget_ko")
+    ready_ok, ready_payload = _run_benchmark_case(tmp_path, ready_case["id"])
+
+    assert ready_case["language"] == "ko"
+    assert ready_case["domain"] == "background_jobs"
+    assert ready_case["source_case_id"] == "ready_background_job_retry_budget"
+    assert ready_ok
+    assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert ready_payload["summary"]["critical"] == 0
+
+    weak_case = _benchmark_case("weak_background_job_retry_unbounded_ko")
+    weak_package = make_specguard_package(tmp_path, weak_case)
+    weak_result = run_readiness_review(weak_package)
+    weak_payload = json.loads(
+        weak_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert weak_case["source_case_id"] == "weak_background_job_retry_unbounded"
+    assert not weak_result.ok
+    assert weak_payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(weak_payload, "Background job retry contract is unsafe")
+    _assert_critical_issue_shape(issue, weak_package)
+
+
 @pytest.mark.parametrize(
     ("language", "spec_lines", "design_lines", "expected_evidence"),
     [

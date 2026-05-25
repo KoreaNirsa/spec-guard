@@ -6,21 +6,21 @@
     "case_source": "benchmark_cases",
     "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.1.json"
   },
-  "case_count": 198,
+  "case_count": 200,
   "suite_counts": {
     "impact_v2": 18,
     "gate_only_supplemental_v1": 51,
-    "gate_only_extended_v2": 30,
+    "gate_only_extended_v2": 31,
     "impact_v2_ko": 18,
     "gate_only_supplemental_v1_ko": 51,
-    "gate_only_extended_v2_ko": 30
+    "gate_only_extended_v2_ko": 31
   },
   "language_counts": {
-    "en": 99,
-    "ko": 99
+    "en": 100,
+    "ko": 100
   },
   "expectation_counts": {
-    "good": 68,
+    "good": 70,
     "weak": 130
   },
   "domain_count": 36,
@@ -29,70 +29,26 @@
     "ready_with_warnings": 68
   },
   "readiness_result_coverage": {
-    "expected_cases": 198,
+    "expected_cases": 200,
     "evaluated_cases": 198,
-    "missing_cases": 0,
+    "missing_cases": 2,
     "unexpected_cases": 0,
-    "is_complete": true
+    "is_complete": false
   },
-  "readiness_result_baseline": {
-    "evaluated_cases": 198,
-    "good_cases": 68,
-    "weak_cases": 130,
-    "blocked_before_codegen": 130,
-    "blocked_weak_cases": 130,
-    "blocked_good_cases": 0,
-    "blocked_weak_rate": 100.0,
-    "block_rate": 65.7,
-    "false_positive_rate": 0.0,
-    "false_positive_cases": [],
-    "false_negative_rate": 0.0,
-    "false_negative_cases": []
-  },
-  "readiness_result_baseline_by_language": {
-    "en": {
-      "evaluated_cases": 99,
-      "good_cases": 34,
-      "weak_cases": 65,
-      "blocked_before_codegen": 65,
-      "blocked_weak_cases": 65,
-      "blocked_good_cases": 0,
-      "blocked_weak_rate": 100.0,
-      "block_rate": 65.7,
-      "false_positive_rate": 0.0,
-      "false_positive_cases": [],
-      "false_negative_rate": 0.0,
-      "false_negative_cases": []
-    },
-    "ko": {
-      "evaluated_cases": 99,
-      "good_cases": 34,
-      "weak_cases": 65,
-      "blocked_before_codegen": 65,
-      "blocked_weak_cases": 65,
-      "blocked_good_cases": 0,
-      "blocked_weak_rate": 100.0,
-      "block_rate": 65.7,
-      "false_positive_rate": 0.0,
-      "false_positive_cases": [],
-      "false_negative_rate": 0.0,
-      "false_negative_cases": []
-    }
-  },
+  "readiness_result_baseline": null,
+  "readiness_result_baseline_by_language": null,
   "gap_counts": {
-    "coverage_complete": 182,
+    "coverage_complete": 186,
     "english_only_source": 0,
     "korean_only_source": 0,
     "ready_only_domain_language": 0,
-    "weak_only_domain_language": 16
+    "weak_only_domain_language": 14
   },
   "coverage_gaps": {
     "english_only_source": [],
     "korean_only_source": [],
     "ready_only_domain_language": [],
     "weak_only_domain_language": [
-      "weak_background_job_retry_unbounded",
-      "weak_background_job_retry_unbounded_ko",
       "weak_coupon_unbounded_reuse",
       "weak_coupon_unbounded_reuse_ko",
       "weak_device_trust_never_expires",
@@ -257,7 +213,7 @@
     {
       "domain": "background_jobs",
       "language": "en",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -266,15 +222,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "background_jobs",
       "language": "ko",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -283,10 +239,10 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "billing_export",
@@ -1923,6 +1879,50 @@
       "follow_up_issues": []
     },
     {
+      "case_id": "ready_background_job_retry_budget",
+      "suite": "gate_only_extended_v2",
+      "domain": "background_jobs",
+      "language": "en",
+      "source_case_id": "ready_background_job_retry_budget",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready background job retry budget",
+      "risk": "retry storms and duplicate side effects",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_background_job_retry_budget_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "background_jobs",
+      "language": "ko",
+      "source_case_id": "ready_background_job_retry_budget",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "백그라운드 작업 한국어 good 사례",
+      "risk": "retry storms and duplicate side effects",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
       "case_id": "weak_background_job_retry_unbounded",
       "suite": "gate_only_extended_v2",
       "domain": "background_jobs",
@@ -1937,14 +1937,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_background_job_retry_unbounded_ko",
@@ -1961,14 +1959,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "ready_api_tenant_invoice_export",
