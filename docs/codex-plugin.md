@@ -152,7 +152,7 @@ For stable fields and file-based states, see [Plugin Result Contract](plugin-res
 
 For the v0.4.x plugin hardening backlog and missing contracts, see [Codex Plugin Hardening Roadmap](codex-plugin-hardening-roadmap.md).
 
-For the planned CLI-driven Grill me loop, see [CLI-Driven Grill Me Loop Design](cli-grill-me-loop.md). That workflow is not part of the current MVP; it requires a stable finding schema, decision record, confirmed-decision patch rules, and a mandatory CLI rerun before implementation handoff.
+For the CLI-driven Grill me loop, see [CLI-Driven Grill Me Loop](cli-grill-me-loop.md). That workflow uses companion `grill.json`/`grill.md` files, stores user answers in `decisions/specguard-decisions.jsonl`, applies only `user-confirmed` `update-spec` decisions to supported spec targets, and requires a follow-up `specguard run <package> --no-llm --no-follow-up` before implementation handoff.
 
 For the suggestion-only spec refinement boundary, see [SpecGuard Codex Plugin: Spec Refinement Safety Boundary](../plugins/specguard/README.md#spec-refinement-safety-boundary).
 
@@ -246,7 +246,7 @@ When GitHub integration or `gh` authentication is unavailable, stop before secre
 | CLI timeout | Keep the attempted command, timeout context, and existing generated files as diagnostics. | Report `timeout`, list known files only, and tell the user to retry after checking provider status or increasing timeout. |
 | unclassified CLI failure | Use this only when no fresh `not_ready`, stale report, timeout, missing provider, or pre-review validation state applies. | Report `cli_execution_failed`, include the command, known files, and the next safe rerun action. |
 | PR Review setup requested | Check repository state, remote, and CLI availability; ask before running `specguard actions install-pr-review`; explain required secret and optional variables. | Confirm `.github/workflows/specguard-pr-review.yml` status and provide safe `gh` or manual GitHub Settings instructions without exposing API keys. |
-| future Grill me loop design reviewed | Read `readiness-review.json` findings through the proposed design contract and collect user-confirmed decisions before patching. | Treat the flow as planned only; do not patch specs from unconfirmed suggestions and require a follow-up `specguard run <package> --no-llm --no-follow-up` after any confirmed patch implementation. |
+| CLI-driven Grill me loop | Read `grill.json` findings, ask Critical/Major questions first, store answers in `decisions/specguard-decisions.jsonl`, and patch only confirmed `update-spec` decisions. | Deferred or rejected answers remain visible but do not modify spec content; after patching, rerun `specguard run <package> --no-llm --no-follow-up` and compare resolved, unresolved, deferred, and new findings. |
 
 ## Non-Goals
 

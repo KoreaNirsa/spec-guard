@@ -13,6 +13,16 @@ from pathlib import Path
 
 from tools.action_installer import WorkflowInstallResult, install_workflow
 from tools.discovery_engine import DISCOVERY_PROMPTS, answers_from_args, collect_answers, collect_llm_answers, initialize_specs
+from tools.grill_loop import (
+    ALLOWED_RESOLUTIONS,
+    PATCHABLE_RESOLUTION,
+    apply_grill_patch_plan,
+    build_grill_patch_plan,
+    load_grill_payload,
+    record_grill_decision,
+    write_grill_outputs,
+    write_grill_rerun_comparison,
+)
 from tools.llm_client import (
     DEFAULT_CODEX_TIMEOUT,
     DEFAULT_OPENAI_TIMEOUT,
@@ -191,6 +201,130 @@ def copy_example(args: argparse.Namespace) -> int:
     print("- Use --no-llm only for deterministic local smoke checks without a configured provider.")
     print("- Replace the example files with your own feature requirements before real implementation.")
     return 0
+
+
+def grill(args: argparse.Namespace) -> int:
+    feature_dir = Path(args.path)
+    try:
+        if args.grill_command == "findings":
+            output = write_grill_outputs(feature_dir)
+            print_success("[PASS] Wrote Grill me structured findings.")
+            print(f"- JSON: {_display_path(output.json_path)}")
+            print(f"- Markdown: {_display_path(output.markdown_path)}")
+            print(f"- Questions: {len(output.payload.get('question_order', []))}")
+            return 0
+        if args.grill_command == "ask":
+            return _run_grill_ask(feature_dir, limit=args.limit)
+        if args.grill_command == "plan":
+            plan = build_grill_patch_plan(feature_dir)
+            apply_count = sum(1 for entry in plan.get("entries", []) if isinstance(entry, dict) and entry.get("status") == "apply")
+            print_success("[PASS] Wrote Grill me patch plan.")
+            print(f"- Patch plan: {_display_path(feature_dir / 'decisions' / 'specguard-patch-plan.json')}")
+            print(f"- Confirmed spec edits: {apply_count}")
+            return 0
+        if args.grill_command == "apply":
+            result = apply_grill_patch_plan(feature_dir)
+            print_success("[PASS] Applied confirmed Grill me decisions." if result.applied else "[PASS] No confirmed Grill me decisions were applied.")
+            print(f"- Applied: {len(result.applied)}")
+            print(f"- Skipped: {len(result.skipped)}")
+            if result.diff:
+                print("")
+                print("Diff:")
+                print(result.diff.rstrip())
+            return 0
+        if args.grill_command == "verify":
+            return _run_grill_verify(feature_dir)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print_error("[FAIL] Grill me workflow failed.")
+        print(f"- {exc}")
+        return 1
+
+    print_error("[FAIL] Unknown Grill me command.")
+    return 1
+
+
+def _run_grill_ask(feature_dir: Path, *, limit: int | None) -> int:
+    output = write_grill_outputs(feature_dir)
+    payload = output.payload
+    findings = {str(finding.get("id")): finding for finding in payload.get("findings", []) if isinstance(finding, dict)}
+    ordered_ids = [str(item) for item in payload.get("question_order", [])]
+    if limit is not None:
+        ordered_ids = ordered_ids[:limit]
+    if not ordered_ids:
+        print_warning("[WARN] No Grill me findings are available.")
+        return 0
+
+    print_section("Grill Me")
+    print_hint("Questions are ordered by severity. Deferred or rejected answers are recorded but never patch spec content.")
+    for review_id in ordered_ids:
+        finding = findings.get(review_id)
+        if not finding:
+            continue
+        print("")
+        print(bold(f"{review_id}: {finding.get('title')}"))
+        print(f"- Severity: {finding.get('severity')}")
+        print(f"- Question: {finding.get('question')}")
+        resolution = _prompt_resolution()
+        if resolution is None:
+            print_hint("Skipped this finding.")
+            continue
+        answer = _prompt("Decision answer", "").strip()
+        if not answer:
+            answer = f"User chose {resolution} for {review_id}."
+        target = None
+        if resolution == PATCHABLE_RESOLUTION:
+            target = _prompt("Patch target", "spec.md#Requirements").strip()
+        record = record_grill_decision(
+            feature_dir,
+            review_id=review_id,
+            decision=answer,
+            resolution=resolution,
+            target=target,
+        )
+        print_success(f"[PASS] Recorded decision: {record['review_id']} ({record['resolution']})")
+    print("")
+    print("Next steps:")
+    print(f"- Review decisions: {_display_path(feature_dir / 'decisions' / 'specguard-decisions.jsonl')}")
+    print(f"- Build a patch plan: specguard grill {feature_dir} plan")
+    print(f"- Apply confirmed spec edits only: specguard grill {feature_dir} apply")
+    print(f"- Verify after patching: specguard grill {feature_dir} verify")
+    return 0
+
+
+def _prompt_resolution() -> str | None:
+    allowed = "/".join(ALLOWED_RESOLUTIONS)
+    while True:
+        try:
+            value = input(f"Resolution ({allowed}, skip) [defer]: ").strip().lower()
+        except EOFError:
+            return None
+        if not value:
+            return "defer"
+        if value in {"skip", "s"}:
+            return None
+        if value in ALLOWED_RESOLUTIONS:
+            return value
+        print_warning(f"[WARN] Choose one of: {', '.join(ALLOWED_RESOLUTIONS)}, or skip.")
+
+
+def _run_grill_verify(feature_dir: Path) -> int:
+    previous_payload = load_grill_payload(feature_dir)
+    command = [sys.executable, "-m", "cli.specguard", "run", str(feature_dir), "--no-llm", "--no-follow-up"]
+    print_section("Rerun")
+    print_hint("Running: " + " ".join(command))
+    completed = subprocess.run(command, check=False)
+    current_output = write_grill_outputs(feature_dir)
+    comparison = write_grill_rerun_comparison(feature_dir, previous_payload, current_output.payload)
+    print_section("Grill Me Verification")
+    print(f"- Current readiness status: {comparison.get('current_readiness_status')}")
+    print(f"- Resolved findings: {len(comparison.get('resolved', []))}")
+    print(f"- Unresolved findings: {len(comparison.get('unresolved', []))}")
+    print(f"- Deferred or rejected findings: {len(comparison.get('deferred', []))}")
+    print(f"- New findings: {len(comparison.get('new', []))}")
+    print(f"- Comparison: {_display_path(feature_dir / 'decisions' / 'specguard-rerun-comparison.json')}")
+    if completed.returncode != 0:
+        print_warning("[WARN] Rerun completed with a non-zero status; review unresolved findings before implementation.")
+    return completed.returncode
 
 
 def actions(args: argparse.Namespace) -> int:
@@ -1225,6 +1359,64 @@ def build_parser() -> argparse.ArgumentParser:
     example_copy.add_argument("feature", help="Feature name under specs/ or an explicit specs/<feature> path")
     example_copy.add_argument("--force", action="store_true", help="Overwrite existing files in the target package")
     example_copy.set_defaults(func=copy_example)
+
+    grill_parser = subparsers.add_parser(
+        "grill",
+        help="Ask Grill me questions from structured readiness findings",
+        description=(
+            "Run the CLI-driven Grill me loop from readiness-review.json.\n"
+            "The loop writes grill.json/grill.md, stores user-confirmed decisions, applies only confirmed spec edits, "
+            "and reruns SpecGuard to compare findings."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  specguard run specs/team-invite --no-llm --no-follow-up\n"
+            "  specguard grill specs/team-invite findings\n"
+            "  specguard grill specs/team-invite ask --limit 2\n"
+            "  specguard grill specs/team-invite plan\n"
+            "  specguard grill specs/team-invite apply\n"
+            "  specguard grill specs/team-invite verify"
+        ),
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    grill_parser.add_argument("path", help="Spec package directory with a readiness-review.json")
+    grill_subparsers = grill_parser.add_subparsers(dest="grill_command", required=True)
+
+    grill_findings = grill_subparsers.add_parser(
+        "findings",
+        help="Write grill.json and grill.md from readiness findings",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    grill_findings.set_defaults(func=grill)
+
+    grill_ask = grill_subparsers.add_parser(
+        "ask",
+        help="Ask severity-ordered clarification questions and store decision records",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    grill_ask.add_argument("--limit", type=int, help="Maximum number of findings to ask in this session")
+    grill_ask.set_defaults(func=grill)
+
+    grill_plan = grill_subparsers.add_parser(
+        "plan",
+        help="Build a patch plan from user-confirmed update-spec decisions",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    grill_plan.set_defaults(func=grill)
+
+    grill_apply = grill_subparsers.add_parser(
+        "apply",
+        help="Apply only confirmed update-spec decisions to targeted Markdown headings",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    grill_apply.set_defaults(func=grill)
+
+    grill_verify = grill_subparsers.add_parser(
+        "verify",
+        help="Rerun SpecGuard and compare resolved, unresolved, deferred, and new findings",
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    grill_verify.set_defaults(func=grill)
 
     run_parser = subparsers.add_parser(
         "run",

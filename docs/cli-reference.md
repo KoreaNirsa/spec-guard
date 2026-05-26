@@ -7,6 +7,7 @@ specguard init <spec-name>
 specguard example copy <spec-name> --force
 specguard actions install-pr-review
 specguard run specs/<spec-name>
+specguard grill specs/<spec-name> findings
 specguard auth status
 ```
 
@@ -28,4 +29,17 @@ CI or scripted example:
 specguard init billing-export --non-interactive --no-llm
 specguard example copy billing-export --force
 specguard run specs/billing-export --no-llm --no-follow-up
+specguard grill specs/billing-export findings
+specguard grill specs/billing-export ask --limit 2
+specguard grill specs/billing-export plan
+specguard grill specs/billing-export apply
+specguard grill specs/billing-export verify
 ```
+
+Useful `grill` subcommands:
+
+- `findings`: write `grill.json` and `grill.md` from `readiness-review.json`.
+- `ask`: ask severity-ordered clarification questions and store answers in `decisions/specguard-decisions.jsonl`.
+- `plan`: build `decisions/specguard-patch-plan.json` from confirmed decisions.
+- `apply`: apply only `user-confirmed` `update-spec` decisions to targeted Markdown headings.
+- `verify`: rerun `specguard run <package> --no-llm --no-follow-up` and write `decisions/specguard-rerun-comparison.json`.

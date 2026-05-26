@@ -1,6 +1,6 @@
-# CLI-Driven Grill Me Loop Design
+# CLI-Driven Grill Me Loop
 
-This document defines the planned workflow shape for a CLI-driven Grill me loop. It is a design contract for future implementation, not a current supported plugin feature.
+This document defines the supported workflow shape for a CLI-driven Grill me loop.
 
 Related issue: #194
 
@@ -27,37 +27,59 @@ spec review -> Grill me questions -> decision record -> spec patch -> spec revie
 
 The CLI remains the canonical review engine. The Codex skill must not duplicate SpecGuard review logic. Stable review ids are required so later decisions and reruns can point back to the same finding.
 
+## CLI Commands
+
+The current CLI loop is:
+
+```bash
+specguard run <package> --no-llm --no-follow-up
+specguard grill <package> findings
+specguard grill <package> ask
+specguard grill <package> plan
+specguard grill <package> apply
+specguard grill <package> verify
+```
+
+`specguard run` also writes the companion Grill me finding artifacts described below. The `grill` commands are deterministic local commands and do not make LLM review the default gate.
+
 ## Review Finding Contract
 
-Future implementation should expose a stable structured review format for Grill me consumption. This can be a schema-versioned extension of `readiness-review.json` or a companion file. The current `readiness-review.json` contract is not changed by this design.
+SpecGuard exposes Grill me findings as companion files:
 
-Minimum finding shape:
+- `<package>/grill.json`
+- `<package>/grill.md`
+
+The current `readiness-review.json` contract is not replaced or migrated by this workflow.
+
+Minimum `grill.json` finding shape:
 
 ```json
 {
   "id": "SG-001",
   "type": "missing-validation",
-  "severity": "blocker",
-  "spec_file": "openapi.yaml",
-  "location": {
-    "path": "/users",
-    "method": "post",
-    "field": "email"
+  "severity": "Critical",
+  "source_location": {
+    "path": "openapi.yaml",
+    "line": 42,
+    "review_path": "readiness-review.json#/issues/0"
   },
-  "evidence": "The email field exists in requestBody, but required and format constraints are not defined.",
+  "evidence": [
+    "The email field exists in requestBody, but required and format constraints are not defined."
+  ],
   "question": "Is email required? Which validation rule should be used for its format?",
-  "allowed_resolution": ["update-spec", "mark-intentional", "defer"]
+  "suggested_clarification": "Define whether email is required and which format rule applies.",
+  "allowed_resolution": ["update-spec", "mark-intentional", "defer", "reject"]
 }
 ```
 
 Required properties:
 
 - `id` must be stable for the same finding in a given review result so decisions can link back to it.
-- `severity` must preserve the review priority used by SpecGuard. The Codex skill should ask blocker and high-severity questions first.
-- `spec_file` and `location` must point to the reviewed artifact or contract location when known.
+- `severity` must preserve the review priority used by SpecGuard. The CLI asks Critical and Major questions first.
+- `source_location` must point to the reviewed artifact and line when evidence can be mapped, and always includes `review_path` back to the source `readiness-review.json` issue.
 - `evidence` must quote or summarize the reviewed source that caused the finding.
 - `question` must ask for a spec-contract decision, not an implementation design.
-- `allowed_resolution` must constrain whether the user can update the spec, mark the gap intentional, or defer it.
+- `allowed_resolution` must constrain whether the user can update the spec, mark the gap intentional, defer it, or reject it.
 
 ## Grill Me Question Rules
 
@@ -78,7 +100,11 @@ Questions must stay tied to a finding id. If one finding requires multiple decis
 
 ## Decision Record Contract
 
-User answers must be stored as decisions before they can drive a patch. A future implementation should use a durable record under the spec package, for example `decisions/specguard-decisions.jsonl` or another explicit reviewed decision artifact.
+User answers must be stored as decisions before they can drive a patch. SpecGuard stores durable decision records at:
+
+```text
+<package>/decisions/specguard-decisions.jsonl
+```
 
 Minimum decision shape:
 
@@ -113,6 +139,14 @@ Patch requirements:
 5. Show the before/after diff.
 6. Leave unresolved findings as unresolved decisions or TODOs instead of guessing.
 
+The current `specguard grill apply` command applies confirmed `update-spec` decisions only to targeted Markdown headings such as `spec.md#Requirements`. Decisions for other targets remain in the decision record and patch plan until explicit target support exists.
+
+Patch plans are written to:
+
+```text
+<package>/decisions/specguard-patch-plan.json
+```
+
 Forbidden patch behavior:
 
 - Do not add fields, status codes, states, or product behavior that the user did not confirm.
@@ -135,21 +169,24 @@ The rerun should compare the new review result with the decision record:
 - Deferred findings should remain documented and should not be treated as implementation-ready decisions.
 - Implementation handoff can proceed only when the rerun reports `READY` or `READY_WITH_WARNINGS` under the active review level.
 
+The rerun comparison is written to:
+
+```text
+<package>/decisions/specguard-rerun-comparison.json
+```
+
 ## Non-Goals
 
-- Do not implement the CLI command or Codex skill in this design issue.
 - Do not make LLM review the default gate.
 - Do not replace `readiness-review.json` without a schema migration.
-- Do not make automatic spec rewriting part of the plugin MVP.
+- Do not patch OpenAPI or YAML targets without explicit target support.
 - Do not treat Grill me answers as implementation requirements until they are recorded and patched into the spec.
 
-## Implementation Prerequisites
+## Current Guarantees
 
-Before implementing this workflow, define and test:
-
-- The schema version and file path for Grill me review findings.
-- Stable review id generation rules.
-- The decision record storage path and schema.
-- How to represent OpenAPI, YAML, and Markdown target locations.
-- How a patch plan maps confirmed decisions to file edits.
-- How rerun results map resolved, unresolved, deferred, and new findings.
+- `grill.json` uses schema version `0.1`.
+- Stable review ids are generated from finding title, description, impact, fix, and evidence, not from display order alone.
+- Decision records are append-only JSONL under `decisions/specguard-decisions.jsonl`.
+- Deferred or rejected decisions are kept visible and excluded from spec patches.
+- Every applied Markdown edit includes the originating `SG-*` review id in the inserted text.
+- `specguard grill verify` reruns `specguard run <package> --no-llm --no-follow-up` and records resolved, unresolved, deferred, and new finding ids.

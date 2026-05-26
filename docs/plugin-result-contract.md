@@ -94,6 +94,42 @@ Previous findings, suggested clarification text, and Codex-authored wording are 
 
 After rerun, the plugin should ignore stale guidance as the current result and report the fresh `readiness-review.json` state. Rerun output should include the current status, Critical/Major/Minor counts, current report paths, handoff availability, and next action. A fresh `readiness.status: "not_ready"` should be reported as still blocked.
 
+## Grill Me Finding And Decision Contract
+
+`specguard run <package>` writes companion Grill me artifacts without replacing `readiness-review.json`:
+
+- `<package>/grill.json`
+- `<package>/grill.md`
+
+Plugin consumers may rely on these `grill.json` fields for schema version `0.1`:
+
+| JSON path | Stable use |
+| --- | --- |
+| `schema_version` | Contract version for the Grill me companion artifact. |
+| `source_report` | Path to the `readiness-review.json` report used to build the findings. |
+| `decision_record_path` | Path where user decisions are stored. |
+| `readiness_status` | Readiness status from the source report. |
+| `findings[]` | Structured findings ordered for Grill me consumption. |
+| `question_order[]` | Finding ids in the order the CLI should ask questions. |
+
+Each `findings[]` item includes a stable `id`, `type`, `severity`, `title`, `evidence[]`, `source_location`, `question`, `suggested_clarification`, and `allowed_resolution[]`. `source_location.review_path` links back to the original `readiness-review.json#/issues/<index>` entry. The CLI asks Critical and Major findings before Minor findings.
+
+User answers are append-only JSONL records at:
+
+```text
+<package>/decisions/specguard-decisions.jsonl
+```
+
+A decision may patch spec content only when `source: "user-confirmed"` and `resolution: "update-spec"`. Deferred, rejected, unconfirmed, or suggestion-only answers must remain visible in the decision record but must not modify spec files. Patch plans are written to `decisions/specguard-patch-plan.json`, and rerun comparisons are written to `decisions/specguard-rerun-comparison.json`.
+
+Every applied Markdown spec edit must include the originating `SG-*` review id in the inserted text. After patching, the workflow must rerun:
+
+```bash
+specguard run <package> --no-llm --no-follow-up
+```
+
+The comparison must report resolved, unresolved, deferred, and new finding ids before implementation handoff can proceed.
+
 ## Validation Failure vs Readiness Failure
 
 A readiness failure has a fresh `readiness-review.json` with `readiness.status: "not_ready"`. In that case, the plugin should read `summary` and `issues[]`.

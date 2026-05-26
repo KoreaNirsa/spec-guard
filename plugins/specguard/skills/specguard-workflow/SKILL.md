@@ -93,6 +93,20 @@ Use this loop after a user edits `spec.md`, `technical-design.md`, or another au
 7. Read the fresh `readiness-review.json` and report current status, finding counts, current report paths, handoff availability, and next action.
 8. If the fresh result is `not_ready`, report it as still blocked and continue using the suggestion-only refinement boundary.
 
+## CLI-Driven Grill Me Loop
+
+Use this loop when the user asks to turn readiness findings into explicit product decisions:
+
+1. Run or confirm `specguard run <path> --no-llm --no-follow-up` first.
+2. Read `grill.json` and `grill.md`; do not scrape terminal output for finding data.
+3. Ask questions in `question_order`, which starts with Critical and Major findings.
+4. Store each user answer in `decisions/specguard-decisions.jsonl` before any patch step.
+5. Treat only `source: user-confirmed` and `resolution: update-spec` as patchable.
+6. Keep `defer`, `reject`, `mark-intentional`, and unconfirmed suggestions visible in the decision record, but do not modify spec content from them.
+7. Use `specguard grill <path> plan` and `specguard grill <path> apply` for confirmed Markdown target patches; every applied edit must include the `SG-*` review id.
+8. Run `specguard grill <path> verify` after patching. Report resolved, unresolved, deferred, and new findings from `decisions/specguard-rerun-comparison.json`.
+9. Do not treat Grill me answers as implementation-ready requirements until they are recorded, patched into the spec, and the follow-up run reports a fresh `ready` or `ready_with_warnings` state.
+
 ## PR Review Setup Workflow
 
 Use this workflow when the user asks for SpecGuard PR Review setup, for example `PR Review를 설정해줘` or `set up SpecGuard PR Review`.
