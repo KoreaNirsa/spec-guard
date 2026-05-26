@@ -237,13 +237,19 @@ def build_plugin_rerun_guidance(
     current_report = report if report is not None else _load_readiness_report_safely(feature_dir)
     rerun_command = command or _default_plugin_rerun_command(feature_dir)
     stale_reason = readiness_report_stale_reason(feature_dir)
-    state = "stale_review" if stale_reason else "fresh_readiness_result"
+    state = "stale_review"
+    if not stale_reason:
+        state = _readiness_status(current_report) if current_report else "validation_failed_before_review"
+        if state not in {"ready", "ready_with_warnings", "not_ready"}:
+            state = "validation_failed_before_review"
     suggestions = _plugin_rerun_suggestions(current_report, limit=limit) if current_report else ()
     if stale_reason:
         next_action = (
             "Treat previous findings as suggestions only. User updates the spec package, "
             f"then reruns `{rerun_command}` before implementation starts."
         )
+    elif state == "validation_failed_before_review":
+        next_action = f"Rerun `{rerun_command}` to produce a fresh readiness result before implementation starts."
     else:
         next_action = "Use the fresh readiness result; do not treat previous suggestions as implementation input."
     return PluginRerunGuidance(

@@ -301,7 +301,9 @@ def test_plugin_rerun_result_reports_fresh_ready_result_after_successful_rerun(t
     os.utime(feature / "readiness-review.json", (fresh, fresh))
 
     rendered = render_plugin_rerun_result(feature, returncode=0)
+    guidance = build_plugin_rerun_guidance(feature)
 
+    assert guidance.state == "ready"
     assert "- state: ready" in rendered
     assert "- fresh result: ready" in rendered
     assert "- status: ready" in rendered
