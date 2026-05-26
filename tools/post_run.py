@@ -74,6 +74,25 @@ class PluginReadinessSummary:
 
 
 @dataclass(frozen=True)
+class PluginRerunSuggestion:
+    finding: str
+    suggested_clarification: str
+    scope_check: str
+    next_step: str
+
+
+@dataclass(frozen=True)
+class PluginRerunGuidance:
+    feature_dir: str
+    state: str
+    command: str
+    stale_reason: str | None = None
+    previous_report_files: tuple[str, ...] = ()
+    suggestions: tuple[PluginRerunSuggestion, ...] = ()
+    next_action: str = ""
+
+
+@dataclass(frozen=True)
 class SpecRevisionSoftening:
     revised_spec: str
     demoted_items: tuple[str, ...] = ()
@@ -205,6 +224,137 @@ def render_plugin_readiness_summary(feature_dir: Path, report: dict[str, Any], *
     else:
         lines.append("  - none")
     lines.append(f"- next action: {summary.next_action}")
+    return "\n".join(lines)
+
+
+def build_plugin_rerun_guidance(
+    feature_dir: Path,
+    report: dict[str, Any] | None = None,
+    *,
+    limit: int = 3,
+    command: str | None = None,
+) -> PluginRerunGuidance:
+    current_report = report if report is not None else _load_readiness_report_safely(feature_dir)
+    rerun_command = command or _default_plugin_rerun_command(feature_dir)
+    stale_reason = readiness_report_stale_reason(feature_dir)
+    state = "stale_review" if stale_reason else "fresh_readiness_result"
+    suggestions = _plugin_rerun_suggestions(current_report, limit=limit) if current_report else ()
+    if stale_reason:
+        next_action = (
+            "Treat previous findings as suggestions only. User updates the spec package, "
+            f"then reruns `{rerun_command}` before implementation starts."
+        )
+    else:
+        next_action = "Use the fresh readiness result; do not treat previous suggestions as implementation input."
+    return PluginRerunGuidance(
+        feature_dir=feature_dir.as_posix(),
+        state=state,
+        command=rerun_command,
+        stale_reason=stale_reason,
+        previous_report_files=_plugin_previous_report_files(feature_dir),
+        suggestions=suggestions,
+        next_action=next_action,
+    )
+
+
+def render_plugin_rerun_guidance(
+    feature_dir: Path,
+    report: dict[str, Any] | None = None,
+    *,
+    limit: int = 3,
+    command: str | None = None,
+) -> str:
+    guidance = build_plugin_rerun_guidance(feature_dir, report, limit=limit, command=command)
+    lines = [
+        guidance.feature_dir,
+        f"- state: {guidance.state}",
+        f"- rerun command: {guidance.command}",
+    ]
+    if guidance.stale_reason:
+        lines.append(f"- stale reason: {guidance.stale_reason}")
+
+    lines.append("- previous reports:")
+    if guidance.previous_report_files:
+        lines.extend(f"  - {path}" for path in guidance.previous_report_files)
+    else:
+        lines.append("  - none")
+
+    if guidance.suggestions:
+        lines.append("- previous findings and clarifications: suggestion only")
+        for suggestion in guidance.suggestions:
+            lines.extend([
+                f"  - finding: {suggestion.finding}",
+                f"    suggested clarification: {suggestion.suggested_clarification}",
+                f"    scope check: {suggestion.scope_check}",
+                f"    next step: {suggestion.next_step}",
+            ])
+    else:
+        lines.append("- previous findings and clarifications: none")
+
+    lines.append(f"- next action: {guidance.next_action}")
+    return "\n".join(lines)
+
+
+def render_plugin_rerun_result(
+    feature_dir: Path,
+    *,
+    command: str | None = None,
+    started_at: float | None = None,
+    returncode: int | None = None,
+    timed_out: bool = False,
+    cli_available: bool = True,
+    spec_package_exists: bool | None = None,
+    provider_required: bool = False,
+    provider_available: bool = True,
+    limit: int = 3,
+) -> str:
+    rerun_command = command or _default_plugin_rerun_command(feature_dir)
+    state = derive_plugin_run_state(
+        feature_dir,
+        command=rerun_command,
+        started_at=started_at,
+        returncode=returncode,
+        timed_out=timed_out,
+        cli_available=cli_available,
+        spec_package_exists=spec_package_exists,
+        provider_required=provider_required,
+        provider_available=provider_available,
+    )
+    lines = [
+        feature_dir.as_posix(),
+        f"- command: {state.command}",
+        f"- state: {state.state}",
+    ]
+    if state.stale_reason:
+        lines.append(f"- stale reason: {state.stale_reason}")
+
+    if state.state in {"ready", "ready_with_warnings", "not_ready"}:
+        report = _load_readiness_report_safely(feature_dir)
+        if report is not None:
+            summary = build_plugin_readiness_summary(feature_dir, report, limit=limit)
+            lines.extend([
+                f"- fresh result: {_plugin_fresh_result_label(summary.status)}",
+                f"- status: {summary.status}",
+                f"- review level: {summary.review_level}",
+                f"- findings: Critical {summary.critical}, Major {summary.major}, Minor {summary.minor}",
+                f"- handoff available: {'yes' if summary.handoff_available else 'no'}",
+            ])
+            if summary.top_findings:
+                lines.append("- top findings:")
+                lines.extend(f"  - {finding}" for finding in summary.top_findings)
+            else:
+                lines.append("- top findings: none")
+            lines.append("- reports:")
+            if summary.report_files:
+                lines.extend(f"  - {path}" for path in summary.report_files)
+            else:
+                lines.append("  - none")
+
+    elif state.known_files:
+        lines.append("- known files:")
+        lines.extend(f"  - {path}" for path in state.known_files)
+
+    lines.append(f"- next action: {state.next_action}")
     return "\n".join(lines)
 
 
@@ -393,6 +543,51 @@ def _readiness_status(report: dict[str, Any]) -> str:
 def _summary_count(summary: dict[str, Any], key: str) -> int:
     value = summary.get(key, 0)
     return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def _default_plugin_rerun_command(feature_dir: Path) -> str:
+    return f"specguard run {feature_dir.as_posix()} --no-llm --no-follow-up"
+
+
+def _plugin_previous_report_files(feature_dir: Path) -> tuple[str, ...]:
+    files = [
+        feature_dir / "readiness-review.json",
+        feature_dir / "readiness-review.md",
+    ]
+    return tuple(path.as_posix() for path in files if path.exists())
+
+
+def _plugin_rerun_suggestions(report: dict[str, Any], *, limit: int) -> tuple[PluginRerunSuggestion, ...]:
+    raw_issues = report.get("issues", [])
+    if not isinstance(raw_issues, list) or limit <= 0:
+        return ()
+
+    suggestions: list[PluginRerunSuggestion] = []
+    for issue in raw_issues:
+        if not isinstance(issue, dict):
+            continue
+        suggestions.append(
+            PluginRerunSuggestion(
+                finding=_plugin_finding_title(issue),
+                suggested_clarification=str(issue.get("fix") or "Review the full readiness report for the suggested clarification."),
+                scope_check=(
+                    "Needs user decision; do not invent product behavior or treat this suggestion as implementation "
+                    "input until the user updates the spec package and reruns SpecGuard."
+                ),
+                next_step="User reviews and edits the spec package, then reruns SpecGuard.",
+            )
+        )
+        if len(suggestions) >= limit:
+            break
+    return tuple(suggestions)
+
+
+def _plugin_fresh_result_label(status: str) -> str:
+    if status == "ready_with_warnings":
+        return "ready with warnings"
+    if status == "not_ready":
+        return "still blocked"
+    return status
 
 
 def _plugin_top_findings(report: dict[str, Any], *, status: str, limit: int) -> tuple[str, ...]:

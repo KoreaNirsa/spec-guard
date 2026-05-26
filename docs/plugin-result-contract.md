@@ -76,6 +76,24 @@ For `not_ready`, show Critical findings first even when the JSON issue order inc
 
 The full Markdown and JSON reports remain the source for detailed finding prose, impacts, fixes, and evidence. Plugin tests should assert the summary fields and ordering rules, not full-prose snapshots of individual findings.
 
+## Guided Plugin Rerun Loop
+
+When a user edits authored spec artifacts after a readiness report was generated, the plugin must treat the old report as stale until SpecGuard runs again. The plugin may restate previous findings and `fix` text from `issues[]`, but only as suggestions for the user's next spec edit.
+
+The stale rerun guidance should include:
+
+- `state: stale_review`
+- the stale reason from the source/report comparison
+- previous `readiness-review.json` and `readiness-review.md` paths when present
+- previous findings by severity and title
+- suggested clarification text from the previous finding `fix`
+- a scope check that says `Needs user decision` when product behavior is unclear
+- the rerun command: `specguard run <package> --no-llm --no-follow-up`
+
+Previous findings, suggested clarification text, and Codex-authored wording are not implementation input. They become implementation input only after the user updates the spec package and a fresh `specguard run <package> --no-llm --no-follow-up` result confirms the current readiness state.
+
+After rerun, the plugin should ignore stale guidance as the current result and report the fresh `readiness-review.json` state. Rerun output should include the current status, Critical/Major/Minor counts, current report paths, handoff availability, and next action. A fresh `readiness.status: "not_ready"` should be reported as still blocked.
+
 ## Validation Failure vs Readiness Failure
 
 A readiness failure has a fresh `readiness-review.json` with `readiness.status: "not_ready"`. In that case, the plugin should read `summary` and `issues[]`.

@@ -138,6 +138,42 @@ def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:
     )
 
 
+def test_specguard_plugin_docs_cover_guided_rerun_loop() -> None:
+    contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+    combined = "\n".join((contract, guide, readme, skill))
+
+    _assert_contains_all(
+        contract,
+        (
+            "## Guided Plugin Rerun Loop",
+            "`state: stale_review`",
+            "the rerun command: `specguard run <package> --no-llm --no-follow-up`",
+            "Previous findings, suggested clarification text, and Codex-authored wording are not implementation input.",
+            "A fresh `readiness.status: \"not_ready\"` should be reported as still blocked.",
+        ),
+    )
+    _assert_contains_all(
+        skill,
+        (
+            "## Guided Rerun Loop",
+            "Rerun `specguard run <path> --no-llm --no-follow-up` after the user updates the spec package.",
+            "If the fresh result is `not_ready`, report it as still blocked",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        combined,
+        (
+            ("edited", "spec", "stale_review"),
+            ("previous", "findings", "suggestions only"),
+            ("Needs user decision", "unclear", "behavior"),
+            ("fresh", "status", "finding counts", "current report paths", "next action"),
+        ),
+    )
+
+
 def test_specguard_plugin_skill_documents_pr_review_setup_workflow() -> None:
     skill = SKILL_PATH.read_text(encoding="utf-8")
 
@@ -360,6 +396,8 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
         "existing spec package reaches `ready`",
         "existing spec package is `not_ready` with Critical findings",
         "`ready_with_warnings` handoff guidance",
+        "edited spec package rerun loop",
+        "fresh rerun result",
         "stale readiness report",
         "validation failure before review",
         "optional detail review requested without provider setup",
