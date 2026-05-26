@@ -327,15 +327,32 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
 
     for scenario in (
         "missing `specguard` CLI",
+        "missing spec package",
         "existing spec package reaches `READY`",
         "existing spec package is `NOT_READY` with Critical findings",
         "`READY_WITH_WARNINGS` handoff guidance",
+        "stale readiness report",
+        "validation failure before review",
         "optional detail review requested without provider setup",
+        "CLI timeout",
+        "unclassified CLI failure",
         "PR Review setup requested",
     ):
         assert scenario in doc
 
-    _assert_contains_all(doc, ("missing_cli", "missing_provider_for_llm", "SPECGUARD_OPENAI_API_KEY"))
+    _assert_contains_all(
+        doc,
+        (
+            "missing_cli",
+            "missing_spec_package",
+            "stale_review",
+            "validation_failed_before_review",
+            "missing_provider_for_llm",
+            "timeout",
+            "cli_execution_failed",
+            "SPECGUARD_OPENAI_API_KEY",
+        ),
+    )
     _assert_mentions_all_concepts(
         doc,
         (

@@ -232,10 +232,15 @@ When GitHub integration or `gh` authentication is unavailable, stop before secre
 | Scenario | Plugin action | Expected result |
 | --- | --- | --- |
 | missing `specguard` CLI | Run `specguard --help`, then source fallback `python -m cli.specguard --help` when in this checkout. | Report `missing_cli` and ask the user to install SpecGuard or run from a source checkout. |
+| missing spec package | Resolve the user path, current directory, or `specs/*/spec.md` candidates before running the CLI. | Report `missing_spec_package` and ask for a package directory that contains `spec.md`. |
 | existing spec package reaches `READY` | Run the default heuristic gate and read structured result files. | Report `READY`, finding counts, report paths, and `implementation-output.md` when present. |
 | existing spec package is `NOT_READY` with Critical findings | Read `readiness-review.json` and `readiness-review.md`. | Summarize Critical findings first and provide suggestion-only spec refinement proposals without editing files. |
 | `READY_WITH_WARNINGS` handoff guidance | Read structured result files and check handoff availability. | Report warnings, confirm implementation is allowed, and point to `implementation-output.md` when present. |
+| stale readiness report | Compare current authored Markdown source files to `input.artifacts[]`, then compare source mtimes to `readiness-review.json`. | Report `stale_review`, do not reuse the old report as the current result, and ask the user to rerun SpecGuard. |
+| validation failure before review | Treat a missing or not-updated readiness JSON after a non-zero run as pre-review failure. | Report `validation_failed_before_review`, list known files only, and ask the user to fix validation errors before rerunning. |
 | optional detail review requested without provider setup | Run `specguard auth status` before detail review. | Report `missing_provider_for_llm`; do not run or claim provider-backed review. |
+| CLI timeout | Keep the attempted command, timeout context, and existing generated files as diagnostics. | Report `timeout`, list known files only, and tell the user to retry after checking provider status or increasing timeout. |
+| unclassified CLI failure | Use this only when no fresh `not_ready`, stale report, timeout, missing provider, or pre-review validation state applies. | Report `cli_execution_failed`, include the command, known files, and the next safe rerun action. |
 | PR Review setup requested | Check repository state, remote, and CLI availability; ask before running `specguard actions install-pr-review`; explain required secret and optional variables. | Confirm `.github/workflows/specguard-pr-review.yml` status and provide safe `gh` or manual GitHub Settings instructions without exposing API keys. |
 | future Grill me loop design reviewed | Read `readiness-review.json` findings through the proposed design contract and collect user-confirmed decisions before patching. | Treat the flow as planned only; do not patch specs from unconfirmed suggestions and require a follow-up `specguard run <package> --no-llm --no-follow-up` after any confirmed patch implementation. |
 

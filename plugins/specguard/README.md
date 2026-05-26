@@ -50,8 +50,11 @@ The plugin workflow reports from structured files, not terminal log scraping. It
 - whether implementation handoff is allowed
 - `implementation-output.md` path when available
 - failure category when a normal readiness result is unavailable
+- attempted command, known generated files, and next safe action for timeout or CLI execution failures
 
 Common failure categories are `missing_cli`, `missing_spec_package`, `validation_failed_before_review`, `stale_review`, `missing_provider_for_llm`, `timeout`, and `cli_execution_failed`.
+
+Report generated files in two groups: `known_files` are files that exist for diagnostics, while `relevant_files` are current files for the resolved state. Do not point to `implementation-output.md` as relevant unless `readiness-review.json` is fresh, implementation is allowed, and the handoff file exists.
 
 Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
 
