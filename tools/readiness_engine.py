@@ -3287,7 +3287,10 @@ def run_readiness_review(
     report_path.write_text(_build_report(artifacts, issues, review_mode, review_level, review_input, cache_info), encoding="utf-8")
     report_json = _build_json_report(artifacts, issues, review_mode, review_level, review_input, cache_info)
     report_json_path.write_text(report_json, encoding="utf-8")
-    write_grill_outputs(path, json.loads(report_json))
+    try:
+        write_grill_outputs(path, json.loads(report_json))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        result.add_info(f"Skipped Grill companion artifacts for {path} from readiness JSON report: {exc}")
     if llm_client and cache_metadata is not None and not cache_hit:
         _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
     result.details.update(summary)

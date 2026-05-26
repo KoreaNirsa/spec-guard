@@ -414,8 +414,8 @@ def _locate_excerpt(feature_dir: Path, artifacts: tuple[str, ...], excerpt: str)
         return None
     needle = normalized_excerpt[:120]
     for relative in artifacts:
-        path = feature_dir / relative
-        if not path.exists() or not path.is_file():
+        path = _safe_feature_path(feature_dir, str(relative))
+        if path is None or not path.exists() or not path.is_file():
             continue
         content = path.read_text(encoding="utf-8")
         for line_number, line in enumerate(content.splitlines(), start=1):
@@ -483,7 +483,8 @@ def _safe_feature_path(feature_dir: Path, relative_path: str) -> Path | None:
 
 
 def _decision_patch_line(record: dict[str, Any]) -> str:
-    return f"- SpecGuard decision {record.get('review_id')}: {str(record.get('decision', '')).strip()}"
+    decision = " ".join(str(record.get("decision", "")).split())
+    return f"- SpecGuard decision {record.get('review_id')}: {decision}"
 
 
 def _append_to_markdown_heading(markdown: str, heading: str, text: str) -> tuple[str, bool]:

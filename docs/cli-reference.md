@@ -23,14 +23,13 @@ Useful `run` options:
 - `--strict-e2e`: experimental strict automation that uses an LLM to regenerate blocked specs and rerun Verification Review.
 - `--strict-max-iterations`: bound the number of strict E2E verification iterations.
 
-CI or scripted example:
+CI or scripted non-interactive example:
 
 ```bash
 specguard init billing-export --non-interactive --no-llm
 specguard example copy billing-export --force
 specguard run specs/billing-export --no-llm --no-follow-up
 specguard grill specs/billing-export findings
-specguard grill specs/billing-export ask --limit 2
 specguard grill specs/billing-export plan
 specguard grill specs/billing-export apply
 specguard grill specs/billing-export verify

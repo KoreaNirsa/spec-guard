@@ -2,7 +2,8 @@
 
 This document defines the supported workflow shape for a CLI-driven Grill me loop.
 
-Related issue: #194
+Related issue: #211
+Related design: #194
 
 ## Purpose
 

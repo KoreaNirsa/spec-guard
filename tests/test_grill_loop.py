@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from tools.grill_loop import (
     ALLOWED_RESOLUTIONS,
     build_grill_payload,
@@ -79,7 +81,7 @@ def test_grill_decision_records_patch_only_user_confirmed_update_spec(tmp_path: 
     record_grill_decision(
         feature,
         review_id=finding["id"],
-        decision="Todo reads and writes must be scoped to the authenticated owner before data is returned or mutated.",
+        decision="Todo reads and writes must be scoped to the authenticated owner\nbefore data is returned or mutated.",
         resolution="update-spec",
         target="spec.md#Requirements",
     )
@@ -108,7 +110,8 @@ def test_grill_decision_records_patch_only_user_confirmed_update_spec(tmp_path: 
     assert len(result.applied) == 1
     assert len(result.skipped) == 2
     assert f"SpecGuard decision {finding['id']}" in spec
-    assert "Todo reads and writes must be scoped" in spec
+    assert "Todo reads and writes must be scoped to the authenticated owner before data is returned or mutated." in spec
+    assert "authenticated owner\nbefore data" not in spec
     assert "Keep this question visible" not in spec
     assert "generated suggestion was not confirmed" not in spec
 
@@ -162,3 +165,46 @@ def test_grill_cli_e2e_records_patches_and_verifies_blocked_package(tmp_path: Pa
     assert comparison["current_readiness_status"] == "not_ready"
     assert comparison["unresolved"]
     assert "Grill Me Verification" in verify.stdout
+
+
+def test_grill_findings_ignore_artifact_paths_outside_feature_dir(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "todo-privacy"
+    feature.mkdir(parents=True)
+    outside = tmp_path / "outside.md"
+    outside.write_text("outside-only evidence", encoding="utf-8")
+    report = {
+        "readiness": {"status": "not_ready"},
+        "input": {"artifacts": [{"path": "../outside.md"}]},
+        "issues": [
+            {
+                "severity": "Critical",
+                "title": "Unsafe artifact path",
+                "evidence": "outside-only evidence",
+                "fix": "Stay inside the feature directory.",
+            }
+        ],
+    }
+
+    payload = build_grill_payload(feature, report)
+
+    assert payload["findings"][0]["source_location"] == {
+        "path": "readiness-review.json",
+        "line": None,
+        "review_path": "readiness-review.json#/issues/0",
+    }
+
+
+def test_readiness_review_keeps_report_when_grill_output_emission_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    feature = _copy_blocked_example(tmp_path)
+
+    def fail_grill_output(*_args: object, **_kwargs: object) -> None:
+        raise OSError("grill output failed")
+
+    monkeypatch.setattr("tools.readiness_engine.write_grill_outputs", fail_grill_output)
+    result = run_readiness_review(feature)
+
+    assert feature.joinpath("readiness-review.json").exists()
+    assert any("Skipped Grill companion artifacts" in message for message in result.messages)

@@ -97,6 +97,8 @@ Use this loop after a user edits `spec.md`, `technical-design.md`, or another au
 
 Use this loop when the user asks to turn readiness findings into explicit product decisions:
 
+This loop is the only allowed exception to suggestion-only refinement in this workflow. Spec edits are allowed only through `specguard grill <path> apply` when backed by recorded `source: user-confirmed` and `resolution: update-spec` decisions.
+
 1. Run or confirm `specguard run <path> --no-llm --no-follow-up` first.
 2. Read `grill.json` and `grill.md`; do not scrape terminal output for finding data.
 3. Ask questions in `question_order`, which starts with Critical and Major findings.

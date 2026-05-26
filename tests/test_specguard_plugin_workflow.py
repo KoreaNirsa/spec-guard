@@ -362,7 +362,8 @@ def test_cli_grill_me_loop_documents_traceable_decision_workflow() -> None:
     _assert_contains_all(
         doc,
         (
-            "Related issue: #194",
+            "Related issue: #211",
+            "Related design: #194",
             "specguard grill <package> findings",
             "<package>/grill.json",
             "<package>/decisions/specguard-decisions.jsonl",
