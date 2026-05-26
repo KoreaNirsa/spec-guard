@@ -101,13 +101,15 @@ This loop is the only allowed exception to suggestion-only refinement in this wo
 
 1. Run or confirm `specguard run <path> --no-llm --no-follow-up` first.
 2. Read `grill.json` and `grill.md`; do not scrape terminal output for finding data.
-3. Ask questions in `question_order`, which starts with Critical and Major findings.
-4. Store each user answer in `decisions/specguard-decisions.jsonl` before any patch step.
-5. Treat only `source: user-confirmed` and `resolution: update-spec` as patchable.
-6. Keep `defer`, `reject`, `mark-intentional`, and unconfirmed suggestions visible in the decision record, but do not modify spec content from them.
-7. Use `specguard grill <path> plan` and `specguard grill <path> apply` for confirmed Markdown target patches; every applied edit must include the `SG-*` review id.
-8. Run `specguard grill <path> verify` after patching. Report resolved, unresolved, deferred, and new findings from `decisions/specguard-rerun-comparison.json`.
-9. Do not treat Grill me answers as implementation-ready requirements until they are recorded, patched into the spec, and the follow-up run reports a fresh `ready` or `ready_with_warnings` state.
+3. If `readiness_status` is `not_ready`, show `readiness_summary.problem` and the Critical/Major/Minor counts before asking questions.
+4. Ask questions in `question_order`, which starts with Critical and Major findings. Use the generated question text as the base: it should be specific enough to mention API terms such as validation, authorization, ownership, error response, timeout, idempotency, or state transition, but short enough for the user to answer in the Codex chat.
+5. Show the `resolution_prompts` examples for `update-spec`, `mark-intentional`, `defer`, and `reject` before accepting an answer.
+6. Store each user answer in `decisions/specguard-decisions.jsonl` before any patch step.
+7. Treat only `source: user-confirmed` and `resolution: update-spec` as patchable.
+8. Keep `defer`, `reject`, `mark-intentional`, and unconfirmed suggestions visible in the decision record, but do not modify spec content from them.
+9. Use `specguard grill <path> plan` and `specguard grill <path> apply` for confirmed Markdown target patches; every applied edit must include the `SG-*` review id.
+10. Run `specguard grill <path> verify` after patching. Report resolved, unresolved, deferred, and new findings from `decisions/specguard-rerun-comparison.json`.
+11. Do not treat Grill me answers as implementation-ready requirements until they are recorded, patched into the spec, and the follow-up run reports a fresh `ready` or `ready_with_warnings` state.
 
 ## PR Review Setup Workflow
 

@@ -60,6 +60,8 @@ def test_grill_findings_contract_has_stable_ids_and_questions(tmp_path: Path) ->
     assert payload["source_report"].endswith("readiness-review.json")
     assert payload["decision_record_path"].endswith("decisions/specguard-decisions.jsonl")
     assert payload["readiness_status"] == "not_ready"
+    assert payload["readiness_summary"]["problem"].startswith("Blocking readiness issue:")
+    assert payload["resolution_prompts"]["update-spec"]["example_prompt"].startswith("update-spec ->")
     assert payload["question_order"]
     assert payload["question_order"] == [finding["id"] for finding in payload["findings"]]
     assert payload["question_order"] == [finding["id"] for finding in rebuilt["findings"]]
@@ -69,7 +71,9 @@ def test_grill_findings_contract_has_stable_ids_and_questions(tmp_path: Path) ->
     assert first["severity"] == "Critical"
     assert first["evidence"]
     assert first["source_location"]["review_path"].startswith("readiness-review.json#/issues/")
-    assert "spec-contract decision" in first["question"]
+    assert "spec-contract gap" in first["question"]
+    assert "authorization" in first["question"]
+    assert "ownership" in first["question"]
     assert set(first["allowed_resolution"]) == set(ALLOWED_RESOLUTIONS)
 
 
@@ -161,6 +165,9 @@ def test_grill_cli_e2e_records_patches_and_verifies_blocked_package(tmp_path: Pa
     spec = feature.joinpath("spec.md").read_text(encoding="utf-8")
     comparison = json.loads(feature.joinpath("decisions", "specguard-rerun-comparison.json").read_text(encoding="utf-8"))
     assert f"Recorded decision: {finding['id']}" in ask.stdout
+    assert "Problem: Blocking readiness issue:" in ask.stdout
+    assert "Response examples:" in ask.stdout
+    assert "update-spec -> Server must enforce owner-scoped todo reads and writes." in ask.stdout
     assert f"SpecGuard decision {finding['id']}" in spec
     assert comparison["current_readiness_status"] == "not_ready"
     assert comparison["unresolved"]

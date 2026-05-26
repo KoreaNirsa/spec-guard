@@ -52,6 +52,8 @@ SpecGuard exposes Grill me findings as companion files:
 
 The current `readiness-review.json` contract is not replaced or migrated by this workflow.
 
+The top-level `grill.json` payload includes a short `readiness_summary` so Codex can quickly explain why a package is `not_ready`, and `resolution_prompts` so users see copy-ready examples for each response type.
+
 Minimum `grill.json` finding shape:
 
 ```json
@@ -67,7 +69,7 @@ Minimum `grill.json` finding shape:
   "evidence": [
     "The email field exists in requestBody, but required and format constraints are not defined."
   ],
-  "question": "Is email required? Which validation rule should be used for its format?",
+  "question": "SpecGuard found a spec-contract gap: \"Missing validation\". Please decide the rule the implementation must follow, using concrete API terms such as validation, authorization, ownership, error response, timeout, idempotency, or state transition when they apply. Suggested clarification: Define whether email is required and which format rule applies.",
   "suggested_clarification": "Define whether email is required and which format rule applies.",
   "allowed_resolution": ["update-spec", "mark-intentional", "defer", "reject"]
 }
@@ -79,7 +81,7 @@ Required properties:
 - `severity` must preserve the review priority used by SpecGuard. The CLI asks Critical and Major questions first.
 - `source_location` must point to the reviewed artifact and line when evidence can be mapped, and always includes `review_path` back to the source `readiness-review.json` issue.
 - `evidence` must quote or summarize the reviewed source that caused the finding.
-- `question` must ask for a spec-contract decision, not an implementation design.
+- `question` must be suitable for a Codex chat: not terse, not long, and technical enough to name API concepts while still explaining what the user needs to decide.
 - `allowed_resolution` must constrain whether the user can update the spec, mark the gap intentional, defer it, or reject it.
 
 ## Grill Me Question Rules
@@ -98,6 +100,21 @@ Good question areas:
 - Conflicts with existing API contracts.
 
 Questions must stay tied to a finding id. If one finding requires multiple decisions, the skill should ask separate questions and keep each answer linked to the same review id.
+
+For every question, the chat should show response examples like:
+
+- `update-spec`: `update-spec -> Server must enforce owner-scoped todo reads and writes. -> spec.md#Requirements`
+- `mark-intentional`: `mark-intentional -> Public read access is intentional for this endpoint.`
+- `defer`: `defer -> Product owner must decide the retention policy later.`
+- `reject`: `reject -> This finding does not apply because the endpoint is internal-only.`
+
+When the package is `not_ready`, the chat should also show the short problem summary before asking the first question, for example:
+
+```text
+Readiness: not_ready
+Problem: Blocking readiness issue: Todo ownership boundary is unclear
+Counts: Critical 1, Major 1, Minor 0
+```
 
 ## Decision Record Contract
 

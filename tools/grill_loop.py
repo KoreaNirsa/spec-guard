@@ -20,6 +20,24 @@ USER_CONFIRMED_SOURCE = "user-confirmed"
 ALLOWED_RESOLUTIONS = ("update-spec", "mark-intentional", "defer", "reject")
 PATCHABLE_RESOLUTION = "update-spec"
 SEVERITY_ORDER = {"Critical": 0, "Major": 1, "Minor": 2}
+RESOLUTION_PROMPTS = {
+    "update-spec": {
+        "meaning": "Confirm a requirement and allow a supported spec patch.",
+        "example_prompt": "update-spec -> Server must enforce owner-scoped todo reads and writes. -> spec.md#Requirements",
+    },
+    "mark-intentional": {
+        "meaning": "Record that the current spec behavior is intentional without changing spec content.",
+        "example_prompt": "mark-intentional -> Public read access is intentional for this endpoint.",
+    },
+    "defer": {
+        "meaning": "Keep the finding visible for a later product decision.",
+        "example_prompt": "defer -> Product owner must decide the retention policy later.",
+    },
+    "reject": {
+        "meaning": "Reject the finding as not applicable and keep the reason visible.",
+        "example_prompt": "reject -> This finding does not apply because the endpoint is internal-only.",
+    },
+}
 
 
 @dataclass(frozen=True)
@@ -49,6 +67,8 @@ def build_grill_payload(feature_dir: Path, report: dict[str, Any] | None = None)
         "review_mode": current_report.get("review_mode"),
         "review_level": current_report.get("review_level"),
         "readiness_status": readiness.get("status") if isinstance(readiness, dict) else None,
+        "readiness_summary": _readiness_summary(current_report, findings),
+        "resolution_prompts": RESOLUTION_PROMPTS,
         "findings": findings,
         "question_order": question_order,
     }
@@ -72,9 +92,31 @@ def render_grill_markdown(payload: dict[str, Any]) -> str:
         f"- Decision records: {payload.get('decision_record_path')}",
         f"- Readiness status: {payload.get('readiness_status')}",
         "",
-        "## Questions",
+        "## Readiness Summary",
         "",
     ]
+    summary = payload.get("readiness_summary", {})
+    if isinstance(summary, dict):
+        lines.extend([
+            f"- Problem: {summary.get('problem', 'No readiness problem summary available.')}",
+            f"- Counts: Critical {summary.get('critical', 0)}, Major {summary.get('major', 0)}, Minor {summary.get('minor', 0)}",
+            "",
+        ])
+    lines.extend([
+        "## Response Examples",
+        "",
+    ])
+    prompts = payload.get("resolution_prompts", {})
+    if isinstance(prompts, dict):
+        for resolution in ALLOWED_RESOLUTIONS:
+            prompt = prompts.get(resolution, {})
+            if isinstance(prompt, dict):
+                lines.append(f"- `{resolution}`: {prompt.get('example_prompt')}")
+        lines.append("")
+    lines.extend([
+        "## Questions",
+        "",
+    ])
     findings = _findings_by_id(payload)
     question_order = payload.get("question_order", [])
     ordered_ids = question_order if isinstance(question_order, list) else []
@@ -97,7 +139,7 @@ def render_grill_markdown(payload: dict[str, Any]) -> str:
             "",
             f"- Severity: {finding.get('severity')}",
             f"- Source location: {location_text}",
-            f"- Suggested clarification question: {finding.get('question')}",
+            f"- Question: {finding.get('question')}",
             f"- Allowed resolutions: {', '.join(str(item) for item in finding.get('allowed_resolution', []))}",
             "",
             "Evidence:",
@@ -430,10 +472,50 @@ def _clarification_question(raw_issue: dict[str, Any]) -> str:
     title = str(raw_issue.get("title", "this finding")).strip()
     fix = str(raw_issue.get("fix", "Clarify the spec contract.")).strip()
     return (
-        f"What spec-contract decision resolves \"{title}\"? "
-        f"Confirm the exact requirement, mark it intentional, defer it, or reject it. "
+        f"SpecGuard found a spec-contract gap: \"{title}\". "
+        "Please decide the rule the implementation must follow, using concrete API terms such as validation, "
+        "authorization, ownership, error response, timeout, idempotency, or state transition when they apply. "
         f"Suggested clarification: {fix}"
     )
+
+
+def _readiness_summary(report: dict[str, Any], findings: list[dict[str, Any]]) -> dict[str, Any]:
+    readiness = report.get("readiness", {})
+    status = readiness.get("status") if isinstance(readiness, dict) else None
+    counts = {
+        "Critical": _finding_count(report, findings, "Critical"),
+        "Major": _finding_count(report, findings, "Major"),
+        "Minor": _finding_count(report, findings, "Minor"),
+    }
+    top_findings = [
+        str(finding.get("title"))
+        for finding in findings
+        if finding.get("severity") in {"Critical", "Major"}
+    ][:3]
+    if status == "not_ready":
+        problem = "Blocking readiness issue"
+        if top_findings:
+            problem = "Blocking readiness issue: " + "; ".join(top_findings)
+    elif top_findings:
+        problem = "Review warning: " + "; ".join(top_findings)
+    else:
+        problem = "No blocking Grill me findings."
+    return {
+        "status": status,
+        "critical": counts["Critical"],
+        "major": counts["Major"],
+        "minor": counts["Minor"],
+        "problem": problem,
+        "top_findings": top_findings,
+    }
+
+
+def _finding_count(report: dict[str, Any], findings: list[dict[str, Any]], severity: str) -> int:
+    summary = report.get("summary", {})
+    key = severity.lower()
+    if isinstance(summary, dict) and isinstance(summary.get(key), int):
+        return int(summary[key])
+    return sum(1 for finding in findings if finding.get("severity") == severity)
 
 
 def _slug(value: object) -> str:

@@ -213,6 +213,7 @@ def grill(args: argparse.Namespace) -> int:
             print(f"- JSON: {_display_path(output.json_path)}")
             print(f"- Markdown: {_display_path(output.markdown_path)}")
             print(f"- Questions: {len(output.payload.get('question_order', []))}")
+            _print_grill_readiness_summary(output.payload)
             return 0
         if args.grill_command == "ask":
             return _run_grill_ask(feature_dir, limit=args.limit)
@@ -257,6 +258,8 @@ def _run_grill_ask(feature_dir: Path, *, limit: int | None) -> int:
 
     print_section("Grill Me")
     print_hint("Questions are ordered by severity. Deferred or rejected answers are recorded but never patch spec content.")
+    _print_grill_readiness_summary(payload)
+    _print_resolution_examples(payload)
     for review_id in ordered_ids:
         finding = findings.get(review_id)
         if not finding:
@@ -264,6 +267,7 @@ def _run_grill_ask(feature_dir: Path, *, limit: int | None) -> int:
         print("")
         print(bold(f"{review_id}: {finding.get('title')}"))
         print(f"- Severity: {finding.get('severity')}")
+        print(f"- Evidence: {_first_evidence(finding)}")
         print(f"- Question: {finding.get('question')}")
         resolution = _prompt_resolution()
         if resolution is None:
@@ -290,6 +294,34 @@ def _run_grill_ask(feature_dir: Path, *, limit: int | None) -> int:
     print(f"- Apply confirmed spec edits only: specguard grill {feature_dir} apply")
     print(f"- Verify after patching: specguard grill {feature_dir} verify")
     return 0
+
+
+def _print_grill_readiness_summary(payload: dict) -> None:
+    summary = payload.get("readiness_summary", {})
+    if not isinstance(summary, dict):
+        return
+    print(f"- Readiness: {summary.get('status')}")
+    print(f"- Problem: {summary.get('problem')}")
+    print(f"- Counts: Critical {summary.get('critical', 0)}, Major {summary.get('major', 0)}, Minor {summary.get('minor', 0)}")
+
+
+def _print_resolution_examples(payload: dict) -> None:
+    prompts = payload.get("resolution_prompts", {})
+    if not isinstance(prompts, dict):
+        return
+    print("")
+    print("Response examples:")
+    for resolution in ALLOWED_RESOLUTIONS:
+        prompt = prompts.get(resolution, {})
+        if isinstance(prompt, dict):
+            print(f"- {resolution}: {prompt.get('example_prompt')}")
+
+
+def _first_evidence(finding: dict) -> str:
+    evidence = finding.get("evidence", [])
+    if isinstance(evidence, list) and evidence:
+        return str(evidence[0])
+    return "No mapped evidence excerpt."
 
 
 def _prompt_resolution() -> str | None:

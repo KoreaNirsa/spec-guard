@@ -109,10 +109,14 @@ Plugin consumers may rely on these `grill.json` fields for schema version `0.1`:
 | `source_report` | Path to the `readiness-review.json` report used to build the findings. |
 | `decision_record_path` | Path where user decisions are stored. |
 | `readiness_status` | Readiness status from the source report. |
+| `readiness_summary` | Short status, Critical/Major/Minor counts, and a concise problem summary for `not_ready` chats. |
+| `resolution_prompts` | Copy-ready example prompts for `update-spec`, `mark-intentional`, `defer`, and `reject`. |
 | `findings[]` | Structured findings ordered for Grill me consumption. |
 | `question_order[]` | Finding ids in the order the CLI should ask questions. |
 
 Each `findings[]` item includes a stable `id`, `type`, `severity`, `title`, `evidence[]`, `source_location`, `question`, `suggested_clarification`, and `allowed_resolution[]`. `source_location.review_path` links back to the original `readiness-review.json#/issues/<index>` entry. The CLI asks Critical and Major findings before Minor findings.
+
+Question text should be written for a Codex chat: specific enough to use API terms such as validation, authorization, ownership, error response, timeout, idempotency, or state transition, but short enough that the user can answer directly. When `readiness_status` is `not_ready`, plugin consumers should show `readiness_summary.problem` before asking the first Grill me question.
 
 User answers are append-only JSONL records at:
 
