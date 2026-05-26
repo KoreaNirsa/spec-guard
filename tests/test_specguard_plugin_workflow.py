@@ -58,7 +58,8 @@ def test_specguard_plugin_skill_defines_heuristic_first_cli_workflow() -> None:
         (
             "specguard --help",
             "python -m cli.specguard --help",
-            "specs/*/spec.md",
+            "**/specs/*/spec.md",
+            "hidden, dependency, build, and generated directories",
             "specguard run <path> --llm --no-follow-up",
             "specguard run <path> --llm --follow-up",
             "readiness-review.json",
@@ -71,6 +72,7 @@ def test_specguard_plugin_skill_defines_heuristic_first_cli_workflow() -> None:
         skill,
         (
             ("heuristic", "default"),
+            ("multiple", "candidate", "explicit"),
             ("structured files",),
             ("terminal logs",),
             ("handoff", "availability"),
@@ -274,6 +276,7 @@ def test_root_readme_documents_plugin_quickstart_steps() -> None:
             ("not", "official OpenAI Plugin Directory"),
             ("Open", "your-codex-project-folder", "Codex"),
             ("Run SpecGuard", "specs/your-feature-name"),
+            ("nested", "specs"),
         ),
     )
     assert "specs/my-feature" not in readme
@@ -324,6 +327,7 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             ("Installing the plugin", "specguard", "CLI"),
             ("CLI", "canonical engine"),
             ("Create or select", "spec package"),
+            ("nested", "specs"),
             ("manually edit", "spec package"),
             ("Detail Review", "optional", "advisory"),
             ("Grill me", "grill.json", "decisions"),
@@ -439,6 +443,7 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
             "timeout",
             "cli_execution_failed",
             "SPECGUARD_OPENAI_API_KEY",
+            "non-excluded `**/specs/*/spec.md`",
         ),
     )
     _assert_mentions_all_concepts(

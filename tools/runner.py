@@ -19,18 +19,29 @@ from tools.readiness_engine import (
     run_readiness_review,
 )
 from tools.result import CheckResult
+from tools.spec_packages import SpecPackageResolution, resolve_spec_packages
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
 from tools.ux import green
 from tools.verification_checker import check_verification_artifacts
 
 
-def _feature_dirs(path: Path) -> list[Path]:
-    if (path / "spec.md").exists():
-        return [path]
-    if path.is_dir():
-        return sorted({spec.parent for spec in path.rglob("spec.md")})
-    return [path]
+def _add_resolution_error(result: CheckResult, resolution: SpecPackageResolution) -> None:
+    path = resolution.requested_path
+    if resolution.ambiguous:
+        result.add_error(f"Multiple SpecGuard spec packages found under: {path}")
+        for candidate in resolution.packages:
+            result.add_error(f"Candidate package: {candidate}")
+        result.add_next_step("Run SpecGuard with one explicit package path, for example:")
+        result.add_next_step(f"specguard run {resolution.packages[0]}")
+        return
+
+    if not path.exists():
+        result.add_error(f"Path does not exist: {path}")
+        return
+
+    result.add_error(f"No feature specs found in: {path}")
+    result.add_next_step("Run discovery first: specguard init <feature-name>")
 
 
 def _is_stale(output: Path, sources: list[Path], force: bool) -> bool:
@@ -84,10 +95,10 @@ def run_pipeline(
 ) -> CheckResult:
     review_level = normalize_review_level(review_level)
     result = CheckResult("SpecGuard pipeline")
-    feature_dirs = _feature_dirs(path)
-    if not feature_dirs:
-        result.add_error(f"No feature specs found in: {path}")
-        result.add_next_step("Run discovery first: specguard init <feature-name>")
+    resolution = resolve_spec_packages(path)
+    feature_dirs = list(resolution.packages)
+    if not feature_dirs or resolution.ambiguous:
+        _add_resolution_error(result, resolution)
         return result
 
     for feature_dir in feature_dirs:
@@ -203,7 +214,7 @@ def run_pipeline(
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("path", nargs="?", default="specs")
+    parser.add_argument("path", nargs="?", default=".")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--no-llm", action="store_true", help="Use local deterministic generators and heuristic SpecGuard Review")
     parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")

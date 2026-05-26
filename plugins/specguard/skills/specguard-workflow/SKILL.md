@@ -51,9 +51,10 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 3. Resolve the target package:
    - use the user-provided path when it contains `spec.md`;
    - otherwise use the current directory when it contains `spec.md`;
-   - otherwise scan `specs/*/spec.md` and use the only match;
+   - otherwise scan non-excluded `**/specs/*/spec.md` candidates and use the only match;
    - when multiple candidate packages exist, list them and ask the user to choose;
    - when no candidate package exists, report `missing_spec_package`.
+   - exclude hidden, dependency, build, and generated directories during candidate discovery, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 4. Record the current time before invoking the run command so stale or missing reports can be distinguished after execution.
 5. Run the default plugin command as `specguard run <path> --no-llm --no-follow-up`. This preserves the heuristic low-mode gate and avoids requiring a Codex or OpenAI provider.
 6. If the user explicitly asks for provider-backed initial review, run `specguard run <path> --llm --no-follow-up` after confirming provider availability with `specguard auth status`.

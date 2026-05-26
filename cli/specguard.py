@@ -1456,7 +1456,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate specs and produce implementation handoff artifacts",
         description=(
             "Run validation, technical design, SpecGuard Review, tests, contracts, and implementation handoff.\n"
-            "Default low mode uses fast heuristic review first; use --llm for live SpecGuard Review (Detail)."
+            "Default low mode uses fast heuristic review first; use --llm for live SpecGuard Review (Detail).\n"
+            "When no path is provided, SpecGuard resolves a single package from non-excluded specs directories."
         ),
         epilog=(
             "Examples:\n"
@@ -1471,7 +1472,12 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=SpecGuardHelpFormatter,
     )
-    run_parser.add_argument("path", nargs="?", default="specs", help="Spec package directory or specs root to process")
+    run_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Spec package directory, specs root, or repository tree to resolve",
+    )
     run_parser.add_argument("--force", action="store_true", help="Regenerate derived artifacts instead of reusing existing files")
     run_parser.add_argument("--llm", action="store_true", help="Run live LLM SpecGuard Review instead of the default fast heuristic low-mode review")
     run_parser.add_argument("--no-llm", action="store_true", help="Skip live LLM requests and use local generators plus heuristic SpecGuard Review")
