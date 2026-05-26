@@ -142,6 +142,39 @@ def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:
     )
 
 
+def test_specguard_plugin_skill_defines_result_summary_prompt_contract() -> None:
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+
+    _assert_contains_all(
+        skill,
+        (
+            "## Result Summary Prompt Contract",
+            "Use `readiness-review.json` as the only machine-readable source of readiness state.",
+            "`status`: `readiness.status` plus `review_level`.",
+            "`counts`: `summary.critical`, `summary.major`, and `summary.minor`.",
+            "`findings`: top `issues[]` entries by `severity` and `title`; for `not_ready`, list Critical findings first",
+            "`reports`: `readiness-review.json` and `readiness-review.md` when present.",
+            "`handoff`: report yes only when `readiness.status` is `ready` or `ready_with_warnings`, `readiness.implementation_ready` is true, and `implementation-output.md` exists.",
+            "`next_action`: derive from the resolved state, not from terminal logs or generated Markdown prose.",
+            "Keep `SpecGuard evidence` separate from `Codex interpretation`",
+            "`ready_with_warnings`: implementation is allowed when handoff is available; warnings are optional cleanup, not blockers.",
+            "`not_ready`: implementation is blocked; summarize Critical findings first",
+            "`validation_failed_before_review`: report that no current readiness result exists",
+            "`timeout` and `cli_execution_failed`: include the attempted command, known files for diagnostics, and the next safe action",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        skill,
+        (
+            ("terminal output", "must not determine", "readiness status"),
+            ("ready", "implementation may proceed", "handoff"),
+            ("stale_review", "old files", "current result", "rerun command"),
+            ("implementation-output.md", "relevant handoff"),
+            ("Codex interpretation", "implementation input"),
+        ),
+    )
+
+
 def test_specguard_plugin_docs_cover_guided_rerun_loop() -> None:
     contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
     guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
