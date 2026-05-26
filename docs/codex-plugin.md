@@ -132,9 +132,10 @@ The checked-in repo marketplace already provides this entry through `.agents/plu
    ```
 
 4. The plugin reads `readiness-review.json` and `readiness-review.md`.
-5. If the package is `NOT_READY`, inspect the findings, manually edit the spec package, and rerun SpecGuard.
-6. If the package is `READY` or `READY_WITH_WARNINGS`, use `implementation-output.md` as the implementation handoff when it exists.
-7. After implementation, install and use SpecGuard PR Review only when the repository wants the advisory pull request workflow.
+5. The plugin summarizes status, review level, Critical/Major/Minor counts, top findings, report paths, handoff availability, and next action from structured files.
+6. If the package is `NOT_READY`, inspect the Critical findings first, manually edit the spec package, and rerun SpecGuard.
+7. If the package is `READY` or `READY_WITH_WARNINGS`, use `implementation-output.md` as the implementation handoff when it exists.
+8. After implementation, install and use SpecGuard PR Review only when the repository wants the advisory pull request workflow.
 
 ## Architecture
 
@@ -234,8 +235,8 @@ When GitHub integration or `gh` authentication is unavailable, stop before secre
 | missing `specguard` CLI | Run `specguard --help`, then source fallback `python -m cli.specguard --help` when in this checkout. | Report `missing_cli` and ask the user to install SpecGuard or run from a source checkout. |
 | missing spec package | Resolve the user path, current directory, or `specs/*/spec.md` candidates before running the CLI. | Report `missing_spec_package` and ask for a package directory that contains `spec.md`. |
 | existing spec package reaches `ready` | Run the default heuristic gate and read structured result files. | Report `ready`, finding counts, report paths, and `implementation-output.md` when present. |
-| existing spec package is `not_ready` with Critical findings | Read `readiness-review.json` and `readiness-review.md`. | Summarize Critical findings first and provide suggestion-only spec refinement proposals without editing files. |
-| `ready_with_warnings` handoff guidance | Read structured result files and check handoff availability. | Report warnings, confirm implementation is allowed, and point to `implementation-output.md` when present. |
+| existing spec package is `not_ready` with Critical findings | Read `readiness-review.json` and `readiness-review.md`. | Summarize Critical findings first by severity and title, link to full reports, and provide suggestion-only spec refinement proposals without editing files. |
+| `ready_with_warnings` handoff guidance | Read structured result files and check handoff availability. | Report warnings, explain implementation is allowed only when `implementation-output.md` exists, and point to that file when present. |
 | stale readiness report | Compare current authored Markdown source files to `input.artifacts[]`, then compare source mtimes to `readiness-review.json`. | Report `stale_review`, do not reuse the old report as the current result, and ask the user to rerun SpecGuard. |
 | validation failure before review | Treat a missing or not-updated readiness JSON after a non-zero run as pre-review failure. | Report `validation_failed_before_review`, list known files only, and ask the user to fix validation errors before rerunning. |
 | optional detail review requested without provider setup | Run `specguard auth status` before detail review. | Report `missing_provider_for_llm`; do not run or claim provider-backed review. |

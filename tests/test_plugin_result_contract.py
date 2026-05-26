@@ -7,7 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from tools.post_run import derive_plugin_run_state, readiness_report_stale_reason
+from tools.post_run import (
+    build_plugin_readiness_summary,
+    derive_plugin_run_state,
+    readiness_report_stale_reason,
+    render_plugin_readiness_summary,
+)
 from tools.runner import run_pipeline
 
 
@@ -57,6 +62,40 @@ def _handoff_available(feature_dir: Path, payload: dict[str, object]) -> bool:
         and readiness.get("implementation_ready") is True
         and (feature_dir / "implementation-output.md").exists()
     )
+
+
+def _summary_payload(status: str, *, implementation_ready: bool) -> dict[str, object]:
+    return {
+        "schema_version": "0.1",
+        "review_level": "low",
+        "blocked": status == "not_ready",
+        "readiness": {
+            "status": status,
+            "implementation_ready": implementation_ready,
+            "criteria": {},
+        },
+        "summary": {
+            "critical": 1 if status == "not_ready" else 0,
+            "major": 1,
+            "minor": 1,
+        },
+        "issues": [
+            {
+                "severity": "Major",
+                "title": "Warning title",
+                "description": "Detailed warning description should stay in full reports.",
+                "impact": "Detailed warning impact should stay in full reports.",
+                "fix": "Detailed warning fix should stay in full reports.",
+            },
+            {
+                "severity": "Critical",
+                "title": "Critical blocker title",
+                "description": "Detailed blocker description should stay in full reports.",
+                "impact": "Detailed blocker impact should stay in full reports.",
+                "fix": "Detailed blocker fix should stay in full reports.",
+            },
+        ],
+    }
 
 
 @pytest.mark.parametrize("fixture_name", FIXTURE_NAMES)
@@ -132,6 +171,67 @@ def test_plugin_result_contract_handoff_availability_uses_status_and_file_existe
 
     assert _handoff_available(feature, ready_payload) is True
     assert _handoff_available(feature, not_ready_payload) is False
+
+
+def test_plugin_readiness_summary_prioritizes_critical_findings_for_not_ready(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    feature.joinpath("readiness-review.json").write_text("{}", encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Old handoff\n", encoding="utf-8")
+
+    rendered = render_plugin_readiness_summary(feature, _summary_payload("not_ready", implementation_ready=False))
+
+    assert "- status: not_ready" in rendered
+    assert "- review level: low" in rendered
+    assert "- findings: Critical 1, Major 1, Minor 1" in rendered
+    assert "- handoff available: no" in rendered
+    assert rendered.index("[Critical] Critical blocker title") < rendered.index("[Major] Warning title")
+    assert "readiness-review.json" in rendered
+    assert "readiness-review.md" in rendered
+    assert "implementation-output.md" not in rendered
+    assert "Detailed blocker impact should stay in full reports." not in rendered
+
+
+def test_plugin_readiness_summary_requires_handoff_file_for_ready_with_warnings(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    feature.joinpath("readiness-review.json").write_text("{}", encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Review\n", encoding="utf-8")
+    payload = _summary_payload("ready_with_warnings", implementation_ready=True)
+
+    missing_handoff = build_plugin_readiness_summary(feature, payload)
+
+    assert missing_handoff.status == "ready_with_warnings"
+    assert missing_handoff.handoff_available is False
+    assert not any(path.endswith("implementation-output.md") for path in missing_handoff.report_files)
+    assert "Rerun the full SpecGuard pipeline" in missing_handoff.next_action
+
+    feature.joinpath("implementation-output.md").write_text("# Handoff\n", encoding="utf-8")
+    with_handoff = build_plugin_readiness_summary(feature, payload)
+
+    assert with_handoff.handoff_available is True
+    assert any(path.endswith("implementation-output.md") for path in with_handoff.report_files)
+    assert "Implementation may proceed with warnings" in with_handoff.next_action
+
+
+def test_plugin_readiness_summary_covers_ready_state_with_report_paths(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    feature.joinpath("readiness-review.json").write_text("{}", encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Handoff\n", encoding="utf-8")
+    payload = _summary_payload("ready", implementation_ready=True)
+    payload["issues"] = []
+
+    rendered = render_plugin_readiness_summary(feature, payload)
+
+    assert "- status: ready" in rendered
+    assert "- handoff available: yes" in rendered
+    assert "- top findings: none" in rendered
+    assert "readiness-review.json" in rendered
+    assert "readiness-review.md" in rendered
+    assert "implementation-output.md" in rendered
 
 
 def test_plugin_result_contract_stale_review_is_derived_from_source_mtime(tmp_path: Path) -> None:

@@ -62,9 +62,9 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 9. Do not add `--llm`, run detail review, or install PR Review workflows unless the user explicitly asks for that behavior.
 10. Read the result from structured files only. Use `readiness-review.json` as the machine result, `readiness-review.md` as the human report, and `implementation-output.md` as the handoff file when allowed.
 11. Derive stale, validation-failure, and handoff states from the Plugin Result Contract. Do not scrape terminal logs for readiness state.
-12. Report readiness status, Critical/Major/Minor finding counts, top findings, report paths, handoff availability, and next action.
+12. Report readiness status, review level, Critical/Major/Minor finding counts, top findings by severity and title, report paths, handoff availability, and next action.
 13. For `not_ready`, summarize Critical findings first and propose scoped edits using the suggestion-only spec refinement format. Do not apply the edits automatically.
-14. For `ready` or `ready_with_warnings`, summarize warnings and direct implementation work to the generated handoff when `implementation-output.md` exists.
+14. For `ready` or `ready_with_warnings`, summarize warnings and direct implementation work to the generated handoff only when `implementation-output.md` exists.
 
 ## Failure Categories
 
@@ -138,6 +138,7 @@ Return concise, user-facing results:
 - command executed
 - readiness status
 - critical, major, and minor finding counts when available
+- top findings by severity and title, with Critical findings first for `not_ready`
 - handoff allowed: yes/no
 - paths to generated reports
 - failure category when the run cannot produce a normal readiness result

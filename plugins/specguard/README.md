@@ -45,7 +45,7 @@ The plugin workflow reports from structured files, not terminal log scraping. It
 
 - readiness status and review level
 - Critical, Major, and Minor finding counts
-- top readiness findings
+- top readiness findings by severity and title, with Critical findings first for `not_ready`
 - `readiness-review.json` and `readiness-review.md` paths
 - whether implementation handoff is allowed
 - `implementation-output.md` path when available
@@ -55,6 +55,8 @@ The plugin workflow reports from structured files, not terminal log scraping. It
 Common failure categories are `missing_cli`, `missing_spec_package`, `validation_failed_before_review`, `stale_review`, `missing_provider_for_llm`, `timeout`, and `cli_execution_failed`.
 
 Report generated files in two groups: `known_files` are files that exist for diagnostics, while `relevant_files` are current files for the resolved state. Do not point to `implementation-output.md` as relevant unless `readiness-review.json` is fresh, implementation is allowed, and the handoff file exists.
+
+Keep the concise summary separate from full finding prose. Use the Markdown and JSON report paths for detailed descriptions, impacts, fixes, and evidence instead of coupling the plugin UX to exact finding text.
 
 Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
 
