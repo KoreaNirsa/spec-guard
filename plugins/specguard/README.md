@@ -112,12 +112,21 @@ The plugin must not invent fields, requirements, states, error behavior, ownersh
 
 Codex suggestions are not implementation input until the user approves them, edits the spec package, and reruns SpecGuard. Existing experimental CLI auto-revision remains outside the plugin MVP and must not be invoked by the plugin workflow.
 
+## CLI-Driven Grill Me Loop
+
+When the user asks for the Grill me loop, use `grill.json` findings from the CLI. If the package is `not_ready`, show the short `readiness_summary.problem` and counts first so the user can see the blocking issue before answering. Ask Critical and Major questions first, using the generated question text and `resolution_prompts` examples so the user can answer with `update-spec`, `mark-intentional`, `defer`, or `reject` directly. Store answers in `decisions/specguard-decisions.jsonl`, and apply only `user-confirmed` `update-spec` decisions. Deferred, rejected, or unconfirmed answers remain visible but must not modify spec content. After applying confirmed Markdown edits, rerun `specguard run <package> --no-llm --no-follow-up` and report resolved, unresolved, deferred, and new findings from `decisions/specguard-rerun-comparison.json`.
+
 ## Supported CLI Commands
 
 ```bash
 specguard init <feature>
 specguard run specs/<feature>
 specguard run specs/<feature> --no-llm --no-follow-up
+specguard grill specs/<feature> findings
+specguard grill specs/<feature> ask
+specguard grill specs/<feature> plan
+specguard grill specs/<feature> apply
+specguard grill specs/<feature> verify
 specguard run specs/<feature> --llm
 specguard actions install-pr-review
 ```

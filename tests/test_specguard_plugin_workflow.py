@@ -296,7 +296,7 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             "implementation-output.md",
             "Plugin Result Contract](plugin-result-contract.md)",
             "Codex Plugin Hardening Roadmap](codex-plugin-hardening-roadmap.md)",
-            "CLI-Driven Grill Me Loop Design](cli-grill-me-loop.md)",
+            "CLI-Driven Grill Me Loop](cli-grill-me-loop.md)",
             "Spec Refinement Safety Boundary",
             "mkdir your-codex-project-folder",
             "cd your-codex-project-folder",
@@ -315,7 +315,7 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             ("Create or select", "spec package"),
             ("manually edit", "spec package"),
             ("Detail Review", "optional", "advisory"),
-            ("Grill me", "not", "current MVP"),
+            ("Grill me", "grill.json", "decisions"),
             ("Open", "your-codex-project-folder", "Codex"),
             ("Run SpecGuard", "specs/your-feature-name"),
         ),
@@ -356,18 +356,25 @@ def test_codex_plugin_hardening_roadmap_prioritizes_v04x_work() -> None:
     )
 
 
-def test_cli_grill_me_loop_design_documents_traceable_decision_workflow() -> None:
+def test_cli_grill_me_loop_documents_traceable_decision_workflow() -> None:
     doc = CODEX_PLUGIN_GRILL_LOOP_DOC_PATH.read_text(encoding="utf-8")
 
     _assert_contains_all(
         doc,
         (
-            "Related issue: #194",
+            "Related issue: #211",
+            "Related design: #194",
+            "specguard grill <package> findings",
+            "<package>/grill.json",
+            "readiness_summary",
+            "resolution_prompts",
+            "<package>/decisions/specguard-decisions.jsonl",
             "spec review -> Grill me questions -> decision record -> spec patch -> spec review rerun",
             "\"id\": \"SG-001\"",
-            "\"allowed_resolution\": [\"update-spec\", \"mark-intentional\", \"defer\"]",
+            "\"allowed_resolution\": [\"update-spec\", \"mark-intentional\", \"defer\", \"reject\"]",
             "\"source\": \"user-confirmed\"",
             "specguard run <package> --no-llm --no-follow-up",
+            "<package>/decisions/specguard-rerun-comparison.json",
         ),
     )
     _assert_mentions_all_concepts(
@@ -376,12 +383,14 @@ def test_cli_grill_me_loop_design_documents_traceable_decision_workflow() -> Non
             ("CLI", "canonical review engine"),
             ("stable", "review ids"),
             ("severity", "evidence", "location", "question"),
+            ("not_ready", "Problem", "Counts"),
+            ("update-spec", "mark-intentional", "defer", "reject"),
             ("User", "Confirm", "defer", "reject"),
             ("patch", "only", "confirmed decisions"),
             ("show", "before/after diff"),
             ("rerun", "SpecGuard"),
-            ("not", "current supported plugin feature"),
-            ("Do not", "implement", "design issue"),
+            ("schema version", "0.1"),
+            ("Deferred", "rejected", "excluded", "spec patches"),
             ("Do not", "LLM review", "default gate"),
         ),
     )
@@ -404,6 +413,7 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
         "CLI timeout",
         "unclassified CLI failure",
         "PR Review setup requested",
+        "CLI-driven Grill me loop",
     ):
         assert scenario in doc
 

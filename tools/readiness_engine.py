@@ -14,6 +14,7 @@ from pathlib import Path, PurePath
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.llm_client import describe_llm_client
+from tools.grill_loop import write_grill_outputs
 from tools.progress import progress_activity
 from tools.result import CheckResult
 from tools.ux import green, red, yellow
@@ -3284,7 +3285,12 @@ def run_readiness_review(
     implementation_ready = _is_implementation_ready(summary, review_level)
 
     report_path.write_text(_build_report(artifacts, issues, review_mode, review_level, review_input, cache_info), encoding="utf-8")
-    report_json_path.write_text(_build_json_report(artifacts, issues, review_mode, review_level, review_input, cache_info), encoding="utf-8")
+    report_json = _build_json_report(artifacts, issues, review_mode, review_level, review_input, cache_info)
+    report_json_path.write_text(report_json, encoding="utf-8")
+    try:
+        write_grill_outputs(path, json.loads(report_json))
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        result.add_info(f"Skipped Grill companion artifacts for {path} from readiness JSON report: {exc}")
     if llm_client and cache_metadata is not None and not cache_hit:
         _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
     result.details.update(summary)
