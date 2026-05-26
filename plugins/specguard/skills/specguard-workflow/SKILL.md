@@ -76,6 +76,8 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 - `timeout`: the CLI run exceeds the active command timeout. Report the command, whether it was heuristic or provider-backed, and the files that exist.
 - `cli_execution_failed`: the CLI exits non-zero for a reason that is not represented by a fresh `not_ready` report or a known pre-review state.
 
+For `timeout` and `cli_execution_failed`, report `known_files` as diagnostics only, include the exact command, and give the next safe action. Report `relevant_files` only for current state files; do not direct users to `implementation-output.md` unless a fresh `ready` or `ready_with_warnings` JSON says implementation is allowed and the handoff file exists.
+
 ## PR Review Setup Workflow
 
 Use this workflow when the user asks for SpecGuard PR Review setup, for example `PR Review를 설정해줘` or `set up SpecGuard PR Review`.

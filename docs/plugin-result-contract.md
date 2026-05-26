@@ -135,3 +135,37 @@ Plugin consumers should handle these states without terminal output parsing:
 - `validation_failed_before_review`
 
 The first three states come from a fresh `readiness-review.json`. The last two are derived from file presence and mtimes around the CLI invocation.
+
+## Plugin Run State Resolution
+
+Plugin workflows should resolve run state in this order:
+
+1. Preflight failures: `missing_cli`, `missing_spec_package`, or `missing_provider_for_llm`.
+2. Command timeout: `timeout`.
+3. Missing fresh readiness JSON after a run: `validation_failed_before_review`.
+4. Source/report mismatch from the stale check above: `stale_review`.
+5. Fresh readiness JSON states: `ready`, `ready_with_warnings`, or `not_ready`.
+6. Any other non-zero CLI exit that is not represented by a fresh `not_ready` report or known pre-review state: `cli_execution_failed`.
+
+The run state payload should include:
+
+- `state`: the plugin-facing state.
+- `command`: the exact command attempted.
+- `known_files`: generated SpecGuard files that exist, even when they are stale or incomplete.
+- `relevant_files`: generated SpecGuard files that are current and relevant to the resolved state.
+- `next_action`: the safest user action after the state is resolved.
+
+For `timeout` and `cli_execution_failed`, include the attempted command, known generated files, and a next safe action. Do not point to `implementation-output.md` unless the run resolved to `ready` or `ready_with_warnings`, the JSON has `readiness.implementation_ready: true`, and the file exists.
+
+| State | Trigger | Relevant files |
+| --- | --- | --- |
+| `ready` | Fresh JSON has `readiness.status: "ready"`. | `readiness-review.json`, `readiness-review.md` when present, and `implementation-output.md` only when handoff is available. |
+| `ready_with_warnings` | Fresh JSON has `readiness.status: "ready_with_warnings"`. | Same as `ready`; also show warning findings from `issues[]`. |
+| `not_ready` | Fresh JSON has `readiness.status: "not_ready"` or `blocked: true`. | `readiness-review.json` and `readiness-review.md` when present. Never use `implementation-output.md` as current handoff. |
+| `stale_review` | Current authored source files differ from `input.artifacts[]`, or a current source file is newer than the JSON report. | No current result files. Existing generated files are known files only. |
+| `validation_failed_before_review` | The CLI exits before a fresh readiness JSON exists or updates. | No current result files. Existing generated files are known files only. |
+| `missing_cli` | Neither `specguard --help` nor the source checkout fallback works. | None. |
+| `missing_spec_package` | No package directory with `spec.md` is available. | Existing generated files are known files only, if any. |
+| `missing_provider_for_llm` | Provider-backed review was explicitly requested but `specguard auth status` is not usable. | Existing generated files are known files only, if any. |
+| `timeout` | The active CLI command exceeds the configured timeout. | Existing generated files are known files only until a fresh run completes. |
+| `cli_execution_failed` | The CLI exits non-zero for a reason not covered by the states above. | Existing generated files are known files only until a fresh run completes. |
