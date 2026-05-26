@@ -9,9 +9,12 @@ import pytest
 
 from tools.post_run import (
     build_plugin_readiness_summary,
+    build_plugin_rerun_guidance,
     derive_plugin_run_state,
     readiness_report_stale_reason,
     render_plugin_readiness_summary,
+    render_plugin_rerun_guidance,
+    render_plugin_rerun_result,
 )
 from tools.runner import run_pipeline
 
@@ -47,6 +50,21 @@ def _load_fixture(name: str) -> dict[str, object]:
 def _write_review_sources(feature: Path) -> None:
     for name in ("discovery.md", "spec.md", "technical-design.md"):
         feature.joinpath(name).write_text(f"# {name}\n", encoding="utf-8")
+
+
+def _with_current_review_input(payload: dict[str, object]) -> dict[str, object]:
+    cloned = json.loads(json.dumps(payload))
+    artifacts = [
+        {"path": "discovery.md", "characters": 20},
+        {"path": "spec.md", "characters": 20},
+        {"path": "technical-design.md", "characters": 20},
+    ]
+    cloned["input"] = {
+        "artifact_count": len(artifacts),
+        "total_characters": sum(artifact["characters"] for artifact in artifacts),
+        "artifacts": artifacts,
+    }
+    return cloned
 
 
 def _is_generated_source_path(path: str) -> bool:
@@ -232,6 +250,69 @@ def test_plugin_readiness_summary_covers_ready_state_with_report_paths(tmp_path:
     assert "readiness-review.json" in rendered
     assert "readiness-review.md" in rendered
     assert "implementation-output.md" in rendered
+
+
+def test_plugin_rerun_guidance_marks_edited_source_report_as_suggestions_only(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    _write_review_sources(feature)
+    payload = _with_current_review_input(_load_fixture("not-ready.json"))
+    feature.joinpath("readiness-review.json").write_text(json.dumps(payload), encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Previous Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Old handoff\n", encoding="utf-8")
+
+    older = time.time() - 200
+    report_time = time.time() - 100
+    for name in ("discovery.md", "spec.md", "technical-design.md"):
+        os.utime(feature / name, (older, older))
+    os.utime(feature / "readiness-review.json", (report_time, report_time))
+    feature.joinpath("spec.md").write_text("# spec.md\n\nEdited by the user.\n", encoding="utf-8")
+
+    guidance = build_plugin_rerun_guidance(feature, limit=1)
+    rendered = render_plugin_rerun_guidance(feature, limit=1)
+
+    assert guidance.state == "stale_review"
+    assert guidance.stale_reason is not None
+    assert "spec.md" in guidance.stale_reason
+    assert "specguard run" in guidance.command
+    assert "readiness-review.json" in "\n".join(guidance.previous_report_files)
+    assert not any(path.endswith("implementation-output.md") for path in guidance.previous_report_files)
+    assert len(guidance.suggestions) == 1
+    assert guidance.suggestions[0].finding
+    assert "Needs user decision" in guidance.suggestions[0].scope_check
+    assert "implementation input" in guidance.suggestions[0].scope_check
+    assert "suggestion only" in rendered
+    assert "Old handoff" not in rendered
+
+
+def test_plugin_rerun_result_reports_fresh_ready_result_after_successful_rerun(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    _write_review_sources(feature)
+    payload = _with_current_review_input(_load_fixture("ready.json"))
+    feature.joinpath("readiness-review.json").write_text(json.dumps(payload), encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Fresh Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Fresh Handoff\n", encoding="utf-8")
+
+    older = time.time() - 200
+    fresh = time.time()
+    for name in ("discovery.md", "spec.md", "technical-design.md"):
+        os.utime(feature / name, (older, older))
+    os.utime(feature / "readiness-review.json", (fresh, fresh))
+
+    rendered = render_plugin_rerun_result(feature, returncode=0)
+    guidance = build_plugin_rerun_guidance(feature)
+
+    assert guidance.state == "ready"
+    assert "- state: ready" in rendered
+    assert "- fresh result: ready" in rendered
+    assert "- status: ready" in rendered
+    assert "- findings: Critical 0" in rendered
+    assert "readiness-review.json" in rendered
+    assert "readiness-review.md" in rendered
+    assert "implementation-output.md" in rendered
+    assert "Use implementation-output.md" in rendered
+    assert "stale_review" not in rendered
 
 
 def test_plugin_result_contract_stale_review_is_derived_from_source_mtime(tmp_path: Path) -> None:

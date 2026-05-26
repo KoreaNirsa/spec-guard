@@ -65,6 +65,8 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 12. Report readiness status, review level, Critical/Major/Minor finding counts, top findings by severity and title, report paths, handoff availability, and next action.
 13. For `not_ready`, summarize Critical findings first and propose scoped edits using the suggestion-only spec refinement format. Do not apply the edits automatically.
 14. For `ready` or `ready_with_warnings`, summarize warnings and direct implementation work to the generated handoff only when `implementation-output.md` exists.
+15. If authored spec artifacts changed after the last report, report `stale_review`, restate previous findings and suggested clarifications as suggestions only, mark unclear behavior as `Needs user decision`, and ask the user to rerun `specguard run <path> --no-llm --no-follow-up`.
+16. After the rerun completes, report only the fresh readiness result as current: ready, ready with warnings, or still blocked.
 
 ## Failure Categories
 
@@ -77,6 +79,19 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 - `cli_execution_failed`: the CLI exits non-zero for a reason that is not represented by a fresh `not_ready` report or a known pre-review state.
 
 For `timeout` and `cli_execution_failed`, report `known_files` as diagnostics only, include the exact command, and give the next safe action. Report `relevant_files` only for current state files; do not direct users to `implementation-output.md` unless a fresh `ready` or `ready_with_warnings` JSON says implementation is allowed and the handoff file exists.
+
+## Guided Rerun Loop
+
+Use this loop after a user edits `spec.md`, `technical-design.md`, or another authored Markdown artifact:
+
+1. Recheck stale status using the Plugin Result Contract before using any previous report.
+2. If the report is stale, do not present it as the current readiness result.
+3. Restate previous findings by severity and title, and show previous `fix` text only as a suggested clarification.
+4. For unclear product behavior, say `Needs user decision` instead of inventing fields, states, ownership, error behavior, or acceptance criteria.
+5. Tell the user that suggestions are not implementation input until the user updates the spec package and SpecGuard runs again.
+6. Rerun `specguard run <path> --no-llm --no-follow-up` after the user updates the spec package.
+7. Read the fresh `readiness-review.json` and report current status, finding counts, current report paths, handoff availability, and next action.
+8. If the fresh result is `not_ready`, report it as still blocked and continue using the suggestion-only refinement boundary.
 
 ## PR Review Setup Workflow
 

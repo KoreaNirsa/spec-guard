@@ -58,6 +58,8 @@ Report generated files in two groups: `known_files` are files that exist for dia
 
 Keep the concise summary separate from full finding prose. Use the Markdown and JSON report paths for detailed descriptions, impacts, fixes, and evidence instead of coupling the plugin UX to exact finding text.
 
+When authored spec artifacts change after a report was generated, treat the report as `stale_review`. Restate previous findings and suggested clarifications as suggestions only, mark unclear product behavior as `Needs user decision`, and ask the user to rerun `specguard run <package> --no-llm --no-follow-up`. After rerun, report only the fresh readiness result as the current status, including finding counts, current report paths, handoff availability, and next action.
+
 Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
 
 ## PR Review Setup
