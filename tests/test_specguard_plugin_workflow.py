@@ -12,6 +12,8 @@ README_PATH = ROOT / "plugins" / "specguard" / "README.md"
 CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
 CODEX_PLUGIN_ROADMAP_PATH = ROOT / "docs" / "codex-plugin-hardening-roadmap.md"
 CODEX_PLUGIN_GRILL_LOOP_DOC_PATH = ROOT / "docs" / "cli-grill-me-loop.md"
+PR_REVIEW_KOREAN_EXAMPLE = "PR Review를 설정해줘"
+ENCODING_ARTIFACT_MARKERS = ("PR Review瑜", "ㅼ젙", "댁쨾", "\ufffd", "Ã", "Â")
 
 
 def _assert_contains_all(text: str, required: tuple[str, ...]) -> None:
@@ -238,6 +240,15 @@ def test_specguard_plugin_docs_cover_pr_review_setup_boundaries() -> None:
             ("manual", "GitHub Settings"),
         ),
     )
+
+
+def test_specguard_plugin_docs_keep_pr_review_korean_example_readable() -> None:
+    for path in (SKILL_PATH, README_PATH, CODEX_PLUGIN_DOC_PATH):
+        text = path.read_text(encoding="utf-8")
+
+        assert PR_REVIEW_KOREAN_EXAMPLE in text
+        artifacts = [marker for marker in ENCODING_ARTIFACT_MARKERS if marker in text]
+        assert not artifacts, f"{path} contains encoding artifacts: {artifacts}"
 
 
 def test_root_readme_documents_plugin_quickstart_steps() -> None:
