@@ -328,9 +328,9 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
     for scenario in (
         "missing `specguard` CLI",
         "missing spec package",
-        "existing spec package reaches `READY`",
-        "existing spec package is `NOT_READY` with Critical findings",
-        "`READY_WITH_WARNINGS` handoff guidance",
+        "existing spec package reaches `ready`",
+        "existing spec package is `not_ready` with Critical findings",
+        "`ready_with_warnings` handoff guidance",
         "stale readiness report",
         "validation failure before review",
         "optional detail review requested without provider setup",
