@@ -756,6 +756,29 @@ def write_feature(
     return feature
 
 
+def test_run_pipeline_discovers_single_nested_specs_package(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path / "services" / "api" / "specs")
+
+    result = run_pipeline(tmp_path)
+
+    assert result.ok
+    assert feature.joinpath("readiness-review.json").exists()
+
+
+def test_run_pipeline_requires_explicit_path_for_multiple_discovered_packages(tmp_path: Path) -> None:
+    root_feature = write_feature(tmp_path / "specs")
+    nested_feature = write_feature(tmp_path / "services" / "api" / "specs")
+
+    result = run_pipeline(tmp_path)
+
+    assert not result.ok
+    assert any("Multiple SpecGuard spec packages found" in message for message in result.messages)
+    assert any(str(root_feature) in message for message in result.messages)
+    assert any(str(nested_feature) in message for message in result.messages)
+    assert not root_feature.joinpath("readiness-review.json").exists()
+    assert not nested_feature.joinpath("readiness-review.json").exists()
+
+
 def test_example_passes_and_emits_readiness_json(tmp_path: Path) -> None:
     feature = copy_example(tmp_path, "example")
 

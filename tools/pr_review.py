@@ -15,6 +15,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.llm_client import LLMConfigError, LLMRequestError, build_llm_client
 from tools.post_run import readiness_report_stale_reason
 from tools.readiness_engine import review_artifact_paths
+from tools.spec_packages import (
+    DEFAULT_SPEC_ROOTS,
+    feature_dir_for_changed_path,
+    normalize_changed_path,
+    spec_root_prefixes_for_changed_path,
+)
 
 
 COMMENT_MARKER_PREFIX = "specguard-pr-review"
@@ -57,14 +63,18 @@ def discover_spec_packages(spec_root: Path, diff_text: str, explicit: str | None
     if explicit:
         return [Path(item.strip()) for item in explicit.split(",") if item.strip()]
 
+    repo_root = _repo_root_for_spec_root(spec_root)
+    spec_roots = _spec_roots_for_discovery(spec_root)
     packages: set[Path] = set()
     for path_text in _diff_paths(diff_text):
-        path = Path(path_text)
-        parts = path.parts
-        if len(parts) >= 2 and parts[0] == spec_root.name:
-            candidate = spec_root / parts[1]
+        relative = normalize_changed_path(path_text)
+        if relative is None:
+            continue
+        for spec_root_parts in spec_root_prefixes_for_changed_path(relative, spec_roots):
+            candidate = feature_dir_for_changed_path(repo_root, relative, spec_root_parts)
             if (candidate / "spec.md").exists():
                 packages.add(candidate)
+            break
     return sorted(packages)
 
 
@@ -264,6 +274,18 @@ def _diff_paths(diff_text: str) -> list[str]:
         elif line.startswith("--- a/"):
             paths.append(line.removeprefix("--- a/"))
     return [path for path in paths if path != "/dev/null"]
+
+
+def _repo_root_for_spec_root(spec_root: Path) -> Path:
+    if spec_root.is_absolute() and spec_root.name == "specs":
+        return spec_root.parent
+    return Path.cwd()
+
+
+def _spec_roots_for_discovery(spec_root: Path) -> tuple[str, ...]:
+    if spec_root == Path("specs") or (spec_root.is_absolute() and spec_root.name == "specs"):
+        return DEFAULT_SPEC_ROOTS
+    return (spec_root.as_posix(),)
 
 
 def _compact(text: str, max_chars: int) -> str:

@@ -112,6 +112,8 @@ specs/my-feature/checklists/spec-readiness.md
 
 These are human-owned artifacts. SpecGuard can draft them, but it should not replace product or engineering judgment.
 
+Spec package discovery supports both root and nested `specs` directories. A package is resolved from `**/specs/<feature>/spec.md`, so a repository can keep packages at `specs/my-feature/` or inside a subproject such as `services/api/specs/my-feature/`.
+
 The CLI intentionally reminds the user to review and strengthen the generated spec before continuing. The next command should be run only after the spec has been checked and edited.
 
 ### Optional: Try The Authored Example Package
@@ -158,6 +160,10 @@ SpecGuard then performs:
 ```text
 Technical Design -> SpecGuard Review -> Test -> Contract -> Implementation Handoff
 ```
+
+When `specguard run` receives an explicit package path that contains `spec.md`, it uses that package. When it receives a repository tree or `specs` root, it searches non-excluded `**/specs/*/spec.md` candidates. Exactly one candidate is selected deterministically. Multiple candidates are listed and require rerunning with one explicit package path.
+
+Discovery excludes hidden directories plus dependency, build, and generated directories before looking for `specs` roots. The excluded directory names include `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 
 Each run records per-feature stage timings for validation, design generation, SpecGuard Review, test generation, contract work, and implementation handoff. The readiness report also records artifact count and total review input characters so slow reviews can be tied to concrete input size without logging secret values or artifact contents.
 
@@ -318,7 +324,7 @@ develop/fastapi/
 
 ## 6. Pull Request Gates And Advisory Review
 
-`specguard init` installs the `SpecGuard Readiness Gate` workflow by default. The gate runs on pull requests, checks changed packages under `specs/`, and fails when the package is not READY or when `readiness-review.json` is stale relative to source spec artifacts.
+`specguard init` installs the `SpecGuard Readiness Gate` workflow by default. The gate runs on pull requests, checks changed packages under root or nested `specs/` directories, and fails when the package is not READY or when `readiness-review.json` is stale relative to source spec artifacts.
 
 For merge-time enforcement, add `SpecGuard Readiness Gate` as a required status check in GitHub branch protection or rulesets.
 
@@ -343,7 +349,7 @@ SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
 SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name
 ```
 
-Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only files under `develop/` and does not modify files under `specs/`.
+Use `SPECGUARD_REVIEW_SPEC_PATHS` when an implementation PR changes only files under `develop/` and does not modify files under a root or nested `specs/` package.
 
 The workflow:
 

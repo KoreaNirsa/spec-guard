@@ -110,6 +110,31 @@ def test_changed_feature_dirs_discovers_changed_spec_packages(tmp_path: Path) ->
     assert feature_dirs == [feature]
 
 
+def test_changed_feature_dirs_discovers_nested_specs_packages(tmp_path: Path) -> None:
+    feature = write_ready_feature(tmp_path / "services" / "billing")
+
+    feature_dirs = changed_feature_dirs(
+        [
+            "services/billing/specs/billing-export/spec.md",
+            "services/billing/specs/billing-export/readiness-review.json",
+        ],
+        tmp_path,
+    )
+
+    assert feature_dirs == [feature]
+
+
+def test_changed_feature_dirs_ignores_excluded_specs_directories(tmp_path: Path) -> None:
+    write_ready_feature(tmp_path / "node_modules" / "dependency")
+
+    feature_dirs = changed_feature_dirs(
+        ["node_modules/dependency/specs/billing-export/spec.md"],
+        tmp_path,
+    )
+
+    assert feature_dirs == []
+
+
 def test_readiness_gate_passes_when_no_spec_package_changed(tmp_path: Path) -> None:
     ok, results = run_readiness_gate(["README.md", "docs/workflow.md"], tmp_path)
 

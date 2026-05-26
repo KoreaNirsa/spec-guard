@@ -4,7 +4,7 @@ from argparse import Namespace
 import json
 from pathlib import Path
 
-from tools.pr_review import build_review_context, render_comment, render_prompt, run_review
+from tools.pr_review import build_review_context, discover_spec_packages, render_comment, render_prompt, run_review
 
 
 def write_ready_spec_package(tmp_path: Path, *, blocked: bool = False) -> Path:
@@ -100,6 +100,22 @@ def test_pr_review_blocks_not_ready_specs_without_invoking_codex(tmp_path: Path)
     assert result.status == "blocked"
     assert "Codex was not invoked" in result.body
     assert "SpecGuard readiness is NOT READY" in result.body
+
+
+def test_pr_review_discovers_nested_specs_package_from_diff(tmp_path: Path) -> None:
+    feature = write_ready_spec_package(tmp_path / "services" / "api")
+    diff = "\n".join([
+        "diff --git a/services/api/specs/feature/spec.md b/services/api/specs/feature/spec.md",
+        "--- a/services/api/specs/feature/spec.md",
+        "+++ b/services/api/specs/feature/spec.md",
+        "@@ -1 +1 @@",
+        "+changed",
+        "",
+    ])
+
+    packages = discover_spec_packages(tmp_path / "specs", diff)
+
+    assert packages == [feature]
 
 
 def test_pr_review_prompt_uses_specguard_reviewer_persona(tmp_path: Path) -> None:
