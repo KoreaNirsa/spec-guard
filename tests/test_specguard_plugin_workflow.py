@@ -109,6 +109,35 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
     )
 
 
+def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:
+    contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+    combined = "\n".join((contract, guide, readme, skill))
+
+    _assert_contains_all(
+        contract,
+        (
+            "## Plugin Readiness Summary UX",
+            "readiness status from `readiness.status`",
+            "review level from `review_level`",
+            "Critical, Major, and Minor counts from `summary`",
+            "top findings using each issue's `severity` and `title`",
+            "`implementation-output.md` only when handoff is available",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        combined,
+        (
+            ("stable", "readiness JSON fields"),
+            ("Critical", "first", "not_ready"),
+            ("ready_with_warnings", "implementation-output.md", "exists"),
+            ("full", "reports", "detailed", "finding", "prose"),
+        ),
+    )
+
+
 def test_specguard_plugin_skill_documents_pr_review_setup_workflow() -> None:
     skill = SKILL_PATH.read_text(encoding="utf-8")
 

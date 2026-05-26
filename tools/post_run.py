@@ -60,6 +60,20 @@ class PluginRunState:
 
 
 @dataclass(frozen=True)
+class PluginReadinessSummary:
+    feature_dir: str
+    status: str
+    review_level: str
+    critical: int
+    major: int
+    minor: int
+    handoff_available: bool
+    top_findings: tuple[str, ...] = ()
+    report_files: tuple[str, ...] = ()
+    next_action: str = ""
+
+
+@dataclass(frozen=True)
 class SpecRevisionSoftening:
     revised_spec: str
     demoted_items: tuple[str, ...] = ()
@@ -141,6 +155,56 @@ def render_readiness_summary(feature_dir: Path, report: dict[str, Any], *, limit
         ])
     if len(issues) > limit:
         lines.append(f"- ... {len(issues) - limit} more issue(s)")
+    return "\n".join(lines)
+
+
+def build_plugin_readiness_summary(
+    feature_dir: Path,
+    report: dict[str, Any],
+    *,
+    limit: int = 3,
+) -> PluginReadinessSummary:
+    summary = report.get("summary", {})
+    if not isinstance(summary, dict):
+        summary = {}
+
+    status = _readiness_status(report)
+    handoff_available = _implementation_handoff_available(feature_dir, report)
+    return PluginReadinessSummary(
+        feature_dir=feature_dir.as_posix(),
+        status=status,
+        review_level=str(report.get("review_level") or "unknown"),
+        critical=_summary_count(summary, "critical"),
+        major=_summary_count(summary, "major"),
+        minor=_summary_count(summary, "minor"),
+        handoff_available=handoff_available,
+        top_findings=_plugin_top_findings(report, status=status, limit=limit),
+        report_files=_plugin_summary_report_files(feature_dir, handoff_available=handoff_available),
+        next_action=_plugin_next_action(feature_dir, status, report),
+    )
+
+
+def render_plugin_readiness_summary(feature_dir: Path, report: dict[str, Any], *, limit: int = 3) -> str:
+    summary = build_plugin_readiness_summary(feature_dir, report, limit=limit)
+    lines = [
+        summary.feature_dir,
+        f"- status: {summary.status}",
+        f"- review level: {summary.review_level}",
+        f"- findings: Critical {summary.critical}, Major {summary.major}, Minor {summary.minor}",
+        f"- handoff available: {'yes' if summary.handoff_available else 'no'}",
+    ]
+    if summary.top_findings:
+        lines.append("- top findings:")
+        lines.extend(f"  - {finding}" for finding in summary.top_findings)
+    else:
+        lines.append("- top findings: none")
+
+    lines.append("- reports:")
+    if summary.report_files:
+        lines.extend(f"  - {path}" for path in summary.report_files)
+    else:
+        lines.append("  - none")
+    lines.append(f"- next action: {summary.next_action}")
     return "\n".join(lines)
 
 
@@ -326,14 +390,62 @@ def _readiness_status(report: dict[str, Any]) -> str:
     return str(status or "unknown")
 
 
+def _summary_count(summary: dict[str, Any], key: str) -> int:
+    value = summary.get(key, 0)
+    return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def _plugin_top_findings(report: dict[str, Any], *, status: str, limit: int) -> tuple[str, ...]:
+    raw_issues = report.get("issues", [])
+    if not isinstance(raw_issues, list) or limit <= 0:
+        return ()
+
+    issues = [(index, issue) for index, issue in enumerate(raw_issues) if isinstance(issue, dict)]
+    if status == "not_ready":
+        critical = [(index, issue) for index, issue in issues if issue.get("severity") == "Critical"]
+        non_critical = [(index, issue) for index, issue in issues if issue.get("severity") != "Critical"]
+        ordered = critical + non_critical
+    else:
+        severity_rank = {"Critical": 0, "Major": 1, "Minor": 2}
+        ordered = sorted(
+            issues,
+            key=lambda item: (severity_rank.get(str(item[1].get("severity")), 9), item[0]),
+        )
+    return tuple(_plugin_finding_title(issue) for _, issue in ordered[:limit])
+
+
+def _plugin_finding_title(issue: dict[str, Any]) -> str:
+    severity = str(issue.get("severity") or "Unknown")
+    title = str(issue.get("title") or "Untitled issue")
+    return f"[{severity}] {title}"
+
+
+def _implementation_handoff_available(feature_dir: Path, report: dict[str, Any]) -> bool:
+    readiness = report.get("readiness", {})
+    implementation_ready = isinstance(readiness, dict) and readiness.get("implementation_ready") is True
+    return (
+        _readiness_status(report) in {"ready", "ready_with_warnings"}
+        and implementation_ready
+        and (feature_dir / "implementation-output.md").exists()
+    )
+
+
+def _plugin_summary_report_files(feature_dir: Path, *, handoff_available: bool) -> tuple[str, ...]:
+    files = [
+        feature_dir / "readiness-review.json",
+        feature_dir / "readiness-review.md",
+    ]
+    if handoff_available:
+        files.append(feature_dir / "implementation-output.md")
+    return tuple(path.as_posix() for path in files if path.exists())
+
+
 def _relevant_plugin_files(feature_dir: Path, report: dict[str, Any]) -> tuple[str, ...]:
     files = [
         feature_dir / "readiness-review.json",
         feature_dir / "readiness-review.md",
     ]
-    readiness = report.get("readiness", {})
-    implementation_ready = isinstance(readiness, dict) and readiness.get("implementation_ready") is True
-    if _readiness_status(report) in {"ready", "ready_with_warnings"} and implementation_ready:
+    if _implementation_handoff_available(feature_dir, report):
         files.append(feature_dir / "implementation-output.md")
     return tuple(path.as_posix() for path in files if path.exists())
 
@@ -341,11 +453,12 @@ def _relevant_plugin_files(feature_dir: Path, report: dict[str, Any]) -> tuple[s
 def _plugin_next_action(feature_dir: Path, state: str, report: dict[str, Any]) -> str:
     if state == "not_ready":
         return "Fix the Critical readiness findings in the spec package, then rerun SpecGuard."
-    if state in {"ready", "ready_with_warnings"}:
-        readiness = report.get("readiness", {})
-        implementation_ready = isinstance(readiness, dict) and readiness.get("implementation_ready") is True
-        handoff_path = feature_dir / "implementation-output.md"
-        if implementation_ready and handoff_path.exists():
+    if state == "ready_with_warnings":
+        if _implementation_handoff_available(feature_dir, report):
+            return "Implementation may proceed with warnings; use implementation-output.md as the implementation handoff."
+        return "Rerun the full SpecGuard pipeline so implementation-output.md is generated before implementation starts."
+    if state == "ready":
+        if _implementation_handoff_available(feature_dir, report):
             return "Use implementation-output.md as the implementation handoff."
         return "Rerun the full SpecGuard pipeline so implementation-output.md is generated before implementation starts."
     return "Rerun SpecGuard after correcting the reported recovery state."

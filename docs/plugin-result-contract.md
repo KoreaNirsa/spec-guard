@@ -57,6 +57,25 @@ handoff_available =
 
 If the report is ready but `implementation-output.md` is missing, the plugin should tell the user to rerun the full `specguard run <package>` pipeline. This can happen when a readiness review was run without completing the implementation handoff stage.
 
+## Plugin Readiness Summary UX
+
+Plugin-facing summaries should be concise and generated only from stable readiness JSON fields plus generated file existence. They should not parse terminal output or depend on exact prose inside finding descriptions.
+
+A summary should include:
+
+- readiness status from `readiness.status`
+- review level from `review_level`
+- Critical, Major, and Minor counts from `summary`
+- handoff availability from the derived rule above
+- top findings using each issue's `severity` and `title`
+- report references for `readiness-review.json` and `readiness-review.md` when present
+- `implementation-output.md` only when handoff is available
+- a next action derived from the resolved readiness state
+
+For `not_ready`, show Critical findings first even when the JSON issue order includes other severities first. For `ready_with_warnings`, explain that implementation may proceed only when `implementation-output.md` exists and the JSON has `readiness.implementation_ready: true`; otherwise tell the user to rerun the full pipeline before implementation starts.
+
+The full Markdown and JSON reports remain the source for detailed finding prose, impacts, fixes, and evidence. Plugin tests should assert the summary fields and ordering rules, not full-prose snapshots of individual findings.
+
 ## Validation Failure vs Readiness Failure
 
 A readiness failure has a fresh `readiness-review.json` with `readiness.status: "not_ready"`. In that case, the plugin should read `summary` and `issues[]`.
