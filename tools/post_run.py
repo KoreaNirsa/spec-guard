@@ -11,6 +11,7 @@ from typing import Any
 from tools.progress import progress_activity
 from tools.readiness_engine import review_artifact_paths
 from tools.result import CheckResult
+from tools.spec_packages import discover_spec_packages
 
 
 SPECGUARD_STATE_DIR = ".specguard"
@@ -128,11 +129,7 @@ _STOPWORDS = {
 
 
 def feature_dirs(path: Path) -> list[Path]:
-    if (path / "spec.md").exists():
-        return [path]
-    if path.is_dir():
-        return sorted({spec.parent for spec in path.rglob("spec.md")})
-    return []
+    return discover_spec_packages(path)
 
 
 def load_readiness_report(feature_dir: Path) -> dict[str, Any] | None:

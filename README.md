@@ -24,7 +24,7 @@ The demo follows this flow:
 5. Fix the weak areas directly, or ask an AI assistant to strengthen the spec by giving it the SpecGuard Review findings.
 6. Run SpecGuard Review again and confirm it reaches READY or READY_WITH_WARNINGS before implementation handoff.
 
-Step 2 is for testing the example package. In real development, write your own product spec under `specs/<your-feature-name>/` instead of relying on the example package.
+Step 2 is for testing the example package. In real development, write your own product spec under `specs/<your-feature-name>/` or a nested module's `specs/<your-feature-name>/` instead of relying on the example package.
 
 After your real spec passes, give `implementation-output.md` to your AI coding agent to start spec-based implementation.
 
@@ -113,6 +113,14 @@ specguard run specs/your-feature-name
 ```
 
 Write or replace the draft spec under `specs/your-feature-name/`. If you want to test with the packaged sample first, copy the example spec with `specguard example copy your-feature-name --force`, then run SpecGuard.
+
+## Spec Package Resolution
+
+SpecGuard resolves packages from directories shaped as `**/specs/<feature>/spec.md`. The root `specs/<feature>/` layout remains supported, and nested module layouts such as `services/api/specs/<feature>/` are supported for repositories with subprojects.
+
+When a command receives an explicit package path that contains `spec.md`, SpecGuard uses that package. When it receives a repository tree or `specs` root, it searches for candidate packages. Exactly one candidate is used deterministically. Multiple candidates are reported and require rerunning with one explicit package path so SpecGuard does not choose the wrong package.
+
+Discovery skips hidden directories and common dependency, build, and generated directories: `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 
 SpecGuard guards spec validation. When the spec is safe enough, `specguard run` exits with PASS and reports READY or READY_WITH_WARNINGS. At that point, give `implementation-output.md` to an external AI coding agent to start spec-based implementation.
 

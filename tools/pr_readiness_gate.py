@@ -9,10 +9,16 @@ from typing import Any
 
 from tools.post_run import readiness_report_stale_reason
 from tools.readiness_engine import is_review_source_artifact
+from tools.spec_packages import (
+    DEFAULT_SPEC_ROOTS,
+    feature_dir_for_changed_path,
+    normalize_changed_path,
+    spec_root_prefixes_for_changed_path,
+    starts_with,
+)
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 
 
-DEFAULT_SPEC_ROOTS = ("specs",)
 REQUIRED_READINESS_FILES = (
     "discovery.md",
     "spec.md",
@@ -44,17 +50,13 @@ def changed_feature_dirs(
     spec_roots: tuple[str, ...] = DEFAULT_SPEC_ROOTS,
 ) -> list[Path]:
     feature_dirs: set[Path] = set()
-    root_parts = [_normalize_parts(spec_root) for spec_root in spec_roots]
 
     for changed_file in changed_files:
-        relative = _normalize_changed_path(changed_file)
+        relative = normalize_changed_path(changed_file)
         if relative is None:
             continue
-        parts = relative.parts
-        for spec_root_parts in root_parts:
-            if not _starts_with(parts, spec_root_parts) or len(parts) == len(spec_root_parts):
-                continue
-            feature_dirs.add(_feature_dir_for_changed_path(repo_root, relative, spec_root_parts))
+        for spec_root_parts in spec_root_prefixes_for_changed_path(relative, spec_roots):
+            feature_dirs.add(feature_dir_for_changed_path(repo_root, relative, spec_root_parts))
             break
 
     return sorted(feature_dirs, key=lambda path: path.as_posix())
@@ -127,7 +129,11 @@ def main() -> int:
     parser.add_argument("--base-ref", help="Base git ref for changed-file detection, such as origin/main.")
     parser.add_argument("--head-ref", default="HEAD", help="Head git ref for changed-file detection.")
     parser.add_argument("--changed-file", action="append", help="Explicit changed file path. Can be repeated.")
-    parser.add_argument("--spec-root", action="append", help="Spec package root to inspect. Defaults to specs.")
+    parser.add_argument(
+        "--spec-root",
+        action="append",
+        help="Spec package root to inspect. Defaults to every non-excluded specs directory.",
+    )
     args = parser.parse_args()
 
     repo_root = Path.cwd()
@@ -155,20 +161,6 @@ def _changed_files_from_args(args: argparse.Namespace, repo_root: Path) -> list[
     if not args.base_ref:
         raise SystemExit("--base-ref is required unless --changed-file is provided.")
     return changed_files_from_git(args.base_ref, args.head_ref, cwd=repo_root)
-
-
-def _feature_dir_for_changed_path(repo_root: Path, relative: PurePosixPath, spec_root_parts: tuple[str, ...]) -> Path:
-    spec_root = repo_root.joinpath(*spec_root_parts)
-    candidate = repo_root.joinpath(*relative.parent.parts)
-    while candidate != spec_root.parent:
-        if (candidate / "spec.md").exists():
-            return candidate
-        if candidate == spec_root:
-            break
-        candidate = candidate.parent
-
-    feature_name = relative.parts[len(spec_root_parts)]
-    return spec_root / feature_name
 
 
 def _load_readiness_report(feature_dir: Path) -> dict[str, Any] | None:
@@ -224,33 +216,15 @@ def _implementation_ready(report: dict[str, Any]) -> object:
     return readiness.get("implementation_ready")
 
 
-def _normalize_changed_path(value: str) -> PurePosixPath | None:
-    normalized = value.strip().replace("\\", "/")
-    if not normalized:
-        return None
-    path = PurePosixPath(normalized)
-    if path.is_absolute() or ".." in path.parts:
-        return None
-    return path
-
-
 def _relative_changed_path(feature_relative: PurePosixPath, changed_file: str) -> PurePosixPath | None:
-    changed_path = _normalize_changed_path(changed_file)
+    changed_path = normalize_changed_path(changed_file)
     if changed_path is None:
         return None
     if changed_path == feature_relative:
         return PurePosixPath(".")
-    if not _starts_with(changed_path.parts, feature_relative.parts):
+    if not starts_with(changed_path.parts, feature_relative.parts):
         return None
     return PurePosixPath(*changed_path.parts[len(feature_relative.parts):])
-
-
-def _normalize_parts(value: str) -> tuple[str, ...]:
-    return PurePosixPath(value.strip().replace("\\", "/")).parts
-
-
-def _starts_with(parts: tuple[str, ...], prefix: tuple[str, ...]) -> bool:
-    return len(parts) >= len(prefix) and parts[:len(prefix)] == prefix
 
 
 def _display_path(path: Path, repo_root: Path) -> str:

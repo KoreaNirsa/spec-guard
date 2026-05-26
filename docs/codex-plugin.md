@@ -47,6 +47,8 @@ After adding the marketplace:
    Run SpecGuard on specs/your-feature-name.
    ```
 
+   A target project can also keep packages in nested modules, for example `services/api/specs/your-feature-name/`.
+
 Installing the plugin does not install the `specguard` CLI. Before using the plugin in a target workspace, confirm:
 
 ```bash
@@ -123,7 +125,7 @@ The checked-in repo marketplace already provides this entry through `.agents/plu
 
 ## Expected User Flow
 
-1. Create or select a spec package under `specs/<feature>/`.
+1. Create or select a spec package under `specs/<feature>/` or a nested module `specs/<feature>/`.
 2. Ask Codex to run the default SpecGuard plugin workflow.
 3. The plugin runs:
 
@@ -137,6 +139,8 @@ The checked-in repo marketplace already provides this entry through `.agents/plu
 7. After the user edits authored spec artifacts, the plugin treats the previous report as `stale_review`, restates old findings as suggestions only, and asks the user to rerun `specguard run <package> --no-llm --no-follow-up`.
 8. If the fresh rerun is `READY` or `READY_WITH_WARNINGS`, use `implementation-output.md` as the implementation handoff when it exists.
 9. After implementation, install and use SpecGuard PR Review only when the repository wants the advisory pull request workflow.
+
+Package resolution follows the CLI rule: use an explicit path when it contains `spec.md`; otherwise search non-excluded `**/specs/*/spec.md` candidates. Exactly one candidate can be used automatically. Multiple candidates must be listed for the user and require an explicit package path. Candidate discovery skips hidden, dependency, build, and generated directories, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 
 ## Architecture
 
@@ -234,7 +238,7 @@ When GitHub integration or `gh` authentication is unavailable, stop before secre
 | Scenario | Plugin action | Expected result |
 | --- | --- | --- |
 | missing `specguard` CLI | Run `specguard --help`, then source fallback `python -m cli.specguard --help` when in this checkout. | Report `missing_cli` and ask the user to install SpecGuard or run from a source checkout. |
-| missing spec package | Resolve the user path, current directory, or `specs/*/spec.md` candidates before running the CLI. | Report `missing_spec_package` and ask for a package directory that contains `spec.md`. |
+| missing spec package | Resolve the user path, current directory, or non-excluded `**/specs/*/spec.md` candidates before running the CLI. | Report `missing_spec_package` and ask for a package directory that contains `spec.md`. |
 | existing spec package reaches `ready` | Run the default heuristic gate and read structured result files. | Report `ready`, finding counts, report paths, and `implementation-output.md` when present. |
 | existing spec package is `not_ready` with Critical findings | Read `readiness-review.json` and `readiness-review.md`. | Summarize Critical findings first by severity and title, link to full reports, and provide suggestion-only spec refinement proposals without editing files. |
 | `ready_with_warnings` handoff guidance | Read structured result files and check handoff availability. | Report warnings, explain implementation is allowed only when `implementation-output.md` exists, and point to that file when present. |

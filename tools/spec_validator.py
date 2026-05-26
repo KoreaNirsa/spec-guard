@@ -7,6 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.result import CheckResult
+from tools.spec_packages import SpecPackageResolution, resolve_spec_packages
 
 
 SPEC_REQUIRED_SECTIONS = {
@@ -112,24 +113,28 @@ def _validate_doc(path: Path, sections: dict[str, str], result: CheckResult) -> 
             result.add_error(f"{path} section still contains placeholder text: {label}")
 
 
-def _feature_dirs(path: Path) -> list[Path]:
-    if (path / "spec.md").exists():
-        return [path]
-    if path.is_dir():
-        return sorted({spec.parent for spec in path.rglob("spec.md")})
-    return [path]
+def _add_resolution_error(result: CheckResult, resolution: SpecPackageResolution) -> None:
+    path = resolution.requested_path
+    if resolution.ambiguous:
+        result.add_error(f"Multiple SpecGuard spec packages found under: {path}")
+        for candidate in resolution.packages:
+            result.add_error(f"Candidate package: {candidate}")
+        result.add_next_step("Run validation with one explicit package path.")
+        return
+
+    if not path.exists():
+        result.add_error(f"Path does not exist: {path}")
+        return
+
+    result.add_error(f"No feature specs found in: {path}")
 
 
 def _validate_path(path: Path, result: CheckResult) -> list[Path]:
-    if not path.exists():
-        result.add_error(f"Path does not exist: {path}")
+    resolution = resolve_spec_packages(path)
+    if not resolution.packages or resolution.ambiguous:
+        _add_resolution_error(result, resolution)
         return []
-
-    feature_dirs = _feature_dirs(path)
-    if not feature_dirs:
-        result.add_error(f"No feature specs found in: {path}")
-        return []
-    return feature_dirs
+    return list(resolution.packages)
 
 
 def _validate_spec_file(feature_dir: Path, result: CheckResult) -> None:
@@ -215,7 +220,7 @@ def validate_feature(path: Path) -> CheckResult:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("path", nargs="?", default="specs")
+    parser.add_argument("path", nargs="?", default=".")
     args = parser.parse_args()
     result = validate_feature(Path(args.path))
     result.print()
