@@ -21,11 +21,12 @@ from tools.readiness_engine import run_readiness_review
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PACKAGED_EXAMPLE = ROOT / "tools" / "resources" / "example"
 
 
 def _copy_blocked_example(tmp_path: Path) -> Path:
     feature = tmp_path / "specs" / "todo-privacy"
-    shutil.copytree(ROOT / "example", feature)
+    shutil.copytree(PACKAGED_EXAMPLE, feature)
     return feature
 
 
