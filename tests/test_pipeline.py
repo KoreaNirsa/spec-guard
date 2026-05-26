@@ -49,6 +49,7 @@ from cli.specguard import _progress_line, _should_offer_follow_up
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PACKAGED_EXAMPLE = ROOT / "tools" / "resources" / "example"
 
 
 class FakeLLM:
@@ -617,10 +618,6 @@ def copy_example(tmp_path: Path, example: str) -> Path:
     return target
 
 
-def _relative_files(root: Path) -> list[Path]:
-    return sorted(path.relative_to(root) for path in root.rglob("*") if path.is_file())
-
-
 def read_handoff_metadata(feature: Path) -> dict:
     text = feature.joinpath("implementation-output.md").read_text(encoding="utf-8")
     start = text.index("```json") + len("```json")
@@ -831,19 +828,9 @@ def test_blocked_pipeline_does_not_recommend_ai_implementation(tmp_path: Path) -
     assert not any("Hand this approved guide" in step for step in result.next_steps)
 
 
-def test_root_example_matches_packaged_example_resource() -> None:
-    root_example = ROOT / "example"
-    packaged_example = ROOT / "tools" / "resources" / "example"
-    relative_files = _relative_files(root_example)
-
-    assert relative_files == _relative_files(packaged_example)
-    for relative_path in relative_files:
-        assert root_example.joinpath(relative_path).read_bytes() == packaged_example.joinpath(relative_path).read_bytes()
-
-
 def test_vulnerable_authored_example_specs_are_not_ready(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "todo-privacy"
-    shutil.copytree(ROOT / "example", feature)
+    shutil.copytree(PACKAGED_EXAMPLE, feature)
 
     result = run_pipeline(feature)
 
@@ -957,7 +944,7 @@ def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
 
 def test_cli_run_smoke_blocks_vulnerable_authored_example_specs(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "todo-privacy"
-    shutil.copytree(ROOT / "example", feature)
+    shutil.copytree(PACKAGED_EXAMPLE, feature)
 
     completed = run_cli_smoke(
         tmp_path,
