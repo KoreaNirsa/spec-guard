@@ -17,8 +17,7 @@ Supported entrypoints:
 
 ## Retained Assets
 
-- `example/`: source-controlled authored example package retained for reviewability and as the maintenance source that should stay synchronized with `tools/resources/example/`.
-- `tools/resources/example/`: packaged resource used by `specguard example copy` after `pip install spec-guard`.
+- `tools/resources/example/`: source-controlled authored example package and packaged resource used by `specguard example copy` after `pip install spec-guard`.
 - `tools/resources/workflows/`: packaged consumer workflow templates used by `specguard init` and `specguard actions`.
 - `examples/example/`: repository CI passing example used by `.github/workflows/pipeline.yml`.
 - `examples/risk/todo-api/`: repository CI risk example used by `.github/workflows/pipeline.yml`.
@@ -42,4 +41,4 @@ Before removal, the deleted paths had no references from current user-facing doc
 
 Installed-wheel behavior remains covered by `tests/test_packaging.py`, including the `specguard` console script, `init`, default readiness workflow installation, `example copy`, and `run`.
 
-`tests/test_pipeline.py` also verifies that `example/` and `tools/resources/example/` contain the same files and bytes so the reviewed repository example cannot drift away from the packaged copy command.
+Authored not-ready example behavior remains covered by tests that copy `tools/resources/example/` directly before running the pipeline and Grill Me flows.
