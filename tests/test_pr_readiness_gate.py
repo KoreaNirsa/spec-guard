@@ -135,6 +135,15 @@ def test_changed_feature_dirs_ignores_excluded_specs_directories(tmp_path: Path)
     assert feature_dirs == []
 
 
+def test_changed_feature_dirs_ignores_specs_root_placeholder_files(tmp_path: Path) -> None:
+    feature_dirs = changed_feature_dirs(
+        ["specs/README.md", "services/api/specs/README.md"],
+        tmp_path,
+    )
+
+    assert feature_dirs == []
+
+
 def test_readiness_gate_passes_when_no_spec_package_changed(tmp_path: Path) -> None:
     ok, results = run_readiness_gate(["README.md", "docs/workflow.md"], tmp_path)
 
