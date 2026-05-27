@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from tools.readiness_engine import is_review_source_artifact
@@ -246,6 +248,7 @@ def test_spec_report_script_generates_mermaid_and_html_reports(tmp_path: Path) -
         (
             "flowchart TD",
             "Readiness: not_ready (low)",
+            "Reports: readiness-review.json, readiness-review.md",
             "Findings: Critical 1, Major 0, Minor 0",
             "Source artifacts: spec.md",
             "Critical: Owner validation gap",
@@ -271,6 +274,79 @@ def test_spec_report_outputs_are_excluded_from_readiness_source_artifacts() -> N
     assert not is_review_source_artifact(Path("docs/specguard-report.mmd"))
     assert not is_review_source_artifact(Path("docs/specguard-report.html"))
     assert is_review_source_artifact(Path("docs/review-notes.md"))
+
+
+def test_spec_report_script_rejects_non_spec_directory(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, str(SPEC_REPORT_SCRIPT_PATH), str(tmp_path)],
+        cwd=ROOT,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    assert result.returncode == 2
+    assert "Spec package is missing spec.md" in result.stdout
+    assert not tmp_path.joinpath("docs").exists()
+
+
+def test_spec_report_script_marks_stale_readiness_report(tmp_path: Path) -> None:
+    package = tmp_path / "specs" / "stale-report"
+    package.mkdir(parents=True)
+    package.joinpath("spec.md").write_text("# Spec\n\nEdited after the review.\n", encoding="utf-8")
+    package.joinpath("readiness-review.md").write_text("# Old Review\n", encoding="utf-8")
+    package.joinpath("readiness-review.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1",
+                "review_mode": "initial",
+                "review_level": "low",
+                "blocked": False,
+                "readiness": {
+                    "status": "ready",
+                    "implementation_ready": True,
+                    "criteria": {},
+                },
+                "summary": {
+                    "critical": 0,
+                    "major": 0,
+                    "minor": 0,
+                },
+                "input": {
+                    "artifact_count": 1,
+                    "total_characters": 20,
+                    "artifacts": [
+                        {
+                            "path": "spec.md",
+                            "characters": 20,
+                        }
+                    ],
+                },
+                "issues": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    older = time.time() - 200
+    os.utime(package / "readiness-review.json", (older, older))
+    os.utime(package / "spec.md", None)
+
+    subprocess.run(
+        [sys.executable, str(SPEC_REPORT_SCRIPT_PATH), str(package)],
+        cwd=ROOT,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    mermaid = package.joinpath("docs", "specguard-report.mmd").read_text(encoding="utf-8")
+    html_report_text = package.joinpath("docs", "specguard-report.html").read_text(encoding="utf-8")
+
+    assert "Handoff: stale" in mermaid
+    assert "Rerun specguard run <package> --no-llm --no-follow-up" in mermaid
+    assert "readiness-review.json is stale" in html_report_text
 
 
 def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:

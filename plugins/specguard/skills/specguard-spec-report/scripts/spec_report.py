@@ -16,6 +16,17 @@ SEVERITY_ORDER = {
     "Major": 1,
     "Minor": 2,
 }
+REPO_ROOT = next(
+    (parent for parent in Path(__file__).resolve().parents if (parent / "tools" / "post_run.py").is_file()),
+    None,
+)
+if REPO_ROOT is not None and str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+try:
+    from tools.post_run import readiness_report_stale_reason as _readiness_report_stale_reason
+except ModuleNotFoundError:
+    _readiness_report_stale_reason = None
 
 
 @dataclass(frozen=True)
@@ -26,6 +37,7 @@ class ReportContext:
     handoff_path: Path
     report: dict[str, Any] | None
     report_error: str | None
+    stale_reason: str | None
 
 
 def _load_readiness_report(path: Path) -> tuple[dict[str, Any] | None, str | None]:
@@ -55,8 +67,13 @@ def _compact(value: object, *, limit: int = 160) -> str:
     return text[: limit - 3].rstrip() + "..."
 
 
-def _display_path(path: Path) -> str:
-    return path.resolve().as_posix()
+def _display_path(path: Path, *, base: Path | None = None) -> str:
+    if base is not None:
+        try:
+            return path.relative_to(base).as_posix()
+        except ValueError:
+            pass
+    return path.as_posix()
 
 
 def _issue_sort_key(issue: dict[str, Any]) -> tuple[int, str]:
@@ -130,6 +147,8 @@ def _key_evidence(report: dict[str, Any] | None, *, limit: int = 5) -> list[str]
 
 
 def _handoff_status(context: ReportContext) -> str:
+    if context.stale_reason:
+        return "stale"
     report = context.report
     if report is None:
         return "unavailable"
@@ -142,6 +161,9 @@ def _handoff_status(context: ReportContext) -> str:
 
 
 def _next_action(context: ReportContext) -> str:
+    if context.stale_reason:
+        return "Rerun specguard run <package> --no-llm --no-follow-up before using this report."
+
     report = context.report
     if report is None:
         return "Run specguard run <package> --no-llm --no-follow-up to create a current readiness review."
@@ -165,14 +187,17 @@ def _mermaid_label(text: object) -> str:
 
 def render_mermaid(context: ReportContext) -> str:
     package_path = _display_path(context.package)
+    readiness_json = _display_path(context.readiness_json_path, base=context.package)
+    readiness_markdown = _display_path(context.readiness_markdown_path, base=context.package)
     lines = [
         "flowchart TD",
         f"  package[{_mermaid_label(f'Package: {package_path}')}]",
+        f"  reports[{_mermaid_label(f'Reports: {readiness_json}, {readiness_markdown}')}]",
         f"  status[{_mermaid_label(f'Readiness: {_readiness_status(context.report)} ({_review_level(context.report)})')}]",
         f"  findings[{_mermaid_label(f'Findings: {_summary_text(context.report)}')}]",
         f"  handoff[{_mermaid_label(f'Handoff: {_handoff_status(context)}')}]",
         f"  next[{_mermaid_label(f'Next action: {_next_action(context)}')}]",
-        "  package --> status --> findings --> handoff --> next",
+        "  package --> reports --> status --> findings --> handoff --> next",
     ]
 
     artifacts = _source_artifacts(context.report)[:4]
@@ -206,9 +231,9 @@ def _html_list(items: list[str], *, empty: str) -> str:
 
 def render_html(context: ReportContext) -> str:
     package_path = _display_path(context.package)
-    readiness_json = _display_path(context.readiness_json_path)
-    readiness_markdown = _display_path(context.readiness_markdown_path)
-    handoff_path = _display_path(context.handoff_path)
+    readiness_json = _display_path(context.readiness_json_path, base=context.package)
+    readiness_markdown = _display_path(context.readiness_markdown_path, base=context.package)
+    handoff_path = _display_path(context.handoff_path, base=context.package)
     findings = [
         f"{issue.get('severity', 'Unknown')}: {issue.get('title', 'Untitled finding')}"
         for issue in _top_findings(context.report)
@@ -269,6 +294,13 @@ def render_html(context: ReportContext) -> str:
 def build_context(package: Path) -> ReportContext:
     readiness_json_path = package / "readiness-review.json"
     report, report_error = _load_readiness_report(readiness_json_path)
+    stale_reason = (
+        _readiness_report_stale_reason(package)
+        if report is not None and _readiness_report_stale_reason is not None
+        else None
+    )
+    if stale_reason and report_error is None:
+        report_error = f"readiness-review.json is stale: {stale_reason}"
     return ReportContext(
         package=package,
         readiness_json_path=readiness_json_path,
@@ -276,12 +308,15 @@ def build_context(package: Path) -> ReportContext:
         handoff_path=package / "implementation-output.md",
         report=report,
         report_error=report_error,
+        stale_reason=stale_reason,
     )
 
 
 def generate_reports(package: Path) -> tuple[Path, Path]:
     if not package.exists() or not package.is_dir():
         raise ValueError(f"Spec package does not exist: {package}")
+    if not (package / "spec.md").is_file():
+        raise ValueError(f"Spec package is missing spec.md: {package}")
 
     context = build_context(package)
     docs_dir = package / "docs"
