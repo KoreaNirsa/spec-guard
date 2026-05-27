@@ -26,7 +26,7 @@ CODEX_PACKAGE = "@openai/codex@0.128.0"
 MODEL = "gpt-5.5"
 MODEL_REASONING_EFFORT = "low"
 BENCHMARK_RESULT_SCHEMA = "specguard-impact-benchmark/v2"
-BENCHMARK_SCRIPT_VERSION = "5"
+BENCHMARK_SCRIPT_VERSION = "6"
 READINESS_COVERAGE_MATRIX_SCHEMA = "specguard-readiness-coverage-matrix/v1"
 READINESS_COVERAGE_GAP_TYPES = (
     "english_only_source",
@@ -3075,6 +3075,101 @@ GATE_ONLY_EXTENDED_CASES = [
 """,
     ),
     _extended_gate_case(
+        "ready_payment_retry_reconciliation_contract",
+        domain="payments",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready payment retry reconciliation contract",
+        risk="duplicate financial side effects",
+        feature="Payment Retry Reconciliation Contract",
+        summary="- Payment capture defines idempotency, timeout reconciliation, and duplicate retry behavior.",
+        requirements="""
+- Payment capture requires idempotency_key scoped to merchant_id and order_id.
+- Reusing the same idempotency_key with the same amount and currency returns the original payment result.
+- Reusing the same idempotency_key with a different amount or currency returns 409 conflict.
+- Gateway timeout stores reconcile_pending and does not submit another capture until provider status is resolved.
+""",
+        acceptance="""
+- [ ] Missing idempotency_key returns 400 before calling the gateway.
+- [ ] Duplicate same-key capture returns the original payment result.
+- [ ] Same-key amount mismatch returns 409 without a second gateway call.
+- [ ] Gateway timeout records reconcile_pending and blocks duplicate capture retries.
+""",
+        errors="""
+- Missing idempotency_key returns 400.
+- Idempotency conflict returns 409.
+- Gateway timeout returns 202 with reconcile_pending state.
+""",
+        architecture="""
+- PaymentService owns idempotency lookup, gateway capture, conflict detection, and timeout reconciliation.
+- PaymentRepository stores merchant_id, order_id, idempotency_key, amount, currency, gateway_request_id, and state.
+- GatewayAdapter receives a stable idempotency key for every capture attempt.
+""",
+        data_flow="""
+1. Service validates merchant_id, order_id, amount, currency, and idempotency_key.
+2. Service reserves the idempotency record before calling the gateway.
+3. Duplicate same-key requests return the stored result.
+4. Timeout moves the payment to reconcile_pending and suppresses another gateway capture until provider status is known.
+""",
+        state="""
+- Payment states: requested, capture_pending, captured, failed, reconcile_pending.
+- captured, failed, and reconcile_pending are terminal for immediate retry handling.
+""",
+        dependencies="- External payment gateway with idempotent capture support.",
+        failure="""
+- Missing idempotency_key returns 400.
+- Gateway timeout stores reconcile_pending.
+- Same-key body mismatch returns 409 without calling the gateway.
+""",
+    ),
+    _extended_gate_case(
+        "ready_inbound_webhook_signature_replay",
+        domain="inbound_webhooks",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready inbound webhook signature replay",
+        risk="forged inbound events and replayed payloads",
+        feature="Inbound Webhook Signature And Replay Guard",
+        summary="- Inbound webhook handling defines raw-body signature verification, timestamp tolerance, and event_id dedupe.",
+        requirements="""
+- WebhookReceiverService verifies the raw request body signature before parsing JSON.
+- Signature verification requires timestamp tolerance of 5 minutes.
+- event_id is stored before dispatch and duplicate event_id returns the original processing result.
+- Unsigned, stale, or replayed payloads are rejected before side effects run.
+""",
+        acceptance="""
+- [ ] Valid signature and fresh timestamp dispatches the event once.
+- [ ] Missing signature returns 401 before dispatch.
+- [ ] Stale timestamp returns 401 before dispatch.
+- [ ] Duplicate event_id returns the existing result without dispatching again.
+""",
+        errors="""
+- Missing signature returns 401.
+- Stale timestamp returns 401.
+- Duplicate event_id returns 200 with the stored result.
+""",
+        architecture="""
+- WebhookReceiverService verifies raw-body signature, timestamp tolerance, and event_id dedupe before dispatch.
+- EventRepository stores event_id, signature_hash, received_at, status, and processing result.
+- Dispatcher runs only after verification and dedupe succeed.
+""",
+        data_flow="""
+1. Receiver reads the raw body and signature headers.
+2. Service verifies signature and timestamp tolerance.
+3. Service reserves event_id before dispatch.
+4. Duplicate event_id returns the stored result without side effects.
+""",
+        state="""
+- Event states: received, verified, processed, rejected.
+- processed and rejected are terminal for duplicate event_id handling.
+""",
+        failure="""
+- Missing signature returns 401.
+- Signature mismatch returns 401.
+- Duplicate event_id returns the stored result.
+""",
+    ),
+    _extended_gate_case(
         "weak_oauth_consent_all_scopes",
         domain="oauth_consent",
         category="fault_injected_extended",
@@ -3327,6 +3422,31 @@ GATE_ONLY_EXTENDED_CASES = [
         failure="- Invalid JSON returns 400.",
     ),
     _extended_gate_case(
+        "weak_inbound_webhook_url_secret_phrase",
+        domain="inbound_webhooks",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak inbound webhook url secret phrase",
+        risk="forged inbound events and replayed payloads",
+        feature="Inbound Webhook URL Secret Trust",
+        summary="- Inbound webhook processing trusts callers that know the endpoint URL.",
+        requirements="""
+- The receiver does not perform signature checks.
+- Knowing the endpoint URL is enough to trust the caller.
+- If the same event_id arrives again, the service dispatches it again.
+""",
+        acceptance="- [ ] A caller with the endpoint URL can send an event without a signature.",
+        errors="- Invalid JSON returns 400.",
+        architecture="- WebhookReceiverService parses JSON and dispatches events without a signature gate.",
+        data_flow="""
+1. Receiver parses request JSON.
+2. Service trusts the caller because the endpoint URL is hard to guess.
+3. Service dispatches the event each time it is received.
+""",
+        state="- Event states: received, processed.",
+        failure="- Duplicate event_id is processed again.",
+    ),
+    _extended_gate_case(
         "weak_cache_invalidation_global_flush",
         domain="cache",
         category="fault_injected_extended",
@@ -3529,6 +3649,32 @@ GATE_ONLY_EXTENDED_CASES = [
         dependencies="- External API called by job handlers.",
         failure="- Any exception requeues the job immediately.",
     ),
+    _extended_gate_case(
+        "weak_payment_idempotency_post_settlement",
+        domain="payments",
+        category="fault_injected_extended",
+        expectation="weak",
+        title="weak payment idempotency post settlement",
+        risk="duplicate financial side effects",
+        feature="Payment Duplicate Post-Settlement Cleanup",
+        summary="- Payment capture accepts missing idempotency and reconciles duplicate gateway calls after settlement.",
+        requirements="""
+- Payment capture accepts requests even when idempotency_key is absent.
+- If the same order is submitted twice, the service calls the gateway twice and settles duplicates after reconciliation.
+- A gateway timeout is treated as a new request when the caller retries.
+""",
+        acceptance="- [ ] Same-order retry can create a second gateway capture.",
+        errors="- Gateway error returns PaymentError.",
+        architecture="- PaymentService forwards each capture request to GatewayAdapter without an idempotency lookup.",
+        data_flow="""
+1. Service receives merchant_id, order_id, amount, and currency.
+2. Service calls the payment gateway for every submitted request.
+3. Finance reconciliation handles duplicate captures after settlement.
+""",
+        state="- Payment states: requested, captured, failed.",
+        dependencies="- External payment gateway.",
+        failure="- Gateway timeout lets the caller submit the same order as a new request.",
+    ),
 ]
 
 
@@ -3646,7 +3792,27 @@ def _korean_weak_spec_and_design(case: dict[str, str]) -> tuple[str, str]:
     label = _korean_domain_label(case)
     feature = f"{label} 한국어 취약 사례"
 
-    if (
+    if "weak_inbound_webhook_url_secret_phrase" in signal:
+        requirements = """
+- 수신 웹훅은 서명 확인은 하지 않는다.
+- 엔드포인트 URL을 아는 호출자는 신뢰한다.
+- 같은 event_id가 다시 오면 다시 처리한다.
+"""
+        architecture = "- WebhookReceiverService는 서명 확인 없이 JSON payload를 파싱하고 dispatch한다."
+        data_flow = "1. 외부 시스템이 이벤트를 보낸다.\n2. 서비스는 URL을 알고 있다는 이유로 호출자를 신뢰한다.\n3. 같은 event_id도 매번 dispatch한다."
+        state = "- 이벤트 상태: received, processed."
+        failure = "- 중복 event_id는 별도 차단 없이 다시 처리된다."
+    elif "weak_payment_idempotency_post_settlement" in signal:
+        requirements = """
+- 결제 캡처 요청은 idempotency_key가 없어도 접수한다.
+- 같은 order_id 요청이 두 번 오면 게이트웨이를 두 번 호출하고 중복 결제는 사후 정산으로 맞춘다.
+- 게이트웨이 타임아웃 뒤 다시 들어온 요청은 새 결제로 처리한다.
+"""
+        architecture = "- PaymentService는 멱등 조회 없이 모든 캡처 요청을 GatewayAdapter로 전달한다."
+        data_flow = "1. merchant_id, order_id, amount, currency를 받는다.\n2. 서비스는 제출된 요청마다 결제 게이트웨이를 호출한다.\n3. 중복 캡처는 settlement 이후 정산 담당자가 맞춘다."
+        state = "- 결제 상태: requested, captured, failed."
+        failure = "- 게이트웨이 타임아웃 후 같은 order_id가 다시 오면 새 요청으로 처리한다."
+    elif (
         ("task" in signal or "todo" in signal)
         and ("list" in signal or "owner" in signal or "any_user" in signal or "client" in signal)
     ):

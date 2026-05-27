@@ -16,11 +16,11 @@ python tools/spec_driven_ai_benchmark.py --coverage-matrix --coverage-matrix-res
 | Matrix output | [`docs/benchmark-results/readiness-coverage-matrix.json`](benchmark-results/readiness-coverage-matrix.json) |
 | Fixture source | `tools/spec_driven_ai_benchmark.py` `benchmark_cases` |
 | Result source | [`docs/benchmark-results/specguard-gate-only-v0.4.1.json`](benchmark-results/specguard-gate-only-v0.4.1.json) |
-| Total fixtures | 200 |
-| English fixtures | 100 |
-| Korean fixtures | 100 |
-| Ready/reference fixtures | 70 |
-| Weak/blocking fixtures | 130 |
+| Total fixtures | 208 |
+| English fixtures | 104 |
+| Korean fixtures | 104 |
+| Ready/reference fixtures | 74 |
+| Weak/blocking fixtures | 134 |
 
 ## Baseline
 
@@ -32,9 +32,9 @@ The v0.4.1 gate-only result used for this audit reports 198 evaluated cases:
 | English | 99 | 65/65 | 0/34 | 0.0% | 0.0% |
 | Korean | 99 | 65/65 | 0/34 | 0.0% | 0.0% |
 
-The current matrix contains 200 selected fixture-source cases. The supplied
+The current matrix contains 208 selected fixture-source cases. The supplied
 v0.4.1 gate result covers 198 of them, so the matrix records
-`missing_cases=2` and `is_complete=false` until the next benchmark refresh.
+`missing_cases=10` and `is_complete=false` until the next benchmark refresh.
 
 In the v0.4.1 result artifact, all 68 evaluated ready/reference rows have
 actual readiness status `ready_with_warnings`. All 130 weak rows have actual
@@ -65,7 +65,11 @@ for this baseline.
 ## Coverage Gaps
 
 No English-only or Korean-only source-case gaps are present in the current
-200-case matrix. No ready-only domain/language gaps are present.
+208-case matrix. No ready-only domain/language gaps are present.
+
+The #213 fixture-source expansion adds paired ready/weak English and Korean
+cases for explicit Korean phrasing variants in `inbound_webhooks` and
+`payments`, so it does not introduce new counterpart or ready-only gaps.
 
 The remaining coverage imbalance is weak-only domain/language coverage. These
 domains have weak/blocking fixtures in both English and Korean, but no paired

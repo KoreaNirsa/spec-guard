@@ -1,27 +1,27 @@
 {
   "schema": "specguard-readiness-coverage-matrix/v1",
-  "benchmark_script_version": "5",
+  "benchmark_script_version": "6",
   "source": {
     "path": "tools/spec_driven_ai_benchmark.py",
     "case_source": "benchmark_cases",
     "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.1.json"
   },
-  "case_count": 200,
+  "case_count": 208,
   "suite_counts": {
     "impact_v2": 18,
     "gate_only_supplemental_v1": 51,
-    "gate_only_extended_v2": 31,
+    "gate_only_extended_v2": 35,
     "impact_v2_ko": 18,
     "gate_only_supplemental_v1_ko": 51,
-    "gate_only_extended_v2_ko": 31
+    "gate_only_extended_v2_ko": 35
   },
   "language_counts": {
-    "en": 100,
-    "ko": 100
+    "en": 104,
+    "ko": 104
   },
   "expectation_counts": {
-    "good": 70,
-    "weak": 130
+    "good": 74,
+    "weak": 134
   },
   "domain_count": 36,
   "actual_readiness_status_counts": {
@@ -29,16 +29,16 @@
     "ready_with_warnings": 68
   },
   "readiness_result_coverage": {
-    "expected_cases": 200,
+    "expected_cases": 208,
     "evaluated_cases": 198,
-    "missing_cases": 2,
+    "missing_cases": 10,
     "unexpected_cases": 0,
     "is_complete": false
   },
   "readiness_result_baseline": null,
   "readiness_result_baseline_by_language": null,
   "gap_counts": {
-    "coverage_complete": 186,
+    "coverage_complete": 194,
     "english_only_source": 0,
     "korean_only_source": 0,
     "ready_only_domain_language": 0,
@@ -533,8 +533,8 @@
     {
       "domain": "inbound_webhooks",
       "language": "en",
-      "ready_case_count": 1,
-      "weak_case_count": 1,
+      "ready_case_count": 2,
+      "weak_case_count": 2,
       "actual_readiness_status_counts": {
         "not_ready": 1,
         "ready_with_warnings": 1
@@ -543,7 +543,7 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 2
+        "unknown": 4
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -551,8 +551,8 @@
     {
       "domain": "inbound_webhooks",
       "language": "ko",
-      "ready_case_count": 1,
-      "weak_case_count": 1,
+      "ready_case_count": 2,
+      "weak_case_count": 2,
       "actual_readiness_status_counts": {
         "not_ready": 1,
         "ready_with_warnings": 1
@@ -561,7 +561,7 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 2
+        "unknown": 4
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -783,8 +783,8 @@
     {
       "domain": "payments",
       "language": "en",
-      "ready_case_count": 1,
-      "weak_case_count": 2,
+      "ready_case_count": 2,
+      "weak_case_count": 3,
       "actual_readiness_status_counts": {
         "not_ready": 2,
         "ready_with_warnings": 1
@@ -793,7 +793,7 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 3
+        "unknown": 5
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -801,8 +801,8 @@
     {
       "domain": "payments",
       "language": "ko",
-      "ready_case_count": 1,
-      "weak_case_count": 2,
+      "ready_case_count": 2,
+      "weak_case_count": 3,
       "actual_readiness_status_counts": {
         "not_ready": 2,
         "ready_with_warnings": 1
@@ -811,7 +811,7 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 3
+        "unknown": 5
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -2719,6 +2719,50 @@
       "follow_up_issues": []
     },
     {
+      "case_id": "ready_inbound_webhook_signature_replay",
+      "suite": "gate_only_extended_v2",
+      "domain": "inbound_webhooks",
+      "language": "en",
+      "source_case_id": "ready_inbound_webhook_signature_replay",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready inbound webhook signature replay",
+      "risk": "forged inbound events and replayed payloads",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_inbound_webhook_signature_replay_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "inbound_webhooks",
+      "language": "ko",
+      "source_case_id": "ready_inbound_webhook_signature_replay",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "수신 웹훅 한국어 good 사례",
+      "risk": "forged inbound events and replayed payloads",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
       "case_id": "ready_webhook_signature_verification",
       "suite": "gate_only_extended_v2",
       "domain": "inbound_webhooks",
@@ -2754,6 +2798,50 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_inbound_webhook_url_secret_phrase",
+      "suite": "gate_only_extended_v2",
+      "domain": "inbound_webhooks",
+      "language": "en",
+      "source_case_id": "weak_inbound_webhook_url_secret_phrase",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak inbound webhook url secret phrase",
+      "risk": "forged inbound events and replayed payloads",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_inbound_webhook_url_secret_phrase_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "inbound_webhooks",
+      "language": "ko",
+      "source_case_id": "weak_inbound_webhook_url_secret_phrase",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "수신 웹훅 한국어 weak 사례",
+      "risk": "forged inbound events and replayed payloads",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -3374,6 +3462,94 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_payment_retry_reconciliation_contract",
+      "suite": "gate_only_extended_v2",
+      "domain": "payments",
+      "language": "en",
+      "source_case_id": "ready_payment_retry_reconciliation_contract",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready payment retry reconciliation contract",
+      "risk": "duplicate financial side effects",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_payment_retry_reconciliation_contract_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "payments",
+      "language": "ko",
+      "source_case_id": "ready_payment_retry_reconciliation_contract",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "결제 한국어 good 사례",
+      "risk": "duplicate financial side effects",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payment_idempotency_post_settlement",
+      "suite": "gate_only_extended_v2",
+      "domain": "payments",
+      "language": "en",
+      "source_case_id": "weak_payment_idempotency_post_settlement",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "weak payment idempotency post settlement",
+      "risk": "duplicate financial side effects",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "weak_payment_idempotency_post_settlement_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "payments",
+      "language": "ko",
+      "source_case_id": "weak_payment_idempotency_post_settlement",
+      "category": "fault_injected_extended",
+      "expectation": "weak",
+      "title": "결제 한국어 weak 사례",
+      "risk": "duplicate financial side effects",
+      "expected_readiness": "not_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [

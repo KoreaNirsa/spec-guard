@@ -1,35 +1,35 @@
 {
   "schema": "specguard-readiness-fixture-drift-summary/v1",
-  "benchmark_script_version": "5",
+  "benchmark_script_version": "6",
   "case_source": "tools/spec_driven_ai_benchmark.py::benchmark_cases",
   "include_gate_only_extra_cases": true,
   "include_korean_cases": true,
-  "case_count": 200,
-  "source_case_count": 100,
+  "case_count": 208,
+  "source_case_count": 104,
   "suite_counts": {
-    "gate_only_extended_v2": 31,
-    "gate_only_extended_v2_ko": 31,
+    "gate_only_extended_v2": 35,
+    "gate_only_extended_v2_ko": 35,
     "gate_only_supplemental_v1": 51,
     "gate_only_supplemental_v1_ko": 51,
     "impact_v2": 18,
     "impact_v2_ko": 18
   },
   "language_counts": {
-    "en": 100,
-    "ko": 100
+    "en": 104,
+    "ko": 104
   },
   "expectation_counts": {
-    "good": 70,
-    "weak": 130
+    "good": 74,
+    "weak": 134
   },
   "expectation_counts_by_language": {
     "en": {
-      "good": 35,
-      "weak": 65
+      "good": 37,
+      "weak": 67
     },
     "ko": {
-      "good": 35,
-      "weak": 65
+      "good": 37,
+      "weak": 67
     }
   },
   "domain_language_summary": [
@@ -192,14 +192,14 @@
     {
       "domain": "inbound_webhooks",
       "language": "en",
-      "good": 1,
-      "weak": 1
+      "good": 2,
+      "weak": 2
     },
     {
       "domain": "inbound_webhooks",
       "language": "ko",
-      "good": 1,
-      "weak": 1
+      "good": 2,
+      "weak": 2
     },
     {
       "domain": "inventory",
@@ -276,14 +276,14 @@
     {
       "domain": "payments",
       "language": "en",
-      "good": 1,
-      "weak": 2
+      "good": 2,
+      "weak": 3
     },
     {
       "domain": "payments",
       "language": "ko",
-      "good": 1,
-      "weak": 2
+      "good": 2,
+      "weak": 3
     },
     {
       "domain": "payouts",
@@ -1168,6 +1168,31 @@
       }
     },
     {
+      "source_case_id": "ready_inbound_webhook_signature_replay",
+      "domains": [
+        "inbound_webhooks"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_inbound_webhook_signature_replay",
+        "ko": "ready_inbound_webhook_signature_replay_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
       "source_case_id": "ready_inventory_reservation_concurrency",
       "domains": [
         "inventory"
@@ -1315,6 +1340,31 @@
       "suites_by_language": {
         "en": "gate_only_supplemental_v1",
         "ko": "gate_only_supplemental_v1_ko"
+      }
+    },
+    {
+      "source_case_id": "ready_payment_retry_reconciliation_contract",
+      "domains": [
+        "payments"
+      ],
+      "expectations": [
+        "good"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "ready_payment_retry_reconciliation_contract",
+        "ko": "ready_payment_retry_reconciliation_contract_ko"
+      },
+      "categories_by_language": {
+        "en": "ready_extended_practical",
+        "ko": "ready_extended_practical"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
       }
     },
     {
@@ -2118,6 +2168,31 @@
       }
     },
     {
+      "source_case_id": "weak_inbound_webhook_url_secret_phrase",
+      "domains": [
+        "inbound_webhooks"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_inbound_webhook_url_secret_phrase",
+        "ko": "weak_inbound_webhook_url_secret_phrase_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
       "source_case_id": "weak_inventory_negative_stock_allowed",
       "domains": [
         "inventory"
@@ -2332,6 +2407,31 @@
       "case_ids_by_language": {
         "en": "weak_password_reset_reusable_token",
         "ko": "weak_password_reset_reusable_token_ko"
+      },
+      "categories_by_language": {
+        "en": "fault_injected_extended",
+        "ko": "fault_injected_extended"
+      },
+      "suites_by_language": {
+        "en": "gate_only_extended_v2",
+        "ko": "gate_only_extended_v2_ko"
+      }
+    },
+    {
+      "source_case_id": "weak_payment_idempotency_post_settlement",
+      "domains": [
+        "payments"
+      ],
+      "expectations": [
+        "weak"
+      ],
+      "languages": [
+        "en",
+        "ko"
+      ],
+      "case_ids_by_language": {
+        "en": "weak_payment_idempotency_post_settlement",
+        "ko": "weak_payment_idempotency_post_settlement_ko"
       },
       "categories_by_language": {
         "en": "fault_injected_extended",
