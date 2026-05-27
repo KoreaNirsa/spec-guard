@@ -1,3 +1,5 @@
+[English](README.md) | [한국어](README.ko.md)
+
 ![SpecGuard banner](assets/spec_guard_banner.png)
 
 # SpecGuard
@@ -8,6 +10,12 @@ SpecGuard is a Validation-First Workflow (VFW) for AI-assisted development.
 It turns specs into reviewed, testable, implementation-ready packages before AI coding begins.
 
 It is not a prompt-to-code generator. SpecGuard helps you prepare an approved spec package before an external Codex, Claude Code, or another coding agent writes application code.
+
+## Language Support
+
+This README remains the primary package README for distribution. A Korean entry point is available at [README.ko.md](README.ko.md), and both README entry points link back to the same setup, workflow, plugin, benchmark, and policy documents.
+
+The language split is documentation-only. It does not claim full CLI localization, expanded runtime behavior, or full Korean production support. Korean benchmark claims stay limited to the recorded deterministic low-mode evidence described in [Language Support](docs/language-support.md) and [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
 ## Demo Video
 
@@ -175,6 +183,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 
 ## Documentation
 
+- [Korean README](README.ko.md): Korean practical overview for setup, workflow, plugin usage, benchmark limits, and documentation links.
 - [v0.4.1 Release Notes](docs/release-notes-v0.4.1.md): package bump, readiness stabilization, benchmark evidence, plugin documentation, and known limits.
 - [Setup To User Flow](docs/setup-to-user-flow.md): installation, Codex setup, example packages, validation loops, implementation handoff, and PR review setup.
 - [Core Reviews](docs/core-reviews.md): SpecGuard Review, SpecGuard PR Review, LLM detail review, cache behavior, and experimental Spec Revision.
