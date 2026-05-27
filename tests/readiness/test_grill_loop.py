@@ -20,7 +20,7 @@ from tools.grill_loop import (
 from tools.readiness_engine import run_readiness_review
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PACKAGED_EXAMPLE = ROOT / "tools" / "resources" / "example"
 
 

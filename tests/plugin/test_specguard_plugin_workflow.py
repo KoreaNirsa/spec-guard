@@ -11,7 +11,7 @@ from pathlib import Path
 from tools.readiness_engine import is_review_source_artifact
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 MARKETPLACE_PATH = ROOT / ".agents" / "plugins" / "marketplace.json"
 SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-workflow" / "SKILL.md"
 SPEC_REPORT_SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-spec-report" / "SKILL.md"
@@ -819,9 +819,9 @@ def test_plugin_examples_docs_separate_packaged_and_contributor_only_fixtures() 
             "tests/fixtures/plugin-workflow-scenarios/scenarios.json",
             "not packaged resources",
             "must not grow into a full sample application without a separate scope decision",
-            "python -m pytest tests/test_specguard_plugin_workflow.py -q",
-            "python -m pytest tests/test_plugin_result_contract.py -q",
-            "python -m pytest tests/test_packaging.py -q",
+            "python -m pytest tests/plugin/test_specguard_plugin_workflow.py -q",
+            "python -m pytest tests/plugin/test_plugin_result_contract.py -q",
+            "python -m pytest tests/packaging/test_packaging.py -q",
         ),
     )
     _assert_contains_all(

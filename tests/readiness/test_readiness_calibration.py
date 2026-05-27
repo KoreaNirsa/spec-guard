@@ -13,7 +13,7 @@ from tools.readiness_engine import (
 from tools.spec_driven_ai_benchmark import benchmark_cases, make_specguard_package
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 LANGUAGE_SUPPORT_DOC = ROOT / "docs" / "language-support.md"
 
 

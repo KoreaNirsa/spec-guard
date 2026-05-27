@@ -48,7 +48,7 @@ import tools.llm_client as llm_client_module
 from cli.specguard import _progress_line, _should_offer_follow_up
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PACKAGED_EXAMPLE = ROOT / "tools" / "resources" / "example"
 
 

@@ -78,8 +78,8 @@ default gate.
 Before tagging v0.4.1, run:
 
 ```bash
-python -m pytest tests/test_packaging.py
-python -m pytest tests/test_benchmark_metadata.py tests/test_readiness_calibration.py tests/test_readiness_fixture_drift.py tests/test_specguard_plugin_workflow.py
+python -m pytest tests/packaging/test_packaging.py
+python -m pytest tests/benchmark/test_benchmark_metadata.py tests/readiness/test_readiness_calibration.py tests/readiness/test_readiness_fixture_drift.py tests/plugin/test_specguard_plugin_workflow.py
 python -m pytest
 git diff --check
 ```
