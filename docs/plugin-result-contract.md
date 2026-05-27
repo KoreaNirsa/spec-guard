@@ -177,11 +177,13 @@ Generated outputs excluded from review input include:
 - `spec.proposed.md`
 - `grill.md`
 - `grill.json`
+- `docs/specguard-report.mmd`
+- `docs/specguard-report.html`
 - `.specguard/`
 - `contracts/`
 - `tests/`
 
-Plugin consumers should display generated outputs as reports or handoff files only. They should not merge those paths into the reviewed source artifact list.
+Plugin consumers should display generated outputs as reports or handoff files only. They should not merge those paths into the reviewed source artifact list. Generated human-readable report files under `docs/` are presentation artifacts, not authored spec inputs or implementation requirements.
 
 ## Cache Diagnostics
 

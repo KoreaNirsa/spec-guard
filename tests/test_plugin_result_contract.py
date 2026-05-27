@@ -36,6 +36,10 @@ GENERATED_ARTIFACT_NAMES = {
     "grill.md",
     "grill.json",
 }
+GENERATED_ARTIFACT_PATHS = {
+    "docs/specguard-report.mmd",
+    "docs/specguard-report.html",
+}
 GENERATED_ARTIFACT_PREFIXES = (
     ".specguard/",
     "contracts/",
@@ -68,7 +72,7 @@ def _with_current_review_input(payload: dict[str, object]) -> dict[str, object]:
 
 
 def _is_generated_source_path(path: str) -> bool:
-    return path in GENERATED_ARTIFACT_NAMES or path.startswith(GENERATED_ARTIFACT_PREFIXES)
+    return path in GENERATED_ARTIFACT_NAMES or path in GENERATED_ARTIFACT_PATHS or path.startswith(GENERATED_ARTIFACT_PREFIXES)
 
 
 def _handoff_available(feature_dir: Path, payload: dict[str, object]) -> bool:
@@ -175,6 +179,12 @@ def test_plugin_result_contract_fixtures_cover_minimum_consumer_states() -> None
     assert any("cache" in payload for payload in payloads)
     assert any(payload["blocked"] is True for payload in payloads)
     assert any(payload["blocked"] is False for payload in payloads)
+
+
+def test_plugin_result_contract_excludes_human_readable_report_outputs() -> None:
+    assert _is_generated_source_path("docs/specguard-report.mmd")
+    assert _is_generated_source_path("docs/specguard-report.html")
+    assert not _is_generated_source_path("docs/review-notes.md")
 
 
 def test_plugin_result_contract_handoff_availability_uses_status_and_file_existence(tmp_path: Path) -> None:
