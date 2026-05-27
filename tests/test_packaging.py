@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import os
 import subprocess
 import sys
@@ -130,3 +131,47 @@ def test_package_metadata_supports_future_uvx_from_invocation() -> None:
     assert "resources/example/contracts/*.yaml" in package_data
     assert "resources/example/tests/*.md" in package_data
     assert "resources/workflows/*.yml" in package_data
+
+    packages = pyproject["tool"]["setuptools"]["packages"]
+    assert "tools.resources" in packages
+    assert "tools.resources.example" in packages
+    assert "tools.resources.example.checklists" in packages
+    assert "tools.resources.example.contracts" in packages
+    assert "tools.resources.example.tests" in packages
+    assert "tools.resources.workflows" in packages
+
+
+def test_tools_public_import_contracts_remain_available() -> None:
+    public_modules = [
+        "tools.action_installer",
+        "tools.artifact_generator",
+        "tools.contract_checker",
+        "tools.discovery_engine",
+        "tools.grill_loop",
+        "tools.llm_client",
+        "tools.post_run",
+        "tools.pr_readiness_gate",
+        "tools.pr_review",
+        "tools.progress",
+        "tools.readiness_engine",
+        "tools.result",
+        "tools.runner",
+        "tools.spec_driven_ai_benchmark",
+        "tools.spec_packages",
+        "tools.spec_validator",
+        "tools.strict_e2e",
+        "tools.tdd_generator",
+        "tools.ux",
+        "tools.verification_checker",
+    ]
+
+    for module in public_modules:
+        importlib.import_module(module)
+
+    resource_packages = [
+        "tools.resources",
+        "tools.resources.example",
+        "tools.resources.workflows",
+    ]
+    for package in resource_packages:
+        importlib.import_module(package)
