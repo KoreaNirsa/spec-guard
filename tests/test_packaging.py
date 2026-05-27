@@ -101,6 +101,7 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
     )
     assert copy_result.returncode == 0
     assert "Copied authored example specs" in copy_result.stdout
+    assert (tmp_path / "specs" / "pip-smoke" / "checklists" / "spec-readiness.md").exists()
     assert (tmp_path / "specs" / "pip-smoke" / "contracts" / "openapi.yaml").exists()
     assert (tmp_path / "specs" / "pip-smoke" / "tests" / "team-invite.test.md").exists()
     spec_text = (tmp_path / "specs" / "pip-smoke" / "spec.md").read_text(encoding="utf-8")
@@ -128,6 +129,7 @@ def test_package_metadata_supports_future_uvx_from_invocation() -> None:
 
     package_data = pyproject["tool"]["setuptools"]["package-data"]["tools"]
     assert "resources/example/*.md" in package_data
+    assert "resources/example/checklists/*.md" in package_data
     assert "resources/example/contracts/*.yaml" in package_data
     assert "resources/example/tests/*.md" in package_data
     assert "resources/workflows/*.yml" in package_data
