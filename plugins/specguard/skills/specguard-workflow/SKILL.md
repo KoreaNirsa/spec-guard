@@ -69,6 +69,30 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 15. If authored spec artifacts changed after the last report, report `stale_review`, restate previous findings and suggested clarifications as suggestions only, mark unclear behavior as `Needs user decision`, and ask the user to rerun `specguard run <path> --no-llm --no-follow-up`.
 16. After the rerun completes, report only the fresh readiness result as current: ready, ready with warnings, or still blocked.
 
+## Result Summary Prompt Contract
+
+Use `readiness-review.json` as the only machine-readable source of readiness state. The terminal output can explain command execution, but it must not determine readiness status, finding counts, or handoff availability.
+
+Every normal readiness summary must include this stable shape:
+
+- `status`: `readiness.status` plus `review_level`.
+- `counts`: `summary.critical`, `summary.major`, and `summary.minor`.
+- `findings`: top `issues[]` entries by `severity` and `title`; for `not_ready`, list Critical findings first before Major or Minor findings.
+- `reports`: `readiness-review.json` and `readiness-review.md` when present.
+- `handoff`: report yes only when `readiness.status` is `ready` or `ready_with_warnings`, `readiness.implementation_ready` is true, and `implementation-output.md` exists.
+- `next_action`: derive from the resolved state, not from terminal logs or generated Markdown prose.
+
+Keep `SpecGuard evidence` separate from `Codex interpretation`: evidence comes from `issues[].evidence`, stable issue fields, and report paths; interpretation is only the concise explanation and next step you write for the user. Do not turn Codex interpretation into implementation input.
+
+State-specific guidance:
+
+- `ready`: implementation may proceed only when handoff is available; otherwise ask the user to rerun the full pipeline so `implementation-output.md` is generated.
+- `ready_with_warnings`: implementation is allowed when handoff is available; warnings are optional cleanup, not blockers.
+- `not_ready`: implementation is blocked; summarize Critical findings first and provide suggestion-only spec refinement proposals.
+- `stale_review`: do not present old files as the current result; report the stale reason, previous findings as suggestions only, and the rerun command.
+- `validation_failed_before_review`: report that no current readiness result exists, list known files only, and ask the user to fix validation before rerunning.
+- `timeout` and `cli_execution_failed`: include the attempted command, known files for diagnostics, and the next safe action; do not point to `implementation-output.md` as relevant handoff.
+
 ## Failure Categories
 
 - `missing_cli`: `specguard --help` and the source checkout fallback both fail. Tell the user to install SpecGuard or run from a checkout that supports `python -m cli.specguard`.
