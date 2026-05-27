@@ -30,6 +30,8 @@ The packaged authored example lives under `tools/resources/example/` and is copi
 `specguard example copy`. Contributor-only plugin scenarios live under
 `tests/fixtures/plugin-workflow-scenarios/` and should not be added to package data.
 See [Plugin Examples And Contributor Fixtures](plugin-examples.md) for local validation commands.
+See [Tools Package Structure Plan](tools-package-structure-plan.md) before moving modules under
+`tools/`; current root-level imports and packaged resources are compatibility contracts.
 
 Use the packaged example when you want to exercise SpecGuard without authoring a new spec first:
 
