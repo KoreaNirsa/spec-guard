@@ -151,6 +151,7 @@ The plugin orchestrates the CLI. It must not embed, fork, or reimplement SpecGua
 - `readiness-review.json` is the machine-readable result.
 - `readiness-review.md` is the human-readable report.
 - `implementation-output.md` is the implementation handoff when the gate allows it.
+- `docs/specguard-report.mmd` and `docs/specguard-report.html` are optional report-only presentation artifacts.
 - Terminal output is not the readiness contract.
 
 For stable fields and file-based states, see [Plugin Result Contract](plugin-result-contract.md).
@@ -172,6 +173,23 @@ specguard run <package> --no-llm --no-follow-up
 ```
 
 This path does not require Codex or OpenAI provider setup. It should be used first unless the user explicitly asks for provider-backed review.
+
+## Optional Human-Readable Reports
+
+When a user asks for a visual SpecGuard report, Mermaid diagram, HTML report, or decision-review summary, use the `specguard-spec-report` skill after a spec package has existing readiness artifacts. The skill reads the selected package and existing `readiness-review.json`, `readiness-review.md`, and `implementation-output.md` availability, then writes:
+
+```text
+<package>/docs/specguard-report.mmd
+<package>/docs/specguard-report.html
+```
+
+From this repository checkout, the helper command is:
+
+```bash
+python plugins/specguard/skills/specguard-spec-report/scripts/spec_report.py <package>
+```
+
+The generated reports include the spec package path, readiness status, finding summary, key evidence, handoff status, and next action. They are presentation artifacts only: do not use them as readiness source inputs, implementation requirements, or replacements for the default SpecGuard Review or Grill me loop.
 
 ## Optional Detail Review
 
@@ -250,6 +268,7 @@ Those fixtures are not packaged resources; they protect stable commands, file na
 | `ready_with_warnings` handoff guidance | Read structured result files and check handoff availability. | Report warnings, explain implementation is allowed only when `implementation-output.md` exists, and point to that file when present. |
 | edited spec package rerun loop | Compare current authored Markdown source files to `input.artifacts[]`, then compare source mtimes to `readiness-review.json`. | Report `stale_review`, restate previous findings and clarifications as suggestions only, require `Needs user decision` for unclear behavior, and ask the user to rerun `specguard run <package> --no-llm --no-follow-up`. |
 | fresh rerun result | After the user updates the spec package, run the default heuristic gate and read the newly generated structured result files. | Report current status, Critical/Major/Minor counts, current report paths, handoff availability, and next action; when unique `(severity, title)` keys are available, compare previous and fresh findings as resolved, remaining, deferred, and newly introduced without relying on unstable report prose; treat `deferred` as user-explicit deferrals only; report fresh `not_ready` as still blocked. |
+| human-readable report requested | Read an existing spec package and structured SpecGuard readiness artifacts, then generate report-only presentation files. | Write `<package>/docs/specguard-report.mmd` and `<package>/docs/specguard-report.html`; include package path, readiness status, finding summary, key evidence, handoff status, and next action without patching specs or creating implementation requirements. |
 | stale readiness report | Compare current authored Markdown source files to `input.artifacts[]`, then compare source mtimes to `readiness-review.json`. | Report `stale_review`, do not reuse the old report as the current result, and ask the user to rerun SpecGuard. |
 | validation failure before review | Treat a missing or not-updated readiness JSON after a non-zero run as pre-review failure. | Report `validation_failed_before_review`, list known files only, and ask the user to fix validation errors before rerunning. |
 | optional detail review requested without provider setup | Run `specguard auth status` before detail review. | Report `missing_provider_for_llm`; do not run or claim provider-backed review. |
@@ -265,3 +284,4 @@ Those fixtures are not packaged resources; they protect stable commands, file na
 - Do not document automatic spec rewriting as a supported plugin behavior.
 - Do not claim that PR Review setup creates or stores API keys automatically.
 - Do not treat Codex suggestions as implementation input until the user approves and updates the spec.
+- Do not treat generated report-only `docs/specguard-report.mmd` or `docs/specguard-report.html` files as authored spec inputs.

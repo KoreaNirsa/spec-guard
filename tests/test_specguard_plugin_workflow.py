@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 import json
+import os
 import re
+import subprocess
+import sys
+import time
 from pathlib import Path
+
+from tools.readiness_engine import is_review_source_artifact
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MARKETPLACE_PATH = ROOT / ".agents" / "plugins" / "marketplace.json"
 SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-workflow" / "SKILL.md"
+SPEC_REPORT_SKILL_PATH = ROOT / "plugins" / "specguard" / "skills" / "specguard-spec-report" / "SKILL.md"
+SPEC_REPORT_SCRIPT_PATH = (
+    ROOT / "plugins" / "specguard" / "skills" / "specguard-spec-report" / "scripts" / "spec_report.py"
+)
 README_PATH = ROOT / "plugins" / "specguard" / "README.md"
 CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
 CODEX_PLUGIN_ROADMAP_PATH = ROOT / "docs" / "codex-plugin-hardening-roadmap.md"
@@ -117,6 +127,226 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
             ("implementation handoff", "allowed"),
         ),
     )
+
+
+def test_specguard_plugin_documents_human_readable_spec_report_skill() -> None:
+    skill = SPEC_REPORT_SKILL_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
+    combined = "\n".join((skill, readme, guide, contract))
+
+    _assert_contains_all(
+        skill,
+        (
+            "SpecGuard Human-Readable Spec Report",
+            "Mermaid readiness diagram",
+            "HTML review report",
+            "<package>/docs/specguard-report.mmd",
+            "<package>/docs/specguard-report.html",
+            "python plugins/specguard/skills/specguard-spec-report/scripts/spec_report.py <package>",
+            "readiness-review.json",
+            "implementation-output.md",
+            "This skill is report-only.",
+            "Do not replace the Grill me loop or default SpecGuard Review.",
+        ),
+    )
+    _assert_contains_all(
+        combined,
+        (
+            "specguard-spec-report",
+            "human-readable report requested",
+            "docs/specguard-report.mmd",
+            "docs/specguard-report.html",
+            "not authored spec inputs",
+            "not an authored spec input",
+            "must not be added to future readiness source artifact sets",
+        ),
+    )
+    _assert_mentions_all_concepts(
+        combined,
+        (
+            ("source spec evidence", "readiness findings", "report-only presentation"),
+            ("spec package path", "readiness status", "finding summary", "key evidence", "next action"),
+            ("must not", "patch", "spec files"),
+            ("must not", "create", "implementation requirements"),
+            ("must not", "reimplement", "SpecGuard Review"),
+        ),
+    )
+
+
+def test_spec_report_script_generates_mermaid_and_html_reports(tmp_path: Path) -> None:
+    package = tmp_path / "specs" / "todo-access"
+    package.mkdir(parents=True)
+    spec_text = "# Spec\n\nTODO API allows any user to read all todos.\n"
+    package.joinpath("spec.md").write_text(spec_text, encoding="utf-8")
+    package.joinpath("readiness-review.md").write_text("# Review\n\nImplementation is blocked.\n", encoding="utf-8")
+    package.joinpath("readiness-review.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1",
+                "review_mode": "initial",
+                "review_level": "low",
+                "blocked": True,
+                "readiness": {
+                    "status": "not_ready",
+                    "implementation_ready": False,
+                    "criteria": {},
+                },
+                "summary": {
+                    "critical": 1,
+                    "major": 0,
+                    "minor": 0,
+                },
+                "input": {
+                    "artifact_count": 1,
+                    "total_characters": 52,
+                    "artifacts": [
+                        {
+                            "path": "spec.md",
+                            "characters": 52,
+                        }
+                    ],
+                },
+                "issues": [
+                    {
+                        "severity": "Critical",
+                        "title": "Owner validation gap",
+                        "description": "The API ownership rule is ambiguous.",
+                        "impact": "Implementation would need to guess access control.",
+                        "fix": "Clarify owner validation in spec.md.",
+                        "evidence": ["TODO API allows any user to read all todos."],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [sys.executable, str(SPEC_REPORT_SCRIPT_PATH), str(package)],
+        cwd=ROOT,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    mermaid_report = package / "docs" / "specguard-report.mmd"
+    html_report = package / "docs" / "specguard-report.html"
+    assert "Generated Mermaid report" in result.stdout
+    assert "Generated HTML report" in result.stdout
+    assert mermaid_report.is_file()
+    assert html_report.is_file()
+    assert package.joinpath("spec.md").read_text(encoding="utf-8") == spec_text
+
+    mermaid = mermaid_report.read_text(encoding="utf-8")
+    html_report_text = html_report.read_text(encoding="utf-8")
+
+    _assert_contains_all(
+        mermaid,
+        (
+            "flowchart TD",
+            "Readiness: not_ready (low)",
+            "Reports: readiness-review.json, readiness-review.md",
+            "Findings: Critical 1, Major 0, Minor 0",
+            "Source artifacts: spec.md",
+            "Critical: Owner validation gap",
+            "Evidence: Critical - Owner validation gap: TODO API allows any user to read all todos.",
+            "Resolve blocking findings in authored spec files",
+        ),
+    )
+    _assert_contains_all(
+        html_report_text,
+        (
+            "SpecGuard Human-Readable Report",
+            "not an authored spec input or implementation requirement",
+            "not_ready",
+            "Critical 1, Major 0, Minor 0",
+            "Owner validation gap",
+            "TODO API allows any user to read all todos.",
+            "Resolve blocking findings in authored spec files",
+        ),
+    )
+
+
+def test_spec_report_outputs_are_excluded_from_readiness_source_artifacts() -> None:
+    assert not is_review_source_artifact(Path("docs/specguard-report.mmd"))
+    assert not is_review_source_artifact(Path("docs/specguard-report.html"))
+    assert is_review_source_artifact(Path("docs/review-notes.md"))
+
+
+def test_spec_report_script_rejects_non_spec_directory(tmp_path: Path) -> None:
+    result = subprocess.run(
+        [sys.executable, str(SPEC_REPORT_SCRIPT_PATH), str(tmp_path)],
+        cwd=ROOT,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    assert result.returncode == 2
+    assert "Spec package is missing spec.md" in result.stdout
+    assert not tmp_path.joinpath("docs").exists()
+
+
+def test_spec_report_script_marks_stale_readiness_report(tmp_path: Path) -> None:
+    package = tmp_path / "specs" / "stale-report"
+    package.mkdir(parents=True)
+    package.joinpath("spec.md").write_text("# Spec\n\nEdited after the review.\n", encoding="utf-8")
+    package.joinpath("readiness-review.md").write_text("# Old Review\n", encoding="utf-8")
+    package.joinpath("readiness-review.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "0.1",
+                "review_mode": "initial",
+                "review_level": "low",
+                "blocked": False,
+                "readiness": {
+                    "status": "ready",
+                    "implementation_ready": True,
+                    "criteria": {},
+                },
+                "summary": {
+                    "critical": 0,
+                    "major": 0,
+                    "minor": 0,
+                },
+                "input": {
+                    "artifact_count": 1,
+                    "total_characters": 20,
+                    "artifacts": [
+                        {
+                            "path": "spec.md",
+                            "characters": 20,
+                        }
+                    ],
+                },
+                "issues": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    older = time.time() - 200
+    os.utime(package / "readiness-review.json", (older, older))
+    os.utime(package / "spec.md", None)
+
+    subprocess.run(
+        [sys.executable, str(SPEC_REPORT_SCRIPT_PATH), str(package)],
+        cwd=ROOT,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+    mermaid = package.joinpath("docs", "specguard-report.mmd").read_text(encoding="utf-8")
+    html_report_text = package.joinpath("docs", "specguard-report.html").read_text(encoding="utf-8")
+
+    assert "Handoff: stale" in mermaid
+    assert "Rerun specguard run <package> --no-llm --no-follow-up" in mermaid
+    assert "readiness-review.json is stale" in html_report_text
 
 
 def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:

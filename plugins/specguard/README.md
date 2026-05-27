@@ -7,8 +7,9 @@ This plugin is a Codex workflow scaffold for SpecGuard. It helps Codex locate sp
 - Use the existing `specguard` CLI as the canonical engine.
 - Keep the default gate as `specguard run <package>` with heuristic low-mode SpecGuard Review.
 - Treat Codex-assisted detail review as optional and advisory unless explicitly requested.
+- Generate report-only Mermaid and HTML summaries only from existing structured readiness artifacts.
 - Provide summaries and suggestions only; do not rewrite spec files or apply fixes automatically.
-- Do not duplicate readiness review, benchmark, PR review, artifact-generation, or contract-validation logic inside the plugin.
+- Do not duplicate readiness review, benchmark, PR review, implementation artifact-generation, or contract-validation logic inside the plugin.
 
 ## Codex App Setup
 
@@ -20,7 +21,7 @@ codex plugin marketplace add KoreaNirsa/spec-guard --ref main
 
 Then select the `SpecGuard Plugins` marketplace source in Codex and install `SpecGuard`. This is a custom repository marketplace, not the official OpenAI Plugin Directory.
 
-You can also add this local plugin from the repository checkout by selecting the `plugins/specguard/` directory in the Codex app local plugin flow. The directory contains the required `.codex-plugin/plugin.json` manifest and the `specguard-workflow` skill.
+You can also add this local plugin from the repository checkout by selecting the `plugins/specguard/` directory in the Codex app local plugin flow. The directory contains the required `.codex-plugin/plugin.json` manifest, the `specguard-workflow` skill, and the `specguard-spec-report` skill.
 
 Installing the plugin does not install the SpecGuard CLI. Before using the plugin in a target workspace, confirm `specguard --help` works there. If it is unavailable, install SpecGuard with `pip install spec-guard`. From a SpecGuard source checkout, `python -m cli.specguard --help` is an acceptable fallback.
 
@@ -64,6 +65,25 @@ Keep the concise summary separate from full finding prose. Use the Markdown and 
 When authored spec artifacts change after a report was generated, treat the report as `stale_review`. Restate previous findings and suggested clarifications as suggestions only, mark unclear product behavior as `Needs user decision`, and ask the user to rerun `specguard run <package> --no-llm --no-follow-up`. After rerun, report only the fresh readiness result as the current status, including finding counts, current report paths, handoff availability, and next action. When a stable comparison is possible, compare previous and fresh `issues[]` entries only by unique `(severity, title)` keys and report `resolved`, `remaining`, `deferred`, and `newly_introduced` findings. Do not rely on generated report prose, `fix` wording, evidence excerpts, or terminal output for that comparison. Report `deferred` only for findings the user explicitly deferred, and keep deferred decisions out of implementation input until the spec is updated and SpecGuard reruns.
 
 Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
+
+## Human-Readable Spec Reports
+
+When the user asks for a visual report, Mermaid diagram, HTML report, decision-review report, or human-readable summary of an existing SpecGuard package, use the `specguard-spec-report` skill. The report skill reads existing source-backed artifacts and writes only generated presentation files under the package `docs/` directory:
+
+```text
+<package>/docs/specguard-report.mmd
+<package>/docs/specguard-report.html
+```
+
+From this repository checkout, the helper script is:
+
+```bash
+python plugins/specguard/skills/specguard-spec-report/scripts/spec_report.py <package>
+```
+
+The reports include the spec package path, readiness status, finding summary, key evidence, handoff status, report paths, and next action. They must keep source spec evidence, readiness findings, and report-only presentation separate. They must not patch spec files, create implementation requirements, replace the Grill me loop, or reimplement SpecGuard Review.
+
+Generated `docs/specguard-report.mmd` and `docs/specguard-report.html` files are report-only outputs. They are not authored spec inputs and must not be added to future readiness source artifact sets.
 
 ## PR Review Setup
 
