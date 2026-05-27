@@ -28,7 +28,8 @@ When Korean and English docs describe the same workflow, both versions must desc
 
 | Document | Korean status | English status |
 | --- | --- | --- |
-| `README.md` | Entry point must link to this policy. Korean companion content can be added when user-facing overview text is localized. | Existing overview is supported and links to this policy. |
+| `README.md` | Links to the Korean README entry point and this policy. | Primary package README and English entry point. |
+| `README.ko.md` | Supported Korean practical overview for setup, workflow, plugin usage, benchmark limits, and documentation links. It must not claim full CLI localization or broader Korean production support. | Links back to the English README without changing the package metadata target. |
 | `docs/setup-to-user-flow.md` | Planned companion content for installation and review workflow. | Existing source is supported. |
 | `docs/workflow.md` | Planned companion content for end-to-end workflow. | Existing source is supported. |
 | `docs/spec-driven-benchmark.md` | Korean benchmark limits must stay aligned with measured v0.4.1 results and the current fixture matrix. | Existing benchmark methodology is supported. |
