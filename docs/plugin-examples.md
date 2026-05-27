@@ -44,14 +44,14 @@ The fixtures assert stable commands, file names, failure categories, and safety 
 Run the plugin example and fixture checks from the repository root:
 
 ```bash
-python -m pytest tests/test_specguard_plugin_workflow.py -q
-python -m pytest tests/test_plugin_result_contract.py -q
+python -m pytest tests/plugin/test_specguard_plugin_workflow.py -q
+python -m pytest tests/plugin/test_plugin_result_contract.py -q
 ```
 
 Run packaging tests only when packaged resources or package metadata change:
 
 ```bash
-python -m pytest tests/test_packaging.py -q
+python -m pytest tests/packaging/test_packaging.py -q
 ```
 
 The contributor fixtures are intentionally separate from benchmark fixtures. Do not duplicate benchmark cases here; add only the compact scenario metadata needed to protect plugin workflow behavior.

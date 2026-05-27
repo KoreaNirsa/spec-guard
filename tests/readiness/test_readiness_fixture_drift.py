@@ -12,7 +12,7 @@ from tools.spec_driven_ai_benchmark import (
 
 
 EXPECTED_SUMMARY_PATH = (
-    Path(__file__).parent / "fixtures" / "readiness-fixture-drift-summary.json"
+    Path(__file__).resolve().parents[1] / "fixtures" / "readiness-fixture-drift-summary.json"
 )
 
 

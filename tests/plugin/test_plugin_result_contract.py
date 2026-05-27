@@ -19,7 +19,7 @@ from tools.post_run import (
 from tools.runner import run_pipeline
 
 
-FIXTURE_DIR = Path(__file__).parent / "fixtures" / "plugin-result-contract"
+FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "plugin-result-contract"
 FIXTURE_NAMES = [
     "ready.json",
     "ready-with-warnings.json",

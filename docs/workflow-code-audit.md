@@ -39,6 +39,6 @@ Before removal, the deleted paths had no references from current user-facing doc
 - `git grep -n "examples/simple-auth" -- README.md docs tests tools cli .github pyproject.toml`
 - `git grep -n "templates/" -- README.md docs tests tools cli .github pyproject.toml`
 
-Installed-wheel behavior remains covered by `tests/test_packaging.py`, including the `specguard` console script, `init`, default readiness workflow installation, `example copy`, and `run`.
+Installed-wheel behavior remains covered by `tests/packaging/test_packaging.py`, including the `specguard` console script, `init`, default readiness workflow installation, `example copy`, and `run`.
 
 Authored not-ready example behavior remains covered by tests that copy `tools/resources/example/` directly before running the pipeline and Grill Me flows.

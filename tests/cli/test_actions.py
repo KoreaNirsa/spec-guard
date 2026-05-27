@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def run_specguard(args: list[str], cwd: Path, *, check: bool = True) -> subprocess.CompletedProcess[str]:

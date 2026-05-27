@@ -49,7 +49,7 @@ Each future move should be a separate, small issue with compatibility tests:
 Before and after any structure migration, run:
 
 ```bash
-python -m pytest tests/test_packaging.py tests/test_cli_help.py tests/test_pipeline.py
+python -m pytest tests/packaging/test_packaging.py tests/cli/test_cli_help.py tests/pipeline/test_pipeline.py
 python -m build
 ```
 
