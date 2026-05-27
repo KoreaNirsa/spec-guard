@@ -116,7 +116,10 @@ Use this loop after a user edits `spec.md`, `technical-design.md`, or another au
 5. Tell the user that suggestions are not implementation input until the user updates the spec package and SpecGuard runs again.
 6. Rerun `specguard run <path> --no-llm --no-follow-up` after the user updates the spec package.
 7. Read the fresh `readiness-review.json` and report current status, finding counts, current report paths, handoff availability, and next action.
-8. If the fresh result is `not_ready`, report it as still blocked and continue using the suggestion-only refinement boundary.
+8. When the previous and fresh reports have unique stable `(severity, title)` issue keys, compare only those keys and report `resolved`, `remaining`, `deferred`, and `newly_introduced` findings.
+9. Do not compare unstable report prose such as `description`, `impact`, `fix`, `evidence`, Markdown report text, or terminal output. If stable comparison is ambiguous or unavailable, say so and report only the fresh readiness result.
+10. Report `deferred` only for findings the user explicitly deferred; do not treat deferred decisions or Codex suggestions as implementation-ready requirements.
+11. If the fresh result is `not_ready`, report it as still blocked and continue using the suggestion-only refinement boundary.
 
 ## CLI-Driven Grill Me Loop
 

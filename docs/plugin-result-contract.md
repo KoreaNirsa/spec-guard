@@ -94,6 +94,17 @@ Previous findings, suggested clarification text, and Codex-authored wording are 
 
 After rerun, the plugin should ignore stale guidance as the current result and report the fresh `readiness-review.json` state. Rerun output should include the current status, Critical/Major/Minor counts, current report paths, handoff availability, and next action. A fresh `readiness.status: "not_ready"` should be reported as still blocked.
 
+When a previous blocker context is available, the plugin may compare the fresh result against the previous report only through stable issue fields. Use each unique `(severity, title)` pair from `issues[]` as the comparison key. Do not compare or summarize by matching `description`, `impact`, `fix`, `evidence`, Markdown report prose, or terminal output.
+
+The comparison should report:
+
+- `resolved`: previous blocker keys that are absent from the fresh report.
+- `remaining`: previous blocker keys that are still present in the fresh report.
+- `deferred`: previous findings that the user explicitly deferred; do not infer deferral from a missing fix or from Codex suggestion text.
+- `newly_introduced`: fresh issue keys that were not present in the previous report.
+
+If duplicate `(severity, title)` keys, missing stable fields, or an unavailable previous report make the comparison ambiguous, skip the comparison and state that only the fresh readiness result is stable. In that case, still report the current status, counts, report paths, handoff availability, and next action from the fresh JSON.
+
 ## Grill Me Finding And Decision Contract
 
 `specguard run <package>` writes companion Grill me artifacts without replacing `readiness-review.json`:

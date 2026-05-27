@@ -195,6 +195,12 @@ def test_specguard_plugin_docs_cover_guided_rerun_loop() -> None:
             "`state: stale_review`",
             "the rerun command: `specguard run <package> --no-llm --no-follow-up`",
             "Previous findings, suggested clarification text, and Codex-authored wording are not implementation input.",
+            "Use each unique `(severity, title)` pair from `issues[]` as the comparison key.",
+            "`resolved`: previous blocker keys that are absent from the fresh report.",
+            "`remaining`: previous blocker keys that are still present in the fresh report.",
+            "`deferred`: previous findings that the user explicitly deferred",
+            "`newly_introduced`: fresh issue keys that were not present in the previous report.",
+            "Do not compare or summarize by matching `description`, `impact`, `fix`, `evidence`, Markdown report prose, or terminal output.",
             "A fresh `readiness.status: \"not_ready\"` should be reported as still blocked.",
         ),
     )
@@ -203,6 +209,9 @@ def test_specguard_plugin_docs_cover_guided_rerun_loop() -> None:
         (
             "## Guided Rerun Loop",
             "Rerun `specguard run <path> --no-llm --no-follow-up` after the user updates the spec package.",
+            "compare only those keys and report `resolved`, `remaining`, `deferred`, and `newly_introduced` findings",
+            "Do not compare unstable report prose",
+            "Report `deferred` only for findings the user explicitly deferred",
             "If the fresh result is `not_ready`, report it as still blocked",
         ),
     )
@@ -213,6 +222,9 @@ def test_specguard_plugin_docs_cover_guided_rerun_loop() -> None:
             ("previous", "findings", "suggestions only"),
             ("Needs user decision", "unclear", "behavior"),
             ("fresh", "status", "finding counts", "current report paths", "next action"),
+            ("stable", "comparison", "severity", "title"),
+            ("resolved", "remaining", "deferred", "newly"),
+            ("report prose", "terminal output"),
         ),
     )
 
