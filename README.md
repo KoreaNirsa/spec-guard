@@ -180,6 +180,7 @@ The user owns the spec. SpecGuard drafts, challenges, and validates the implemen
 - [Core Reviews](docs/core-reviews.md): SpecGuard Review, SpecGuard PR Review, LLM detail review, cache behavior, and experimental Spec Revision.
 - [Language Support](docs/language-support.md): Korean default documentation support, English support, doc status, and Korean benchmark claim boundaries.
 - [Codex Plugin Guide](docs/codex-plugin.md): local Codex app plugin setup, MVP workflow, validation scenarios, and plugin boundaries.
+- [Plugin Examples And Contributor Fixtures](docs/plugin-examples.md): packaged example scope and contributor-only plugin scenario fixtures.
 - [Codex Plugin Hardening Roadmap](docs/codex-plugin-hardening-roadmap.md): v0.4.x plugin backlog, priorities, missing contracts, and non-goals.
 - [CLI-Driven Grill Me Loop Design](docs/cli-grill-me-loop.md): planned CLI finding, Codex question, user decision, spec patch, and rerun workflow.
 - [Plugin Result Contract](docs/plugin-result-contract.md): stable `readiness-review.json` fields and file-based states for Codex plugin consumers.

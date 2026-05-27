@@ -154,6 +154,8 @@ The plugin orchestrates the CLI. It must not embed, fork, or reimplement SpecGua
 
 For stable fields and file-based states, see [Plugin Result Contract](plugin-result-contract.md).
 
+For packaged examples and contributor-only scenario fixtures, see [Plugin Examples And Contributor Fixtures](plugin-examples.md).
+
 For the v0.4.x plugin hardening backlog and missing contracts, see [Codex Plugin Hardening Roadmap](codex-plugin-hardening-roadmap.md).
 
 For the CLI-driven Grill me loop, see [CLI-Driven Grill Me Loop](cli-grill-me-loop.md). That workflow uses companion `grill.json`/`grill.md` files, stores user answers in `decisions/specguard-decisions.jsonl`, applies only `user-confirmed` `update-spec` decisions to supported spec targets, and requires a follow-up `specguard run <package> --no-llm --no-follow-up` before implementation handoff.
@@ -234,6 +236,9 @@ The plugin must not invent, generate, store, print, or commit API keys. If `gh` 
 When GitHub integration or `gh` authentication is unavailable, stop before secret handling and give manual setup instructions: open GitHub repository Settings > Secrets and variables > Actions, add `SPECGUARD_OPENAI_API_KEY` as a repository secret, and add `SPECGUARD_PR_REVIEW_MODEL` or `SPECGUARD_REVIEW_SPEC_PATHS` as repository variables only when needed.
 
 ## Validation Scenarios
+
+Contributor fixture metadata for these scenarios lives in `tests/fixtures/plugin-workflow-scenarios/scenarios.json`.
+Those fixtures are not packaged resources; they protect stable commands, file names, failure categories, and safety boundaries without pinning exact Markdown report sentences.
 
 | Scenario | Plugin action | Expected result |
 | --- | --- | --- |

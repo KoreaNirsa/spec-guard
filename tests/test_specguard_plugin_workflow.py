@@ -12,6 +12,8 @@ README_PATH = ROOT / "plugins" / "specguard" / "README.md"
 CODEX_PLUGIN_DOC_PATH = ROOT / "docs" / "codex-plugin.md"
 CODEX_PLUGIN_ROADMAP_PATH = ROOT / "docs" / "codex-plugin-hardening-roadmap.md"
 CODEX_PLUGIN_GRILL_LOOP_DOC_PATH = ROOT / "docs" / "cli-grill-me-loop.md"
+PLUGIN_EXAMPLES_DOC_PATH = ROOT / "docs" / "plugin-examples.md"
+PLUGIN_SCENARIO_FIXTURE_PATH = ROOT / "tests" / "fixtures" / "plugin-workflow-scenarios" / "scenarios.json"
 PR_REVIEW_KOREAN_EXAMPLE = "PR Review를 설정해줘"
 ENCODING_ARTIFACT_MARKERS = ("PR Review瑜", "ㅼ젙", "댁쨾", "\ufffd", "Ã", "Â")
 
@@ -48,6 +50,10 @@ def _assert_suggestion_only_boundary(text: str) -> None:
             ("rerun", "SpecGuard"),
         ),
     )
+
+
+def _load_plugin_scenario_fixture() -> dict[str, object]:
+    return json.loads(PLUGIN_SCENARIO_FIXTURE_PATH.read_text(encoding="utf-8"))
 
 
 def test_specguard_plugin_skill_defines_heuristic_first_cli_workflow() -> None:
@@ -487,6 +493,97 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
             ("Do not", "automatic spec rewriting"),
         ),
     )
+
+
+def test_plugin_workflow_scenario_fixtures_cover_issue_212_examples() -> None:
+    fixture = _load_plugin_scenario_fixture()
+    assert fixture["schema"] == "specguard-plugin-validation-scenarios/v1"
+
+    scenarios = fixture["scenarios"]
+    assert isinstance(scenarios, list)
+    by_state = {scenario["expected_state"]: scenario for scenario in scenarios}
+
+    assert {
+        "plugin_available",
+        "missing_cli",
+        "ready",
+        "ready_with_warnings",
+        "not_ready",
+        "stale_review",
+        "validation_failed_before_review",
+    } <= set(by_state)
+
+    for scenario in scenarios:
+        assert scenario["id"]
+        assert scenario["category"] in {"install", "run", "recovery"}
+        assert isinstance(scenario["commands"], list)
+        assert all(isinstance(command, str) and command for command in scenario["commands"])
+        assert isinstance(scenario["stable_files"], list)
+        assert isinstance(scenario["safety_boundaries"], list)
+        assert scenario["safety_boundaries"]
+
+    assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in by_state["plugin_available"]["commands"]
+    assert "specguard --help" in by_state["missing_cli"]["commands"]
+    assert "python -m cli.specguard --help" in by_state["missing_cli"]["commands"]
+
+    for state in ("ready", "ready_with_warnings", "not_ready", "stale_review", "validation_failed_before_review"):
+        assert "specguard run <package> --no-llm --no-follow-up" in by_state[state]["commands"]
+
+    for state in ("ready", "ready_with_warnings"):
+        assert by_state[state]["handoff"] == "allowed"
+        assert "readiness-review.json" in by_state[state]["stable_files"]
+        assert "readiness-review.md" in by_state[state]["stable_files"]
+        assert "implementation-output.md" in by_state[state]["stable_files"]
+
+    assert by_state["not_ready"]["handoff"] == "blocked"
+    assert "readiness-review.json" in by_state["not_ready"]["stable_files"]
+    assert "readiness-review.md" in by_state["not_ready"]["stable_files"]
+    assert "implementation-output.md" not in by_state["not_ready"]["stable_files"]
+
+    failure_categories = {
+        scenario["failure_category"]
+        for scenario in scenarios
+        if scenario["failure_category"] is not None
+    }
+    assert {"missing_cli", "stale_review", "validation_failed_before_review"} <= failure_categories
+
+    fixture_text = json.dumps(fixture)
+    assert "Todo ownership boundary is unclear" not in fixture_text
+    assert "Detailed blocker description" not in fixture_text
+
+
+def test_plugin_examples_docs_separate_packaged_and_contributor_only_fixtures() -> None:
+    doc = PLUGIN_EXAMPLES_DOC_PATH.read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    development = (ROOT / "docs" / "development.md").read_text(encoding="utf-8")
+    root_readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    combined = "\n".join((doc, guide, readme, development, root_readme))
+
+    _assert_contains_all(
+        doc,
+        (
+            "tools/resources/example/",
+            "specguard example copy specs/your-feature-name --force",
+            "specguard run specs/your-feature-name --no-llm --no-follow-up",
+            "tests/fixtures/plugin-workflow-scenarios/scenarios.json",
+            "not packaged resources",
+            "must not grow into a full sample application without a separate scope decision",
+            "python -m pytest tests/test_specguard_plugin_workflow.py -q",
+            "python -m pytest tests/test_plugin_result_contract.py -q",
+            "python -m pytest tests/test_packaging.py -q",
+        ),
+    )
+    _assert_contains_all(
+        combined,
+        (
+            "Plugin Examples And Contributor Fixtures",
+            "tests/fixtures/plugin-workflow-scenarios/",
+            "stable commands, file names, failure categories, and safety boundaries",
+        ),
+    )
+    assert "tests/fixtures/plugin-workflow-scenarios" not in pyproject
 
 
 def test_specguard_plugin_marketplace_metadata_points_to_plugin() -> None:

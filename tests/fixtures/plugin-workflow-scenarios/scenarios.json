@@ -1,0 +1,154 @@
+{
+  "schema": "specguard-plugin-validation-scenarios/v1",
+  "purpose": "Contributor-only scenario catalog for SpecGuard Codex plugin workflow validation.",
+  "packaged_examples": [
+    {
+      "id": "packaged-authored-example",
+      "path": "tools/resources/example/",
+      "copy_command": "specguard example copy specs/your-feature-name --force",
+      "packaged": true,
+      "expected_workspace_path": "specs/your-feature-name/",
+      "covers": [
+        "blocked readiness",
+        "generated readiness artifacts"
+      ]
+    }
+  ],
+  "contributor_only_examples": [
+    {
+      "id": "plugin-workflow-scenario-fixtures",
+      "path": "tests/fixtures/plugin-workflow-scenarios/scenarios.json",
+      "packaged": false,
+      "package_data": false,
+      "purpose": "Stable command, file, failure-category, and safety-boundary checks for plugin documentation and workflow tests."
+    }
+  ],
+  "scenarios": [
+    {
+      "id": "install-marketplace",
+      "category": "install",
+      "expected_state": "plugin_available",
+      "handoff": "not_applicable",
+      "commands": [
+        "codex plugin marketplace add KoreaNirsa/spec-guard --ref main",
+        "specguard --help"
+      ],
+      "stable_files": [
+        ".agents/plugins/marketplace.json",
+        "plugins/specguard/.codex-plugin/plugin.json"
+      ],
+      "failure_category": null,
+      "safety_boundaries": [
+        "installing_plugin_does_not_install_cli",
+        "repo_marketplace_is_not_official_plugin_directory"
+      ]
+    },
+    {
+      "id": "missing-cli-guidance",
+      "category": "recovery",
+      "expected_state": "missing_cli",
+      "handoff": "blocked",
+      "commands": [
+        "specguard --help",
+        "python -m cli.specguard --help"
+      ],
+      "stable_files": [],
+      "failure_category": "missing_cli",
+      "safety_boundaries": [
+        "ask_before_helping_install_cli",
+        "do_not_claim_plugin_installs_cli"
+      ]
+    },
+    {
+      "id": "default-run-ready",
+      "category": "run",
+      "expected_state": "ready",
+      "handoff": "allowed",
+      "commands": [
+        "specguard run <package> --no-llm --no-follow-up"
+      ],
+      "stable_files": [
+        "readiness-review.json",
+        "readiness-review.md",
+        "implementation-output.md"
+      ],
+      "failure_category": null,
+      "safety_boundaries": [
+        "structured_files_only",
+        "handoff_requires_fresh_ready_json"
+      ]
+    },
+    {
+      "id": "default-run-ready-with-warnings",
+      "category": "run",
+      "expected_state": "ready_with_warnings",
+      "handoff": "allowed",
+      "commands": [
+        "specguard run <package> --no-llm --no-follow-up"
+      ],
+      "stable_files": [
+        "readiness-review.json",
+        "readiness-review.md",
+        "implementation-output.md"
+      ],
+      "failure_category": null,
+      "safety_boundaries": [
+        "warnings_are_optional_cleanup",
+        "handoff_requires_implementation_output"
+      ]
+    },
+    {
+      "id": "default-run-not-ready",
+      "category": "run",
+      "expected_state": "not_ready",
+      "handoff": "blocked",
+      "commands": [
+        "specguard run <package> --no-llm --no-follow-up"
+      ],
+      "stable_files": [
+        "readiness-review.json",
+        "readiness-review.md"
+      ],
+      "failure_category": null,
+      "safety_boundaries": [
+        "critical_findings_first",
+        "suggestion_only_spec_refinement",
+        "do_not_use_implementation_output_as_current_handoff"
+      ]
+    },
+    {
+      "id": "stale-review-recovery",
+      "category": "recovery",
+      "expected_state": "stale_review",
+      "handoff": "blocked",
+      "commands": [
+        "specguard run <package> --no-llm --no-follow-up"
+      ],
+      "stable_files": [
+        "readiness-review.json",
+        "readiness-review.md"
+      ],
+      "failure_category": "stale_review",
+      "safety_boundaries": [
+        "previous_findings_are_suggestions_only",
+        "needs_user_decision_for_unclear_behavior",
+        "rerun_before_implementation"
+      ]
+    },
+    {
+      "id": "validation-failure-before-review",
+      "category": "recovery",
+      "expected_state": "validation_failed_before_review",
+      "handoff": "blocked",
+      "commands": [
+        "specguard run <package> --no-llm --no-follow-up"
+      ],
+      "stable_files": [],
+      "failure_category": "validation_failed_before_review",
+      "safety_boundaries": [
+        "known_files_are_diagnostics_only",
+        "do_not_reuse_old_readiness_report"
+      ]
+    }
+  ]
+}
