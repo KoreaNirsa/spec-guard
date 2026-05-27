@@ -206,6 +206,36 @@ def _context_matches_any(context: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, context) for pattern in patterns)
 
 
+KOREAN_PAYMENT_SAFE_NEGATION_PATTERNS = (
+    r"(타임아웃|네트워크 실패).*(재시도|다시\s*들어온).*새\s*(요청|결제).*처리하지\s*않",
+)
+
+KOREAN_WEBHOOK_ENDPOINT_SAFE_NEGATION_PATTERNS = (
+    r"엔드포인트\s*url.*충분하지\s*않",
+    r"엔드포인트\s*url.*아는\s*호출자.*신뢰하지\s*않",
+)
+
+KOREAN_WEBHOOK_EVENT_SAFE_NEGATION_PATTERNS = (
+    r"같은\s*event_id.*다시.*처리하지\s*않",
+)
+
+ENGLISH_WEBHOOK_ENDPOINT_SAFE_NEGATION_PATTERNS = (
+    r"\bknowing\s+the\s+endpoint\s+url\s+is\s+not\s+enough\b",
+)
+
+ENGLISH_WEBHOOK_EVENT_SAFE_NEGATION_PATTERNS = (
+    r"\bsame\s+event_id\b.*\bnot\s+(dispatch|process)\w*\b.*\bagain\b",
+)
+
+ENGLISH_PAYMENT_NEW_REQUEST_SAFE_NEGATION_PATTERNS = (
+    r"\bnot\s+treated\s+as\s+a\s+new\s+request\b",
+)
+
+ENGLISH_PAYMENT_RECONCILIATION_SAFE_NEGATION_PATTERNS = (
+    r"\bdoes\s+not\s+settles?\s+duplicates?\s+after\s+reconciliation\b",
+)
+
+
 def _first_context_with_any(contexts: list[str], markers: tuple[str, ...]) -> str:
     return next(
         (context for context in contexts if _context_has_any(context, markers)),
@@ -320,16 +350,22 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
             )
 
         payment_scope = _context_has_any(context, ("결제", "환불", "지급", "정산", "게이트웨이", "배송사", "외부 api"))
-        if payment_scope and (
+        unsafe_payment_phrase = _context_matches_any(
+            context,
+            (
+                r"(멱등|idempotency|idempotency_key).*(필수\s*아님|필요하지|선택\s*사항|범위\s*밖|없어도)",
+                r"(중복\s*호출|중복\s*결제|중복\s*환불|중복\s*요청).*(허용|가능|나중에|재조정|사후\s*정산)",
+            ),
+        ) or (
             _context_matches_any(
                 context,
                 (
-                    r"(멱등|idempotency|idempotency_key).*(필수\s*아님|필요하지|선택\s*사항|범위\s*밖|없어도)",
-                    r"(중복\s*호출|중복\s*결제|중복\s*환불|중복\s*요청).*(허용|가능|나중에|재조정|사후\s*정산)",
                     r"(타임아웃|네트워크 실패).*(재시도|다시\s*들어온).*(멱등|중복|새\s*(요청|결제)).*(정의하지|필수\s*아님|나중에|처리)",
                 ),
             )
-        ):
+            and not _context_matches_any(context, KOREAN_PAYMENT_SAFE_NEGATION_PATTERNS)
+        )
+        if payment_scope and unsafe_payment_phrase:
             return ReadinessIssue(
                 "Critical",
                 "Payment idempotency contract is ambiguous",
@@ -388,17 +424,24 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
                 evidence=_evidence_excerpt(context),
             )
 
-        if _context_has_any(context, ("웹훅", "webhook", "subscriber", "구독자")) and (
-            _context_matches_any(
-                context,
-                (
-                    r"(서명|signature).*(검증|확인).*(필수\s*아님|필요하지|불필요|하지\s*않는다)",
-                    r"엔드포인트\s*url.*(비밀|아는\s*호출자.*신뢰)",
-                    r"(timeout|타임아웃|retry|재시도|멱등|event_id).*(범위\s*밖|정의하지|필수\s*아님|필요하지)",
-                    r"중복\s*(event_id|이벤트|전송).*(허용|가능|처리)",
-                    r"같은\s*event_id.*다시.*처리",
-                ),
-            )
+        unsafe_webhook_phrase = _context_matches_any(
+            context,
+            (
+                r"(서명|signature).*(검증|확인).*(필수\s*아님|필요하지|불필요)",
+                r"(서명|signature).{0,20}(검증|확인).{0,20}하지\s*않는다",
+                r"(timeout|타임아웃|retry|재시도|멱등|event_id).*(범위\s*밖|정의하지|필수\s*아님|필요하지)",
+                r"중복\s*(event_id|이벤트|전송).*(허용|가능|처리)",
+            ),
+        ) or (
+            _context_matches_any(context, (r"엔드포인트\s*url.*(비밀|아는\s*호출자.*신뢰)",))
+            and not _context_matches_any(context, KOREAN_WEBHOOK_ENDPOINT_SAFE_NEGATION_PATTERNS)
+        ) or (
+            _context_matches_any(context, (r"같은\s*event_id.*다시.*처리",))
+            and not _context_matches_any(context, KOREAN_WEBHOOK_EVENT_SAFE_NEGATION_PATTERNS)
+        )
+        if (
+            _context_has_any(context, ("웹훅", "webhook", "subscriber", "구독자"))
+            and unsafe_webhook_phrase
         ):
             if _context_has_any(context, ("서명", "signature", "엔드포인트 url")):
                 return ReadinessIssue(
@@ -1488,18 +1531,31 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
                 evidence=_evidence_excerpt(context),
             )
 
-        if _context_has_any(context, ("webhook", "signature", "endpoint secret", "event_id")) and _context_matches_any(
+        unsafe_webhook_phrase = _context_matches_any(
             context,
             (
                 r"\bsignature\s+verification\s+is\s+not\s+required\b",
                 r"\bdoes\s+not\s+perform\s+signature\s+checks?\b",
                 r"\bpayload\s+without\s+signature\s+is\s+processed\b",
                 r"\bwithout\s+signature\s+.*\bprocessed\b",
-                r"\bendpoint\s+url\s+is\s+secret\b",
-                r"\bknowing\s+the\s+endpoint\s+url\s+is\s+enough\b",
                 r"\bduplicate\s+event\s+ids?\s+may\s+be\s+processed\s+more\s+than\s+once\b",
-                r"\bsame\s+event_id\b.*\b(dispatch|process)\w*\b.*\bagain\b",
             ),
+        ) or (
+            _context_matches_any(
+                context,
+                (
+                    r"\bendpoint\s+url\s+is\s+secret\b",
+                    r"\bknowing\s+the\s+endpoint\s+url\s+is\s+enough\b",
+                ),
+            )
+            and not _context_matches_any(context, ENGLISH_WEBHOOK_ENDPOINT_SAFE_NEGATION_PATTERNS)
+        ) or (
+            _context_matches_any(context, (r"\bsame\s+event_id\b.*\b(dispatch|process)\w*\b.*\bagain\b",))
+            and not _context_matches_any(context, ENGLISH_WEBHOOK_EVENT_SAFE_NEGATION_PATTERNS)
+        )
+        if (
+            _context_has_any(context, ("webhook", "signature", "endpoint secret", "event_id"))
+            and unsafe_webhook_phrase
         ):
             return ReadinessIssue(
                 "Critical",
@@ -1653,22 +1709,27 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
 
     for context in contexts:
         payment_scope = _is_payment_context(context)
+        unsafe_payment_phrase = _context_matches_any(
+            context,
+            (
+                r"\b(no|without)\s+idempotency\b",
+                r"idempotency(_key|\s+key)?\s+.*\b(absent|not supplied|not present)\b",
+                r"missing\s+idempotency\s+(contract|behavior|handling|policy)",
+                r"does\s+not\s+define\s+.*idempotency",
+                r"idempotency\s+.*\b(optional|not required|out of scope)\b",
+                r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+.*\b(allowed|accepted|possible|created|sent)\b",
+                r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+behavior\s+.*\b(undefined|not defined|ambiguous)\b",
+                r"(charge|refund|capture).*\b(twice|duplicate)\b",
+            ),
+        ) or (
+            _context_matches_any(context, (r"settles?\s+duplicates?\s+after\s+reconciliation\b",))
+            and not _context_matches_any(context, ENGLISH_PAYMENT_RECONCILIATION_SAFE_NEGATION_PATTERNS)
+        ) or (
+            _context_matches_any(context, (r"treated\s+as\s+a\s+new\s+request\b",))
+            and not _context_matches_any(context, ENGLISH_PAYMENT_NEW_REQUEST_SAFE_NEGATION_PATTERNS)
+        )
         if payment_scope and (
-            _context_matches_any(
-                context,
-                (
-                    r"\b(no|without)\s+idempotency\b",
-                    r"idempotency(_key|\s+key)?\s+.*\b(absent|not supplied|not present)\b",
-                    r"missing\s+idempotency\s+(contract|behavior|handling|policy)",
-                    r"does\s+not\s+define\s+.*idempotency",
-                    r"idempotency\s+.*\b(optional|not required|out of scope)\b",
-                    r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+.*\b(allowed|accepted|possible|created|sent)\b",
-                    r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+behavior\s+.*\b(undefined|not defined|ambiguous)\b",
-                    r"settles?\s+duplicates?\s+after\s+reconciliation\b",
-                    r"treated\s+as\s+a\s+new\s+request\b",
-                    r"(charge|refund|capture).*\b(twice|duplicate)\b",
-                ),
-            )
+            unsafe_payment_phrase
             or (
                 "idempotency" in context
                 and _context_has_any(context, ("different amount", "different payload", "conflict", "same key"))
