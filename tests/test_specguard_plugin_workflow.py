@@ -215,6 +215,13 @@ def test_specguard_plugin_docs_cover_guided_rerun_loop() -> None:
             "If the fresh result is `not_ready`, report it as still blocked",
         ),
     )
+    _assert_contains_all(
+        guide,
+        (
+            "Report `deferred` only for findings the user explicitly deferred.",
+            "treat `deferred` as user-explicit deferrals only",
+        ),
+    )
     _assert_mentions_all_concepts(
         combined,
         (
