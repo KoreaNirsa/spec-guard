@@ -160,7 +160,7 @@ def _feature_dirs_under_spec_root(spec_root: Path) -> list[Path]:
 
 def _nested_specs_prefixes(parts: tuple[str, ...]) -> tuple[tuple[str, ...], ...]:
     for index, part in enumerate(parts):
-        if part != SPEC_DIR_NAME or index + 1 >= len(parts):
+        if part != SPEC_DIR_NAME or not _has_feature_relative_path(parts, index + 1):
             continue
         if any(is_excluded_discovery_dir_name(name) for name in parts[:index]):
             continue
@@ -174,13 +174,17 @@ def _explicit_spec_root_prefix(
     parts: tuple[str, ...],
     spec_root_parts: tuple[str, ...],
 ) -> tuple[tuple[str, ...], ...]:
-    if not starts_with(parts, spec_root_parts) or len(parts) <= len(spec_root_parts):
+    if not starts_with(parts, spec_root_parts) or not _has_feature_relative_path(parts, len(spec_root_parts)):
         return ()
     if any(is_excluded_discovery_dir_name(name) for name in spec_root_parts[:-1]):
         return ()
     if is_excluded_discovery_dir_name(parts[len(spec_root_parts)]):
         return ()
     return (spec_root_parts,)
+
+
+def _has_feature_relative_path(parts: tuple[str, ...], feature_index: int) -> bool:
+    return feature_index + 1 < len(parts)
 
 
 def _path_sort_key(path: Path) -> tuple[str, str]:

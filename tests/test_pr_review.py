@@ -118,6 +118,22 @@ def test_pr_review_discovers_nested_specs_package_from_diff(tmp_path: Path) -> N
     assert packages == [feature]
 
 
+def test_pr_review_ignores_specs_root_placeholder_files(tmp_path: Path) -> None:
+    write_ready_spec_package(tmp_path)
+    diff = "\n".join([
+        "diff --git a/specs/README.md b/specs/README.md",
+        "--- /dev/null",
+        "+++ b/specs/README.md",
+        "@@ -0,0 +1 @@",
+        "+# Spec Packages",
+        "",
+    ])
+
+    packages = discover_spec_packages(tmp_path / "specs", diff)
+
+    assert packages == []
+
+
 def test_pr_review_prompt_uses_specguard_reviewer_persona(tmp_path: Path) -> None:
     feature = write_ready_spec_package(tmp_path)
     diff = write_diff(tmp_path, "diff --git a/develop/app.py b/develop/app.py\n+++ b/develop/app.py\n+pass\n")
