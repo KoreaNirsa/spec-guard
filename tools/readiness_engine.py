@@ -324,9 +324,9 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
             _context_matches_any(
                 context,
                 (
-                    r"(멱등|idempotency|idempotency_key).*(필수\s*아님|필요하지|선택\s*사항|범위\s*밖)",
-                    r"(중복\s*호출|중복\s*결제|중복\s*환불|중복\s*요청).*(허용|가능|나중에|재조정)",
-                    r"(타임아웃|네트워크 실패).*재시도.*(멱등|중복).*(정의하지|필수\s*아님|나중에)",
+                    r"(멱등|idempotency|idempotency_key).*(필수\s*아님|필요하지|선택\s*사항|범위\s*밖|없어도)",
+                    r"(중복\s*호출|중복\s*결제|중복\s*환불|중복\s*요청).*(허용|가능|나중에|재조정|사후\s*정산)",
+                    r"(타임아웃|네트워크 실패).*(재시도|다시\s*들어온).*(멱등|중복|새\s*(요청|결제)).*(정의하지|필수\s*아님|나중에|처리)",
                 ),
             )
         ):
@@ -392,10 +392,11 @@ def _korean_semantic_blocker(contexts: list[str]) -> ReadinessIssue | None:
             _context_matches_any(
                 context,
                 (
-                    r"(서명|signature).*검증.*(필수\s*아님|필요하지|불필요)",
-                    r"엔드포인트\s*url.*비밀",
+                    r"(서명|signature).*(검증|확인).*(필수\s*아님|필요하지|불필요|하지\s*않는다)",
+                    r"엔드포인트\s*url.*(비밀|아는\s*호출자.*신뢰)",
                     r"(timeout|타임아웃|retry|재시도|멱등|event_id).*(범위\s*밖|정의하지|필수\s*아님|필요하지)",
                     r"중복\s*(event_id|이벤트|전송).*(허용|가능|처리)",
+                    r"같은\s*event_id.*다시.*처리",
                 ),
             )
         ):
@@ -1491,10 +1492,13 @@ def _extended_practical_domain_blocker(contexts: list[str]) -> ReadinessIssue | 
             context,
             (
                 r"\bsignature\s+verification\s+is\s+not\s+required\b",
+                r"\bdoes\s+not\s+perform\s+signature\s+checks?\b",
                 r"\bpayload\s+without\s+signature\s+is\s+processed\b",
                 r"\bwithout\s+signature\s+.*\bprocessed\b",
                 r"\bendpoint\s+url\s+is\s+secret\b",
+                r"\bknowing\s+the\s+endpoint\s+url\s+is\s+enough\b",
                 r"\bduplicate\s+event\s+ids?\s+may\s+be\s+processed\s+more\s+than\s+once\b",
+                r"\bsame\s+event_id\b.*\b(dispatch|process)\w*\b.*\bagain\b",
             ),
         ):
             return ReadinessIssue(
@@ -1654,11 +1658,14 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 context,
                 (
                     r"\b(no|without)\s+idempotency\b",
+                    r"idempotency(_key|\s+key)?\s+.*\b(absent|not supplied|not present)\b",
                     r"missing\s+idempotency\s+(contract|behavior|handling|policy)",
                     r"does\s+not\s+define\s+.*idempotency",
                     r"idempotency\s+.*\b(optional|not required|out of scope)\b",
                     r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+.*\b(allowed|accepted|possible|created|sent)\b",
                     r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+behavior\s+.*\b(undefined|not defined|ambiguous)\b",
+                    r"settles?\s+duplicates?\s+after\s+reconciliation\b",
+                    r"treated\s+as\s+a\s+new\s+request\b",
                     r"(charge|refund|capture).*\b(twice|duplicate)\b",
                 ),
             )

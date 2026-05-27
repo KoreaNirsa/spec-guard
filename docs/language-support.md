@@ -39,7 +39,7 @@ When Korean and English docs describe the same workflow, both versions must desc
 Korean support claims must stay within measured evidence:
 
 - The recorded v0.4.1 gate-only artifact evaluates 99 English cases and 99 corresponding Korean cases.
-- The current fixture source contains 100 English cases and 100 Korean cases. The coverage matrix records 2 selected ready/reference fixture results as missing from the v0.4.1 artifact until the benchmark is refreshed.
+- The current fixture source contains 104 English cases and 104 Korean cases. The coverage matrix records 10 selected fixture results as missing from the v0.4.1 artifact until the benchmark is refreshed.
 - Korean-only weak specs are covered when unsafe wording is explicit in the deterministic low-mode rules.
 - Mixed Korean/English specs with English contract identifiers are supported when the relevant risk is explicit.
 - Full Korean production support is not claimed until broader benchmark and product validation exist.
@@ -56,9 +56,11 @@ Current known Korean false negatives:
 
 Current Korean support limitations:
 
-- The checked-in fixture source is ahead of the recorded v0.4.1 benchmark artifact by 2 selected ready/reference cases, so 100-case Korean pass/fail claims must wait for a benchmark refresh.
+- The checked-in fixture source is ahead of the recorded v0.4.1 benchmark artifact by 10 selected cases, including #213 Korean phrasing variants and their paired ready/reference guards. Updated 104-case English or Korean pass/fail claims must wait for a benchmark refresh.
 - The v0.4.1 aggregate benchmark artifact does not persist full Critical finding evidence payloads; detailed evidence quality is tracked separately.
 - Korean coverage remains deterministic and phrase-bound. It does not validate every Korean idiom, legal/privacy variant, LLM-backed Korean review quality, or full CLI localization.
+
+The #213 phrasing-variant work adds fixture-source coverage for explicit Korean wording around inbound webhook URL-secret trust and payment idempotency post-settlement cleanup. These fixtures expand deterministic guard coverage only for the measured phrases and do not create a full Korean production-support claim.
 
 The #175 finding-quality work targets representative Korean weak specs that already block correctly but can produce weaker findings than English/general heuristic cases. The concrete quality gap is missing `evidence[]` excerpts on Korean-specific deterministic blockers. Without source evidence, a finding can be less actionable even when its severity and readiness decision are correct.
 

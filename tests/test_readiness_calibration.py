@@ -398,6 +398,63 @@ def test_korean_background_job_counterpart_preserves_source_mapping_and_guard_sh
 
 
 @pytest.mark.parametrize(
+    ("weak_case_id", "ready_case_id", "expected_title", "expected_evidence"),
+    [
+        (
+            "weak_inbound_webhook_url_secret_phrase_ko",
+            "ready_inbound_webhook_signature_replay_ko",
+            "Webhook signature verification is missing",
+            "서명 확인은 하지 않는다",
+        ),
+        (
+            "weak_payment_idempotency_post_settlement_ko",
+            "ready_payment_retry_reconciliation_contract_ko",
+            "Payment idempotency contract is ambiguous",
+            "idempotency_key가 없어도",
+        ),
+    ],
+)
+def test_korean_phrasing_variant_pairs_keep_blocker_and_ready_guard_shape(
+    tmp_path: Path,
+    weak_case_id: str,
+    ready_case_id: str,
+    expected_title: str,
+    expected_evidence: str,
+) -> None:
+    weak_case = _benchmark_case(weak_case_id)
+    ready_case = _benchmark_case(ready_case_id)
+
+    assert weak_case["language"] == "ko"
+    assert ready_case["language"] == "ko"
+    assert weak_case["domain"] == ready_case["domain"]
+    assert weak_case["expectation"] == "weak"
+    assert ready_case["expectation"] == "good"
+
+    weak_package = make_specguard_package(tmp_path, weak_case)
+    weak_result = run_readiness_review(weak_package)
+    weak_payload = json.loads(
+        weak_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert not weak_result.ok
+    assert weak_payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(weak_payload, expected_title)
+    assert expected_evidence in " ".join(issue.get("evidence", []))
+    _assert_critical_issue_shape(issue, weak_package)
+
+    ready_package = make_specguard_package(tmp_path, ready_case)
+    ready_result = run_readiness_review(ready_package)
+    ready_payload = json.loads(
+        ready_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert ready_result.ok
+    assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert ready_payload["summary"]["critical"] == 0
+    assert expected_title not in {issue["title"] for issue in ready_payload["issues"]}
+
+
+@pytest.mark.parametrize(
     ("language", "spec_lines", "design_lines", "expected_evidence"),
     [
         (
@@ -882,8 +939,8 @@ def test_language_support_documents_korean_finding_quality_scope() -> None:
     assert "Current known Korean false positives" in doc
     assert "Current known Korean false negatives" in doc
     assert "None in the recorded v0.4.1 Korean 99-case gate-only layer" in doc
-    assert "100 English cases and 100 Korean cases" in doc
-    assert "2 selected ready/reference fixture results as missing" in doc
+    assert "104 English cases and 104 Korean cases" in doc
+    assert "10 selected fixture results as missing" in doc
     assert "missing `evidence[]` excerpts" in doc
     assert "READY_WITH_WARNINGS" in doc
     assert "NOT_READY" in doc
