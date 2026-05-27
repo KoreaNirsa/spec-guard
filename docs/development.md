@@ -25,6 +25,12 @@ failure categories, safety boundaries, and setup paths. Avoid exact-sentence, sc
 transient version note, or broad Markdown snapshot assertions unless the wording is itself a
 documented public contract.
 
+For plugin workflow examples, keep packaged examples and contributor-only fixtures separate.
+The packaged authored example lives under `tools/resources/example/` and is copied with
+`specguard example copy`. Contributor-only plugin scenarios live under
+`tests/fixtures/plugin-workflow-scenarios/` and should not be added to package data.
+See [Plugin Examples And Contributor Fixtures](plugin-examples.md) for local validation commands.
+
 Use the packaged example when you want to exercise SpecGuard without authoring a new spec first:
 
 ```bash
