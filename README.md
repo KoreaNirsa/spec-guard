@@ -149,7 +149,7 @@ For Codex setup, example packages, LLM review options, follow-up menus, implemen
 
 ## Benchmark Summary
 
-The recorded v0.4.1 gate-only benchmark evaluates 99 English spec packages across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs. It includes 99 corresponding Korean gate-only cases and reports English and Korean metrics separately. The current fixture source contains 104 English and 104 Korean cases; the 10 new or previously pending fixture results are pending the next benchmark refresh, so the table below reports only the recorded v0.4.1 artifact.
+The recorded v0.4.1 gate-only benchmark evaluates 99 English spec packages across practical domains such as auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, and background jobs. It includes 99 corresponding Korean gate-only cases and reports English and Korean metrics separately. The current fixture source contains 110 English and 110 Korean cases; the 22 new or previously pending fixture results are pending the next benchmark refresh, so the table below reports only the recorded v0.4.1 artifact.
 
 The benchmark asks one practical question: how much of the implementation handoff can SpecGuard guard before an AI coding agent starts writing code?
 

@@ -41,9 +41,9 @@ The deterministic low-mode gate is calibrated primarily on English specs. The re
 
 Current support levels:
 
-- English specs: calibrated against the recorded v0.4.1 99-case gate-only benchmark. The current fixture source contains 104 selected English cases, with 5 fixture results pending the next benchmark refresh.
+- English specs: calibrated against the recorded v0.4.1 99-case gate-only benchmark. The current fixture source contains 110 selected English cases, with 11 fixture results pending the next benchmark refresh.
 - Mixed Korean/English specs: supported when Korean product prose includes common contract identifiers such as `tenant_id`, `idempotency_key`, `expires_at`, `revoked_at`, or `event_id`.
-- Korean-only product prose: initial deterministic support for explicit unsafe wording in the recorded v0.4.1 Korean 99-case layer. The current fixture source contains 104 selected Korean cases, with 5 fixture results pending the next benchmark refresh. This is not a full Korean production-support claim.
+- Korean-only product prose: initial deterministic support for explicit unsafe wording in the recorded v0.4.1 Korean 99-case layer. The current fixture source contains 110 selected Korean cases, with 11 fixture results pending the next benchmark refresh. This is not a full Korean production-support claim.
 
 For API features, `contracts/openapi.yaml` must define at least one concrete path before SpecGuard can produce an implementation handoff. `paths: {}` is treated as a blocker, not a ready contract. Generated contracts include spec-derived success and error responses, request and response schemas, and `x-specguard-coverage` links back to acceptance criteria and error cases.
 

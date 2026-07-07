@@ -43,7 +43,7 @@ def test_korean_readme_covers_required_overview_and_support_boundaries() -> None
         "specguard run <package> --no-llm --no-follow-up",
         "English 99",
         "Korean 99",
-        "영어 104개와 한국어 104개",
+        "영어 110개와 한국어 110개",
         "전체 CLI 현지화",
         "전체 한국어 프로덕션 지원",
         "Language Support](docs/language-support.md)",
