@@ -330,6 +330,72 @@ def test_checked_in_gate_only_benchmark_records_refresh_metadata() -> None:
     assert metadata["environment"]["notes"]
 
 
+def test_checked_in_clean_checkout_validation_matches_v043_metrics() -> None:
+    baseline_path = Path("docs/benchmark-results/specguard-gate-only-v0.4.3.json")
+    clean_path = Path("docs/benchmark-results/specguard-gate-only-v0.4.3-clean-checkout.json")
+
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+    clean = json.loads(clean_path.read_text(encoding="utf-8"))
+    clean_metadata = clean["metadata"]
+
+    for key in (
+        "schema",
+        "benchmark_script_version",
+        "case_count",
+        "good_case_count",
+        "weak_case_count",
+        "suite_counts",
+        "language_counts",
+        "aggregates",
+    ):
+        assert clean[key] == baseline[key]
+
+    baseline_gate_outcomes = {
+        result["case"]: {
+            "readiness": result.get("readiness"),
+            "implementation_ready": result.get("implementation_ready"),
+            "issue_summary": result.get("issue_summary"),
+        }
+        for result in baseline["results"]
+        if result["workflow"] == "specguard_gate"
+    }
+    clean_gate_outcomes = {
+        result["case"]: {
+            "readiness": result.get("readiness"),
+            "implementation_ready": result.get("implementation_ready"),
+            "issue_summary": result.get("issue_summary"),
+        }
+        for result in clean["results"]
+        if result["workflow"] == "specguard_gate"
+    }
+
+    assert clean_gate_outcomes == baseline_gate_outcomes
+
+    assert clean_metadata["benchmark_script"]["version"] == "7"
+    assert clean_metadata["specguard"]["git_dirty"] is False
+    assert clean_metadata["specguard"]["git_commit"] == clean["git_commit"]
+    assert clean_metadata["specguard"]["git_commit"] != baseline["metadata"]["specguard"]["git_commit"]
+    assert clean_metadata["run_config"] == clean["run_config"]
+    assert clean_metadata["run_config"]["max_workers"] == 6
+    assert clean_metadata["run_config"]["skip_codex"] is True
+    assert clean_metadata["run_config"]["include_gate_only_extra_cases"] is True
+    assert clean_metadata["run_config"]["include_korean_cases"] is True
+    assert clean_metadata["fixture_counts"]["case_count"] == 220
+    assert clean_metadata["fixture_counts"]["language_counts"] == {"en": 110, "ko": 110}
+    assert clean_metadata["environment"]["python_version"]
+    assert clean_metadata["environment"]["platform"]
+
+
+def test_benchmark_docs_record_clean_checkout_validation_path() -> None:
+    doc = Path("docs/spec-driven-benchmark.md").read_text(encoding="utf-8")
+
+    assert "## Clean Release Validation" in doc
+    assert "specguard-gate-only-v0.4.3-clean-checkout.json" in doc
+    assert "package source checkout, not a built wheel or published package" in doc
+    assert "freshly cloned source checkout" in doc
+    assert "No metric mismatch required triage" in doc
+
+
 def test_benchmark_payload_reports_language_metrics() -> None:
     cases = benchmark_cases(include_gate_only_extra_cases=True, include_korean_cases=True)
     results = [
