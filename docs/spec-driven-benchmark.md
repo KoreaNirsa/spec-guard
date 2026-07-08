@@ -65,6 +65,7 @@ The recorded v0.4.3 English/Korean layer reports language metrics separately. In
 | v0.4.0 #172 calibration JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.0.json`](benchmark-results/specguard-gate-only-v0.4.0.json) |
 | v0.4.1 #186 stabilization JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.1.json`](benchmark-results/specguard-gate-only-v0.4.1.json) |
 | v0.4.3 #241 refresh JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.3.json`](benchmark-results/specguard-gate-only-v0.4.3.json) |
+| v0.4.3 #243 clean-checkout validation JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.3-clean-checkout.json`](benchmark-results/specguard-gate-only-v0.4.3-clean-checkout.json) |
 | Result schema | `specguard-impact-benchmark/v2` |
 | Benchmark script | `tools/spec_driven_ai_benchmark.py` version `7` |
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
@@ -102,9 +103,18 @@ The recorded v0.4.3 English/Korean layer reports language metrics separately. In
 | #172 calibration run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.0.json` |
 | #186 stabilization run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.1.json` |
 | #241 refresh run command | `python -m tools.spec_driven_ai_benchmark --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.3.json` |
+| #243 clean-checkout validation command | `python -m tools.spec_driven_ai_benchmark --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.3-clean-checkout.json` |
 | Readiness coverage matrix command | `python -m tools.spec_driven_ai_benchmark --coverage-matrix --coverage-matrix-results docs/benchmark-results/specguard-gate-only-v0.4.3.json --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/readiness-coverage-matrix.json` |
 
-The v0.3.1, v0.3.2, v0.4.0, and v0.4.1 gate-only runs are intentionally recorded as working-tree runs because their benchmark result artifacts and benchmark case expansion are part of their PR updates. The v0.4.3 #241 refresh was run from a clean source checkout state (`git_dirty=false`) before writing the new artifact. A separate release-quality validation can still rerun from a clean tag or fresh clone before release claims are finalized.
+The v0.3.1, v0.3.2, v0.4.0, and v0.4.1 gate-only runs are intentionally recorded as working-tree runs because their benchmark result artifacts and benchmark case expansion are part of their PR updates. The v0.4.3 #241 refresh was run from a clean source checkout state (`git_dirty=false`) before writing the new artifact. The v0.4.3 #243 validation reruns the same gate-only command from a freshly cloned source checkout so release claims can distinguish calibration artifact generation from clean-checkout validation evidence.
+
+## Clean Release Validation
+
+The #243 validation used the package source checkout, not a built wheel or published package. The source was a fresh local clone of branch `issue-241-refresh-gate-benchmark` at commit `7e608b6da35939caf7f7161a79ddaca1476850f1`; `git status --short --branch` showed no local changes before the benchmark command started. The validation artifact records `git_dirty=false`, no git tag, `max_workers=6`, `skip_codex=true`, `include_gate_only_extra_cases=true`, `include_korean_cases=true`, Python `CPython 3.12.10`, and platform `Windows-11-10.0.26200-SP0`.
+
+The clean-checkout result is stored at [`docs/benchmark-results/specguard-gate-only-v0.4.3-clean-checkout.json`](benchmark-results/specguard-gate-only-v0.4.3-clean-checkout.json). Its case-level gate outcomes, case counts, suite counts, language counts, gate-only aggregate, suite aggregates, language aggregates, known false-positive list, and known false-negative list match the checked-in #241 v0.4.3 artifact. The expected metadata differences are the source commit (`b798e980fc01a3f6eea48ccc3f9a05fe9c2cf6af` for the #241 artifact generation point versus `7e608b6da35939caf7f7161a79ddaca1476850f1` for the clean validation branch), timestamps, and temporary workspace paths. No metric mismatch required triage before publishing the refreshed gate-only claims.
+
+This validation is still a single provider-free local gate run. It does not add raw AI/code-generation evidence, confidence intervals, LLM-backed SpecGuard Review evidence, or broader Korean production-support claims.
 
 ## Modes
 
