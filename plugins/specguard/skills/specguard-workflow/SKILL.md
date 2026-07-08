@@ -60,7 +60,7 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
    - when multiple candidate packages exist, list `candidates[]` in preview order and ask the user to choose one package path;
    - do not run all candidates automatically; keep one selected package as the current review target for the conversation;
    - after the user chooses a candidate, rerun only that candidate with `specguard run <selected-path> --no-llm --no-follow-up`;
-   - when no candidate package exists, report `missing_spec_package`.
+   - when no candidate package exists, report `missing_spec_package`, show supported package examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`, and say no SpecGuard readiness review has run yet.
    - exclude hidden, dependency, build, and generated directories during candidate discovery, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 5. Record the current time before invoking the run command so stale or missing reports can be distinguished after execution.
 6. Run the default plugin command as `specguard run <path> --no-llm --no-follow-up`. This preserves the heuristic low-mode gate and avoids requiring a Codex or OpenAI provider.
@@ -103,7 +103,7 @@ State-specific guidance:
 ## Failure Categories
 
 - `missing_cli`: `specguard --help` and the source checkout fallback both fail. Tell the user to install SpecGuard or run from a checkout that supports `python -m cli.specguard`.
-- `missing_spec_package`: no usable package path with `spec.md` was provided or discovered.
+- `missing_spec_package`: no usable package path with `spec.md` was provided or discovered. Show supported root and nested package examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`, then ask the user to create or point to a package before review.
 - `validation_failed_before_review`: the CLI exits before writing a fresh `readiness-review.json`.
 - `stale_review`: the readiness JSON is older than current source artifacts or its reviewed artifact set differs from current authored Markdown.
 - `missing_provider_for_llm`: the user requested `--llm`, but `specguard auth status` shows no usable provider.

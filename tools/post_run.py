@@ -11,7 +11,7 @@ from typing import Any
 from tools.progress import progress_activity
 from tools.readiness_engine import review_artifact_paths
 from tools.result import CheckResult
-from tools.spec_packages import discover_spec_packages
+from tools.spec_packages import SUPPORTED_PACKAGE_PATH_EXAMPLES, discover_spec_packages
 
 
 SPECGUARD_STATE_DIR = ".specguard"
@@ -417,7 +417,7 @@ def derive_plugin_run_state(
             state="missing_spec_package",
             command=command,
             known_files=_known_plugin_files(feature_dir),
-            next_action="Provide a spec package directory that contains spec.md.",
+            next_action=_missing_spec_package_next_action(),
         )
 
     if provider_required and not provider_available:
@@ -660,6 +660,14 @@ def _plugin_next_action(feature_dir: Path, state: str, report: dict[str, Any]) -
             return "Use implementation-output.md as the implementation handoff."
         return "Rerun the full SpecGuard pipeline so implementation-output.md is generated before implementation starts."
     return "Rerun SpecGuard after correcting the reported recovery state."
+
+
+def _missing_spec_package_next_action() -> str:
+    examples = " or ".join(SUPPORTED_PACKAGE_PATH_EXAMPLES)
+    return (
+        f"Create or select a SpecGuard package such as {examples}, then rerun `specguard discover <path>` "
+        "before starting review; no SpecGuard readiness review has run yet."
+    )
 
 
 def generate_spec_revision(feature_dir: Path, llm_client: object, review_level: str | None = None) -> str:
