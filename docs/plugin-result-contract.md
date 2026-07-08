@@ -4,12 +4,32 @@ This page defines the structured SpecGuard result contract that Codex plugin wor
 
 ## Consumer Flow
 
-1. Record the time before invoking the CLI.
-2. Run `specguard run <package>` with the requested flags.
-3. Load `<package>/readiness-review.json` as the machine-readable result.
-4. Treat `<package>/readiness-review.md` as the human report for display or links.
-5. Treat `<package>/implementation-output.md` as the implementation handoff only when the JSON report says implementation is ready and the file exists.
-6. If the CLI exits before producing a fresh readiness JSON report, handle it as a validation or pre-review pipeline failure instead of parsing terminal text.
+1. Run `specguard discover <path>` to preview candidate packages before review.
+2. Record the time before invoking the review CLI.
+3. Run `specguard run <package>` with the requested flags.
+4. Load `<package>/readiness-review.json` as the machine-readable result.
+5. Treat `<package>/readiness-review.md` as the human report for display or links.
+6. Treat `<package>/implementation-output.md` as the implementation handoff only when the JSON report says implementation is ready and the file exists.
+7. If the CLI exits before producing a fresh readiness JSON report, handle it as a validation or pre-review pipeline failure instead of parsing terminal text.
+
+## Discovery Preview JSON
+
+`specguard discover <path>` is a read-only preflight command. It uses the same package discovery rules as `specguard run`, returns JSON to stdout, and does not write readiness reports or generated artifacts.
+
+Plugin consumers may rely on these fields:
+
+| JSON path | Stable use |
+| --- | --- |
+| `schema_version` | Current value: `specguard.discovery_preview.v1`. |
+| `requested_path` | The inspected path, rendered with forward slashes when possible. |
+| `status` | `resolved`, `ambiguous`, or `missing_spec_package`. |
+| `reason` | `single_candidate`, `multiple_candidates`, `no_candidates`, or `path_not_found`. |
+| `path_exists` | Whether the requested path existed at preview time. |
+| `candidate_count` | Number of discovered package candidates. |
+| `candidates[].path` | Candidate package path for user-facing selection prompts. |
+| `candidates[].spec_path` | Candidate `spec.md` path for diagnostics. |
+
+Treat `ambiguous` as a prompt for an explicit package path. Treat `missing_spec_package` as a preflight failure. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
 
 ## Stable Readiness JSON Fields
 

@@ -16,10 +16,11 @@ def _help_text(capsys: pytest.CaptureFixture[str], *args: str) -> str:
 def test_top_level_help_lists_user_workflow_order(capsys: pytest.CaptureFixture[str]) -> None:
     help_text = _help_text(capsys)
 
-    assert "usage: specguard [-h] {init,example,grill,run,actions,auth} ..." in help_text
+    assert "usage: specguard [-h] {init,example,grill,discover,run,actions,auth} ..." in help_text
     assert "init                Create draft specs and install the default readiness" in help_text
     assert "example             Copy the packaged authored example" in help_text
     assert "grill               Ask Grill me questions from structured readiness" in help_text
+    assert "discover            Preview spec package candidates without running" in help_text
     assert "run                 Validate specs and produce implementation handoff" in help_text
     assert "actions             Install consumer GitHub Actions workflows" in help_text
     assert "auth                Configure or inspect local LLM provider settings" in help_text
@@ -50,6 +51,14 @@ def test_grill_help_explains_decision_record_loop(capsys: pytest.CaptureFixture[
     assert "specguard grill specs/team-invite findings" in help_text
     assert "specguard grill specs/team-invite ask --limit 2" in help_text
     assert "specguard grill specs/team-invite verify" in help_text
+
+
+def test_discover_help_explains_read_only_preview(capsys: pytest.CaptureFixture[str]) -> None:
+    help_text = _help_text(capsys, "discover")
+
+    assert "List SpecGuard package candidates as stable JSON." in help_text
+    assert "does not write readiness reports or generated artifacts" in help_text
+    assert "specguard discover services/api" in help_text
 
 
 def test_auth_help_distinguishes_config_checks_from_live_requests(capsys: pytest.CaptureFixture[str]) -> None:

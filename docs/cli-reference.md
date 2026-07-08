@@ -6,6 +6,7 @@ Common commands:
 specguard init <spec-name>
 specguard example copy <spec-name> --force
 specguard actions install-pr-review
+specguard discover .
 specguard run specs/<spec-name>
 specguard grill specs/<spec-name> findings
 specguard auth status
@@ -22,6 +23,12 @@ Useful `run` options:
 - `--experimental-auto-revise`: allow the follow-up menu to rewrite blocked specs and rerun Verification Review.
 - `--strict-e2e`: experimental strict automation that uses an LLM to regenerate blocked specs and rerun Verification Review.
 - `--strict-max-iterations`: bound the number of strict E2E verification iterations.
+
+Discovery preview:
+
+- `specguard discover <path>`: list root and nested package candidates as stable JSON without running SpecGuard Review or writing generated artifacts.
+- `status` is `resolved`, `ambiguous`, or `missing_spec_package`.
+- `candidates[].path` and `candidates[].spec_path` are suitable for plugin selection prompts.
 
 CI or scripted non-interactive example:
 
