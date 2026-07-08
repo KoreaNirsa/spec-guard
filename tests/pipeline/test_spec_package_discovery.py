@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tools.spec_packages import discover_spec_packages, resolve_spec_packages
+from tools.spec_packages import discover_spec_packages, resolve_spec_packages, spec_package_discovery_preview_payload
 
 
 def write_package(base: Path, name: str = "billing-export") -> Path:
@@ -34,9 +34,73 @@ def test_multiple_specs_packages_require_explicit_resolution(tmp_path: Path) -> 
     assert resolution.packages == (root_package, nested_package)
 
 
+def test_discovery_preview_payload_marks_single_candidate(tmp_path: Path) -> None:
+    write_package(tmp_path)
+
+    payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
+
+    assert payload == {
+        "schema_version": "specguard.discovery_preview.v1",
+        "requested_path": ".",
+        "status": "resolved",
+        "reason": "single_candidate",
+        "path_exists": True,
+        "candidate_count": 1,
+        "candidates": [
+            {
+                "path": "specs/billing-export",
+                "spec_path": "specs/billing-export/spec.md",
+            }
+        ],
+    }
+
+
+def test_discovery_preview_payload_marks_ambiguous_candidates(tmp_path: Path) -> None:
+    write_package(tmp_path, "root-feature")
+    write_package(tmp_path / "services" / "billing", "nested-feature")
+
+    payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
+
+    assert payload["status"] == "ambiguous"
+    assert payload["reason"] == "multiple_candidates"
+    assert payload["candidate_count"] == 2
+    assert payload["candidates"] == [
+        {
+            "path": "specs/root-feature",
+            "spec_path": "specs/root-feature/spec.md",
+        },
+        {
+            "path": "services/billing/specs/nested-feature",
+            "spec_path": "services/billing/specs/nested-feature/spec.md",
+        },
+    ]
+
+
+def test_discovery_preview_payload_marks_missing_package_states(tmp_path: Path) -> None:
+    empty_payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
+    missing_payload = spec_package_discovery_preview_payload(tmp_path / "missing", display_root=tmp_path)
+
+    assert empty_payload["status"] == "missing_spec_package"
+    assert empty_payload["reason"] == "no_candidates"
+    assert empty_payload["path_exists"] is True
+    assert empty_payload["candidates"] == []
+    assert missing_payload["status"] == "missing_spec_package"
+    assert missing_payload["reason"] == "path_not_found"
+    assert missing_payload["path_exists"] is False
+    assert missing_payload["candidates"] == []
+
+
 def test_discovery_excludes_hidden_dependency_build_and_generated_dirs(tmp_path: Path) -> None:
     visible = write_package(tmp_path / "services" / "billing", "visible")
     for excluded in (".hidden", "node_modules", "build", "generated"):
         write_package(tmp_path / excluded, "ignored")
 
     assert discover_spec_packages(tmp_path) == [visible]
+
+    payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
+    assert payload["candidates"] == [
+        {
+            "path": "services/billing/specs/visible",
+            "spec_path": "services/billing/specs/visible/spec.md",
+        }
+    ]

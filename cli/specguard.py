@@ -59,6 +59,7 @@ from tools.readiness_engine import (
     review_level_gate_text,
 )
 from tools.runner import run_pipeline
+from tools.spec_packages import spec_package_discovery_preview_payload
 from tools.strict_e2e import run_strict_e2e_pipeline
 from tools.ux import bold, green, menu_item, print_banner, print_error, print_hint, print_section, print_success, print_warning, yellow
 
@@ -169,6 +170,12 @@ def run(args: argparse.Namespace) -> int:
             _print_llm_failure(exc)
             return 1
     return 0 if result.ok else 1
+
+
+def discover(args: argparse.Namespace) -> int:
+    payload = spec_package_discovery_preview_payload(Path(args.path), display_root=ROOT)
+    print(json.dumps(payload, indent=2))
+    return 0
 
 
 def copy_example(args: argparse.Namespace) -> int:
@@ -1450,6 +1457,29 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=SpecGuardHelpFormatter,
     )
     grill_verify.set_defaults(func=grill)
+
+    discover_parser = subparsers.add_parser(
+        "discover",
+        help="Preview spec package candidates without running review",
+        description=(
+            "List SpecGuard package candidates as stable JSON.\n"
+            "This command is read-only and does not write readiness reports or generated artifacts."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  specguard discover\n"
+            "  specguard discover .\n"
+            "  specguard discover services/api"
+        ),
+        formatter_class=SpecGuardHelpFormatter,
+    )
+    discover_parser.add_argument(
+        "path",
+        nargs="?",
+        default=".",
+        help="Spec package directory, specs root, or repository tree to inspect",
+    )
+    discover_parser.set_defaults(func=discover)
 
     run_parser = subparsers.add_parser(
         "run",

@@ -138,6 +138,14 @@ When a command receives an explicit package path that contains `spec.md`, SpecGu
 
 Discovery skips hidden directories and common dependency, build, and generated directories: `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 
+To preview package discovery before review, run:
+
+```bash
+specguard discover .
+```
+
+The preview is read-only and returns stable JSON with `status`, `reason`, `candidate_count`, `candidates[].path`, and `candidates[].spec_path`. It does not run SpecGuard Review or write readiness artifacts.
+
 SpecGuard guards spec validation. When the spec is safe enough, `specguard run` exits with PASS and reports READY or READY_WITH_WARNINGS. At that point, give `implementation-output.md` to an external AI coding agent to start spec-based implementation.
 
 After implementation, SpecGuard PR Review can compare GitHub PR code against the approved spec requirements and leave a comment when the PR appears to drift from the spec. To install it, run:

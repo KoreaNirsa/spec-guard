@@ -65,6 +65,7 @@
       "expected_state": "ready",
       "handoff": "allowed",
       "commands": [
+        "specguard discover <path>",
         "specguard run <package> --no-llm --no-follow-up"
       ],
       "stable_files": [
@@ -84,6 +85,7 @@
       "expected_state": "ready_with_warnings",
       "handoff": "allowed",
       "commands": [
+        "specguard discover <path>",
         "specguard run <package> --no-llm --no-follow-up"
       ],
       "stable_files": [
@@ -103,6 +105,7 @@
       "expected_state": "not_ready",
       "handoff": "blocked",
       "commands": [
+        "specguard discover <path>",
         "specguard run <package> --no-llm --no-follow-up"
       ],
       "stable_files": [
@@ -122,6 +125,7 @@
       "expected_state": "stale_review",
       "handoff": "blocked",
       "commands": [
+        "specguard discover <path>",
         "specguard run <package> --no-llm --no-follow-up"
       ],
       "stable_files": [
@@ -141,6 +145,7 @@
       "expected_state": "validation_failed_before_review",
       "handoff": "blocked",
       "commands": [
+        "specguard discover <path>",
         "specguard run <package> --no-llm --no-follow-up"
       ],
       "stable_files": [],

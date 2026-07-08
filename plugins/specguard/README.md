@@ -33,15 +33,16 @@ For the v0.4.x hardening backlog, see [Codex Plugin Hardening Roadmap](../../doc
 
 1. Identify the current issue, repository state, and target spec package.
 2. Detect `specguard` with `specguard --help`, or use `python -m cli.specguard --help` from a source checkout.
-3. Locate the target package from the user path, the current directory, or non-excluded `**/specs/*/spec.md` candidates.
-4. Run `specguard run <package> --no-llm --no-follow-up` for the default heuristic gate.
-5. Read `readiness-review.json` and `readiness-review.md` when they are produced.
-6. If the package is `READY` or `READY_WITH_WARNINGS`, point the user to `implementation-output.md` when it exists.
-7. If the package is `NOT_READY`, summarize the blockers and propose scoped spec edits for user review.
+3. Preview the target package with `specguard discover <path>` before running review.
+4. Locate the target package from the user path, the current directory, or non-excluded `**/specs/*/spec.md` candidates.
+5. Run `specguard run <package> --no-llm --no-follow-up` for the default heuristic gate.
+6. Read `readiness-review.json` and `readiness-review.md` when they are produced.
+7. If the package is `READY` or `READY_WITH_WARNINGS`, point the user to `implementation-output.md` when it exists.
+8. If the package is `NOT_READY`, summarize the blockers and propose scoped spec edits for user review.
 
 For the stable JSON fields and file-based states that plugin workflows can rely on, see [Plugin Result Contract](../../docs/plugin-result-contract.md).
 
-Package discovery supports root packages such as `specs/your-feature-name/` and nested module packages such as `services/api/specs/your-feature-name/`. If discovery finds exactly one package, the plugin can use it. If it finds multiple candidates, the plugin must list them and ask for an explicit package path. Candidate discovery skips hidden, dependency, build, and generated directories, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
+Package discovery supports root packages such as `specs/your-feature-name/` and nested module packages such as `services/api/specs/your-feature-name/`. The read-only `specguard discover <path>` command returns stable JSON with `schema_version: "specguard.discovery_preview.v1"`, `status`, `reason`, `candidate_count`, `candidates[].path`, and `candidates[].spec_path` before any review runs. If discovery finds exactly one package, the plugin can use it. If it finds multiple candidates, the plugin must list them and ask for an explicit package path. Candidate discovery skips hidden, dependency, build, and generated directories, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 
 ## Result Handling
 

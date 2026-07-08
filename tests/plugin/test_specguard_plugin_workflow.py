@@ -74,6 +74,9 @@ def test_specguard_plugin_skill_defines_heuristic_first_cli_workflow() -> None:
         (
             "specguard --help",
             "python -m cli.specguard --help",
+            "specguard discover <path>",
+            "schema_version: \"specguard.discovery_preview.v1\"",
+            "candidates[].path",
             "**/specs/*/spec.md",
             "hidden, dependency, build, and generated directories",
             "specguard run <path> --llm --no-follow-up",
@@ -117,7 +120,12 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
     _assert_default_heuristic_command(readme)
     _assert_contains_all(
         readme,
-        ("specguard run <package> --llm --follow-up", "Plugin Result Contract"),
+        (
+            "specguard discover <path>",
+            "schema_version: \"specguard.discovery_preview.v1\"",
+            "specguard run <package> --llm --follow-up",
+            "Plugin Result Contract",
+        ),
     )
     _assert_mentions_all_concepts(
         readme,
@@ -359,6 +367,10 @@ def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:
     _assert_contains_all(
         contract,
         (
+            "## Discovery Preview JSON",
+            "`specguard discover <path>` is a read-only preflight command.",
+            "`status` | `resolved`, `ambiguous`, or `missing_spec_package`.",
+            "`candidates[].path` | Candidate package path for user-facing selection prompts.",
             "## Plugin Readiness Summary UX",
             "readiness status from `readiness.status`",
             "review level from `review_level`",
@@ -603,6 +615,8 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             "mkdir your-codex-project-folder",
             "cd your-codex-project-folder",
             "specguard example copy specs/your-feature-name --force",
+            "specguard discover <path>",
+            "schema_version: \"specguard.discovery_preview.v1\"",
         ),
     )
     _assert_default_heuristic_command(doc)
@@ -614,6 +628,7 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             ("not", "official OpenAI Plugin Directory"),
             ("Installing the plugin", "specguard", "CLI"),
             ("CLI", "canonical engine"),
+            ("preview", "package", "discovery"),
             ("Create or select", "spec package"),
             ("nested", "specs"),
             ("manually edit", "spec package"),
@@ -776,6 +791,7 @@ def test_plugin_workflow_scenario_fixtures_cover_issue_212_examples() -> None:
     assert "python -m cli.specguard --help" in by_state["missing_cli"]["commands"]
 
     for state in ("ready", "ready_with_warnings", "not_ready", "stale_review", "validation_failed_before_review"):
+        assert "specguard discover <path>" in by_state[state]["commands"]
         assert "specguard run <package> --no-llm --no-follow-up" in by_state[state]["commands"]
 
     for state in ("ready", "ready_with_warnings"):

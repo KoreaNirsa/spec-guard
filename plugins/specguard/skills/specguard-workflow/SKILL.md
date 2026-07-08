@@ -48,26 +48,31 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 
 1. Confirm the current issue, requested scope, repository state, and target spec package before running commands.
 2. Detect CLI availability with `specguard --help`. When working from the SpecGuard source checkout, `python -m cli.specguard --help` is an acceptable fallback.
-3. Resolve the target package:
+3. Preview the target package candidates before running review:
+   - run `specguard discover <path>` when the CLI is installed, or `python -m cli.specguard discover <path>` from a source checkout;
+   - read the stable JSON `schema_version: "specguard.discovery_preview.v1"`;
+   - use `status`, `reason`, `candidate_count`, `candidates[].path`, and `candidates[].spec_path` for user-facing package selection prompts;
+   - this preview is read-only and must not write readiness reports or generated artifacts.
+4. Resolve the target package:
    - use the user-provided path when it contains `spec.md`;
    - otherwise use the current directory when it contains `spec.md`;
    - otherwise scan non-excluded `**/specs/*/spec.md` candidates and use the only match;
    - when multiple candidate packages exist, list them and ask the user to choose;
    - when no candidate package exists, report `missing_spec_package`.
    - exclude hidden, dependency, build, and generated directories during candidate discovery, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
-4. Record the current time before invoking the run command so stale or missing reports can be distinguished after execution.
-5. Run the default plugin command as `specguard run <path> --no-llm --no-follow-up`. This preserves the heuristic low-mode gate and avoids requiring a Codex or OpenAI provider.
-6. If the user explicitly asks for provider-backed initial review, run `specguard run <path> --llm --no-follow-up` after confirming provider availability with `specguard auth status`.
-7. If the user explicitly asks for Detail Review, use the CLI follow-up menu path: run `specguard run <path> --llm --follow-up`, choose the review-only Detail Review action, then read `readiness-review-detail.json` and `readiness-review-detail.md`. Detail Review is advisory and must not replace the default fast readiness report.
-8. If an interactive follow-up menu cannot be driven in the current environment, report that Detail Review currently requires the CLI follow-up menu instead of pretending it ran.
-9. Do not add `--llm`, run detail review, or install PR Review workflows unless the user explicitly asks for that behavior.
-10. Read the result from structured files only. Use `readiness-review.json` as the machine result, `readiness-review.md` as the human report, and `implementation-output.md` as the handoff file when allowed.
-11. Derive stale, validation-failure, and handoff states from the Plugin Result Contract. Do not scrape terminal logs for readiness state.
-12. Report readiness status, review level, Critical/Major/Minor finding counts, top findings by severity and title, report paths, handoff availability, and next action.
-13. For `not_ready`, summarize Critical findings first and propose scoped edits using the suggestion-only spec refinement format. Do not apply the edits automatically.
-14. For `ready` or `ready_with_warnings`, summarize warnings and direct implementation work to the generated handoff only when `implementation-output.md` exists.
-15. If authored spec artifacts changed after the last report, report `stale_review`, restate previous findings and suggested clarifications as suggestions only, mark unclear behavior as `Needs user decision`, and ask the user to rerun `specguard run <path> --no-llm --no-follow-up`.
-16. After the rerun completes, report only the fresh readiness result as current: ready, ready with warnings, or still blocked.
+5. Record the current time before invoking the run command so stale or missing reports can be distinguished after execution.
+6. Run the default plugin command as `specguard run <path> --no-llm --no-follow-up`. This preserves the heuristic low-mode gate and avoids requiring a Codex or OpenAI provider.
+7. If the user explicitly asks for provider-backed initial review, run `specguard run <path> --llm --no-follow-up` after confirming provider availability with `specguard auth status`.
+8. If the user explicitly asks for Detail Review, use the CLI follow-up menu path: run `specguard run <path> --llm --follow-up`, choose the review-only Detail Review action, then read `readiness-review-detail.json` and `readiness-review-detail.md`. Detail Review is advisory and must not replace the default fast readiness report.
+9. If an interactive follow-up menu cannot be driven in the current environment, report that Detail Review currently requires the CLI follow-up menu instead of pretending it ran.
+10. Do not add `--llm`, run detail review, or install PR Review workflows unless the user explicitly asks for that behavior.
+11. Read the result from structured files only. Use `readiness-review.json` as the machine result, `readiness-review.md` as the human report, and `implementation-output.md` as the handoff file when allowed.
+12. Derive stale, validation-failure, and handoff states from the Plugin Result Contract. Do not scrape terminal logs for readiness state.
+13. Report readiness status, review level, Critical/Major/Minor finding counts, top findings by severity and title, report paths, handoff availability, and next action.
+14. For `not_ready`, summarize Critical findings first and propose scoped edits using the suggestion-only spec refinement format. Do not apply the edits automatically.
+15. For `ready` or `ready_with_warnings`, summarize warnings and direct implementation work to the generated handoff only when `implementation-output.md` exists.
+16. If authored spec artifacts changed after the last report, report `stale_review`, restate previous findings and suggested clarifications as suggestions only, mark unclear behavior as `Needs user decision`, and ask the user to rerun `specguard run <path> --no-llm --no-follow-up`.
+17. After the rerun completes, report only the fresh readiness result as current: ready, ready with warnings, or still blocked.
 
 ## Result Summary Prompt Contract
 

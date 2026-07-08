@@ -33,11 +33,66 @@ class SpecPackageResolution:
         return len(self.packages) > 1
 
 
+@dataclass(frozen=True)
+class SpecPackageDiscoveryPreview:
+    requested_path: Path
+    packages: tuple[Path, ...]
+    path_exists: bool
+
+    @property
+    def status(self) -> str:
+        if not self.packages:
+            return "missing_spec_package"
+        if len(self.packages) > 1:
+            return "ambiguous"
+        return "resolved"
+
+    @property
+    def reason(self) -> str:
+        if not self.packages:
+            return "path_not_found" if not self.path_exists else "no_candidates"
+        if len(self.packages) > 1:
+            return "multiple_candidates"
+        return "single_candidate"
+
+    def to_payload(self, *, display_root: Path | None = None) -> dict[str, object]:
+        root = display_root or Path.cwd()
+        candidates = [
+            {
+                "path": _display_path(candidate, root),
+                "spec_path": _display_path(candidate / "spec.md", root),
+            }
+            for candidate in self.packages
+        ]
+        return {
+            "schema_version": "specguard.discovery_preview.v1",
+            "requested_path": _display_path(self.requested_path, root),
+            "status": self.status,
+            "reason": self.reason,
+            "path_exists": self.path_exists,
+            "candidate_count": len(candidates),
+            "candidates": candidates,
+        }
+
+
 def resolve_spec_packages(path: Path) -> SpecPackageResolution:
     return SpecPackageResolution(
         requested_path=path,
         packages=tuple(discover_spec_packages(path)),
     )
+
+
+def preview_spec_package_discovery(path: Path) -> SpecPackageDiscoveryPreview:
+    resolution = resolve_spec_packages(path)
+    return SpecPackageDiscoveryPreview(
+        requested_path=path,
+        packages=resolution.packages,
+        path_exists=path.exists(),
+    )
+
+
+def spec_package_discovery_preview_payload(path: Path, *, display_root: Path | None = None) -> dict[str, object]:
+    return preview_spec_package_discovery(path).to_payload(display_root=display_root)
 
 
 def discover_spec_packages(path: Path) -> list[Path]:
@@ -195,3 +250,12 @@ def _path_sort_key(path: Path) -> tuple[str, str]:
 def _package_sort_key(path: Path) -> tuple[int, str, str]:
     text = path.as_posix()
     return (len(path.parts), text.casefold(), text)
+
+
+def _display_path(path: Path, root: Path) -> str:
+    try:
+        display = path.resolve().relative_to(root.resolve())
+    except (OSError, ValueError):
+        display = path
+    text = display.as_posix()
+    return text if text else "."

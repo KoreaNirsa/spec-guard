@@ -127,21 +127,29 @@ The checked-in repo marketplace already provides this entry through `.agents/plu
 
 1. Create or select a spec package under `specs/<feature>/` or a nested module `specs/<feature>/`.
 2. Ask Codex to run the default SpecGuard plugin workflow.
-3. The plugin runs:
+3. The plugin previews package discovery before running review:
+
+   ```bash
+   specguard discover <path>
+   ```
+
+   The command returns stable JSON and does not write readiness reports or generated artifacts.
+
+4. The plugin runs:
 
    ```bash
    specguard run <package> --no-llm --no-follow-up
    ```
 
-4. The plugin reads `readiness-review.json` and `readiness-review.md`.
-5. The plugin summarizes status, review level, Critical/Major/Minor counts, top findings, report paths, handoff availability, and next action from structured files.
-6. If the package is `NOT_READY`, inspect the Critical findings first, manually edit the spec package, and rerun SpecGuard.
-7. After the user edits authored spec artifacts, the plugin treats the previous report as `stale_review`, restates old findings as suggestions only, and asks the user to rerun `specguard run <package> --no-llm --no-follow-up`.
-8. When the previous and fresh reports have unique stable `(severity, title)` issue keys, compare those keys and report resolved, remaining, deferred, and newly introduced findings without using generated report prose or terminal output. Report `deferred` only for findings the user explicitly deferred.
-9. If the fresh rerun is `READY` or `READY_WITH_WARNINGS`, use `implementation-output.md` as the implementation handoff when it exists.
-10. After implementation, install and use SpecGuard PR Review only when the repository wants the advisory pull request workflow.
+5. The plugin reads `readiness-review.json` and `readiness-review.md`.
+6. The plugin summarizes status, review level, Critical/Major/Minor counts, top findings, report paths, handoff availability, and next action from structured files.
+7. If the package is `NOT_READY`, inspect the Critical findings first, manually edit the spec package, and rerun SpecGuard.
+8. After the user edits authored spec artifacts, the plugin treats the previous report as `stale_review`, restates old findings as suggestions only, and asks the user to rerun `specguard run <package> --no-llm --no-follow-up`.
+9. When the previous and fresh reports have unique stable `(severity, title)` issue keys, compare those keys and report resolved, remaining, deferred, and newly introduced findings without using generated report prose or terminal output. Report `deferred` only for findings the user explicitly deferred.
+10. If the fresh rerun is `READY` or `READY_WITH_WARNINGS`, use `implementation-output.md` as the implementation handoff when it exists.
+11. After implementation, install and use SpecGuard PR Review only when the repository wants the advisory pull request workflow.
 
-Package resolution follows the CLI rule: use an explicit path when it contains `spec.md`; otherwise search non-excluded `**/specs/*/spec.md` candidates. Exactly one candidate can be used automatically. Multiple candidates must be listed for the user and require an explicit package path. Candidate discovery skips hidden, dependency, build, and generated directories, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
+Package resolution follows the CLI rule: use an explicit path when it contains `spec.md`; otherwise search non-excluded `**/specs/*/spec.md` candidates. The read-only `specguard discover <path>` preview exposes `schema_version: "specguard.discovery_preview.v1"`, `status`, `reason`, `candidate_count`, `candidates[].path`, and `candidates[].spec_path` for plugin prompts before review starts. Exactly one candidate can be used automatically. Multiple candidates must be listed for the user and require an explicit package path. Candidate discovery skips hidden, dependency, build, and generated directories, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 
 ## Architecture
 
