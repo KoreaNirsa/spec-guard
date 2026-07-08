@@ -16,10 +16,10 @@ python tools/spec_driven_ai_benchmark.py --coverage-matrix --coverage-matrix-res
 | Matrix output | [`docs/benchmark-results/readiness-coverage-matrix.json`](benchmark-results/readiness-coverage-matrix.json) |
 | Fixture source | `tools/spec_driven_ai_benchmark.py` `benchmark_cases` |
 | Result source | [`docs/benchmark-results/specguard-gate-only-v0.4.1.json`](benchmark-results/specguard-gate-only-v0.4.1.json) |
-| Total fixtures | 208 |
-| English fixtures | 104 |
-| Korean fixtures | 104 |
-| Ready/reference fixtures | 74 |
+| Total fixtures | 220 |
+| English fixtures | 110 |
+| Korean fixtures | 110 |
+| Ready/reference fixtures | 86 |
 | Weak/blocking fixtures | 134 |
 
 ## Baseline
@@ -32,9 +32,9 @@ The v0.4.1 gate-only result used for this audit reports 198 evaluated cases:
 | English | 99 | 65/65 | 0/34 | 0.0% | 0.0% |
 | Korean | 99 | 65/65 | 0/34 | 0.0% | 0.0% |
 
-The current matrix contains 208 selected fixture-source cases. The supplied
+The current matrix contains 220 selected fixture-source cases. The supplied
 v0.4.1 gate result covers 198 of them, so the matrix records
-`missing_cases=10` and `is_complete=false` until the next benchmark refresh.
+`missing_cases=22` and `is_complete=false` until the next benchmark refresh.
 
 In the v0.4.1 result artifact, all 68 evaluated ready/reference rows have
 actual readiness status `ready_with_warnings`. All 130 weak rows have actual
@@ -64,40 +64,28 @@ for this baseline.
 
 ## Coverage Gaps
 
-No English-only or Korean-only source-case gaps are present in the current
-208-case matrix. No ready-only domain/language gaps are present.
+No English-only, Korean-only, ready-only, or weak-only source-case gaps are
+present in the current 220-case matrix.
 
 The #213 fixture-source expansion adds paired ready/weak English and Korean
 cases for explicit Korean phrasing variants in `inbound_webhooks` and
-`payments`, so it does not introduce new counterpart or ready-only gaps.
-
-The remaining coverage imbalance is weak-only domain/language coverage. These
-domains have weak/blocking fixtures in both English and Korean, but no paired
-ready/reference fixture yet:
-
-| Domain | English Weak Cases | Korean Weak Cases | Follow-up |
-| --- | ---: | ---: | --- |
-| `device_trust` | 1 | 1 | #182 |
-| `ledger` | 1 | 1 | #182 |
-| `promotions` | 1 | 1 | #182 |
-| `rate_limits` | 1 | 1 | #182 |
-| `sso` | 1 | 1 | #182 |
-| `todo` | 2 | 2 | #182 |
-
-Before adding new heuristic rules for these domains, add paired ready/reference
-fixtures so false-positive protection exists in both English and Korean.
+`payments`, so it does not introduce new counterpart or ready-only gaps. The
+#242 fixture-source expansion adds ready/reference guards in English and Korean
+for the former weak-only `device_trust`, `ledger`, `promotions`, `rate_limits`,
+`sso`, and `todo` domain/language pairs. The matrix now records all cases as
+`coverage_complete` at the fixture-metadata level.
 
 ## Risk-Domain Notes
 
 | Risk Area | Current Fixture Domains | Audit State |
 | --- | --- | --- |
-| Auth and session lifecycle | `auth_session`, `password_reset`, `oauth_consent`, `device_trust`, `sso` | Covered, but `device_trust` and `sso` are weak-only. |
-| Ownership and tenant isolation | `task_service`, `todo`, `document_sharing`, `data_export`, `support` | Covered, but `todo` is weak-only. |
+| Auth and session lifecycle | `auth_session`, `password_reset`, `oauth_consent`, `device_trust`, `sso` | Paired ready/weak coverage exists. |
+| Ownership and tenant isolation | `task_service`, `todo`, `document_sharing`, `data_export`, `support` | Paired ready/weak coverage exists. |
 | Idempotency and duplicate effects | `task_service`, `payments`, `webhook_delivery` | Paired ready/weak coverage exists. |
 | Payment, refund, subscription, booking | `payments`, `returns`, `subscriptions`, `booking` | Paired ready/weak coverage exists. |
-| Webhook, cache, and rate limit | `webhook_delivery`, `inbound_webhooks`, `cache`, `rate_limits` | Covered, but `rate_limits` is weak-only. |
-| Privacy deletion, audit, and ledger | `privacy`, `audit`, `ledger` | Covered, but `ledger` is weak-only. |
-| Inventory, notification, coupon, jobs | `inventory`, `notifications`, `promotions`, `background_jobs` | Covered, but `promotions` is weak-only. |
+| Webhook, cache, and rate limit | `webhook_delivery`, `inbound_webhooks`, `cache`, `rate_limits` | Paired ready/weak coverage exists. |
+| Privacy deletion, audit, and ledger | `privacy`, `audit`, `ledger` | Paired ready/weak coverage exists. |
+| Inventory, notification, coupon, jobs | `inventory`, `notifications`, `promotions`, `background_jobs` | Paired ready/weak coverage exists. |
 
 ## Follow-up Use
 
@@ -105,7 +93,7 @@ fixtures so false-positive protection exists in both English and Korean.
   [Readiness Calibration Triage Protocol](readiness-calibration-triage.md) to
   classify fixture gaps, false positives, false negatives, evidence-quality
   issues, documentation gaps, and Korean counterpart gaps before changing rules.
-- Use #182 to add paired ready/reference fixtures for weak-only domains before
+- Use #242 as the fixture-balance baseline for former weak-only domains before
   changing heuristics in those areas.
 - Use #183 only if a future matrix or benchmark run reports ready/reference rows
   blocked by SpecGuard.
