@@ -1278,9 +1278,9 @@ def test_language_support_documents_korean_finding_quality_scope() -> None:
     assert "## Korean Finding Quality Calibration" in doc
     assert "Current known Korean false positives" in doc
     assert "Current known Korean false negatives" in doc
-    assert "None in the recorded v0.4.1 Korean 99-case gate-only layer" in doc
-    assert "110 English cases and 110 Korean cases" in doc
-    assert "22 selected fixture results as missing" in doc
+    assert "None in the recorded v0.4.3 Korean 110-case gate-only layer" in doc
+    assert "110 English cases and 110 corresponding Korean cases" in doc
+    assert "complete 220-case fixture coverage" in doc
     assert "missing `evidence[]` excerpts" in doc
     assert "READY_WITH_WARNINGS" in doc
     assert "NOT_READY" in doc

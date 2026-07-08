@@ -135,22 +135,22 @@ Discovery는 `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target
 
 ## 벤치마크 요약과 한계
 
-기록된 v0.4.1 gate-only benchmark는 auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, background jobs 같은 실무 도메인의 영어 스펙 패키지 99개를 평가합니다. 대응되는 한국어 gate-only case 99개도 포함하며, 영어와 한국어 metric을 분리해 보고합니다.
+기록된 v0.4.3 gate-only benchmark는 auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, background jobs 같은 실무 도메인의 영어 스펙 패키지 110개를 평가합니다. 대응되는 한국어 gate-only case 110개도 포함하며, 영어와 한국어 metric을 분리해 보고합니다.
 
-현재 fixture source에는 영어 110개와 한국어 110개 case가 있습니다. 새로 추가되었거나 이전에 pending이던 22개 fixture result는 다음 benchmark refresh 전까지 v0.4.1 artifact에 포함되지 않으므로, 아래 표는 기록된 v0.4.1 artifact만 설명합니다.
+현재 fixture source와 checked-in benchmark artifact는 영어 110개와 한국어 110개, 총 220개 selected case를 동일하게 다룹니다.
 
-| Gate-Only Guard Signal | English 99 | Korean 99 |
+| Gate-Only Guard Signal | English 110 | Korean 110 |
 | --- | ---: | ---: |
-| Weak specs blocked before implementation | 65/65 | 65/65 |
+| Weak specs blocked before implementation | 67/67 | 67/67 |
 | Weak-spec block rate | 100.0% | 100.0% |
-| Ready specs incorrectly blocked | 0/34 | 0/34 |
-| False positive rate | 0.0% | 0.0% |
-| Weak specs missed | 0/65 | 0/65 |
+| Ready specs incorrectly blocked | 1/43 | 0/43 |
+| False positive rate | 2.3% | 0.0% |
+| Weak specs missed | 0/67 | 0/67 |
 | False negative rate | 0.0% | 0.0% |
 
 원래 #136 code-generation baseline에서는 raw weak spec이 12개 중 11개 case에서 contract defect를 노출했습니다. Calibrated local gate에서는 SpecGuard가 구현 handoff 전에 관찰된 11개 exposure path를 모두 차단해 prevented exposure를 27.3%에서 100.0%로 높였습니다.
 
-이 주장은 pre-implementation guard layer에 대한 것입니다. Supplemental과 extended gate-only suite는 Codex generation을 새로 실행하지 않았으므로 post-gate code defect rate를 주장하지 않습니다.
+이 주장은 pre-implementation guard layer에 대한 것입니다. Supplemental과 extended gate-only suite는 Codex generation을 새로 실행하지 않았으므로 post-gate code defect rate를 주장하지 않습니다. v0.4.3 run은 영어 ready case `ready_payment_retry_reconciliation_contract` 1개를 known false positive로 기록하며, 한국어 false positive와 영어/한국어 false negative는 기록되지 않았습니다.
 
 한국어 지원은 explicit unsafe wording에 대한 deterministic low-mode claim입니다. 전체 한국어 프로덕션 지원, 모든 한국어 관용 표현 검증, LLM-backed 한국어 review 품질, 전체 CLI 현지화 주장은 하지 않습니다. 자세한 methodology, suite breakdown, case-level result, version metadata, limitation은 [Spec-Driven Benchmark](docs/spec-driven-benchmark.md)와 [Language Support](docs/language-support.md)를 참고하세요.
 
