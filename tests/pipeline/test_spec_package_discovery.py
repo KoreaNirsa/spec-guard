@@ -46,12 +46,45 @@ def test_discovery_preview_payload_marks_single_candidate(tmp_path: Path) -> Non
         "reason": "single_candidate",
         "path_exists": True,
         "candidate_count": 1,
+        "selection_required": False,
+        "review_allowed": True,
         "candidates": [
             {
+                "index": 1,
                 "path": "specs/billing-export",
                 "spec_path": "specs/billing-export/spec.md",
+                "review_command": "specguard run specs/billing-export --no-llm --no-follow-up",
+                "review_args": ["specguard", "run", "specs/billing-export", "--no-llm", "--no-follow-up"],
             }
         ],
+        "next_action": {
+            "type": "run_review",
+            "candidate_index": 1,
+            "command": "specguard run specs/billing-export --no-llm --no-follow-up",
+            "args": ["specguard", "run", "specs/billing-export", "--no-llm", "--no-follow-up"],
+        },
+    }
+
+
+def test_discovery_preview_quotes_review_command_paths_with_spaces(tmp_path: Path) -> None:
+    write_package(tmp_path, "billing export")
+
+    payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
+
+    assert payload["candidates"] == [
+        {
+            "index": 1,
+            "path": "specs/billing export",
+            "spec_path": "specs/billing export/spec.md",
+            "review_command": 'specguard run "specs/billing export" --no-llm --no-follow-up',
+            "review_args": ["specguard", "run", "specs/billing export", "--no-llm", "--no-follow-up"],
+        }
+    ]
+    assert payload["next_action"] == {
+        "type": "run_review",
+        "candidate_index": 1,
+        "command": 'specguard run "specs/billing export" --no-llm --no-follow-up',
+        "args": ["specguard", "run", "specs/billing export", "--no-llm", "--no-follow-up"],
     }
 
 
@@ -64,16 +97,35 @@ def test_discovery_preview_payload_marks_ambiguous_candidates(tmp_path: Path) ->
     assert payload["status"] == "ambiguous"
     assert payload["reason"] == "multiple_candidates"
     assert payload["candidate_count"] == 2
+    assert payload["selection_required"] is True
+    assert payload["review_allowed"] is False
     assert payload["candidates"] == [
         {
+            "index": 1,
             "path": "specs/root-feature",
             "spec_path": "specs/root-feature/spec.md",
+            "review_command": "specguard run specs/root-feature --no-llm --no-follow-up",
+            "review_args": ["specguard", "run", "specs/root-feature", "--no-llm", "--no-follow-up"],
         },
         {
+            "index": 2,
             "path": "services/billing/specs/nested-feature",
             "spec_path": "services/billing/specs/nested-feature/spec.md",
+            "review_command": "specguard run services/billing/specs/nested-feature --no-llm --no-follow-up",
+            "review_args": [
+                "specguard",
+                "run",
+                "services/billing/specs/nested-feature",
+                "--no-llm",
+                "--no-follow-up",
+            ],
         },
     ]
+    assert payload["next_action"] == {
+        "type": "choose_candidate",
+        "command_template": "specguard run <selected-path> --no-llm --no-follow-up",
+        "bulk_review_default": False,
+    }
 
 
 def test_discovery_preview_payload_marks_missing_package_states(tmp_path: Path) -> None:
@@ -83,10 +135,18 @@ def test_discovery_preview_payload_marks_missing_package_states(tmp_path: Path) 
     assert empty_payload["status"] == "missing_spec_package"
     assert empty_payload["reason"] == "no_candidates"
     assert empty_payload["path_exists"] is True
+    assert empty_payload["selection_required"] is False
+    assert empty_payload["review_allowed"] is False
     assert empty_payload["candidates"] == []
+    assert empty_payload["next_action"] == {
+        "type": "create_or_select_package",
+        "command_template": "specguard init <feature-name>",
+    }
     assert missing_payload["status"] == "missing_spec_package"
     assert missing_payload["reason"] == "path_not_found"
     assert missing_payload["path_exists"] is False
+    assert missing_payload["selection_required"] is False
+    assert missing_payload["review_allowed"] is False
     assert missing_payload["candidates"] == []
 
 
@@ -100,7 +160,10 @@ def test_discovery_excludes_hidden_dependency_build_and_generated_dirs(tmp_path:
     payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
     assert payload["candidates"] == [
         {
+            "index": 1,
             "path": "services/billing/specs/visible",
             "spec_path": "services/billing/specs/visible/spec.md",
+            "review_command": "specguard run services/billing/specs/visible --no-llm --no-follow-up",
+            "review_args": ["specguard", "run", "services/billing/specs/visible", "--no-llm", "--no-follow-up"],
         }
     ]
