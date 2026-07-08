@@ -96,7 +96,7 @@ State-specific guidance:
 - `ready`: implementation may proceed only when handoff is available; otherwise ask the user to rerun the full pipeline so `implementation-output.md` is generated.
 - `ready_with_warnings`: implementation is allowed when handoff is available; warnings are optional cleanup, not blockers.
 - `not_ready`: implementation is blocked; summarize Critical findings first and provide suggestion-only spec refinement proposals.
-- `stale_review`: do not present old files as the current result; report the stale reason, previous findings as suggestions only, and the rerun command.
+- `stale_review`: do not present old files as the current result; report the stale reason, previous readiness reports as historical context only, previous findings as suggestions only, and the rerun command. Do not expose `implementation-output.md` as a handoff or current stale-state file.
 - `validation_failed_before_review`: report that no current readiness result exists, list known files only, and ask the user to fix validation before rerunning.
 - `timeout` and `cli_execution_failed`: include the attempted command, known files for diagnostics, and the next safe action; do not point to `implementation-output.md` as relevant handoff.
 

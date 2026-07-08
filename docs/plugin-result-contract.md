@@ -280,7 +280,7 @@ For `timeout` and `cli_execution_failed`, include the attempted command, known g
 | `ready_with_warnings` | Fresh JSON has `readiness.status: "ready_with_warnings"`. | Same as `ready`; also show warning findings from `issues[]`. |
 | `not_ready` | Fresh JSON has `readiness.status: "not_ready"` or `blocked: true`. | `readiness-review.json` and `readiness-review.md` when present. Never use `implementation-output.md` as current handoff. |
 | `ambiguous_spec_package` | Discovery preview has `status: "ambiguous"` and `selection_required: true`. | No current result files. Show ordered `candidates[]` and ask the user to choose one package before running review. |
-| `stale_review` | Current authored source files differ from `input.artifacts[]`, or a current source file is newer than the JSON report. | No current result files. Existing generated files are known files only. |
+| `stale_review` | Current authored source files differ from `input.artifacts[]`, or a current source file is newer than the JSON report. | No current result files. Previous `readiness-review.json` and `readiness-review.md` are historical context only. Never use `implementation-output.md`. |
 | `validation_failed_before_review` | The CLI exits before a fresh readiness JSON exists or updates. | No current result files. Existing generated files are known files only. |
 | `missing_cli` | Neither `specguard --help` nor the source checkout fallback works. | None. |
 | `missing_spec_package` | No package directory with `spec.md` is available. | Existing generated files are known files only, if any. |

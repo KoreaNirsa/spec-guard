@@ -451,7 +451,7 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="stale_review",
             command=command,
-            known_files=known_files,
+            known_files=_known_plugin_files(feature_dir, include_handoff=False),
             next_action="Rerun `specguard run <package> --no-llm --no-follow-up` so the readiness report matches the current source artifacts.",
             stale_reason=stale_reason,
         )
@@ -530,8 +530,10 @@ def _load_readiness_report_safely(feature_dir: Path) -> dict[str, Any] | None:
         return None
 
 
-def _known_plugin_files(feature_dir: Path) -> tuple[str, ...]:
-    names = ("readiness-review.json", "readiness-review.md", "implementation-output.md")
+def _known_plugin_files(feature_dir: Path, *, include_handoff: bool = True) -> tuple[str, ...]:
+    names = ["readiness-review.json", "readiness-review.md"]
+    if include_handoff:
+        names.append("implementation-output.md")
     return tuple((feature_dir / name).as_posix() for name in names if (feature_dir / name).exists())
 
 
