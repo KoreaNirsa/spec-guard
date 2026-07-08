@@ -63,7 +63,7 @@ Minimum baseline:
 For benchmark fixture coverage, regenerate or inspect the matrix with:
 
 ```bash
-python tools/spec_driven_ai_benchmark.py --coverage-matrix --coverage-matrix-results docs/benchmark-results/specguard-gate-only-v0.4.1.json --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/readiness-coverage-matrix.json
+python -m tools.spec_driven_ai_benchmark --coverage-matrix --coverage-matrix-results docs/benchmark-results/specguard-gate-only-v0.4.3.json --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/readiness-coverage-matrix.json
 ```
 
 For a targeted fixture, prefer the existing readiness calibration tests when
