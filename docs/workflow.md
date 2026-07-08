@@ -339,7 +339,7 @@ specguard actions install-pr-review
 After installing it, commit and push `.github/workflows/specguard-pr-review.yml`, then add this GitHub Actions secret:
 
 ```text
-SPECGUARD_OPENAI_API_KEY=sk-...
+Secret name: SPECGUARD_OPENAI_API_KEY
 ```
 
 Optional repository variables:

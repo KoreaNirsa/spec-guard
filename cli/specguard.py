@@ -460,7 +460,7 @@ def _install_pr_review(*, force: bool) -> bool:
         print("1. Commit and push the workflow file.")
         print("2. Add this GitHub Actions secret in Repository Settings > Secrets and variables > Actions:")
         print("")
-        print("SPECGUARD_OPENAI_API_KEY=sk-...")
+        print("Secret name: SPECGUARD_OPENAI_API_KEY")
         print("")
         print("Optional repository variables:")
         print("SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano")

@@ -120,7 +120,7 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
     assert not (tmp_path / "specs" / "pip-smoke" / "implementation-output.md").exists()
 
 
-def test_package_metadata_supports_future_uvx_from_invocation() -> None:
+def test_package_metadata_supports_uvx_from_invocation() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
     assert pyproject["project"]["name"] == "spec-guard"
