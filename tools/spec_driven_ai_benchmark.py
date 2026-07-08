@@ -26,7 +26,7 @@ CODEX_PACKAGE = "@openai/codex@0.128.0"
 MODEL = "gpt-5.5"
 MODEL_REASONING_EFFORT = "low"
 BENCHMARK_RESULT_SCHEMA = "specguard-impact-benchmark/v2"
-BENCHMARK_SCRIPT_VERSION = "6"
+BENCHMARK_SCRIPT_VERSION = "7"
 READINESS_COVERAGE_MATRIX_SCHEMA = "specguard-readiness-coverage-matrix/v1"
 READINESS_COVERAGE_GAP_TYPES = (
     "english_only_source",
@@ -3167,6 +3167,279 @@ GATE_ONLY_EXTENDED_CASES = [
 - Missing signature returns 401.
 - Signature mismatch returns 401.
 - Duplicate event_id returns the stored result.
+""",
+    ),
+    _extended_gate_case(
+        "ready_rate_limit_server_enforcement",
+        domain="rate_limits",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready rate limit server enforcement",
+        risk="abusive traffic bypasses client controls",
+        feature="Server-Side Rate Limit Enforcement",
+        summary="- Search rate limiting is enforced by server-side counters and retry-after responses.",
+        requirements="""
+- Search requests require authenticated user_id, tenant_id, query, and request_id.
+- The server stores rate limit counters per tenant_id and user_id for a 60 second window.
+- Requests over 30 per minute return 429 with retry_after_seconds.
+- Client cooldown controls are optional hints and cannot replace server-side rejection.
+""",
+        acceptance="""
+- [ ] The 31st request in a one minute window returns 429.
+- [ ] retry_after_seconds is returned with every 429 response.
+- [ ] A direct API caller receives the same server-side limit as the web client.
+""",
+        errors="""
+- Missing user context returns 401.
+- Missing query returns 400.
+- Rate limit exceeded returns 429.
+""",
+        architecture="""
+- SearchRateLimitService owns tenant and user scoped counters, limit checks, and retry-after calculation.
+- SearchController calls SearchRateLimitService before forwarding to SearchService.
+- RateLimitRepository stores tenant_id, user_id, window_start, request_count, and reset_at.
+""",
+        data_flow="""
+1. Controller reads tenant_id and user_id from authentication context.
+2. RateLimitService increments the current window counter atomically.
+3. Requests within the limit continue to SearchService.
+4. Requests over the limit return 429 before search execution.
+""",
+        state="""
+- Rate limit window states: open, exhausted, reset.
+- Exhausted windows cannot process more search requests until reset_at.
+""",
+        failure="""
+- Counter store timeout returns 503 before search execution.
+- Atomic increment conflicts retry once and then return 503.
+""",
+    ),
+    _extended_gate_case(
+        "ready_sso_domain_verification",
+        domain="sso",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready sso domain verification",
+        risk="cross-tenant account takeover",
+        feature="SSO Domain Verification",
+        summary="- SSO account linking verifies tenant domain ownership before linking identities.",
+        requirements="""
+- SSO account linking receives identity_provider_id, verified_email, tenant_id, and external_subject.
+- The service verifies that the tenant has an active domain verification record for the email domain.
+- Existing local accounts link only when verified_email matches the local account email.
+- Domain mismatch returns 403 and leaves both accounts unlinked.
+""",
+        acceptance="""
+- [ ] Verified tenant domain and matching local email links the external identity.
+- [ ] Unverified tenant domain returns 403.
+- [ ] Local email mismatch returns 409 without linking accounts.
+""",
+        errors="""
+- Missing verified_email returns 400.
+- Unverified tenant domain returns 403.
+- Email mismatch returns 409.
+""",
+        architecture="""
+- SsoAccountLinkService owns domain verification, local account matching, and external subject binding.
+- TenantDomainRepository stores tenant_id, domain, verified_at, and revoked_at.
+- AccountLinkRepository stores tenant_id, user_id, identity_provider_id, external_subject, and linked_at.
+""",
+        data_flow="""
+1. Service receives an identity provider profile with verified_email and external_subject.
+2. Service extracts the email domain and resolves an active tenant domain verification record.
+3. Service compares verified_email with the local account email before creating the link.
+4. Repository stores the link scoped by tenant_id and identity_provider_id.
+""",
+        state="""
+- Link states: pending, linked, revoked.
+- Revoked links cannot authenticate until a new verification flow succeeds.
+""",
+        dependencies="- External identity provider profile with verified email semantics.",
+        failure="""
+- Domain verification lookup timeout returns 503 without linking accounts.
+- Domain or email mismatch returns an explicit rejection state.
+""",
+    ),
+    _extended_gate_case(
+        "ready_device_trust_lifecycle",
+        domain="device_trust",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready device trust lifecycle",
+        risk="persistent bypass after device compromise",
+        feature="Device Trust Lifecycle",
+        summary="- Trusted devices have server-side expiry, revocation, and re-verification triggers.",
+        requirements="""
+- Device trust records store user_id, device_id, created_at, expires_at, revoked_at, and last_verified_at.
+- A trust record expires after 30 days and cannot be used after expires_at or revoked_at.
+- Password reset, reported device loss, or suspicious login revokes all trust records for the user.
+- Re-verification requires a fresh MFA challenge before a new trust record is created.
+""",
+        acceptance="""
+- [ ] Expired trust record requires MFA before authentication continues.
+- [ ] Revoked trust record requires MFA before authentication continues.
+- [ ] Password reset revokes all trusted devices for the user.
+""",
+        errors="""
+- Missing device_id returns 400.
+- Expired trust returns 401 with MFA_REQUIRED.
+- Revoked trust returns 401 with MFA_REQUIRED.
+""",
+        architecture="""
+- DeviceTrustService owns trust lookup, expiry checks, revocation, and MFA re-verification decisions.
+- DeviceTrustRepository resolves records by user_id and device_id and stores expiry and revocation timestamps.
+""",
+        data_flow="""
+1. Login receives user_id and device_id after primary credential verification.
+2. Service resolves the device trust record by user_id and device_id.
+3. Service checks expires_at and revoked_at before accepting the trust record.
+4. Failed lifecycle checks require MFA and do not create a new trust record until MFA succeeds.
+""",
+        state="""
+- Trust states: active, expired, revoked.
+- Expired and revoked trust records are terminal.
+""",
+        failure="""
+- Trust repository timeout requires MFA rather than accepting the device.
+- Suspicious login marks matching trust records revoked before returning MFA_REQUIRED.
+""",
+    ),
+    _extended_gate_case(
+        "ready_ledger_immutable_reversals",
+        domain="ledger",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready ledger immutable reversals",
+        risk="financial audit trail tampering",
+        feature="Immutable Ledger Reversals",
+        summary="- Posted ledger entries are immutable and corrections use linked reversal entries.",
+        requirements="""
+- Posted ledger entries cannot be mutated after posted_at is set.
+- Corrections create a reversal entry linked to the original ledger_entry_id.
+- Reversal entries include reason_code, created_by, and correlation_id.
+- Every posting and reversal writes append-only audit evidence.
+""",
+        acceptance="""
+- [ ] Attempting to change a posted ledger entry returns 409.
+- [ ] A correction creates a reversal entry without changing the original entry.
+- [ ] Audit evidence links original and reversal ledger entries.
+""",
+        errors="""
+- Missing finance admin role returns 403.
+- Posted entry mutation returns 409.
+- Unknown ledger_entry_id returns 404.
+""",
+        architecture="""
+- LedgerService owns posting, immutable correction, reversal creation, and audit event writing.
+- LedgerRepository exposes append_entry and append_reversal operations only.
+- AuditRepository stores immutable posting and reversal events.
+""",
+        data_flow="""
+1. Admin submits a correction request with ledger_entry_id and reason_code.
+2. Service resolves the original posted entry without mutating it.
+3. Service appends a reversal entry and any replacement entry in one transaction.
+4. Service writes immutable audit evidence for the correction.
+""",
+        state="""
+- Ledger entry states: draft, posted, reversed.
+- Posted entries are terminal for in-place mutation.
+""",
+        failure="""
+- Transaction failure rolls back reversal and audit entries together.
+- Permission failure returns 403 before ledger lookup details are revealed.
+""",
+    ),
+    _extended_gate_case(
+        "ready_coupon_redemption_limits",
+        domain="promotions",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready coupon redemption limits",
+        risk="promotion abuse and revenue loss",
+        feature="Coupon Redemption Limits",
+        summary="- Coupon redemption enforces expiration, max redemptions, per-customer limits, and audit records.",
+        requirements="""
+- Coupons store expires_at, max_redemptions, per_customer_limit, and revoked_at.
+- Redemption requires customer_id, order_id, coupon_code, and idempotency_key.
+- The service records each redemption before applying the discount to the order.
+- Expired, revoked, exhausted, or duplicate redemptions return explicit errors.
+""",
+        acceptance="""
+- [ ] Expired coupon returns 410.
+- [ ] Exhausted max_redemptions returns 409.
+- [ ] Same customer over per_customer_limit returns 409.
+- [ ] Exact idempotent replay returns the original redemption result.
+""",
+        errors="""
+- Unknown coupon returns 404.
+- Expired or revoked coupon returns 410.
+- Redemption limit exceeded returns 409.
+""",
+        architecture="""
+- PromotionService owns coupon lifecycle checks, redemption idempotency, per-customer counting, and audit events.
+- CouponRepository locks the coupon row before incrementing redemption counts.
+- RedemptionRepository stores customer_id, order_id, coupon_code, idempotency_key, and applied_discount.
+""",
+        data_flow="""
+1. Checkout sends customer_id, order_id, coupon_code, and idempotency_key.
+2. Service resolves the coupon and checks expires_at, revoked_at, max_redemptions, and per_customer_limit.
+3. Service creates or reuses an idempotent redemption record.
+4. Service applies the discount only after the redemption record is committed.
+""",
+        state="""
+- Coupon states: active, expired, exhausted, revoked.
+- Expired, exhausted, and revoked coupons cannot create new redemptions.
+""",
+        failure="""
+- Redemption conflict returns 409 without applying a discount.
+- Repository timeout returns 503 before order totals are changed.
+""",
+    ),
+    _extended_gate_case(
+        "ready_todo_owner_scope",
+        domain="todo",
+        category="ready_extended_practical",
+        expectation="good",
+        title="ready todo owner scope",
+        risk="cross-user todo mutation",
+        feature="Todo Owner Scope",
+        summary="- Todo reads and mutations are owner-scoped on the server before data leaves the repository.",
+        requirements="""
+- Todo requests require authenticated user_id and todo_id when mutating an existing todo.
+- Users can only read or mutate their own todos.
+- list_todos returns only active todos owned by the current user.
+- complete_todo and delete_todo reject cross-user todo_id values without revealing whether the todo exists.
+- delete_todo performs a soft delete and writes audit metadata.
+""",
+        acceptance="""
+- [ ] User A list_todos never includes User B todos.
+- [ ] Cross-user complete_todo returns 404.
+- [ ] Cross-user delete_todo returns 404.
+- [ ] Soft-deleted todos are hidden from normal list_todos responses.
+""",
+        errors="""
+- Missing user context returns 401.
+- Unknown or cross-user todo_id returns 404.
+- Invalid title returns 422.
+""",
+        architecture="""
+- TodoService owns owner-scoped lookup, validation, state transitions, soft delete, and audit metadata.
+- TodoRepository requires owner_user_id in every read and mutation query.
+- TodoAuditRepository records create, complete, and soft-delete events.
+""",
+        data_flow="""
+1. Service reads user_id from the authentication context.
+2. list_todos queries by owner_user_id and active state.
+3. complete_todo resolves by owner_user_id and todo_id before changing state.
+4. delete_todo resolves by owner_user_id and todo_id, marks deleted_at, and writes audit metadata.
+""",
+        state="""
+- Todo states: active, completed, deleted.
+- Deleted is terminal for complete_todo and hidden from list_todos.
+""",
+        failure="""
+- Cross-user lookup returns 404 without exposing ownership.
+- Audit write failure rolls back the todo mutation.
 """,
     ),
     _extended_gate_case(

@@ -1,26 +1,26 @@
 {
   "schema": "specguard-readiness-coverage-matrix/v1",
-  "benchmark_script_version": "6",
+  "benchmark_script_version": "7",
   "source": {
     "path": "tools/spec_driven_ai_benchmark.py",
     "case_source": "benchmark_cases",
     "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.1.json"
   },
-  "case_count": 208,
+  "case_count": 220,
   "suite_counts": {
     "impact_v2": 18,
     "gate_only_supplemental_v1": 51,
-    "gate_only_extended_v2": 35,
+    "gate_only_extended_v2": 41,
     "impact_v2_ko": 18,
     "gate_only_supplemental_v1_ko": 51,
-    "gate_only_extended_v2_ko": 35
+    "gate_only_extended_v2_ko": 41
   },
   "language_counts": {
-    "en": 104,
-    "ko": 104
+    "en": 110,
+    "ko": 110
   },
   "expectation_counts": {
-    "good": 74,
+    "good": 86,
     "weak": 134
   },
   "domain_count": 36,
@@ -29,41 +29,26 @@
     "ready_with_warnings": 68
   },
   "readiness_result_coverage": {
-    "expected_cases": 208,
+    "expected_cases": 220,
     "evaluated_cases": 198,
-    "missing_cases": 10,
+    "missing_cases": 22,
     "unexpected_cases": 0,
     "is_complete": false
   },
   "readiness_result_baseline": null,
   "readiness_result_baseline_by_language": null,
   "gap_counts": {
-    "coverage_complete": 194,
+    "coverage_complete": 220,
     "english_only_source": 0,
     "korean_only_source": 0,
     "ready_only_domain_language": 0,
-    "weak_only_domain_language": 14
+    "weak_only_domain_language": 0
   },
   "coverage_gaps": {
     "english_only_source": [],
     "korean_only_source": [],
     "ready_only_domain_language": [],
-    "weak_only_domain_language": [
-      "weak_coupon_unbounded_reuse",
-      "weak_coupon_unbounded_reuse_ko",
-      "weak_device_trust_never_expires",
-      "weak_device_trust_never_expires_ko",
-      "weak_ledger_entry_mutable",
-      "weak_ledger_entry_mutable_ko",
-      "weak_rate_limit_client_enforced",
-      "weak_rate_limit_client_enforced_ko",
-      "weak_sso_account_linking_no_domain_verification",
-      "weak_sso_account_linking_no_domain_verification_ko",
-      "weak_todo_any_user_update",
-      "weak_todo_any_user_update_ko",
-      "weak_todo_client_filtering",
-      "weak_todo_client_filtering_ko"
-    ]
+    "weak_only_domain_language": []
   },
   "domain_language_coverage": [
     {
@@ -391,7 +376,7 @@
     {
       "domain": "device_trust",
       "language": "en",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -400,15 +385,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "device_trust",
       "language": "ko",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -417,10 +402,10 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "document_sharing",
@@ -605,7 +590,7 @@
     {
       "domain": "ledger",
       "language": "en",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -614,15 +599,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "ledger",
       "language": "ko",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -631,10 +616,10 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "notifications",
@@ -927,7 +912,7 @@
     {
       "domain": "promotions",
       "language": "en",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -936,15 +921,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "promotions",
       "language": "ko",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -953,15 +938,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "rate_limits",
       "language": "en",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -970,15 +955,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "rate_limits",
       "language": "ko",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -987,10 +972,10 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "returns",
@@ -1103,7 +1088,7 @@
     {
       "domain": "sso",
       "language": "en",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -1112,15 +1097,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "sso",
       "language": "ko",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
         "not_ready": 1
@@ -1129,10 +1114,10 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 1
+        "unknown": 2
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "subscriptions",
@@ -1245,7 +1230,7 @@
     {
       "domain": "todo",
       "language": "en",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 2,
       "actual_readiness_status_counts": {
         "not_ready": 2
@@ -1254,15 +1239,15 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 2
+        "unknown": 3
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "todo",
       "language": "ko",
-      "ready_case_count": 0,
+      "ready_case_count": 1,
       "weak_case_count": 2,
       "actual_readiness_status_counts": {
         "not_ready": 2
@@ -1271,10 +1256,10 @@
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
-        "unknown": 2
+        "unknown": 3
       },
       "source_counterpart_gap_count": 0,
-      "gap_type": "weak_only_domain_language"
+      "gap_type": "coverage_complete"
     },
     {
       "domain": "webhook_delivery",
@@ -2363,6 +2348,50 @@
       "follow_up_issues": []
     },
     {
+      "case_id": "ready_device_trust_lifecycle",
+      "suite": "gate_only_extended_v2",
+      "domain": "device_trust",
+      "language": "en",
+      "source_case_id": "ready_device_trust_lifecycle",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready device trust lifecycle",
+      "risk": "persistent bypass after device compromise",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_device_trust_lifecycle_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "device_trust",
+      "language": "ko",
+      "source_case_id": "ready_device_trust_lifecycle",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "신뢰 기기 한국어 good 사례",
+      "risk": "persistent bypass after device compromise",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
       "case_id": "weak_device_trust_never_expires",
       "suite": "gate_only_extended_v2",
       "domain": "device_trust",
@@ -2377,14 +2406,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_device_trust_never_expires_ko",
@@ -2401,14 +2428,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "ready_document_share_expiry",
@@ -3027,6 +3052,50 @@
       "follow_up_issues": []
     },
     {
+      "case_id": "ready_ledger_immutable_reversals",
+      "suite": "gate_only_extended_v2",
+      "domain": "ledger",
+      "language": "en",
+      "source_case_id": "ready_ledger_immutable_reversals",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready ledger immutable reversals",
+      "risk": "financial audit trail tampering",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_ledger_immutable_reversals_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "ledger",
+      "language": "ko",
+      "source_case_id": "ready_ledger_immutable_reversals",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "원장 한국어 good 사례",
+      "risk": "financial audit trail tampering",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
       "case_id": "weak_ledger_entry_mutable",
       "suite": "gate_only_extended_v2",
       "domain": "ledger",
@@ -3041,14 +3110,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_ledger_entry_mutable_ko",
@@ -3065,14 +3132,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "ready_notification_preferences",
@@ -3911,6 +3976,50 @@
       "follow_up_issues": []
     },
     {
+      "case_id": "ready_coupon_redemption_limits",
+      "suite": "gate_only_extended_v2",
+      "domain": "promotions",
+      "language": "en",
+      "source_case_id": "ready_coupon_redemption_limits",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready coupon redemption limits",
+      "risk": "promotion abuse and revenue loss",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_coupon_redemption_limits_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "promotions",
+      "language": "ko",
+      "source_case_id": "ready_coupon_redemption_limits",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "쿠폰 한국어 good 사례",
+      "risk": "promotion abuse and revenue loss",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
       "case_id": "weak_coupon_unbounded_reuse",
       "suite": "gate_only_extended_v2",
       "domain": "promotions",
@@ -3925,14 +4034,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_coupon_unbounded_reuse_ko",
@@ -3949,14 +4056,56 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_rate_limit_server_enforcement",
+      "suite": "gate_only_extended_v2",
+      "domain": "rate_limits",
+      "language": "en",
+      "source_case_id": "ready_rate_limit_server_enforcement",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready rate limit server enforcement",
+      "risk": "abusive traffic bypasses client controls",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_rate_limit_server_enforcement_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "rate_limits",
+      "language": "ko",
+      "source_case_id": "ready_rate_limit_server_enforcement",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "요청 제한 한국어 good 사례",
+      "risk": "abusive traffic bypasses client controls",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_rate_limit_client_enforced",
@@ -3973,14 +4122,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_rate_limit_client_enforced_ko",
@@ -3997,14 +4144,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "ready_return_authorization_state",
@@ -4271,6 +4416,50 @@
       "follow_up_issues": []
     },
     {
+      "case_id": "ready_sso_domain_verification",
+      "suite": "gate_only_extended_v2",
+      "domain": "sso",
+      "language": "en",
+      "source_case_id": "ready_sso_domain_verification",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready sso domain verification",
+      "risk": "cross-tenant account takeover",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_sso_domain_verification_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "sso",
+      "language": "ko",
+      "source_case_id": "ready_sso_domain_verification",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "SSO 계정 연결 한국어 good 사례",
+      "risk": "cross-tenant account takeover",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
       "case_id": "weak_sso_account_linking_no_domain_verification",
       "suite": "gate_only_extended_v2",
       "domain": "sso",
@@ -4285,14 +4474,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_sso_account_linking_no_domain_verification_ko",
@@ -4309,14 +4496,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "ready_subscription_proration_idempotency",
@@ -5639,6 +5824,50 @@
       "follow_up_issues": []
     },
     {
+      "case_id": "ready_todo_owner_scope",
+      "suite": "gate_only_extended_v2",
+      "domain": "todo",
+      "language": "en",
+      "source_case_id": "ready_todo_owner_scope",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "ready todo owner scope",
+      "risk": "cross-user todo mutation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
+      "case_id": "ready_todo_owner_scope_ko",
+      "suite": "gate_only_extended_v2_ko",
+      "domain": "todo",
+      "language": "ko",
+      "source_case_id": "ready_todo_owner_scope",
+      "category": "ready_extended_practical",
+      "expectation": "good",
+      "title": "todo 한국어 good 사례",
+      "risk": "cross-user todo mutation",
+      "expected_readiness": "implementation_ready",
+      "actual_readiness_status": null,
+      "actual_implementation_ready": null,
+      "critical_count": null,
+      "evidence_present": null,
+      "gap_type": "coverage_complete",
+      "gap_types": [
+        "coverage_complete"
+      ],
+      "follow_up_issue": null,
+      "follow_up_issues": []
+    },
+    {
       "case_id": "weak_todo_any_user_update",
       "suite": "gate_only_supplemental_v1",
       "domain": "todo",
@@ -5653,14 +5882,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_todo_any_user_update_ko",
@@ -5677,14 +5904,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_todo_client_filtering",
@@ -5701,14 +5926,12 @@
       "actual_implementation_ready": false,
       "critical_count": 1,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "weak_todo_client_filtering_ko",
@@ -5725,14 +5948,12 @@
       "actual_implementation_ready": false,
       "critical_count": 2,
       "evidence_present": null,
-      "gap_type": "weak_only_domain_language",
+      "gap_type": "coverage_complete",
       "gap_types": [
-        "weak_only_domain_language"
+        "coverage_complete"
       ],
-      "follow_up_issue": "#182",
-      "follow_up_issues": [
-        "#182"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "ready_webhook_retry_idempotency",

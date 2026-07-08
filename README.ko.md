@@ -137,7 +137,7 @@ Discovery는 `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target
 
 기록된 v0.4.1 gate-only benchmark는 auth, billing, document sharing, webhooks, payments, inventory, support, admin roles, privacy, API keys, SSO, cache, returns, ledger, promotions, background jobs 같은 실무 도메인의 영어 스펙 패키지 99개를 평가합니다. 대응되는 한국어 gate-only case 99개도 포함하며, 영어와 한국어 metric을 분리해 보고합니다.
 
-현재 fixture source에는 영어 104개와 한국어 104개 case가 있습니다. 새로 추가되었거나 이전에 pending이던 10개 fixture result는 다음 benchmark refresh 전까지 v0.4.1 artifact에 포함되지 않으므로, 아래 표는 기록된 v0.4.1 artifact만 설명합니다.
+현재 fixture source에는 영어 110개와 한국어 110개 case가 있습니다. 새로 추가되었거나 이전에 pending이던 22개 fixture result는 다음 benchmark refresh 전까지 v0.4.1 artifact에 포함되지 않으므로, 아래 표는 기록된 v0.4.1 artifact만 설명합니다.
 
 | Gate-Only Guard Signal | English 99 | Korean 99 |
 | --- | ---: | ---: |

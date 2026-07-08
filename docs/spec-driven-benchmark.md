@@ -14,7 +14,7 @@ The calibrated benchmark now has five evidence layers:
 - A v0.3.1 gate-only rerun with the same 18 cases plus 50 supplemental and 30 extended real-world-style gate cases across auth/session, billing export, document sharing, webhooks, payments, inventory, support, admin roles, audit, data export, search, file upload, orders, workspace invites, notifications, profile updates, API keys, SSO, privacy, cache, returns, ledger, promotions, and background jobs.
 - A v0.3.2 Korean gate-only layer with 98 corresponding Korean cases: `impact_v2_ko`, `gate_only_supplemental_v1_ko`, and `gate_only_extended_v2_ko`. These are realistic Korean product-prose fixtures, not code-generation runs.
 - A v0.4.0 gate-only calibration run for #172 with the same English/Korean 196-case matrix. This run resolves the two previously documented English false negatives while preserving zero ready-reference false positives.
-- A v0.4.1 stabilization refresh for #186 with the recorded 198-case English/Korean result after #181-#185 stabilization work. This run keeps all evaluated weak cases blocked and all evaluated ready-reference cases implementation-allowed. The current fixture source now contains 208 selected English/Korean cases; the 10 new or previously pending fixture results are missing from the v0.4.1 artifact until the next benchmark refresh.
+- A v0.4.1 stabilization refresh for #186 with the recorded 198-case English/Korean result after #181-#185 stabilization work. This run keeps all evaluated weak cases blocked and all evaluated ready-reference cases implementation-allowed. The current fixture source now contains 220 selected English/Korean cases; the 22 new or previously pending fixture results are missing from the v0.4.1 artifact until the next benchmark refresh.
 
 The original #136 full generation run found that raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. Before #129, SpecGuard blocked 3 of those weak specs. In the calibrated v0.4.1 local `--no-llm` gate, the same original suite blocks 12 of 12 weak specs.
 
@@ -64,7 +64,7 @@ The recorded v0.4.1 English/Korean layer reports language metrics separately. In
 | v0.4.0 #172 calibration JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.0.json`](benchmark-results/specguard-gate-only-v0.4.0.json) |
 | v0.4.1 #186 stabilization JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.1.json`](benchmark-results/specguard-gate-only-v0.4.1.json) |
 | Result schema | `specguard-impact-benchmark/v2` |
-| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `6` current fixture source; recorded v0.4.1 artifact uses version `5` |
+| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `7` current fixture source; recorded v0.4.1 artifact uses version `5` |
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
 | v0.3.1 gate-only timestamp | `2026-05-11T14:18:22.699591+00:00` to `2026-05-11T14:18:28.946457+00:00` |
 | v0.3.2 English/Korean gate-only timestamp | `2026-05-15T09:07:50.369407+00:00` to `2026-05-15T09:07:57.964756+00:00` |
@@ -108,7 +108,7 @@ The v0.3.1, v0.3.2, v0.4.0, and v0.4.1 gate-only runs are intentionally recorded
 | `gate_only_extended_v2` | Additional practical gate-only suite across less-covered business domains. | Executed in v0.3.1, v0.4.0, and v0.4.1 reruns |
 | `impact_v2_ko` | Korean gate-only variants corresponding to the original 18 impact cases. | Executed in v0.3.2, v0.4.0, and v0.4.1 reruns |
 | `gate_only_supplemental_v1_ko` | Korean gate-only variants corresponding to the supplemental 51-case suite. | Executed in v0.3.2, v0.4.0, and v0.4.1 reruns |
-| `gate_only_extended_v2_ko` | Korean gate-only variants corresponding to the extended suite. The recorded v0.4.1 artifact evaluated 30 extended English/Korean cases; the current source contains 35 extended cases per language after #213. | Executed in v0.3.2, v0.4.0, and v0.4.1 reruns |
+| `gate_only_extended_v2_ko` | Korean gate-only variants corresponding to the extended suite. The recorded v0.4.1 artifact evaluated 30 extended English/Korean cases; the current source contains 41 extended cases per language after #213 and #242. | Executed in v0.3.2, v0.4.0, and v0.4.1 reruns |
 | `future_llm_specguard_review` | Compare local heuristic gate with LLM-backed SpecGuard Review. | Reserved |
 | `future_strict_e2e` | Measure whether Strict E2E can revise blocked specs into safer implementation inputs. | Reserved |
 
@@ -141,9 +141,9 @@ Generated implementations from the original #136 run are scored with hidden runt
 
 The gate-only reruns do not execute Codex and do not produce new post-gate code defect rates. Their improvement calculation uses the raw defective weak cases from #136 as the exposure baseline, then asks whether the improved local gate now blocks those same weak inputs before code generation.
 
-The supplemental 51-case suite and recorded extended 30-case suite add practical specification shapes that are not limited to the TaskService hidden contract. The current source contains 35 extended cases after #213 added paired payment and inbound-webhook phrasing variants. These cases measure readiness gate behavior only.
+The supplemental 51-case suite and recorded extended 30-case suite add practical specification shapes that are not limited to the TaskService hidden contract. The current source contains 41 extended cases after #213 added paired payment and inbound-webhook phrasing variants and #242 added ready/reference guards for former weak-only domains. These cases measure readiness gate behavior only.
 
-The recorded v0.4.1 Korean layer adds corresponding gate-only fixtures for the same 99 evaluated cases. The Korean cases keep the benchmark domains and expected ready/weak classification, but rewrite the implementation-risk prose in realistic Korean wording. The current fixture source contains 104 Korean cases, with 5 Korean fixture results pending the next benchmark refresh. The #213 source expansion adds explicit Korean phrasing variants for inbound webhook URL-secret trust and payment idempotency post-settlement cleanup, each paired with a ready/reference guard. The benchmark output carries `language`, `source_case_id`, `suite_counts`, `language_counts`, `gate_by_suite`, and `gate_by_language` so English and Korean results can be compared without merging their claims.
+The recorded v0.4.1 Korean layer adds corresponding gate-only fixtures for the same 99 evaluated cases. The Korean cases keep the benchmark domains and expected ready/weak classification, but rewrite the implementation-risk prose in realistic Korean wording. The current fixture source contains 110 Korean cases, with 11 Korean fixture results pending the next benchmark refresh. The #213 source expansion adds explicit Korean phrasing variants for inbound webhook URL-secret trust and payment idempotency post-settlement cleanup, each paired with a ready/reference guard. The #242 source expansion adds ready/reference guards for the former weak-only `device_trust`, `ledger`, `promotions`, `rate_limits`, `sso`, and `todo` domains. The benchmark output carries `language`, `source_case_id`, `suite_counts`, `language_counts`, `gate_by_suite`, and `gate_by_language` so English and Korean results can be compared without merging their claims.
 
 For stabilization triage, the `--coverage-matrix` command emits deterministic fixture metadata without running SpecGuard, Codex, or any LLM provider. The matrix includes domain, language, case id, expectation, source case mapping, nullable readiness-result fields, and coverage gap categories for English-only, Korean-only, weak-only, and ready-only coverage gaps. The current English/Korean coverage audit is recorded in [`readiness-coverage-audit.md`](readiness-coverage-audit.md).
 
@@ -255,17 +255,17 @@ The previously documented false negatives, `fault_title_no_trim` and `weak_docum
 
 The #129, #138, #140/#141, #142, #172, and #181-#185 stabilization work materially improves the original benchmark target. Against the #136 raw AI exposure baseline, the local low gate now prevents 11 of 11 observed weak-spec exposure paths, up from 3 of 11. The original ready-reference cases still produce no false positives.
 
-The reproduced 69-case run changes the interpretation from "the gate is conservative" to "the gate is precise for the currently calibrated deterministic patterns." The recorded extended 30-case run supports the same interpretation across the added practical-domain cases, while the benchmark limitations still apply because supplemental and extended suites are gate-only. The current fixture source has 35 extended cases per language after #213, but those added cases are not part of the recorded v0.4.1 result artifact yet.
+The reproduced 69-case run changes the interpretation from "the gate is conservative" to "the gate is precise for the currently calibrated deterministic patterns." The recorded extended 30-case run supports the same interpretation across the added practical-domain cases, while the benchmark limitations still apply because supplemental and extended suites are gate-only. The current fixture source has 41 extended cases per language after #213 and #242, but those added cases are not part of the recorded v0.4.1 result artifact yet.
 
-The Korean layer supports a narrower claim: deterministic low-mode checks now recognize explicit Korean unsafe wording for ownership and tenant scope, idempotency and replay, expiry and revocation, client-side delegation, external side effects, state transitions, audit mutability, privacy retention, webhook signature/retry policy, cache scope, rate limits, coupons, background job retries, and mixed Korean prose with common English identifiers in the recorded v0.4.1 99-case Korean result layer. The current source adds explicit #213 phrasing variants for inbound webhook URL-secret trust and payment idempotency post-settlement cleanup, but those variants are pending benchmark refresh and do not imply that every Korean phrasing of these risks is covered.
+The Korean layer supports a narrower claim: deterministic low-mode checks now recognize explicit Korean unsafe wording for ownership and tenant scope, idempotency and replay, expiry and revocation, client-side delegation, external side effects, state transitions, audit mutability, privacy retention, webhook signature/retry policy, cache scope, rate limits, coupons, background job retries, and mixed Korean prose with common English identifiers in the recorded v0.4.1 99-case Korean result layer. The current source adds explicit #213 phrasing variants for inbound webhook URL-secret trust and payment idempotency post-settlement cleanup plus #242 ready/reference guards for formerly weak-only domains, but those additions are pending benchmark refresh and do not imply that every Korean phrasing of these risks is covered.
 
 ## Language Support Levels
 
 | Spec Language | Current Support Claim |
 | --- | --- |
-| English specs | Calibrated against the recorded v0.4.1 99-case gate-only suite and the original 18-case impact history. The current fixture source contains 104 selected English cases, with 5 fixture results pending refresh. |
+| English specs | Calibrated against the recorded v0.4.1 99-case gate-only suite and the original 18-case impact history. The current fixture source contains 110 selected English cases, with 11 fixture results pending refresh. |
 | Mixed Korean/English specs | Supported when Korean product prose is paired with common contract identifiers such as `tenant_id`, `idempotency_key`, `expires_at`, `revoked_at`, `event_id`, or service names. |
-| Korean-only product prose | Initial deterministic low-mode support for explicit unsafe wording in the recorded v0.4.1 Korean 99-case layer. Product prose is Korean, while benchmark section headings remain compatible with the current spec parser. The current fixture source contains 104 selected Korean cases, with 5 fixture results pending refresh. |
+| Korean-only product prose | Initial deterministic low-mode support for explicit unsafe wording in the recorded v0.4.1 Korean 99-case layer. Product prose is Korean, while benchmark section headings remain compatible with the current spec parser. The current fixture source contains 110 selected Korean cases, with 11 fixture results pending refresh. |
 | Korean production completeness | Not claimed. The benchmark covers explicit unsafe wording, not all idioms, subtle legal/privacy variants, or model-backed Korean review quality. |
 
 ## Spec Kit And OpenSpec Reference
@@ -289,11 +289,11 @@ The supplemental and extended ready-reference cases are gate-only. They are usef
 ## Limitations
 
 - The original code-generation benchmark still uses one implementation domain: an in-memory Python task service.
-- The supplemental 51-case and recorded extended 30-case suites are gate-only and do not measure raw AI or post-gate implementation defect rates. The current source has 35 extended cases per language after #213, pending benchmark refresh.
+- The supplemental 51-case and recorded extended 30-case suites are gate-only and do not measure raw AI or post-gate implementation defect rates. The current source has 41 extended cases per language after #213 and #242, pending benchmark refresh.
 - Each generated-code case in #136 used one Codex generation, so the full impact results are not statistical confidence intervals.
 - The SpecGuard gate is local `--no-llm` low mode. It does not measure LLM-backed SpecGuard Review.
 - The Korean layer is gate-only and deterministic. It does not measure raw AI generation, LLM-backed Korean review, or full Korean production support.
-- The current 208-case fixture matrix is ahead of the recorded v0.4.1 result artifact by 10 fixture results. Do not claim 104/104 evaluated English or Korean metrics until the benchmark artifact is refreshed.
+- The current 220-case fixture matrix is ahead of the recorded v0.4.1 result artifact by 22 fixture results. Do not claim 110/110 evaluated English or Korean metrics until the benchmark artifact is refreshed.
 - `READY_WITH_WARNINGS` is treated as implementation-allowed because that is the current low-mode contract.
 - Hidden checks cover the original benchmark contract, not all possible production risks.
 - The v0.3.1, v0.3.2, v0.4.0, and v0.4.1 gate-only runs were executed from working trees containing benchmark changes, so `git_dirty=true` is expected in those result JSON files.

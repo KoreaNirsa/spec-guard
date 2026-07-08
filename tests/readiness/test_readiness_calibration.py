@@ -397,6 +397,124 @@ def test_korean_background_job_counterpart_preserves_source_mapping_and_guard_sh
     _assert_critical_issue_shape(issue, weak_package)
 
 
+WEAK_ONLY_DOMAIN_READY_GUARD_CASES = [
+    ("device_trust", ("weak_device_trust_never_expires",), "ready_device_trust_lifecycle"),
+    ("ledger", ("weak_ledger_entry_mutable",), "ready_ledger_immutable_reversals"),
+    ("promotions", ("weak_coupon_unbounded_reuse",), "ready_coupon_redemption_limits"),
+    ("rate_limits", ("weak_rate_limit_client_enforced",), "ready_rate_limit_server_enforcement"),
+    ("sso", ("weak_sso_account_linking_no_domain_verification",), "ready_sso_domain_verification"),
+    (
+        "todo",
+        ("weak_todo_any_user_update", "weak_todo_client_filtering"),
+        "ready_todo_owner_scope",
+    ),
+]
+
+
+def _assert_ready_reference_allowed(
+    tmp_path: Path,
+    *,
+    case_id: str,
+    domain: str,
+    language: str,
+    source_case_id: str,
+) -> None:
+    case = _benchmark_case(case_id)
+    ready_package = make_specguard_package(tmp_path, case)
+    ready_result = run_readiness_review(ready_package)
+    ready_payload = json.loads(
+        ready_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert case["domain"] == domain
+    assert case["language"] == language
+    assert case["source_case_id"] == source_case_id
+    assert case["expectation"] == "good"
+    assert ready_result.ok
+    assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert ready_payload["summary"]["critical"] == 0
+    assert all(issue["severity"] != "Critical" for issue in ready_payload["issues"])
+
+
+def _assert_weak_fixture_still_blocks(
+    tmp_path: Path,
+    *,
+    case_id: str,
+    domain: str,
+    language: str,
+    source_case_id: str,
+) -> None:
+    case = _benchmark_case(case_id)
+    weak_package = make_specguard_package(tmp_path, case)
+    weak_result = run_readiness_review(weak_package)
+    weak_payload = json.loads(
+        weak_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert case["domain"] == domain
+    assert case["language"] == language
+    assert case["source_case_id"] == source_case_id
+    assert case["expectation"] == "weak"
+    assert not weak_result.ok
+    assert weak_payload["readiness"]["status"] == "not_ready"
+    assert weak_payload["summary"]["critical"] >= 1
+    _assert_critical_issue_shape(_first_issue_by_severity(weak_payload, "Critical"), weak_package)
+
+
+@pytest.mark.parametrize(
+    ("domain", "weak_case_ids", "ready_case_id"),
+    WEAK_ONLY_DOMAIN_READY_GUARD_CASES,
+)
+def test_weak_only_domains_gain_english_ready_reference_guards(
+    tmp_path: Path,
+    domain: str,
+    weak_case_ids: tuple[str, ...],
+    ready_case_id: str,
+) -> None:
+    _assert_ready_reference_allowed(
+        tmp_path,
+        case_id=ready_case_id,
+        domain=domain,
+        language="en",
+        source_case_id=ready_case_id,
+    )
+    for weak_case_id in weak_case_ids:
+        _assert_weak_fixture_still_blocks(
+            tmp_path,
+            case_id=weak_case_id,
+            domain=domain,
+            language="en",
+            source_case_id=weak_case_id,
+        )
+
+
+@pytest.mark.parametrize(
+    ("domain", "weak_case_ids", "ready_case_id"),
+    WEAK_ONLY_DOMAIN_READY_GUARD_CASES,
+)
+def test_weak_only_domains_gain_korean_counterpart_ready_reference_guards(
+    tmp_path: Path,
+    domain: str,
+    weak_case_ids: tuple[str, ...],
+    ready_case_id: str,
+) -> None:
+    _assert_ready_reference_allowed(
+        tmp_path,
+        case_id=f"{ready_case_id}_ko",
+        domain=domain,
+        language="ko",
+        source_case_id=ready_case_id,
+    )
+    for weak_case_id in weak_case_ids:
+        _assert_weak_fixture_still_blocks(
+            tmp_path,
+            case_id=f"{weak_case_id}_ko",
+            domain=domain,
+            language="ko",
+            source_case_id=weak_case_id,
+        )
+
+
 @pytest.mark.parametrize(
     ("weak_case_id", "ready_case_id", "expected_title", "expected_evidence"),
     [
@@ -1161,8 +1279,8 @@ def test_language_support_documents_korean_finding_quality_scope() -> None:
     assert "Current known Korean false positives" in doc
     assert "Current known Korean false negatives" in doc
     assert "None in the recorded v0.4.1 Korean 99-case gate-only layer" in doc
-    assert "104 English cases and 104 Korean cases" in doc
-    assert "10 selected fixture results as missing" in doc
+    assert "110 English cases and 110 Korean cases" in doc
+    assert "22 selected fixture results as missing" in doc
     assert "missing `evidence[]` excerpts" in doc
     assert "READY_WITH_WARNINGS" in doc
     assert "NOT_READY" in doc
