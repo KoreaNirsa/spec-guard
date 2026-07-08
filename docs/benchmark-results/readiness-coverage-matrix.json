@@ -4,7 +4,7 @@
   "source": {
     "path": "tools/spec_driven_ai_benchmark.py",
     "case_source": "benchmark_cases",
-    "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.1.json"
+    "results_path": "docs/benchmark-results/specguard-gate-only-v0.4.3.json"
   },
   "case_count": 220,
   "suite_counts": {
@@ -25,18 +25,64 @@
   },
   "domain_count": 36,
   "actual_readiness_status_counts": {
-    "not_ready": 130,
-    "ready_with_warnings": 68
+    "not_ready": 135,
+    "ready_with_warnings": 85
   },
   "readiness_result_coverage": {
     "expected_cases": 220,
-    "evaluated_cases": 198,
-    "missing_cases": 22,
+    "evaluated_cases": 220,
+    "missing_cases": 0,
     "unexpected_cases": 0,
-    "is_complete": false
+    "is_complete": true
   },
-  "readiness_result_baseline": null,
-  "readiness_result_baseline_by_language": null,
+  "readiness_result_baseline": {
+    "evaluated_cases": 220,
+    "good_cases": 86,
+    "weak_cases": 134,
+    "blocked_before_codegen": 135,
+    "blocked_weak_cases": 134,
+    "blocked_good_cases": 1,
+    "blocked_weak_rate": 100.0,
+    "block_rate": 61.4,
+    "false_positive_rate": 1.2,
+    "false_positive_cases": [
+      "ready_payment_retry_reconciliation_contract"
+    ],
+    "false_negative_rate": 0.0,
+    "false_negative_cases": []
+  },
+  "readiness_result_baseline_by_language": {
+    "en": {
+      "evaluated_cases": 110,
+      "good_cases": 43,
+      "weak_cases": 67,
+      "blocked_before_codegen": 68,
+      "blocked_weak_cases": 67,
+      "blocked_good_cases": 1,
+      "blocked_weak_rate": 100.0,
+      "block_rate": 61.8,
+      "false_positive_rate": 2.3,
+      "false_positive_cases": [
+        "ready_payment_retry_reconciliation_contract"
+      ],
+      "false_negative_rate": 0.0,
+      "false_negative_cases": []
+    },
+    "ko": {
+      "evaluated_cases": 110,
+      "good_cases": 43,
+      "weak_cases": 67,
+      "blocked_before_codegen": 67,
+      "blocked_weak_cases": 67,
+      "blocked_good_cases": 0,
+      "blocked_weak_rate": 100.0,
+      "block_rate": 60.9,
+      "false_positive_rate": 0.0,
+      "false_positive_cases": [],
+      "false_negative_rate": 0.0,
+      "false_negative_cases": []
+    }
+  },
   "gap_counts": {
     "coverage_complete": 220,
     "english_only_source": 0,
@@ -201,7 +247,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -218,7 +265,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -379,7 +427,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -396,7 +445,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -521,10 +571,10 @@
       "ready_case_count": 2,
       "weak_case_count": 2,
       "actual_readiness_status_counts": {
-        "not_ready": 1,
-        "ready_with_warnings": 1
+        "not_ready": 2,
+        "ready_with_warnings": 2
       },
-      "critical_case_count": 1,
+      "critical_case_count": 2,
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
@@ -539,10 +589,10 @@
       "ready_case_count": 2,
       "weak_case_count": 2,
       "actual_readiness_status_counts": {
-        "not_ready": 1,
-        "ready_with_warnings": 1
+        "not_ready": 2,
+        "ready_with_warnings": 2
       },
-      "critical_case_count": 1,
+      "critical_case_count": 2,
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
@@ -593,7 +643,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -610,7 +661,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -771,10 +823,10 @@
       "ready_case_count": 2,
       "weak_case_count": 3,
       "actual_readiness_status_counts": {
-        "not_ready": 2,
+        "not_ready": 4,
         "ready_with_warnings": 1
       },
-      "critical_case_count": 2,
+      "critical_case_count": 4,
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
@@ -789,10 +841,10 @@
       "ready_case_count": 2,
       "weak_case_count": 3,
       "actual_readiness_status_counts": {
-        "not_ready": 2,
-        "ready_with_warnings": 1
+        "not_ready": 3,
+        "ready_with_warnings": 2
       },
-      "critical_case_count": 2,
+      "critical_case_count": 3,
       "evidence_present_counts": {
         "true": 0,
         "false": 0,
@@ -915,7 +967,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -932,7 +985,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -949,7 +1003,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -966,7 +1021,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -1091,7 +1147,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -1108,7 +1165,8 @@
       "ready_case_count": 1,
       "weak_case_count": 1,
       "actual_readiness_status_counts": {
-        "not_ready": 1
+        "not_ready": 1,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
@@ -1233,7 +1291,8 @@
       "ready_case_count": 1,
       "weak_case_count": 2,
       "actual_readiness_status_counts": {
-        "not_ready": 2
+        "not_ready": 2,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
@@ -1250,7 +1309,8 @@
       "ready_case_count": 1,
       "weak_case_count": 2,
       "actual_readiness_status_counts": {
-        "not_ready": 2
+        "not_ready": 2,
+        "ready_with_warnings": 1
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
@@ -1874,9 +1934,9 @@
       "title": "ready background job retry budget",
       "risk": "retry storms and duplicate side effects",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -1896,9 +1956,9 @@
       "title": "백그라운드 작업 한국어 good 사례",
       "risk": "retry storms and duplicate side effects",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -2358,9 +2418,9 @@
       "title": "ready device trust lifecycle",
       "risk": "persistent bypass after device compromise",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -2380,9 +2440,9 @@
       "title": "신뢰 기기 한국어 good 사례",
       "risk": "persistent bypass after device compromise",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -2754,9 +2814,9 @@
       "title": "ready inbound webhook signature replay",
       "risk": "forged inbound events and replayed payloads",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -2776,9 +2836,9 @@
       "title": "수신 웹훅 한국어 good 사례",
       "risk": "forged inbound events and replayed payloads",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -2842,9 +2902,9 @@
       "title": "weak inbound webhook url secret phrase",
       "risk": "forged inbound events and replayed payloads",
       "expected_readiness": "not_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -2864,9 +2924,9 @@
       "title": "수신 웹훅 한국어 weak 사례",
       "risk": "forged inbound events and replayed payloads",
       "expected_readiness": "not_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -3062,9 +3122,9 @@
       "title": "ready ledger immutable reversals",
       "risk": "financial audit trail tampering",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -3084,9 +3144,9 @@
       "title": "원장 한국어 good 사례",
       "risk": "financial audit trail tampering",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -3546,16 +3606,18 @@
       "title": "ready payment retry reconciliation contract",
       "risk": "duplicate financial side effects",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
       ],
-      "follow_up_issue": null,
-      "follow_up_issues": []
+      "follow_up_issue": "#183",
+      "follow_up_issues": [
+        "#183"
+      ]
     },
     {
       "case_id": "ready_payment_retry_reconciliation_contract_ko",
@@ -3568,9 +3630,9 @@
       "title": "결제 한국어 good 사례",
       "risk": "duplicate financial side effects",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -3590,9 +3652,9 @@
       "title": "weak payment idempotency post settlement",
       "risk": "duplicate financial side effects",
       "expected_readiness": "not_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -3612,9 +3674,9 @@
       "title": "결제 한국어 weak 사례",
       "risk": "duplicate financial side effects",
       "expected_readiness": "not_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "not_ready",
+      "actual_implementation_ready": false,
+      "critical_count": 1,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -3986,9 +4048,9 @@
       "title": "ready coupon redemption limits",
       "risk": "promotion abuse and revenue loss",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -4008,9 +4070,9 @@
       "title": "쿠폰 한국어 good 사례",
       "risk": "promotion abuse and revenue loss",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -4074,9 +4136,9 @@
       "title": "ready rate limit server enforcement",
       "risk": "abusive traffic bypasses client controls",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -4096,9 +4158,9 @@
       "title": "요청 제한 한국어 good 사례",
       "risk": "abusive traffic bypasses client controls",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -4426,9 +4488,9 @@
       "title": "ready sso domain verification",
       "risk": "cross-tenant account takeover",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -4448,9 +4510,9 @@
       "title": "SSO 계정 연결 한국어 good 사례",
       "risk": "cross-tenant account takeover",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -5834,9 +5896,9 @@
       "title": "ready todo owner scope",
       "risk": "cross-user todo mutation",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
@@ -5856,9 +5918,9 @@
       "title": "todo 한국어 good 사례",
       "risk": "cross-user todo mutation",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": null,
-      "actual_implementation_ready": null,
-      "critical_count": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
       "evidence_present": null,
       "gap_type": "coverage_complete",
       "gap_types": [
