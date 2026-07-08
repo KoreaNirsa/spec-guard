@@ -398,12 +398,16 @@ def test_korean_background_job_counterpart_preserves_source_mapping_and_guard_sh
 
 
 WEAK_ONLY_DOMAIN_READY_GUARD_CASES = [
-    ("device_trust", "weak_device_trust_never_expires", "ready_device_trust_lifecycle"),
-    ("ledger", "weak_ledger_entry_mutable", "ready_ledger_immutable_reversals"),
-    ("promotions", "weak_coupon_unbounded_reuse", "ready_coupon_redemption_limits"),
-    ("rate_limits", "weak_rate_limit_client_enforced", "ready_rate_limit_server_enforcement"),
-    ("sso", "weak_sso_account_linking_no_domain_verification", "ready_sso_domain_verification"),
-    ("todo", "weak_todo_any_user_update", "ready_todo_owner_scope"),
+    ("device_trust", ("weak_device_trust_never_expires",), "ready_device_trust_lifecycle"),
+    ("ledger", ("weak_ledger_entry_mutable",), "ready_ledger_immutable_reversals"),
+    ("promotions", ("weak_coupon_unbounded_reuse",), "ready_coupon_redemption_limits"),
+    ("rate_limits", ("weak_rate_limit_client_enforced",), "ready_rate_limit_server_enforcement"),
+    ("sso", ("weak_sso_account_linking_no_domain_verification",), "ready_sso_domain_verification"),
+    (
+        "todo",
+        ("weak_todo_any_user_update", "weak_todo_client_filtering"),
+        "ready_todo_owner_scope",
+    ),
 ]
 
 
@@ -458,13 +462,13 @@ def _assert_weak_fixture_still_blocks(
 
 
 @pytest.mark.parametrize(
-    ("domain", "weak_case_id", "ready_case_id"),
+    ("domain", "weak_case_ids", "ready_case_id"),
     WEAK_ONLY_DOMAIN_READY_GUARD_CASES,
 )
 def test_weak_only_domains_gain_english_ready_reference_guards(
     tmp_path: Path,
     domain: str,
-    weak_case_id: str,
+    weak_case_ids: tuple[str, ...],
     ready_case_id: str,
 ) -> None:
     _assert_ready_reference_allowed(
@@ -474,23 +478,24 @@ def test_weak_only_domains_gain_english_ready_reference_guards(
         language="en",
         source_case_id=ready_case_id,
     )
-    _assert_weak_fixture_still_blocks(
-        tmp_path,
-        case_id=weak_case_id,
-        domain=domain,
-        language="en",
-        source_case_id=weak_case_id,
-    )
+    for weak_case_id in weak_case_ids:
+        _assert_weak_fixture_still_blocks(
+            tmp_path,
+            case_id=weak_case_id,
+            domain=domain,
+            language="en",
+            source_case_id=weak_case_id,
+        )
 
 
 @pytest.mark.parametrize(
-    ("domain", "weak_case_id", "ready_case_id"),
+    ("domain", "weak_case_ids", "ready_case_id"),
     WEAK_ONLY_DOMAIN_READY_GUARD_CASES,
 )
 def test_weak_only_domains_gain_korean_counterpart_ready_reference_guards(
     tmp_path: Path,
     domain: str,
-    weak_case_id: str,
+    weak_case_ids: tuple[str, ...],
     ready_case_id: str,
 ) -> None:
     _assert_ready_reference_allowed(
@@ -500,13 +505,14 @@ def test_weak_only_domains_gain_korean_counterpart_ready_reference_guards(
         language="ko",
         source_case_id=ready_case_id,
     )
-    _assert_weak_fixture_still_blocks(
-        tmp_path,
-        case_id=f"{weak_case_id}_ko",
-        domain=domain,
-        language="ko",
-        source_case_id=weak_case_id,
-    )
+    for weak_case_id in weak_case_ids:
+        _assert_weak_fixture_still_blocks(
+            tmp_path,
+            case_id=f"{weak_case_id}_ko",
+            domain=domain,
+            language="ko",
+            source_case_id=weak_case_id,
+        )
 
 
 @pytest.mark.parametrize(
