@@ -135,6 +135,7 @@ def test_package_metadata_supports_future_uvx_from_invocation() -> None:
     assert "resources/workflows/*.yml" in package_data
 
     packages = pyproject["tool"]["setuptools"]["packages"]
+    assert "tools.generation" in packages
     assert "tools.resources" in packages
     assert "tools.resources.example" in packages
     assert "tools.resources.example.checklists" in packages
@@ -177,3 +178,11 @@ def test_tools_public_import_contracts_remain_available() -> None:
     ]
     for package in resource_packages:
         importlib.import_module(package)
+
+
+def test_generation_package_imports_match_root_compatibility_wrappers() -> None:
+    root_verification = importlib.import_module("tools.verification_checker")
+    generation_verification = importlib.import_module("tools.generation.verification_checker")
+
+    assert root_verification.check_verification_artifacts is generation_verification.check_verification_artifacts
+    assert root_verification.verification_metadata is generation_verification.verification_metadata

@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.artifact_generator import ensure_contract, generate_implementation_output, generate_llm_technical_design, generate_technical_design
 from tools.contract_checker import check_contracts
+from tools.generation.verification_checker import check_verification_artifacts
 from tools.llm_client import LLMConfigError, build_llm_client
 from tools.progress import progress_activity
 from tools.readiness_engine import (
@@ -23,7 +24,6 @@ from tools.spec_packages import SpecPackageResolution, resolve_spec_packages
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
 from tools.ux import green
-from tools.verification_checker import check_verification_artifacts
 
 
 def _add_resolution_error(result: CheckResult, resolution: SpecPackageResolution) -> None:

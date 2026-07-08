@@ -32,6 +32,14 @@ Future issues can introduce focused internal packages while keeping the root mod
 | `tools.benchmarks` | `spec_driven_ai_benchmark` | Benchmark utilities and fixture metadata. |
 | `tools.resources` | `resources/example`, `resources/workflows` | Packaged runtime resources. This path should stay stable. |
 
+## Completed Migration Steps
+
+- Issue #245 starts the `tools.generation` package by moving the `verification_checker` implementation to `tools.generation.verification_checker`.
+- `tools.verification_checker` remains a root compatibility wrapper and continues to expose `check_verification_artifacts` and `verification_metadata`.
+- `tools.artifact_generator` and `tools.runner` now use the new package path internally after tests cover both the old and new import paths.
+- Remaining `tools.generation` candidates are `artifact_generator`, `contract_checker`, `discovery_engine`, `spec_validator`, and `tdd_generator`.
+- `tools.resources` package data, workflow package paths, and `tools/spec_driven_ai_benchmark.py` remain unchanged.
+
 ## Migration Rules
 
 Each future move should be a separate, small issue with compatibility tests:
