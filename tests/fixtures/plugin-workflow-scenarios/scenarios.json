@@ -60,6 +60,23 @@
       ]
     },
     {
+      "id": "ambiguous-package-selection",
+      "category": "recovery",
+      "expected_state": "ambiguous_spec_package",
+      "handoff": "blocked",
+      "commands": [
+        "specguard discover <path>",
+        "specguard run <selected-path> --no-llm --no-follow-up"
+      ],
+      "stable_files": [],
+      "failure_category": "ambiguous_spec_package",
+      "safety_boundaries": [
+        "show_ordered_candidates",
+        "ask_user_to_choose_one_package",
+        "do_not_bulk_review_by_default"
+      ]
+    },
+    {
       "id": "default-run-ready",
       "category": "run",
       "expected_state": "ready",

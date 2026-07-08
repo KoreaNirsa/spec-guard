@@ -144,7 +144,7 @@ To preview package discovery before review, run:
 specguard discover .
 ```
 
-The preview is read-only and returns stable JSON with `status`, `reason`, `candidate_count`, `candidates[].path`, and `candidates[].spec_path`. It does not run SpecGuard Review or write readiness artifacts.
+The preview is read-only and returns stable JSON with `status`, `reason`, `candidate_count`, `selection_required`, `review_allowed`, `candidates[].index`, `candidates[].path`, `candidates[].spec_path`, and `candidates[].review_command`. When multiple candidates exist, show them in order and choose one explicit package path before running review; the default plugin behavior is not repo-wide bulk review. It does not run SpecGuard Review or write readiness artifacts.
 
 SpecGuard guards spec validation. When the spec is safe enough, `specguard run` exits with PASS and reports READY or READY_WITH_WARNINGS. At that point, give `implementation-output.md` to an external AI coding agent to start spec-based implementation.
 

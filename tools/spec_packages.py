@@ -59,19 +59,26 @@ class SpecPackageDiscoveryPreview:
         root = display_root or Path.cwd()
         candidates = [
             {
+                "index": index,
                 "path": _display_path(candidate, root),
                 "spec_path": _display_path(candidate / "spec.md", root),
+                "review_command": _review_command(_display_path(candidate, root)),
+                "review_args": ["specguard", "run", _display_path(candidate, root), "--no-llm", "--no-follow-up"],
             }
-            for candidate in self.packages
+            for index, candidate in enumerate(self.packages, start=1)
         ]
+        status = self.status
         return {
             "schema_version": "specguard.discovery_preview.v1",
             "requested_path": _display_path(self.requested_path, root),
-            "status": self.status,
+            "status": status,
             "reason": self.reason,
             "path_exists": self.path_exists,
             "candidate_count": len(candidates),
+            "selection_required": status == "ambiguous",
+            "review_allowed": status == "resolved",
             "candidates": candidates,
+            "next_action": _next_action(status, candidates),
         }
 
 
@@ -259,3 +266,33 @@ def _display_path(path: Path, root: Path) -> str:
         display = path
     text = display.as_posix()
     return text if text else "."
+
+
+def _review_command(path: str) -> str:
+    return f"specguard run {_command_arg(path)} --no-llm --no-follow-up"
+
+
+def _command_arg(value: str) -> str:
+    if any(character.isspace() for character in value):
+        return '"' + value.replace('"', '\\"') + '"'
+    return value
+
+
+def _next_action(status: str, candidates: list[dict[str, object]]) -> dict[str, object]:
+    if status == "resolved":
+        return {
+            "type": "run_review",
+            "candidate_index": 1,
+            "command": candidates[0]["review_command"],
+            "args": candidates[0]["review_args"],
+        }
+    if status == "ambiguous":
+        return {
+            "type": "choose_candidate",
+            "command_template": "specguard run <selected-path> --no-llm --no-follow-up",
+            "bulk_review_default": False,
+        }
+    return {
+        "type": "create_or_select_package",
+        "command_template": "specguard init <feature-name>",
+    }

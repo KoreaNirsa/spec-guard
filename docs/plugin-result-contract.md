@@ -26,10 +26,16 @@ Plugin consumers may rely on these fields:
 | `reason` | `single_candidate`, `multiple_candidates`, `no_candidates`, or `path_not_found`. |
 | `path_exists` | Whether the requested path existed at preview time. |
 | `candidate_count` | Number of discovered package candidates. |
+| `selection_required` | `true` when the plugin must ask the user to choose one candidate before review. |
+| `review_allowed` | `true` only when exactly one package candidate was resolved. |
+| `candidates[].index` | Stable 1-based selection number in deterministic display order. |
 | `candidates[].path` | Candidate package path for user-facing selection prompts. |
 | `candidates[].spec_path` | Candidate `spec.md` path for diagnostics. |
+| `candidates[].review_command` | User-facing command for reviewing that specific candidate. |
+| `candidates[].review_args` | Tokenized command arguments for tools that avoid shell parsing. |
+| `next_action.type` | `run_review`, `choose_candidate`, or `create_or_select_package`. |
 
-Treat `ambiguous` as a prompt for an explicit package path. Treat `missing_spec_package` as a preflight failure. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
+Treat `ambiguous` as a prompt for an explicit package path. The plugin should show `candidates[]` in order, ask the user to choose one `candidates[].path`, and then run `specguard run <selected-path> --no-llm --no-follow-up`. It must not run every candidate automatically; `next_action.bulk_review_default` is `false` for ambiguous previews. Treat `missing_spec_package` as a preflight failure. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
 
 ## Stable Readiness JSON Fields
 
@@ -241,16 +247,17 @@ Plugin consumers should handle these states without terminal output parsing:
 - `ready`
 - `ready_with_warnings`
 - `not_ready`
+- `ambiguous_spec_package`
 - `stale_review`
 - `validation_failed_before_review`
 
-The first three states come from a fresh `readiness-review.json`. The last two are derived from file presence and mtimes around the CLI invocation.
+The first three states come from a fresh `readiness-review.json`. The ambiguous state comes from discovery preview JSON before review. The last two are derived from file presence and mtimes around the CLI invocation.
 
 ## Plugin Run State Resolution
 
 Plugin workflows should resolve run state in this order:
 
-1. Preflight failures: `missing_cli`, `missing_spec_package`, or `missing_provider_for_llm`.
+1. Preflight failures: `missing_cli`, `ambiguous_spec_package`, `missing_spec_package`, or `missing_provider_for_llm`.
 2. Command timeout: `timeout`.
 3. Missing fresh readiness JSON after a run: `validation_failed_before_review`.
 4. Source/report mismatch from the stale check above: `stale_review`.
@@ -272,6 +279,7 @@ For `timeout` and `cli_execution_failed`, include the attempted command, known g
 | `ready` | Fresh JSON has `readiness.status: "ready"`. | `readiness-review.json`, `readiness-review.md` when present, and `implementation-output.md` only when handoff is available. |
 | `ready_with_warnings` | Fresh JSON has `readiness.status: "ready_with_warnings"`. | Same as `ready`; also show warning findings from `issues[]`. |
 | `not_ready` | Fresh JSON has `readiness.status: "not_ready"` or `blocked: true`. | `readiness-review.json` and `readiness-review.md` when present. Never use `implementation-output.md` as current handoff. |
+| `ambiguous_spec_package` | Discovery preview has `status: "ambiguous"` and `selection_required: true`. | No current result files. Show ordered `candidates[]` and ask the user to choose one package before running review. |
 | `stale_review` | Current authored source files differ from `input.artifacts[]`, or a current source file is newer than the JSON report. | No current result files. Existing generated files are known files only. |
 | `validation_failed_before_review` | The CLI exits before a fresh readiness JSON exists or updates. | No current result files. Existing generated files are known files only. |
 | `missing_cli` | Neither `specguard --help` nor the source checkout fallback works. | None. |

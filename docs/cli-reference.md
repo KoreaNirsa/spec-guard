@@ -28,7 +28,9 @@ Discovery preview:
 
 - `specguard discover <path>`: list root and nested package candidates as stable JSON without running SpecGuard Review or writing generated artifacts.
 - `status` is `resolved`, `ambiguous`, or `missing_spec_package`.
-- `candidates[].path` and `candidates[].spec_path` are suitable for plugin selection prompts.
+- `selection_required` is true for ambiguous previews; list `candidates[]` in order and ask the user to choose one package.
+- `candidates[].path`, `candidates[].spec_path`, and `candidates[].review_command` are suitable for plugin selection prompts.
+- The default plugin behavior is one selected package per review run, not repo-wide bulk review.
 
 CI or scripted non-interactive example:
 
