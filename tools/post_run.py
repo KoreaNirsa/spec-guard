@@ -16,6 +16,8 @@ from tools.spec_packages import discover_spec_packages
 
 SPECGUARD_STATE_DIR = ".specguard"
 SPEC_REVISION_AUDIT_DIR = "spec-revisions"
+PLUGIN_RUN_STATE_FILENAME = "run-state.json"
+PLUGIN_RUN_STATE_SCHEMA_VERSION = "specguard.plugin_run_state.v1"
 DESIGN_REUSE_SAFE_SECTIONS = {
     "acceptance criteria",
     "review & acceptance checklist",
@@ -54,6 +56,11 @@ class SpecRevisionAudit:
 class PluginRunState:
     state: str
     command: str
+    package_path: str = ""
+    failure_category: str | None = None
+    failed_stage: str | None = None
+    messages: tuple[str, ...] = ()
+    next_steps: tuple[str, ...] = ()
     known_files: tuple[str, ...] = ()
     relevant_files: tuple[str, ...] = ()
     next_action: str = ""
@@ -361,6 +368,37 @@ def render_plugin_rerun_result(
     return "\n".join(lines)
 
 
+def plugin_run_state_path(feature_dir: Path) -> Path:
+    return feature_dir / SPECGUARD_STATE_DIR / PLUGIN_RUN_STATE_FILENAME
+
+
+def write_pre_review_failure_run_state(
+    feature_dir: Path,
+    *,
+    command: str,
+    failed_stage: str,
+    messages: list[str] | tuple[str, ...],
+    next_steps: list[str] | tuple[str, ...],
+) -> Path:
+    path = plugin_run_state_path(feature_dir)
+    relevant_files = (path.as_posix(),)
+    state = PluginRunState(
+        state="validation_failed_before_review",
+        command=command,
+        package_path=feature_dir.as_posix(),
+        failure_category="validation_failed_before_review",
+        failed_stage=failed_stage,
+        messages=tuple(messages),
+        next_steps=tuple(next_steps),
+        known_files=_known_plugin_files(feature_dir, include_handoff=False),
+        relevant_files=relevant_files,
+        next_action="Fix validation errors in the spec package, then rerun SpecGuard before using any old readiness report.",
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(_plugin_run_state_payload(state), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
+
+
 def readiness_report_stale_reason(feature_dir: Path) -> str | None:
     report_path = feature_dir / "readiness-review.json"
     if not report_path.exists():
@@ -407,6 +445,8 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="missing_cli",
             command=command,
+            package_path=feature_dir.as_posix(),
+            failure_category="missing_cli",
             next_action="Install SpecGuard or run from a source checkout where `python -m cli.specguard --help` works.",
         )
 
@@ -416,7 +456,9 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="missing_spec_package",
             command=command,
-            known_files=_known_plugin_files(feature_dir),
+            package_path=feature_dir.as_posix(),
+            failure_category="missing_spec_package",
+            known_files=_known_plugin_files(feature_dir, include_handoff=False),
             next_action="Provide a spec package directory that contains spec.md.",
         )
 
@@ -424,6 +466,8 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="missing_provider_for_llm",
             command=command,
+            package_path=feature_dir.as_posix(),
+            failure_category="missing_provider_for_llm",
             known_files=_known_plugin_files(feature_dir),
             next_action="Configure a provider with `specguard auth setup`, or rerun the default heuristic gate without LLM review.",
         )
@@ -433,16 +477,24 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="timeout",
             command=command,
+            package_path=feature_dir.as_posix(),
+            failure_category="timeout",
             known_files=known_files,
             next_action="Retry after checking provider status or increasing the configured timeout; do not start implementation from an incomplete run.",
         )
 
     report_path = feature_dir / "readiness-review.json"
+    pre_review_state = _current_pre_review_run_state(feature_dir, command=command, started_at=started_at)
+    if pre_review_state is not None:
+        return pre_review_state
+
     if not report_path.exists():
         return PluginRunState(
             state="validation_failed_before_review",
             command=command,
-            known_files=known_files,
+            package_path=feature_dir.as_posix(),
+            failure_category="validation_failed_before_review",
+            known_files=_known_plugin_files(feature_dir, include_handoff=False),
             next_action="Fix validation errors in the spec package, then rerun SpecGuard before using any old readiness report.",
         )
 
@@ -451,6 +503,8 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="stale_review",
             command=command,
+            package_path=feature_dir.as_posix(),
+            failure_category="stale_review",
             known_files=known_files,
             next_action="Rerun `specguard run <package> --no-llm --no-follow-up` so the readiness report matches the current source artifacts.",
             stale_reason=stale_reason,
@@ -460,7 +514,9 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="validation_failed_before_review",
             command=command,
-            known_files=known_files,
+            package_path=feature_dir.as_posix(),
+            failure_category="validation_failed_before_review",
+            known_files=_known_plugin_files(feature_dir, include_handoff=False),
             next_action="Fix the pre-review failure and rerun SpecGuard; the older readiness report was not reused as the current result.",
         )
 
@@ -469,6 +525,8 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="cli_execution_failed",
             command=command,
+            package_path=feature_dir.as_posix(),
+            failure_category="cli_execution_failed",
             known_files=known_files,
             next_action="Rerun SpecGuard and inspect the readiness JSON file; the current report could not be loaded.",
         )
@@ -478,6 +536,8 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="cli_execution_failed",
             command=command,
+            package_path=feature_dir.as_posix(),
+            failure_category="cli_execution_failed",
             known_files=known_files,
             next_action="Rerun SpecGuard and inspect readiness-review.json; the readiness status is missing or unsupported.",
         )
@@ -486,6 +546,8 @@ def derive_plugin_run_state(
         return PluginRunState(
             state="cli_execution_failed",
             command=command,
+            package_path=feature_dir.as_posix(),
+            failure_category="cli_execution_failed",
             known_files=known_files,
             next_action="Fix the later pipeline failure and rerun SpecGuard before starting implementation.",
         )
@@ -493,6 +555,7 @@ def derive_plugin_run_state(
     return PluginRunState(
         state=state,
         command=command,
+        package_path=feature_dir.as_posix(),
         known_files=known_files,
         relevant_files=_relevant_plugin_files(feature_dir, report),
         next_action=_plugin_next_action(feature_dir, state, report),
@@ -530,8 +593,104 @@ def _load_readiness_report_safely(feature_dir: Path) -> dict[str, Any] | None:
         return None
 
 
-def _known_plugin_files(feature_dir: Path) -> tuple[str, ...]:
-    names = ("readiness-review.json", "readiness-review.md", "implementation-output.md")
+def _current_pre_review_run_state(
+    feature_dir: Path,
+    *,
+    command: str,
+    started_at: float | None,
+) -> PluginRunState | None:
+    path = plugin_run_state_path(feature_dir)
+    if not path.exists():
+        return None
+
+    state = _load_plugin_run_state(path, command=command, feature_dir=feature_dir)
+    if state is None or state.state != "validation_failed_before_review":
+        return None
+
+    state_mtime = path.stat().st_mtime
+    report_path = feature_dir / "readiness-review.json"
+    if report_path.exists() and report_path.stat().st_mtime >= state_mtime:
+        return None
+    newer_sources = [
+        relative
+        for relative in review_artifact_paths(feature_dir)
+        if (feature_dir / relative).exists() and (feature_dir / relative).stat().st_mtime > state_mtime
+    ]
+    if newer_sources:
+        return None
+    if started_at is not None and state_mtime < started_at:
+        return None
+    return state
+
+
+def _load_plugin_run_state(path: Path, *, command: str, feature_dir: Path) -> PluginRunState | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("schema_version") != PLUGIN_RUN_STATE_SCHEMA_VERSION:
+        return None
+    state = payload.get("state")
+    if not isinstance(state, str) or not state:
+        return None
+
+    relevant_files = _tuple_of_strings(payload.get("relevant_files"))
+    if not relevant_files and state == "validation_failed_before_review":
+        relevant_files = (path.as_posix(),)
+    return PluginRunState(
+        state=state,
+        command=command,
+        package_path=str(payload.get("package_path") or feature_dir.as_posix()),
+        failure_category=_optional_string(payload.get("failure_category")) or state,
+        failed_stage=_optional_string(payload.get("failed_stage")),
+        messages=_tuple_of_strings(payload.get("messages")),
+        next_steps=_tuple_of_strings(payload.get("next_steps")),
+        known_files=_tuple_of_strings(payload.get("known_files")),
+        relevant_files=relevant_files,
+        next_action=str(payload.get("next_action") or "Fix validation errors in the spec package, then rerun SpecGuard."),
+        stale_reason=_optional_string(payload.get("stale_reason")),
+    )
+
+
+def _plugin_run_state_payload(state: PluginRunState) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "schema_version": PLUGIN_RUN_STATE_SCHEMA_VERSION,
+        "state": state.state,
+        "command": state.command,
+        "package_path": state.package_path,
+        "failure_category": state.failure_category,
+        "failed_stage": state.failed_stage,
+        "messages": list(state.messages),
+        "next_steps": list(state.next_steps),
+        "known_files": list(state.known_files),
+        "relevant_files": list(state.relevant_files),
+        "next_action": state.next_action,
+    }
+    if state.stale_reason is not None:
+        payload["stale_reason"] = state.stale_reason
+    return payload
+
+
+def _tuple_of_strings(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in value if isinstance(item, str))
+
+
+def _optional_string(value: object) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _known_plugin_files(feature_dir: Path, *, include_handoff: bool = True) -> tuple[str, ...]:
+    names = [
+        "readiness-review.json",
+        "readiness-review.md",
+        f"{SPECGUARD_STATE_DIR}/{PLUGIN_RUN_STATE_FILENAME}",
+    ]
+    if include_handoff:
+        names.append("implementation-output.md")
     return tuple((feature_dir / name).as_posix() for name in names if (feature_dir / name).exists())
 
 

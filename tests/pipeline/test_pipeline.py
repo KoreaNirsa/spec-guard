@@ -32,6 +32,7 @@ from tools.post_run import (
     apply_spec_revision,
     feature_readiness_reports,
     generate_spec_revision,
+    plugin_run_state_path,
     readiness_report_stale_reason,
     render_readiness_summary,
     soften_low_mode_spec_revision,
@@ -922,6 +923,44 @@ def test_pipeline_can_reuse_stale_technical_design_when_refresh_disabled(tmp_pat
     assert design_path.read_text(encoding="utf-8") == old_design
     assert not any("technical design generator" in call.lower() for call in llm.calls)
     assert any("Reused technical design" in message for message in result.messages)
+
+
+def test_pipeline_writes_plugin_state_for_invalid_technical_design(tmp_path: Path) -> None:
+    feature = write_feature(tmp_path)
+    design_path = feature / "technical-design.md"
+    design_path.write_text(
+        "\n".join([
+            "# Technical Design: feature",
+            "",
+            "## Architecture",
+            "",
+            "Only the architecture is documented.",
+            "",
+        ]),
+        encoding="utf-8",
+    )
+    older = time.time() - 20
+    newer = time.time() - 10
+    for name in ("discovery.md", "spec.md"):
+        os.utime(feature / name, (older, older))
+    os.utime(design_path, (newer, newer))
+
+    result = run_pipeline(feature)
+    state_path = plugin_run_state_path(feature)
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+
+    assert not result.ok
+    assert result.details["failed_before_readiness_review"] is True
+    assert result.details["feature.failed_stage"] == "technical_validation"
+    assert payload["state"] == "validation_failed_before_review"
+    assert payload["failure_category"] == "validation_failed_before_review"
+    assert payload["failed_stage"] == "technical_validation"
+    assert any("technical-design.md" in message for message in payload["messages"])
+    assert state_path.as_posix() in payload["relevant_files"]
+    assert not feature.joinpath("readiness-review.json").exists()
+    assert not feature.joinpath("implementation-output.md").exists()
+    assert not any(path.endswith("implementation-output.md") for path in payload["known_files"])
+    assert not any(path.endswith("implementation-output.md") for path in payload["relevant_files"])
 
 
 def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
