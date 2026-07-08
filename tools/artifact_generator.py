@@ -6,10 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from tools.contract_checker import CONTRACT_EXEMPTION_NAME, has_contract_exemption, has_openapi_paths
+from tools.generation.verification_checker import verification_metadata
 from tools.llm_client import describe_llm_client
 from tools.progress import progress_activity
 from tools.readiness_engine import review_artifact_paths
-from tools.verification_checker import verification_metadata
 
 LOW_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 1800
 DEFAULT_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 3000
