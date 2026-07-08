@@ -1,21 +1,27 @@
-# Future uvx Support Plan
+# uvx Support Validation
 
-This document tracks future `uvx` execution support without making it part of the current published user workflow before a clean PyPI release test proves it.
+This document records the `uvx --from` execution path for published SpecGuard releases. It keeps the public guidance pinned and conservative so users can distinguish a validated one-off command from the regular installed CLI workflow.
 
 ## Status
 
-`uvx` support is future-only for now. The supported installation path remains:
+The Windows clean-environment smoke passed for the published `spec-guard==0.4.2` package on 2026-07-08. The validated pinned command form is:
+
+```bash
+uvx --from spec-guard==0.4.2 specguard --help
+```
+
+The regular installed workflow remains supported and recommended for repeated project work:
 
 ```bash
 python -m pip install spec-guard
 specguard --help
 ```
 
-Do not add README quickstart wording for `uvx` until the clean-environment test plan below passes against a published release.
+Keep the `uvx` example pinned to a validated published version. Do not document unpinned `uvx --from spec-guard specguard ...` as a quickstart command until a later release explicitly validates that convenience path. Do not document `uvx spec-guard` unless a future release intentionally exposes a `spec-guard` console script and tests that command form.
 
-## Current Packaging Assessment
+## Packaging Assessment
 
-Current metadata appears compatible with a future `uvx --from` invocation:
+The validated command uses the distribution name and console script declared in package metadata:
 
 - Distribution name: `spec-guard`
 - Console script: `specguard = "cli.specguard:main"`
@@ -25,76 +31,50 @@ Current metadata appears compatible with a future `uvx --from` invocation:
   - `tools/resources/workflows/*.yml`
 - Runtime dependencies: none outside the Python standard library.
 
-Because the distribution name is `spec-guard` but the executable script is `specguard`, the expected command form is:
+Because the distribution name is `spec-guard` but the executable script is `specguard`, the supported command shape is:
 
 ```bash
-uvx --from spec-guard specguard --help
+uvx --from spec-guard==0.4.2 specguard <command>
 ```
 
-For release-stable validation, pin the published version:
+## Windows Smoke Record
 
-```bash
-uvx --from spec-guard==0.2.3 specguard --help
-```
-
-Avoid documenting `uvx spec-guard` unless a future release intentionally exposes a `spec-guard` console script or that command form is tested.
-
-## Known Gaps
-
-- The `uvx --from spec-guard specguard` path still needs a clean PyPI test after the target release is published.
-- The command must be verified on Windows, macOS, and Linux because console script shims differ by platform.
-- Workflow installation must be verified from the ephemeral `uvx` environment, especially `.github/workflows/specguard-readiness-gate.yml` and `.github/workflows/specguard-pr-review.yml`.
-- The command must be verified from a temporary application repository, not from the SpecGuard source checkout.
-- LLM provider config must continue to resolve under the user's working directory through `.specguard/`, not inside the ephemeral tool environment.
-
-## Clean-Environment Test Plan
-
-Run these from a new temporary directory after publishing the target version to PyPI:
-
-```bash
-mkdir specguard-uvx-smoke
-cd specguard-uvx-smoke
-git init
-
-uvx --from spec-guard==0.2.3 specguard --help
-uvx --from spec-guard==0.2.3 specguard init uvx-smoke --non-interactive --no-llm
-test -f .github/workflows/specguard-readiness-gate.yml
-
-uvx --from spec-guard==0.2.3 specguard example copy uvx-smoke --force
-uvx --from spec-guard==0.2.3 specguard run specs/uvx-smoke --no-llm --no-follow-up
-uvx --from spec-guard==0.2.3 specguard actions install-pr-review
-test -f .github/workflows/specguard-pr-review.yml
-```
-
-On PowerShell, replace the `test -f` checks with:
+The smoke was run from a temporary application repository outside the SpecGuard source checkout:
 
 ```powershell
+git init
+uvx --from spec-guard==0.4.2 specguard --help
+uvx --from spec-guard==0.4.2 specguard init uvx-smoke --non-interactive --no-llm
 Test-Path .github\workflows\specguard-readiness-gate.yml
+uvx --from spec-guard==0.4.2 specguard example copy uvx-smoke --force
+uvx --from spec-guard==0.4.2 specguard run specs\uvx-smoke --no-llm --no-follow-up
+uvx --from spec-guard==0.4.2 specguard actions install-pr-review
 Test-Path .github\workflows\specguard-pr-review.yml
 ```
 
-Expected results:
+Observed results:
 
-- `specguard --help` shows the same command surface as the pip-installed CLI.
-- `init` writes `specs/`, `develop/`, and the default readiness gate workflow.
-- `example copy` reads packaged example resources from the installed distribution.
-- `run --no-llm --no-follow-up` completes without requiring local source files.
-- `actions install-pr-review` writes the optional PR Review workflow and prints secret setup guidance.
+- `specguard --help` exposed the expected CLI commands from the ephemeral `uvx` environment.
+- `init` wrote `specs/uvx-smoke`, `develop/`, and `.github/workflows/specguard-readiness-gate.yml` into the temporary application repository.
+- `example copy` read packaged example resources from the installed distribution and copied 10 files into `specs/uvx-smoke`.
+- `run --no-llm --no-follow-up` completed without local source files. It reported the intentionally vulnerable packaged example as `NOT READY` and wrote `readiness-review.md` plus `readiness-review.json`.
+- `actions install-pr-review` wrote `.github/workflows/specguard-pr-review.yml` into the temporary application repository.
+- No local `.specguard/` provider config was created by the default no-LLM smoke path.
+- The PR Review installer printed setup guidance for the required GitHub Actions secret and optional variables; no actual secret value was read from the environment or printed.
 
-## Local Source Preflight
+## Remaining Gaps
 
-Before release, this local source smoke can catch packaging metadata regressions, but it is not enough to publish README wording:
+- macOS and Linux `uvx` shims still need the same clean-environment smoke before docs claim cross-platform `uvx` validation.
+- The unpinned convenience form remains intentionally undocumented in quickstarts.
+- The `uvx spec-guard` form remains unsupported because the package exposes `specguard`, not `spec-guard`, as its console script.
+- A future wheel or source-layout change should rerun this smoke because packaged examples and workflow templates are runtime resources.
+
+## Release Guidance
+
+Public quickstarts may show the pinned published form as an optional one-off smoke path:
 
 ```bash
-uvx --from . specguard --help
+uvx --from spec-guard==0.4.2 specguard --help
 ```
 
-## Release Decision
-
-Keep `uvx` out of the v0.2.3 quickstart unless the clean PyPI test passes. If it passes, document the pinned form first:
-
-```bash
-uvx --from spec-guard==0.2.3 specguard --help
-```
-
-After at least one release validates the command form, consider adding an unpinned convenience example.
+For repeated project work, prefer `python -m pip install spec-guard` or a project-managed virtual environment so users do not have to repeat the `uvx --from ...` prefix for every command.

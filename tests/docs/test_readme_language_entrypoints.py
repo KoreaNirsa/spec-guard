@@ -66,3 +66,21 @@ def test_readme_language_split_keeps_local_links_resolvable() -> None:
         ]
 
         assert not missing
+
+
+def test_docs_record_validated_pinned_uvx_path_without_secret_placeholders() -> None:
+    readme = _read("README.md")
+    setup_flow = _read("docs/setup-to-user-flow.md")
+    workflow = _read("docs/workflow.md")
+    uvx_plan = _read("docs/uvx-support-plan.md")
+
+    pinned_command = "uvx --from spec-guard==0.4.2 specguard --help"
+    assert pinned_command in readme
+    assert pinned_command in setup_flow
+    assert pinned_command in uvx_plan
+    assert "Windows clean-environment smoke passed" in uvx_plan
+    assert "macOS and Linux `uvx` shims still need" in uvx_plan
+
+    for doc in (readme, setup_flow, workflow):
+        assert "Secret name: SPECGUARD_OPENAI_API_KEY" in doc
+        assert "SPECGUARD_OPENAI_API_KEY=sk-" not in doc

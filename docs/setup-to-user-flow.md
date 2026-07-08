@@ -11,6 +11,14 @@ pip install spec-guard
 specguard --help
 ```
 
+For a one-off smoke without installing the CLI into your environment, the pinned Windows-validated `uvx` form is:
+
+```bash
+uvx --from spec-guard==0.4.2 specguard --help
+```
+
+Use the pinned form from a project directory when you want `uvx` to run a published package in an ephemeral tool environment. The regular `pip install spec-guard` path remains recommended for repeated project workflows, and macOS/Linux `uvx` validation is still tracked separately in [uvx Support Validation](uvx-support-plan.md).
+
 ## 2. Configure Codex
 
 Configure Codex only when you want LLM-backed steps such as LLM Discovery, LLM Technical Design, `specguard run --llm`, follow-up detailed LLM SpecGuard Review, experimental Spec Revision, Strict E2E, or SpecGuard PR Review setup. The default low `specguard run` still works without a provider by using deterministic generation and fast heuristic SpecGuard Review.
@@ -155,7 +163,7 @@ specguard actions install-pr-review
 After the command completes, commit and push the workflow file, then add this repository secret in GitHub repository settings:
 
 ```text
-SPECGUARD_OPENAI_API_KEY=sk-...
+Secret name: SPECGUARD_OPENAI_API_KEY
 ```
 
 Add optional repository variables when you want to choose the review model or force the reviewer to use a specific spec package:

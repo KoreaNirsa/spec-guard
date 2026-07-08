@@ -61,7 +61,8 @@ def test_actions_install_pr_review_outputs_secret_guidance(tmp_path: Path) -> No
     assert "python -m pip install spec-guard" in text
     assert "python -m tools.pr_review" in text
     assert "Installed SpecGuard PR Review workflow" in result.stdout
-    assert "SPECGUARD_OPENAI_API_KEY=sk-..." in result.stdout
+    assert "Secret name: SPECGUARD_OPENAI_API_KEY" in result.stdout
+    assert "SPECGUARD_OPENAI_API_KEY=sk-" not in result.stdout
     assert "SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano" in result.stdout
     assert "SPECGUARD_REVIEW_SPEC_PATHS=specs/your-feature-name" in result.stdout
 

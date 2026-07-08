@@ -120,6 +120,14 @@ specguard example copy your-feature-name --force
 specguard run specs/your-feature-name
 ```
 
+For a one-off smoke without installing the CLI into your environment, the pinned Windows-validated `uvx` form is:
+
+```bash
+uvx --from spec-guard==0.4.2 specguard --help
+```
+
+Keep the version pinned. The regular `pip install spec-guard` path remains recommended for repeated project workflows, and macOS/Linux `uvx` validation is still tracked separately.
+
 Write or replace the draft spec under `specs/your-feature-name/`. If you want to test with the packaged sample first, copy the example spec with `specguard example copy your-feature-name --force`, then run SpecGuard.
 
 ## Spec Package Resolution
@@ -141,7 +149,7 @@ specguard actions install-pr-review
 Then configure the GitHub Actions secret and repository variable:
 
 ```text
-SPECGUARD_OPENAI_API_KEY=sk-...
+Secret name: SPECGUARD_OPENAI_API_KEY
 SPECGUARD_PR_REVIEW_MODEL=gpt-5.4-nano
 ```
 
