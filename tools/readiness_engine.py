@@ -2767,6 +2767,46 @@ def _analyze(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
     return issues
 
 
+def _partial_structure_issues(artifacts: list[ReviewArtifact]) -> list[ReadinessIssue]:
+    artifact_paths = {artifact.path for artifact in artifacts}
+    expected_paths = (
+        "discovery.md",
+        "plan.md",
+        "tasks.md",
+        "constitution.md",
+        "checklists/spec-readiness.md",
+        "technical-design.md",
+    )
+    missing_paths = [relative for relative in expected_paths if relative not in artifact_paths]
+    issues: list[ReadinessIssue] = []
+    if missing_paths:
+        issues.append(ReadinessIssue(
+            "Critical",
+            "Spec package structure is incomplete",
+            f"The partial package is missing required review context: {', '.join(missing_paths)}.",
+            "Implementation from a loose spec can invent product intent, delivery constraints, or technical boundaries.",
+            "Create the missing package files and replace placeholders with explicit, reviewable decisions before implementation.",
+            evidence=tuple(missing_paths),
+        ))
+
+    spec = _artifact_content(artifacts, "spec.md")
+    missing_sections = [
+        heading
+        for heading in ("Requirements", "Acceptance Criteria", "Error Cases")
+        if not _section(spec, heading).strip()
+    ]
+    if missing_sections:
+        issues.append(ReadinessIssue(
+            "Critical",
+            "Spec required sections are incomplete",
+            f"spec.md is missing usable sections: {', '.join(missing_sections)}.",
+            "The review cannot establish testable behavior and failure contracts from the current source text.",
+            "Add concrete requirements, acceptance criteria, and error cases without inventing unconfirmed behavior.",
+            evidence=tuple(missing_sections),
+        ))
+    return issues
+
+
 def _parse_llm_issues(text: str, review_level: str = DEFAULT_REVIEW_LEVEL) -> list[ReadinessIssue]:
     cleaned = text.strip()
     if cleaned.startswith("```"):
@@ -3301,6 +3341,7 @@ def run_readiness_review(
     review_level: str = DEFAULT_REVIEW_LEVEL,
     report_stem: str = "readiness-review",
     compact_low_input: bool = True,
+    allow_partial: bool = False,
 ) -> CheckResult:
     if review_mode not in READINESS_REVIEW_MODES:
         raise ValueError(f"Unsupported SpecGuard Review mode: {review_mode}")
@@ -3313,13 +3354,16 @@ def run_readiness_review(
     report_path = path / f"{report_stem}.md"
     report_json_path = path / f"{report_stem}.json"
 
-    if not discovery_path.exists():
+    if not allow_partial and not discovery_path.exists():
         result.add_error(f"Missing discovery file: {discovery_path}")
         return result
     if not spec_path.exists():
         result.add_error(f"Missing spec file: {spec_path}")
         return result
-    if not technical_design_path.exists():
+    if not spec_path.read_text(encoding="utf-8").strip():
+        result.add_error(f"Spec file has no reviewable content: {spec_path}")
+        return result
+    if not allow_partial and not technical_design_path.exists():
         result.add_error(f"Missing technical design file: {technical_design_path}")
         return result
 
@@ -3390,6 +3434,10 @@ def run_readiness_review(
     except (json.JSONDecodeError, ValueError) as exc:
         result.add_error(f"LLM SpecGuard Review response could not be parsed as JSON: {exc}")
         return result
+    if allow_partial:
+        issues = [*_partial_structure_issues(artifacts), *issues]
+        if review_input is not None:
+            review_input["partial_package"] = True
     summary = _build_summary(issues)
     critical_count = summary["critical"]
     major_count = summary["major"]

@@ -2,7 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tools.spec_packages import discover_spec_packages, resolve_spec_packages, spec_package_discovery_preview_payload
+from tools.spec_packages import (
+    discover_draft_spec_documents,
+    discover_spec_packages,
+    resolve_spec_packages,
+    spec_package_discovery_preview_payload,
+)
 
 
 def write_package(base: Path, name: str = "billing-export") -> Path:
@@ -57,6 +62,8 @@ def test_discovery_preview_payload_marks_single_candidate(tmp_path: Path) -> Non
                 "review_args": ["specguard", "run", "specs/billing-export", "--no-llm", "--no-follow-up"],
             }
         ],
+        "draft_source_count": 0,
+        "draft_sources": [],
         "next_action": {
             "type": "run_review",
             "candidate_index": 1,
@@ -80,6 +87,8 @@ def test_discovery_preview_quotes_review_command_paths_with_spaces(tmp_path: Pat
             "review_args": ["specguard", "run", "specs/billing export", "--no-llm", "--no-follow-up"],
         }
     ]
+    assert payload["draft_source_count"] == 0
+    assert payload["draft_sources"] == []
     assert payload["next_action"] == {
         "type": "run_review",
         "candidate_index": 1,
@@ -138,6 +147,8 @@ def test_discovery_preview_payload_marks_missing_package_states(tmp_path: Path) 
     assert empty_payload["selection_required"] is False
     assert empty_payload["review_allowed"] is False
     assert empty_payload["candidates"] == []
+    assert empty_payload["draft_source_count"] == 0
+    assert empty_payload["draft_sources"] == []
     assert empty_payload["next_action"] == {
         "type": "create_or_select_package",
         "command_template": "specguard init <feature-name>",
@@ -163,6 +174,65 @@ def test_discovery_preview_payload_marks_missing_package_states(tmp_path: Path) 
     assert missing_payload["selection_required"] is False
     assert missing_payload["review_allowed"] is False
     assert missing_payload["candidates"] == []
+
+
+def test_discovery_offers_draft_package_for_likely_requirement_documents(tmp_path: Path) -> None:
+    requirements = tmp_path / "docs" / "requirements.md"
+    product_spec = tmp_path / "product" / "spec.md"
+    requirements.parent.mkdir(parents=True)
+    product_spec.parent.mkdir(parents=True)
+    requirements.write_text("# Requirements\n", encoding="utf-8")
+    product_spec.write_text("# Product Spec\n", encoding="utf-8")
+    (tmp_path / "README.md").write_text("# Project\n", encoding="utf-8")
+
+    payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
+
+    assert discover_draft_spec_documents(tmp_path) == [requirements, product_spec]
+    assert payload["status"] == "missing_spec_package"
+    assert payload["review_allowed"] is False
+    assert payload["draft_sources"] == [
+        {"index": 1, "path": "docs/requirements.md", "kind": "non_package_spec_document"},
+        {"index": 2, "path": "product/spec.md", "kind": "non_package_spec_document"},
+    ]
+    assert payload["next_action"] == {
+        "type": "offer_draft_package",
+        "requires_user_approval": True,
+        "source_options": ["docs/requirements.md", "product/spec.md"],
+        "target_package_template": "specs/<feature>/",
+        "command_template": "specguard init <feature-name>",
+        "review_status": "not_reviewed",
+    }
+
+
+def test_discovery_prefers_packages_over_non_package_documents(tmp_path: Path) -> None:
+    package = write_package(tmp_path)
+    requirements = tmp_path / "docs" / "requirements.md"
+    requirements.parent.mkdir(parents=True)
+    requirements.write_text("# Requirements\n", encoding="utf-8")
+
+    payload = spec_package_discovery_preview_payload(tmp_path, display_root=tmp_path)
+
+    assert payload["status"] == "resolved"
+    assert payload["candidates"][0]["path"] == package.relative_to(tmp_path).as_posix()
+    assert payload["draft_source_count"] == 0
+    assert payload["draft_sources"] == []
+    assert payload["next_action"]["type"] == "run_review"
+
+
+def test_discovery_explains_explicit_non_package_document(tmp_path: Path) -> None:
+    requirements = tmp_path / "docs" / "requirements.md"
+    requirements.parent.mkdir(parents=True)
+    requirements.write_text("# Requirements\n", encoding="utf-8")
+
+    payload = spec_package_discovery_preview_payload(requirements, display_root=tmp_path)
+
+    assert payload["requested_path"] == "docs/requirements.md"
+    assert payload["status"] == "missing_spec_package"
+    assert payload["draft_sources"] == [
+        {"index": 1, "path": "docs/requirements.md", "kind": "non_package_spec_document"}
+    ]
+    assert payload["next_action"]["type"] == "offer_draft_package"
+    assert payload["next_action"]["requires_user_approval"] is True
 
 
 def test_discovery_excludes_hidden_dependency_build_and_generated_dirs(tmp_path: Path) -> None:

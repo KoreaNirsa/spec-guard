@@ -10,6 +10,13 @@ SUPPORTED_PACKAGE_PATH_EXAMPLES = (
     "specs/<feature>/spec.md",
     "backend/specs/<feature>/spec.md",
 )
+LIKELY_DRAFT_SPEC_FILENAMES = frozenset({
+    "prd.md",
+    "product-requirements.md",
+    "requirements.md",
+    "spec.md",
+    "specification.md",
+})
 EXCLUDED_SPEC_DISCOVERY_DIRS = frozenset({
     "__generated__",
     "__pycache__",
@@ -42,6 +49,7 @@ class SpecPackageDiscoveryPreview:
     requested_path: Path
     packages: tuple[Path, ...]
     path_exists: bool
+    draft_sources: tuple[Path, ...] = ()
 
     @property
     def status(self) -> str:
@@ -71,6 +79,14 @@ class SpecPackageDiscoveryPreview:
             }
             for index, candidate in enumerate(self.packages, start=1)
         ]
+        draft_sources = [
+            {
+                "index": index,
+                "path": _display_path(source, root),
+                "kind": "non_package_spec_document",
+            }
+            for index, source in enumerate(self.draft_sources, start=1)
+        ]
         status = self.status
         return {
             "schema_version": "specguard.discovery_preview.v1",
@@ -82,7 +98,9 @@ class SpecPackageDiscoveryPreview:
             "selection_required": status == "ambiguous",
             "review_allowed": status == "resolved",
             "candidates": candidates,
-            "next_action": _next_action(status, candidates),
+            "draft_source_count": len(draft_sources),
+            "draft_sources": draft_sources,
+            "next_action": _next_action(status, candidates, draft_sources),
         }
 
 
@@ -95,10 +113,12 @@ def resolve_spec_packages(path: Path) -> SpecPackageResolution:
 
 def preview_spec_package_discovery(path: Path) -> SpecPackageDiscoveryPreview:
     resolution = resolve_spec_packages(path)
+    draft_sources = () if resolution.packages else tuple(discover_draft_spec_documents(path))
     return SpecPackageDiscoveryPreview(
         requested_path=path,
         packages=resolution.packages,
         path_exists=path.exists(),
+        draft_sources=draft_sources,
     )
 
 
@@ -116,6 +136,36 @@ def discover_spec_packages(path: Path) -> list[Path]:
     for spec_root in _iter_spec_roots(path):
         packages.update(_feature_dirs_under_spec_root(spec_root))
     return sorted(packages, key=_package_sort_key)
+
+
+def discover_draft_spec_documents(path: Path) -> list[Path]:
+    if path.is_file():
+        return [path] if _is_likely_draft_spec_document(path) else []
+    if not path.is_dir():
+        return []
+
+    documents: list[Path] = []
+    stack = [path]
+    while stack:
+        current = stack.pop()
+        try:
+            children = sorted(current.iterdir(), key=_path_sort_key)
+        except OSError:
+            continue
+        for child in reversed(children):
+            try:
+                relative = child.relative_to(path)
+            except ValueError:
+                continue
+            if any(is_excluded_discovery_dir_name(part) for part in relative.parts[:-1]):
+                continue
+            if child.is_dir() and not child.is_symlink():
+                if not is_excluded_discovery_dir_name(child.name):
+                    stack.append(child)
+                continue
+            if child.is_file() and _is_likely_draft_spec_document(child):
+                documents.append(child)
+    return sorted(documents, key=_package_sort_key)
 
 
 def normalize_changed_path(value: str) -> PurePosixPath | None:
@@ -282,7 +332,15 @@ def _command_arg(value: str) -> str:
     return value
 
 
-def _next_action(status: str, candidates: list[dict[str, object]]) -> dict[str, object]:
+def _is_likely_draft_spec_document(path: Path) -> bool:
+    return path.suffix.lower() == ".md" and path.name.casefold() in LIKELY_DRAFT_SPEC_FILENAMES
+
+
+def _next_action(
+    status: str,
+    candidates: list[dict[str, object]],
+    draft_sources: list[dict[str, object]],
+) -> dict[str, object]:
     if status == "resolved":
         return {
             "type": "run_review",
@@ -295,6 +353,15 @@ def _next_action(status: str, candidates: list[dict[str, object]]) -> dict[str, 
             "type": "choose_candidate",
             "command_template": "specguard run <selected-path> --no-llm --no-follow-up",
             "bulk_review_default": False,
+        }
+    if draft_sources:
+        return {
+            "type": "offer_draft_package",
+            "requires_user_approval": True,
+            "source_options": [source["path"] for source in draft_sources],
+            "target_package_template": "specs/<feature>/",
+            "command_template": "specguard init <feature-name>",
+            "review_status": "not_reviewed",
         }
     return {
         "type": "create_or_select_package",

@@ -963,6 +963,93 @@ def test_pipeline_writes_plugin_state_for_invalid_technical_design(tmp_path: Pat
     assert not any(path.endswith("implementation-output.md") for path in payload["relevant_files"])
 
 
+def test_pipeline_partial_package_review_writes_reports_for_spec_only(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "loose-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text(
+        """# Loose Feature
+
+## Requirements
+
+- Users can submit a scoped request.
+
+## Acceptance Criteria
+
+- Valid requests return a recorded result.
+
+## Error Cases
+
+- Invalid requests are rejected without persistence.
+""",
+        encoding="utf-8",
+    )
+
+    result = run_pipeline(feature, allow_partial=True)
+    report_path = feature / "readiness-review.json"
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert not result.ok
+    assert result.details["partial_package_review"] is True
+    assert payload["readiness"]["status"] == "not_ready"
+    assert payload["review_input"]["partial_package"] is True
+    assert payload["input"]["artifacts"] == [{"path": "spec.md", "characters": len((feature / "spec.md").read_text(encoding="utf-8"))}]
+    assert "Spec package structure is incomplete" in {issue["title"] for issue in payload["issues"]}
+    assert (feature / "readiness-review.md").exists()
+    assert not (feature / "implementation-output.md").exists()
+    assert not plugin_run_state_path(feature).exists()
+
+
+def test_pipeline_partial_package_review_reports_missing_spec_sections(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "partial-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text("# Partial Feature\n\nUsers need a safe export flow.\n", encoding="utf-8")
+
+    result = run_pipeline(feature, allow_partial=True)
+    payload = json.loads((feature / "readiness-review.json").read_text(encoding="utf-8"))
+
+    assert not result.ok
+    section_issue = next(issue for issue in payload["issues"] if issue["title"] == "Spec required sections are incomplete")
+    assert "Requirements" in section_issue["description"]
+    assert "Acceptance Criteria" in section_issue["description"]
+    assert "Error Cases" in section_issue["description"]
+
+
+def test_pipeline_default_mode_keeps_spec_only_package_strict(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "strict-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text("# Strict Feature\n\n## Requirements\n\n- Define the behavior.\n", encoding="utf-8")
+
+    result = run_pipeline(feature)
+
+    assert not result.ok
+    assert plugin_run_state_path(feature).exists()
+    assert not (feature / "readiness-review.json").exists()
+
+
+def test_cli_partial_package_review_writes_structured_reports(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "cli-partial-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text(
+        "# CLI Partial Feature\n\n## Requirements\n\n- Review this source safely.\n",
+        encoding="utf-8",
+    )
+
+    completed = run_cli_smoke(
+        tmp_path,
+        "run",
+        str(feature),
+        "--allow-partial",
+        "--no-llm",
+        "--no-follow-up",
+    )
+
+    assert completed.returncode == 1
+    assert "Partial-package mode produced review reports only" in completed.stdout
+    assert (feature / "readiness-review.json").exists()
+    assert (feature / "readiness-review.md").exists()
+    assert not (feature / "implementation-output.md").exists()
+
+
 def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
     completed = run_cli_smoke(
         tmp_path,
@@ -4494,7 +4581,11 @@ def test_run_ready_result_does_not_open_default_follow_up_menu(monkeypatch) -> N
     assert exit_code == 0
 
 
-def test_run_prints_primary_next_action_before_secondary_next_steps(monkeypatch, capsys) -> None:
+def test_run_primary_next_action_suppresses_duplicate_secondary_steps(tmp_path: Path, monkeypatch, capsys) -> None:
+    feature = tmp_path / "specs" / "example"
+    feature.mkdir(parents=True)
+    feature.joinpath("implementation-output.md").write_text("# Handoff\n", encoding="utf-8")
+
     def fake_run_pipeline(path: Path, llm_client=None, force: bool = False, review_level: str = "low") -> CheckResult:
         result = CheckResult("SpecGuard pipeline")
         result.add_info("Generated implementation handoff guide: specs/example/implementation-output.md")
@@ -4510,7 +4601,7 @@ def test_run_prints_primary_next_action_before_secondary_next_steps(monkeypatch,
 
     monkeypatch.setenv("MSYSTEM", "MINGW64")
     monkeypatch.setattr(specguard_cli, "run_pipeline", fake_run_pipeline)
-    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(feature, report)])
     monkeypatch.setattr(specguard_cli, "_run_with_progress", lambda _label, operation: operation())
     monkeypatch.setattr(
         specguard_cli,
@@ -4533,10 +4624,9 @@ def test_run_prints_primary_next_action_before_secondary_next_steps(monkeypatch,
     assert exit_code == 0
     assert "Generated implementation handoff guide" in rendered
     assert "Next Action" in rendered
-    assert "Next steps:" in rendered
-    assert rendered.index("Next Action") < rendered.index("Next steps:")
-    assert "Primary handoff: give specs/example/implementation-output.md" in rendered
-    assert "Review lower-priority warning findings later." in rendered
+    assert "Next steps:" not in rendered
+    assert f"Handoff path: {(feature / 'implementation-output.md').as_posix()}" in rendered
+    assert "Review lower-priority warning findings later." not in rendered
 
 
 def test_run_validation_failure_does_not_open_default_follow_up_menu(monkeypatch, capsys) -> None:
@@ -4571,6 +4661,9 @@ def test_run_validation_failure_does_not_open_default_follow_up_menu(monkeypatch
     rendered = capsys.readouterr().out
     assert exit_code == 1
     assert "Spec package validation failed before SpecGuard Review" in rendered
+    assert "Status: VALIDATION_FAILED_BEFORE_REVIEW" in rendered
+    assert "Report path: unavailable; no fresh readiness report was produced." in rendered
+    assert "Handoff path: unavailable." in rendered
     assert "Existing readiness-review.md/json may be stale" in rendered
     assert "SpecGuard Review passed, but a later pipeline gate failed" not in rendered
 
@@ -4684,17 +4777,22 @@ def test_post_review_guidance_for_not_ready_report(monkeypatch, capsys) -> None:
 
     rendered = capsys.readouterr().out
     assert "Next Action" in rendered
-    assert "blocking readiness gaps: Missing rollback and failure handling details" in rendered
-    assert "Current findings: Critical 1, Major 2, Minor 3." in rendered
+    assert "Summary: Spec has blocking readiness gaps." in rendered
+    assert "Status: NOT_READY" in rendered
+    assert "Counts: Critical 1, Major 2, Minor 3." in rendered
+    assert "Top finding: Missing rollback and failure handling details" in rendered
     assert "Edit target: spec.md" in rendered
-    assert "Human report: specs/example/readiness-review.md" in rendered
+    assert "Report path: specs/example/readiness-review.md" in rendered
     assert "preserve current feature intent" in rendered
-    assert "specs/example/readiness-review.md" in rendered
-    assert "specguard run specs/example" in rendered
+    assert rendered.count("specs/example/readiness-review.md") == 1
+    assert rendered.count("Rerun command: specguard run specs/example") == 1
     assert "--experimental-auto-revise" in rendered
 
 
-def test_post_review_guidance_for_ready_with_warnings(monkeypatch, capsys) -> None:
+def test_post_review_guidance_for_ready_with_warnings(tmp_path: Path, monkeypatch, capsys) -> None:
+    feature = tmp_path / "specs" / "example"
+    feature.mkdir(parents=True)
+    feature.joinpath("implementation-output.md").write_text("# Handoff\n", encoding="utf-8")
     report = {
         "blocked": False,
         "readiness": {"status": "ready_with_warnings", "implementation_ready": True},
@@ -4704,20 +4802,40 @@ def test_post_review_guidance_for_ready_with_warnings(monkeypatch, capsys) -> No
             {"severity": "Major", "title": "Contract examples are incomplete"},
         ],
     }
-    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(Path("specs/example"), report)])
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(feature, report)])
 
     specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), CheckResult("SpecGuard pipeline"))
 
     rendered = capsys.readouterr().out
     assert "Next Action" in rendered
-    assert "implementation-ready with warnings: Contract examples are incomplete" in rendered
-    assert "Primary handoff: give specs/example/implementation-output.md" in rendered
-    assert "Copy/Paste Agent Prompt" in rendered
-    assert "specs/example/readiness-review.md" in rendered
-    assert "specs/example/implementation-output.md" in rendered
+    assert "Status: READY_WITH_WARNINGS" in rendered
+    assert "Top finding: Contract examples are incomplete" in rendered
+    assert f"Report path: {(feature / 'readiness-review.md').as_posix()}" in rendered
+    assert f"Handoff path: {(feature / 'implementation-output.md').as_posix()}" in rendered
 
 
-def test_post_review_guidance_for_ready(monkeypatch, capsys) -> None:
+def test_post_review_guidance_for_ready(tmp_path: Path, monkeypatch, capsys) -> None:
+    feature = tmp_path / "specs" / "example"
+    feature.mkdir(parents=True)
+    feature.joinpath("implementation-output.md").write_text("# Handoff\n", encoding="utf-8")
+    report = {
+        "blocked": False,
+        "readiness": {"status": "ready", "implementation_ready": True},
+        "summary": {"critical": 0, "major": 0, "minor": 0},
+        "issues": [],
+    }
+    monkeypatch.setattr(specguard_cli, "feature_readiness_reports", lambda _path: [(feature, report)])
+
+    specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), CheckResult("SpecGuard pipeline"))
+
+    rendered = capsys.readouterr().out
+    assert "Summary: Spec is ready for implementation." in rendered
+    assert "Status: READY" in rendered
+    assert "Top finding: none" in rendered
+    assert f"Handoff path: {(feature / 'implementation-output.md').as_posix()}" in rendered
+
+
+def test_ready_guidance_does_not_expose_missing_handoff(monkeypatch, capsys) -> None:
     report = {
         "blocked": False,
         "readiness": {"status": "ready", "implementation_ready": True},
@@ -4729,11 +4847,8 @@ def test_post_review_guidance_for_ready(monkeypatch, capsys) -> None:
     specguard_cli._print_post_review_guidance(Namespace(path="specs/example"), CheckResult("SpecGuard pipeline"))
 
     rendered = capsys.readouterr().out
-    assert "Summary: Spec is ready for implementation." in rendered
-    assert "Primary handoff: give specs/example/implementation-output.md" in rendered
-    assert "Copy/Paste Agent Prompt" in rendered
-    assert "specs/example/implementation-output.md" in rendered
-    assert "develop/<stack>" in rendered
+    assert "Handoff path: unavailable." in rendered
+    assert "specs/example/implementation-output.md" not in rendered
 
 
 def test_run_uses_activity_progress_for_initial_pipeline(monkeypatch) -> None:

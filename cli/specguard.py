@@ -149,9 +149,16 @@ def run(args: argparse.Namespace) -> int:
                 ),
             )
         else:
+            pipeline_options = {"allow_partial": True} if getattr(args, "allow_partial", False) else {}
             result = _run_with_progress(
                 "Running pipeline",
-                lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=args.force, review_level=review_level),
+                lambda: run_pipeline(
+                    Path(args.path),
+                    llm_client=llm_client,
+                    force=args.force,
+                    review_level=review_level,
+                    **pipeline_options,
+                ),
             )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
@@ -160,8 +167,9 @@ def run(args: argparse.Namespace) -> int:
         result.print()
     else:
         result.print(include_next_steps=False)
-        _print_post_review_guidance(args, result)
-        _print_secondary_next_steps(result)
+        primary_guidance_rendered = _print_post_review_guidance(args, result)
+        if not primary_guidance_rendered:
+            _print_secondary_next_steps(result)
 
     if not strict_e2e and _should_offer_follow_up(args, result):
         try:
@@ -818,16 +826,17 @@ def _experimental_auto_revise_enabled(args: argparse.Namespace) -> bool:
     return bool(getattr(args, "experimental_auto_revise", False))
 
 
-def _print_post_review_guidance(args: argparse.Namespace, result: object) -> None:
+def _print_post_review_guidance(args: argparse.Namespace, result: object) -> bool:
     if _failed_before_readiness_review(result):
         _print_pre_review_failure_guidance(args)
-        return
+        return True
 
     reports = feature_readiness_reports(Path(args.path))
     if not reports:
         if not getattr(result, "ok", False):
             _print_manual_spec_revision_guidance(args)
-        return
+            return True
+        return False
 
     status = _combined_readiness_status(reports)
     if status != "not_ready" and not getattr(result, "ok", False):
@@ -835,15 +844,16 @@ def _print_post_review_guidance(args: argparse.Namespace, result: object) -> Non
         print_hint("Summary: SpecGuard Review passed, but a later pipeline gate failed.")
         print(f"- Fix the pipeline issue shown above, then rerun: specguard run {args.path}")
         print("- Do not start external implementation until tests, contracts, and implementation handoff are ready.")
-        return
+        return True
 
     if status == "not_ready":
         _print_not_ready_guidance(args, reports)
-        return
+        return True
     if status == "ready_with_warnings":
         _print_ready_with_warnings_guidance(args, reports)
-        return
+        return True
     _print_ready_guidance(reports)
+    return True
 
 
 def _print_secondary_next_steps(result: object) -> None:
@@ -864,8 +874,12 @@ def _failed_before_readiness_review(result: object) -> bool:
 def _print_pre_review_failure_guidance(args: argparse.Namespace) -> None:
     print_section("Next Action")
     print_hint("Summary: Spec package validation failed before SpecGuard Review.")
+    print("- Status: VALIDATION_FAILED_BEFORE_REVIEW")
+    print("- Report path: unavailable; no fresh readiness report was produced.")
+    print("- Handoff path: unavailable.")
+    print("- Edit target: discovery.md, spec.md, or technical-design.md")
     print("- Fix the validation errors shown above in discovery.md, spec.md, or technical-design.md.")
-    print(f"- Rerun after edits: specguard run {args.path}")
+    print(f"- Rerun command: specguard run {args.path}")
     print("- Existing readiness-review.md/json may be stale and was not used as the current result.")
 
 
@@ -892,12 +906,14 @@ def _print_not_ready_guidance(args: argparse.Namespace, reports: list[tuple[Path
     summary = _readiness_counts(reports)
     issue = _top_readiness_issue(reports, ("Critical", "Major", "Minor"))
     print_section("Next Action")
-    print_hint(f"Summary: Spec has blocking readiness gaps{_issue_suffix(issue)}.")
-    print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print_hint("Summary: Spec has blocking readiness gaps.")
+    print("- Status: NOT_READY")
+    print(f"- Counts: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print(f"- Top finding: {_issue_title(issue)}")
+    print(f"- Report path: {_review_detail_target(reports)}")
     print("- Edit target: spec.md")
-    print(f"- Human report: {_review_detail_target(reports)}")
     print("- AI assistant prompt: Strengthen spec.md only enough to resolve the report findings; preserve current feature intent, acceptance coverage, and explicit non-goals; do not add behavior outside the current spec scope.")
-    print(f"- Rerun after edits: specguard run {args.path}")
+    print(f"- Rerun command: specguard run {args.path}")
     if not _experimental_auto_revise_enabled(args):
         print_hint("SpecGuard did not rewrite spec.md automatically. Experimental auto-revision requires --experimental-auto-revise.")
 
@@ -906,19 +922,39 @@ def _print_ready_with_warnings_guidance(args: argparse.Namespace, reports: list[
     summary = _readiness_counts(reports)
     issue = _top_readiness_issue(reports, ("Major", "Minor"))
     print_section("Next Action")
-    print_hint(f"Summary: Spec is implementation-ready with warnings{_issue_suffix(issue)}.")
-    print(f"- Current findings: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
-    print(f"- Primary handoff: give {_implementation_handoff_target(reports)} and the approved spec package to the external coding agent.")
-    print("- Agent prompt: copy the prompt from the handoff file's Copy/Paste Agent Prompt section.")
-    print(f"- Optional warning cleanup: edit warning items from {_review_detail_target(reports)}, then rerun SpecGuard.")
+    handoff = _implementation_handoff_target(reports)
+    print_hint("Summary: Spec is implementation-ready with warnings.")
+    print("- Status: READY_WITH_WARNINGS")
+    print(f"- Counts: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print(f"- Top finding: {_issue_title(issue)}")
+    print(f"- Report path: {_review_detail_target(reports)}")
+    print("- Edit target: spec.md (optional warning cleanup)")
+    if handoff:
+        print(f"- Handoff path: {handoff}")
+        print("- Next step: give the handoff and approved spec package to the external coding agent.")
+    else:
+        print("- Handoff path: unavailable.")
+        print(f"- Next step: rerun the full pipeline to generate the handoff: specguard run {args.path}")
+    print(f"- Rerun command: specguard run {args.path}")
 
 
 def _print_ready_guidance(reports: list[tuple[Path, dict]]) -> None:
+    summary = _readiness_counts(reports)
+    handoff = _implementation_handoff_target(reports)
     print_section("Next Action")
     print_hint("Summary: Spec is ready for implementation.")
-    print(f"- Primary handoff: give {_implementation_handoff_target(reports)} and the approved spec package to the external coding agent.")
-    print("- Agent prompt: copy the prompt from the handoff file's Copy/Paste Agent Prompt section.")
-    print("- Keep application code under develop/<stack>/, then run the verification command named in the handoff.")
+    print("- Status: READY")
+    print(f"- Counts: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+    print("- Top finding: none")
+    print(f"- Report path: {_review_detail_target(reports)}")
+    print("- Edit target: none")
+    if handoff:
+        print(f"- Handoff path: {handoff}")
+        print("- Next step: give the handoff and approved spec package to the external coding agent.")
+    else:
+        print("- Handoff path: unavailable.")
+    rerun_target = _display_path(reports[0][0]) if len(reports) == 1 else "<package>"
+    print(f"- Rerun command: specguard run {rerun_target}")
 
 
 def _readiness_counts(reports: list[tuple[Path, dict]]) -> dict[str, int]:
@@ -951,13 +987,10 @@ def _top_readiness_issue(reports: list[tuple[Path, dict]], severities: tuple[str
     return None
 
 
-def _issue_suffix(issue: dict | None) -> str:
+def _issue_title(issue: dict | None) -> str:
     if not issue:
-        return ""
-    title = str(issue.get("title") or "").strip()
-    if not title:
-        return ""
-    return f": {_short_text(title)}"
+        return "none"
+    return _short_text(str(issue.get("title") or "Untitled finding"))
 
 
 def _short_text(text: str, limit: int = 84) -> str:
@@ -973,9 +1006,12 @@ def _review_detail_target(reports: list[tuple[Path, dict]]) -> str:
     return "each feature's readiness-review.md"
 
 
-def _implementation_handoff_target(reports: list[tuple[Path, dict]]) -> str:
-    if len(reports) == 1:
-        return _display_path(reports[0][0] / "implementation-output.md")
+def _implementation_handoff_target(reports: list[tuple[Path, dict]]) -> str | None:
+    paths = [feature_dir / "implementation-output.md" for feature_dir, _report in reports]
+    if not paths or not all(path.exists() for path in paths):
+        return None
+    if len(paths) == 1:
+        return _display_path(paths[0])
     return "each feature's implementation-output.md"
 
 
@@ -1511,6 +1547,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--force", action="store_true", help="Regenerate derived artifacts instead of reusing existing files")
     run_parser.add_argument("--llm", action="store_true", help="Run live LLM SpecGuard Review instead of the default fast heuristic low-mode review")
     run_parser.add_argument("--no-llm", action="store_true", help="Skip live LLM requests and use local generators plus heuristic SpecGuard Review")
+    run_parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="Review a non-empty spec.md as a partial package without generating derived artifacts or implementation handoff",
+    )
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Use this provider for live review without changing saved config")
     run_parser.add_argument("--llm-model", help="Use this model for live review without changing saved config")
     run_parser.add_argument(

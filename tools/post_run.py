@@ -5,11 +5,11 @@ from datetime import datetime, timezone
 import difflib
 import json
 import re
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 from tools.progress import progress_activity
-from tools.readiness_engine import review_artifact_paths
+from tools.readiness_engine import is_review_source_artifact, review_artifact_paths
 from tools.result import CheckResult
 from tools.spec_packages import SUPPORTED_PACKAGE_PATH_EXAMPLES, discover_spec_packages
 
@@ -78,6 +78,14 @@ class PluginReadinessSummary:
     handoff_available: bool
     top_findings: tuple[str, ...] = ()
     report_files: tuple[str, ...] = ()
+    reviewed_artifact_count: int = 0
+    standard_reviewed_artifacts: tuple[str, ...] = ()
+    additional_authored_count: int = 0
+    additional_authored_artifacts: tuple[str, ...] = ()
+    report_path: str | None = None
+    handoff_path: str | None = None
+    edit_target: str | None = None
+    rerun_command: str = ""
     next_action: str = ""
 
 
@@ -186,6 +194,7 @@ def build_plugin_readiness_summary(
     report: dict[str, Any],
     *,
     limit: int = 3,
+    artifact_limit: int = 6,
 ) -> PluginReadinessSummary:
     summary = report.get("summary", {})
     if not isinstance(summary, dict):
@@ -193,6 +202,9 @@ def build_plugin_readiness_summary(
 
     status = _readiness_status(report)
     handoff_available = _implementation_handoff_available(feature_dir, report)
+    reviewed_artifacts = _plugin_reviewed_artifacts(report)
+    standard_artifacts = tuple(path for path in reviewed_artifacts if _is_standard_review_artifact(path))
+    additional_artifacts = tuple(path for path in reviewed_artifacts if not _is_standard_review_artifact(path))
     return PluginReadinessSummary(
         feature_dir=feature_dir.as_posix(),
         status=status,
@@ -203,12 +215,26 @@ def build_plugin_readiness_summary(
         handoff_available=handoff_available,
         top_findings=_plugin_top_findings(report, status=status, limit=limit),
         report_files=_plugin_summary_report_files(feature_dir, handoff_available=handoff_available),
+        reviewed_artifact_count=len(reviewed_artifacts),
+        standard_reviewed_artifacts=standard_artifacts[:artifact_limit],
+        additional_authored_count=len(additional_artifacts),
+        additional_authored_artifacts=additional_artifacts[:artifact_limit],
+        report_path=_plugin_human_report_path(feature_dir),
+        handoff_path=(feature_dir / "implementation-output.md").as_posix() if handoff_available else None,
+        edit_target=(feature_dir / "spec.md").as_posix() if status in {"not_ready", "ready_with_warnings"} else None,
+        rerun_command=_default_plugin_rerun_command(feature_dir),
         next_action=_plugin_next_action(feature_dir, status, report),
     )
 
 
-def render_plugin_readiness_summary(feature_dir: Path, report: dict[str, Any], *, limit: int = 3) -> str:
-    summary = build_plugin_readiness_summary(feature_dir, report, limit=limit)
+def render_plugin_readiness_summary(
+    feature_dir: Path,
+    report: dict[str, Any],
+    *,
+    limit: int = 3,
+    artifact_limit: int = 6,
+) -> str:
+    summary = build_plugin_readiness_summary(feature_dir, report, limit=limit, artifact_limit=artifact_limit)
     lines = [
         summary.feature_dir,
         f"- status: {summary.status}",
@@ -227,6 +253,13 @@ def render_plugin_readiness_summary(feature_dir: Path, report: dict[str, Any], *
         lines.extend(f"  - {path}" for path in summary.report_files)
     else:
         lines.append("  - none")
+    lines.extend(_render_plugin_artifact_summary(summary))
+    lines.extend([
+        f"- report path: {summary.report_path or 'unavailable'}",
+        f"- handoff path: {summary.handoff_path or 'unavailable'}",
+        f"- edit target: {summary.edit_target or 'none'}",
+        f"- rerun command: {summary.rerun_command}",
+    ])
     lines.append(f"- next action: {summary.next_action}")
     return "\n".join(lines)
 
@@ -359,6 +392,7 @@ def render_plugin_rerun_result(
                 lines.extend(f"  - {path}" for path in summary.report_files)
             else:
                 lines.append("  - none")
+            lines.extend(_render_plugin_artifact_summary(summary))
 
     elif state.known_files:
         lines.append("- known files:")
@@ -795,6 +829,69 @@ def _plugin_summary_report_files(feature_dir: Path, *, handoff_available: bool) 
     if handoff_available:
         files.append(feature_dir / "implementation-output.md")
     return tuple(path.as_posix() for path in files if path.exists())
+
+
+def _plugin_reviewed_artifacts(report: dict[str, Any]) -> tuple[str, ...]:
+    source_input = report.get("input")
+    if not isinstance(source_input, dict):
+        return ()
+    artifacts = source_input.get("artifacts")
+    if not isinstance(artifacts, list):
+        return ()
+
+    paths: list[str] = []
+    for artifact in artifacts:
+        if not isinstance(artifact, dict):
+            continue
+        value = artifact.get("path")
+        if not isinstance(value, str):
+            continue
+        normalized = PurePosixPath(value.replace("\\", "/"))
+        if normalized.is_absolute() or ".." in normalized.parts or not is_review_source_artifact(normalized):
+            continue
+        path = normalized.as_posix()
+        if path not in paths:
+            paths.append(path)
+    return tuple(paths)
+
+
+def _is_standard_review_artifact(path: str) -> bool:
+    return path in {
+        "discovery.md",
+        "spec.md",
+        "plan.md",
+        "tasks.md",
+        "constitution.md",
+        "technical-design.md",
+    } or path.startswith("checklists/")
+
+
+def _render_plugin_artifact_summary(summary: PluginReadinessSummary) -> list[str]:
+    lines = [f"- reviewed authored Markdown: {summary.reviewed_artifact_count}"]
+    if summary.standard_reviewed_artifacts:
+        lines.append("  - standard:")
+        lines.extend(f"    - {path}" for path in summary.standard_reviewed_artifacts)
+        hidden_standard = (
+            summary.reviewed_artifact_count
+            - summary.additional_authored_count
+            - len(summary.standard_reviewed_artifacts)
+        )
+        if hidden_standard > 0:
+            lines.append(f"    - ... {hidden_standard} more standard file(s)")
+    if summary.additional_authored_artifacts:
+        lines.append(f"  - additional: {summary.additional_authored_count}")
+        lines.extend(f"    - {path}" for path in summary.additional_authored_artifacts)
+        hidden = summary.additional_authored_count - len(summary.additional_authored_artifacts)
+        if hidden > 0:
+            lines.append(f"    - ... {hidden} more authored Markdown file(s)")
+    else:
+        lines.append("  - additional: none")
+    return lines
+
+
+def _plugin_human_report_path(feature_dir: Path) -> str | None:
+    path = feature_dir / "readiness-review.md"
+    return path.as_posix() if path.exists() else None
 
 
 def _relevant_plugin_files(feature_dir: Path, report: dict[str, Any]) -> tuple[str, ...]:

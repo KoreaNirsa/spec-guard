@@ -221,6 +221,10 @@ def test_plugin_readiness_summary_prioritizes_critical_findings_for_not_ready(tm
     assert "readiness-review.md" in rendered
     assert "implementation-output.md" not in rendered
     assert "Detailed blocker impact should stay in full reports." not in rendered
+    assert f"- report path: {(feature / 'readiness-review.md').as_posix()}" in rendered
+    assert "- handoff path: unavailable" in rendered
+    assert f"- edit target: {(feature / 'spec.md').as_posix()}" in rendered
+    assert f"- rerun command: specguard run {feature.as_posix()} --no-llm --no-follow-up" in rendered
 
 
 def test_plugin_readiness_summary_requires_handoff_file_for_ready_with_warnings(tmp_path: Path) -> None:
@@ -234,6 +238,9 @@ def test_plugin_readiness_summary_requires_handoff_file_for_ready_with_warnings(
 
     assert missing_handoff.status == "ready_with_warnings"
     assert missing_handoff.handoff_available is False
+    assert missing_handoff.handoff_path is None
+    assert missing_handoff.report_path == (feature / "readiness-review.md").as_posix()
+    assert missing_handoff.edit_target == (feature / "spec.md").as_posix()
     assert not any(path.endswith("implementation-output.md") for path in missing_handoff.report_files)
     assert "Rerun the full SpecGuard pipeline" in missing_handoff.next_action
 
@@ -241,6 +248,7 @@ def test_plugin_readiness_summary_requires_handoff_file_for_ready_with_warnings(
     with_handoff = build_plugin_readiness_summary(feature, payload)
 
     assert with_handoff.handoff_available is True
+    assert with_handoff.handoff_path == (feature / "implementation-output.md").as_posix()
     assert any(path.endswith("implementation-output.md") for path in with_handoff.report_files)
     assert "Implementation may proceed with warnings" in with_handoff.next_action
 
@@ -262,6 +270,45 @@ def test_plugin_readiness_summary_covers_ready_state_with_report_paths(tmp_path:
     assert "readiness-review.json" in rendered
     assert "readiness-review.md" in rendered
     assert "implementation-output.md" in rendered
+    assert f"- handoff path: {(feature / 'implementation-output.md').as_posix()}" in rendered
+    assert "- edit target: none" in rendered
+
+
+def test_plugin_readiness_summary_surfaces_additional_authored_markdown(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    payload = _summary_payload("not_ready", implementation_ready=False)
+    payload["input"] = {
+        "artifacts": [
+            {"path": "discovery.md", "characters": 20},
+            {"path": "spec.md", "characters": 20},
+            {"path": "checklists/spec-readiness.md", "characters": 20},
+            {"path": "domain-rules.md", "characters": 20},
+            {"path": "api-notes.md", "characters": 20},
+            {"path": "notes/operations.md", "characters": 20},
+            {"path": "readiness-review.md", "characters": 20},
+            {"path": "implementation-output.md", "characters": 20},
+            {"path": "tests/generated.md", "characters": 20},
+            {"path": "contracts/contract.md", "characters": 20},
+            {"path": ".specguard/cache.md", "characters": 20},
+        ]
+    }
+
+    summary = build_plugin_readiness_summary(feature, payload, artifact_limit=2)
+    rendered = render_plugin_readiness_summary(feature, payload, artifact_limit=2)
+
+    assert summary.reviewed_artifact_count == 6
+    assert summary.standard_reviewed_artifacts == ("discovery.md", "spec.md")
+    assert summary.additional_authored_count == 3
+    assert summary.additional_authored_artifacts == ("domain-rules.md", "api-notes.md")
+    assert "domain-rules.md" in rendered
+    assert "api-notes.md" in rendered
+    assert "... 1 more authored Markdown file(s)" in rendered
+    assert "readiness-review.md" not in rendered
+    assert "implementation-output.md" not in rendered
+    assert "tests/generated.md" not in rendered
+    assert "contracts/contract.md" not in rendered
+    assert ".specguard/cache.md" not in rendered
 
 
 def test_plugin_rerun_guidance_marks_edited_source_report_as_suggestions_only(tmp_path: Path) -> None:
