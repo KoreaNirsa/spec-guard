@@ -76,7 +76,11 @@ def test_specguard_plugin_skill_defines_heuristic_first_cli_workflow() -> None:
             "python -m cli.specguard --help",
             "specguard discover <path>",
             "schema_version: \"specguard.discovery_preview.v1\"",
+            "selection_required",
+            "candidates[].index",
             "candidates[].path",
+            "candidates[].review_command",
+            "do not run all candidates automatically",
             "**/specs/*/spec.md",
             "hidden, dependency, build, and generated directories",
             "specguard run <path> --llm --no-follow-up",
@@ -123,6 +127,9 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
         (
             "specguard discover <path>",
             "schema_version: \"specguard.discovery_preview.v1\"",
+            "selection_required",
+            "candidates[].review_command",
+            "must not run every candidate automatically",
             "specguard run <package> --llm --follow-up",
             "Plugin Result Contract",
         ),
@@ -370,7 +377,13 @@ def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:
             "## Discovery Preview JSON",
             "`specguard discover <path>` is a read-only preflight command.",
             "`status` | `resolved`, `ambiguous`, or `missing_spec_package`.",
+            "`selection_required` | `true` when the plugin must ask the user to choose one candidate before review.",
+            "`review_allowed` | `true` only when exactly one package candidate was resolved.",
+            "`candidates[].index` | Stable 1-based selection number in deterministic display order.",
             "`candidates[].path` | Candidate package path for user-facing selection prompts.",
+            "`candidates[].review_command` | User-facing command for reviewing that specific candidate.",
+            "`next_action.type` | `run_review`, `choose_candidate`, or `create_or_select_package`.",
+            "It must not run every candidate automatically",
             "## Plugin Readiness Summary UX",
             "readiness status from `readiness.status`",
             "review level from `review_level`",
@@ -619,6 +632,8 @@ def test_codex_plugin_guide_documents_app_setup_and_mvp_flow() -> None:
             "specguard example copy specs/your-feature-name --force",
             "specguard discover <path>",
             "schema_version: \"specguard.discovery_preview.v1\"",
+            "candidates[].review_command",
+            "the plugin must not run every candidate automatically",
         ),
     )
     _assert_default_heuristic_command(doc)
@@ -722,6 +737,7 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
     for scenario in (
         "missing `specguard` CLI",
         "missing spec package",
+        "ambiguous spec package selection",
         "existing spec package reaches `ready`",
         "existing spec package is `not_ready` with Critical findings",
         "`ready_with_warnings` handoff guidance",
@@ -741,6 +757,7 @@ def test_codex_plugin_guide_covers_required_validation_scenarios() -> None:
         doc,
         (
             "missing_cli",
+            "ambiguous_spec_package",
             "missing_spec_package",
             "stale_review",
             "validation_failed_before_review",
@@ -772,6 +789,7 @@ def test_plugin_workflow_scenario_fixtures_cover_issue_212_examples() -> None:
     assert {
         "plugin_available",
         "missing_cli",
+        "ambiguous_spec_package",
         "ready",
         "ready_with_warnings",
         "not_ready",
@@ -791,6 +809,12 @@ def test_plugin_workflow_scenario_fixtures_cover_issue_212_examples() -> None:
     assert "codex plugin marketplace add KoreaNirsa/spec-guard --ref main" in by_state["plugin_available"]["commands"]
     assert "specguard --help" in by_state["missing_cli"]["commands"]
     assert "python -m cli.specguard --help" in by_state["missing_cli"]["commands"]
+    assert by_state["ambiguous_spec_package"]["commands"] == [
+        "specguard discover <path>",
+        "specguard run <selected-path> --no-llm --no-follow-up",
+    ]
+    assert by_state["ambiguous_spec_package"]["stable_files"] == []
+    assert "do_not_bulk_review_by_default" in by_state["ambiguous_spec_package"]["safety_boundaries"]
 
     for state in ("ready", "ready_with_warnings", "not_ready", "stale_review", "validation_failed_before_review"):
         assert "specguard discover <path>" in by_state[state]["commands"]
@@ -814,7 +838,7 @@ def test_plugin_workflow_scenario_fixtures_cover_issue_212_examples() -> None:
         for scenario in scenarios
         if scenario["failure_category"] is not None
     }
-    assert {"missing_cli", "stale_review", "validation_failed_before_review"} <= failure_categories
+    assert {"missing_cli", "ambiguous_spec_package", "stale_review", "validation_failed_before_review"} <= failure_categories
 
     fixture_text = json.dumps(fixture)
     assert "Todo ownership boundary is unclear" not in fixture_text

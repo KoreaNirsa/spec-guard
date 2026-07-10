@@ -51,13 +51,15 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 3. Preview the target package candidates before running review:
    - run `specguard discover <path>` when the CLI is installed, or `python -m cli.specguard discover <path>` from a source checkout;
    - read the stable JSON `schema_version: "specguard.discovery_preview.v1"`;
-   - use `status`, `reason`, `candidate_count`, `candidates[].path`, and `candidates[].spec_path` for user-facing package selection prompts;
+   - use `status`, `reason`, `candidate_count`, `selection_required`, `review_allowed`, `candidates[].index`, `candidates[].path`, `candidates[].spec_path`, and `candidates[].review_command` for user-facing package selection prompts;
    - this preview is read-only and must not write readiness reports or generated artifacts.
 4. Resolve the target package:
    - use the user-provided path when it contains `spec.md`;
    - otherwise use the current directory when it contains `spec.md`;
    - otherwise scan non-excluded `**/specs/*/spec.md` candidates and use the only match;
-   - when multiple candidate packages exist, list them and ask the user to choose;
+   - when multiple candidate packages exist, list `candidates[]` in preview order and ask the user to choose one package path;
+   - do not run all candidates automatically; keep one selected package as the current review target for the conversation;
+   - after the user chooses a candidate, rerun only that candidate with `specguard run <selected-path> --no-llm --no-follow-up`;
    - when no candidate package exists, report `missing_spec_package`.
    - exclude hidden, dependency, build, and generated directories during candidate discovery, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 5. Record the current time before invoking the run command so stale or missing reports can be distinguished after execution.
