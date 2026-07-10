@@ -106,6 +106,19 @@ State-specific guidance:
 - `validation_failed_before_review`: report that no current readiness result exists, read `.specguard/run-state.json` when present for `failure_category`, `failed_stage`, `messages`, `next_steps`, and `package_path`, and ask the user to fix validation before rerunning.
 - `timeout` and `cli_execution_failed`: include the attempted command, known files for diagnostics, and the next safe action; do not point to `implementation-output.md` as relevant handoff.
 
+## Human Report Language
+
+Users do not need to select a language before review. Before invoking the CLI:
+
+1. Determine whether Korean or English clearly dominates the active conversation.
+2. For a clear result, set the process-only `SPECGUARD_CONVERSATION_LANGUAGE` environment variable to `ko` or `en` for the review command.
+3. For a mixed, empty, inconclusive, or unsupported conversation, omit the environment variable. Do not guess.
+4. Never inspect, store, or infer from long-term user history.
+
+When no supported conversation hint is supplied, the CLI determines the dominant language from authored spec package content. Mixed, empty, inconclusive, or unsupported authored content falls back to English. Read `report_language.code`, `report_language.source`, and `report_language.fallback_used` from `readiness-review.json`, and answer in the resolved language.
+
+Language selection applies to human-facing artifacts. Keep JSON keys, readiness status values, severity values, and other stable automation fields unchanged.
+
 ## Failure Categories
 
 - `missing_cli`: `specguard --help` and the source checkout fallback both fail. Tell the user to install SpecGuard or run from a checkout that supports `python -m cli.specguard`.

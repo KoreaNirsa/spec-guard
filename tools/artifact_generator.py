@@ -10,6 +10,7 @@ from tools.generation.verification_checker import verification_metadata
 from tools.llm_client import describe_llm_client
 from tools.progress import progress_activity
 from tools.readiness_engine import review_artifact_paths
+from tools.report_language import report_language_from_payload
 
 LOW_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 1800
 DEFAULT_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 3000
@@ -373,6 +374,12 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
 
     approved_artifacts = _implementation_agent_artifacts(path)
     handoff_metadata = _implementation_handoff_metadata(path, approved_artifacts)
+    report_language = handoff_metadata.get("report_language", {})
+    if isinstance(report_language, dict) and report_language.get("code") == "ko":
+        lines = _korean_implementation_output_lines(path, approved_artifacts, handoff_metadata)
+        output.write_text("\n".join(lines), encoding="utf-8")
+        return ArtifactWrite(output, created=True)
+
     lines = [
         f"# Implementation Output: {path.name}",
         "",
@@ -442,6 +449,81 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
     return ArtifactWrite(output, created=True)
 
 
+def _korean_implementation_output_lines(
+    path: Path,
+    approved_artifacts: list[str],
+    handoff_metadata: dict[str, object],
+) -> list[str]:
+    verification = handoff_metadata["verification"]
+    assert isinstance(verification, dict)
+    lines = [
+        f"# 구현 인계: {path.name}",
+        "",
+        "SpecGuard는 승인된 구현 인계에서 멈추며 내부 pipeline 단계에서 별도의 코딩 에이전트를 호출하지 않습니다.",
+        "",
+        "아래 기계 판독 준비 상태가 `ready` 또는 `ready_with_warnings`인 경우에만 이 기능 폴더를 외부 구현 컨텍스트로 사용하세요.",
+        "",
+        "## 기계 판독 구현 인계",
+        "",
+        "```json",
+        *json.dumps(handoff_metadata, indent=2, ensure_ascii=False).splitlines(),
+        "```",
+        "",
+        "## 에이전트 입력 산출물",
+        "",
+    ]
+    lines.extend(f"- `{artifact}`" for artifact in approved_artifacts)
+    lines.extend([
+        "",
+        "## 산출물 우선순위",
+        "",
+        "- 주요 구현 기준: `spec.md`, `technical-design.md`, `tests/`, `contracts/`.",
+        "- 의도 컨텍스트: `discovery.md`, `plan.md`, `tasks.md`, `constitution.md`, `checklists/`, 추가 authored Markdown.",
+        "- 입력 산출물이 충돌하거나 필수 동작이 누락되면 구현을 중단하고 스펙 패키지를 수정한 뒤 SpecGuard를 다시 실행하세요.",
+        "",
+        "## 복사해서 사용할 에이전트 프롬프트",
+        "",
+        "```text",
+        f"{path.as_posix()}의 승인된 SpecGuard 패키지를 구현하세요.",
+        "implementation-output.md를 구현 인계 시작점으로 사용하고 파일을 수정하기 전에 모든 에이전트 입력 산출물을 읽으세요.",
+        "spec.md, technical-design.md, tests/, contracts/ 또는 목록에 포함된 authored intent 파일에 명시된 동작만 구현하세요.",
+        "누락된 제품 동작, 소유권 규칙, 재시도, 오류, 영속성 세부 사항 또는 API 필드를 추측하지 마세요. 필수 동작이 누락되거나 모순되면 중단하고 스펙 수정을 요청하세요.",
+        "생성한 애플리케이션 코드는 develop/<stack>/ 아래에 두세요.",
+        f"구현 인계에 지정된 검증 명령을 실행하세요: {verification.get('command') or '구현 인계에 지정된 검증 산출물을 사용하세요'}",
+        "```",
+        "",
+        "## 검증",
+        "",
+        f"- 유형: `{verification.get('kind')}`",
+        f"- 산출물: `{verification.get('artifact')}`",
+        f"- 명령: `{verification.get('command') or '지정되지 않음'}`",
+        "",
+        "## SpecGuard 전용 산출물",
+        "",
+        "- `readiness-review.md`와 `readiness-review.json`은 검증 결과이며 구현 요구사항이 아닙니다.",
+        "- `readiness-review-detail.md`와 `readiness-review-detail.json`은 선택적 상세 검토 결과이며 구현 요구사항이 아닙니다.",
+        "- `.specguard/` 캐시와 revision audit 파일은 운영 기록입니다.",
+        "- READY 또는 READY_WITH_WARNINGS인 경우에만 에이전트 입력 산출물을 구현 기준으로 사용하세요.",
+        "",
+        "## 출력 위치",
+        "",
+        "- 생성한 애플리케이션 코드는 `develop/<stack>/` 아래에 두세요.",
+        "- 예: `develop/spring/`, `develop/react/`, `develop/fastapi/`.",
+        "",
+        "## 구현 규칙",
+        "",
+        "- 구현 전에 모든 에이전트 입력 산출물을 읽으세요.",
+        "- 코드를 `spec.md`, `technical-design.md`, `tests/`, `contracts/`와 일치시키세요.",
+        "- discovery와 추가 authored Markdown은 의도 컨텍스트로만 사용하고 명시적 스펙이나 계약을 추측으로 덮어쓰지 마세요.",
+        "- `tests/`에 설명된 동작을 구현하거나 유지하세요.",
+        "- API 형태를 `contracts/` 아래 파일과 호환되게 유지하세요.",
+        "- 구현 중 동작 누락을 발견하면 스펙을 수정하고 SpecGuard를 다시 실행하세요.",
+        "- 차단 항목이나 경고를 구현 에이전트가 추측으로 해결하도록 요청하지 마세요.",
+        "",
+    ])
+    return lines
+
+
 def _implementation_agent_artifacts(path: Path) -> list[str]:
     artifacts: list[str] = []
     seen: set[str] = set()
@@ -497,6 +579,7 @@ def _implementation_handoff_metadata(path: Path, approved_artifacts: list[str]) 
         "readiness_summary": readiness_summary,
         "readiness_warnings": warning_findings,
         "readiness_report": "readiness-review.json" if report_path.exists() else None,
+        "report_language": report_language_from_payload(report).as_dict(),
         "approved_artifacts": approved_artifacts,
         "verification": verification_metadata(path),
     }

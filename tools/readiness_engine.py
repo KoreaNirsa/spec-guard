@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.llm_client import describe_llm_client
 from tools.grill_loop import write_grill_outputs
 from tools.progress import progress_activity
+from tools.report_language import ReportLanguageResolution, localized_issue_title, resolve_report_language
 from tools.result import CheckResult
 from tools.ux import green, red, yellow
 
@@ -2217,12 +2218,18 @@ def _build_llm_review_request(
     review_level: str,
     previous_report: dict | None,
     compact_low_input: bool = True,
+    report_language: str = "en",
 ) -> tuple[str, str, dict[str, object]]:
     instructions = (
         _verification_review_instructions(review_level)
         if review_mode == "verification"
         else _initial_review_instructions(review_level)
     )
+    if report_language == "ko":
+        instructions += (
+            "\n\nWrite every human-facing issue title, description, impact, and fix in Korean. "
+            "Keep JSON keys and the Critical, Major, and Minor severity values unchanged."
+        )
     full_input = _render_artifact_input(artifacts)
     if review_mode != "verification":
         if normalize_review_level(review_level) == "low" and compact_low_input:
@@ -3043,25 +3050,31 @@ def _analyze_with_llm(
     return _parse_llm_issues(text, review_level)
 
 
-def _render_group(title: str, issues: list[ReadinessIssue]) -> str:
+def _render_group(title: str, issues: list[ReadinessIssue], *, report_language: str = "en") -> str:
     if not issues:
-        return f"## {title}\n\n- None detected by the local heuristic engine.\n"
+        empty_message = "로컬 휴리스틱 엔진에서 발견된 항목이 없습니다." if report_language == "ko" else "None detected by the local heuristic engine."
+        return f"## {title}\n\n- {empty_message}\n"
 
     lines = [f"## {title}", ""]
+    labels = (
+        {"description": "설명", "impact": "영향", "fix": "해결 방법", "evidence": "근거"}
+        if report_language == "ko"
+        else {"description": "Description", "impact": "Impact", "fix": "Fix", "evidence": "Evidence"}
+    )
     for issue in issues:
         lines.extend([
-            f"### {issue.title}",
+            f"### {localized_issue_title(issue.title, report_language)}",
             "",
-            f"Description: {issue.description}",
+            f"{labels['description']}: {issue.description}",
             "",
-            f"Impact: {issue.impact}",
+            f"{labels['impact']}: {issue.impact}",
             "",
-            f"Fix: {issue.fix}",
+            f"{labels['fix']}: {issue.fix}",
             "",
         ])
         if issue.evidence:
             lines.extend([
-                "Evidence:",
+                f"{labels['evidence']}:",
                 *[f"- {excerpt}" for excerpt in issue.evidence],
                 "",
             ])
@@ -3165,6 +3178,7 @@ def _build_report(
     report_stem: str,
     review_input: dict[str, object] | None = None,
     cache_info: dict[str, object] | None = None,
+    report_language: str = "en",
 ) -> str:
     summary = _build_summary(issues)
     policy = _readiness_policy(review_level)
@@ -3177,6 +3191,72 @@ def _build_report(
         if policy.warning_major_limit is None or policy.warning_minor_limit is None
         else f"Critical=0, Major<={policy.warning_major_limit}, Minor<={policy.warning_minor_limit}"
     )
+
+    if report_language == "ko":
+        warning_criteria_ko = (
+            "Critical=0, Major/Minor는 경고로 처리"
+            if policy.warning_major_limit is None or policy.warning_minor_limit is None
+            else f"Critical=0, Major<={policy.warning_major_limit}, Minor<={policy.warning_minor_limit}"
+        )
+        return "\n".join([
+            "# SpecGuard 검토 결과",
+            "",
+            *_build_report_summary(
+                feature_dir,
+                issues,
+                summary,
+                status,
+                report_stem,
+                report_language=report_language,
+            ),
+            "",
+            f"- 검토 모드: {review_mode}",
+            f"- 검토 수준: {policy.review_level}",
+            "",
+            "## 준비 상태",
+            "",
+            f"- 상태: {status.upper()}",
+            f"- READY 기준: Critical=0, Major<={policy.ready_major_limit}, Minor<={policy.ready_minor_limit}",
+            f"- READY_WITH_WARNINGS 기준: {warning_criteria_ko}",
+            (
+                f"- 차단 항목: Critical={summary['critical']}; "
+                f"경고: Major={summary['major']}, Minor={summary['minor']} (low 모드에서는 차단하지 않음)"
+                if policy.review_level == "low"
+                else (
+                    f"- 게이트 집계: Critical={summary['critical']}, Major={summary['major']}, "
+                    f"Minor={summary['minor']}"
+                )
+            ),
+            f"- 현재 집계: Critical={summary['critical']}, Major={summary['major']}, Minor={summary['minor']}",
+            "",
+            _render_group("심각 이슈", critical, report_language=report_language),
+            _render_group("주요 이슈", major, report_language=report_language),
+            _render_group("경미한 이슈", minor, report_language=report_language),
+            "## 개선 제안",
+            "",
+            "- 구현 전에 모든 Critical 항목을 인수 조건으로 반영하세요.",
+            "- Major 경고를 검토하고 위험을 수용하거나 스펙 패키지를 명확히 하세요.",
+            "- 인가, 잘못된 상태, 재시도, 타임아웃, 중복 요청에 대한 테스트를 추가하세요.",
+            "- `spec.md`와 `technical-design.md`를 수정한 뒤 `specguard run`을 다시 실행하세요.",
+            "",
+            "## 판정 정책",
+            "",
+            "```text",
+            _readiness_policy_prompt_line(policy.review_level),
+            "```",
+            "",
+            "## 입력 요약",
+            "",
+            *[f"- {artifact.path}: {len(artifact.content)}자" for artifact in artifacts],
+            "",
+            "## 검토 입력",
+            "",
+            f"- 모드: {review_input.get('mode', 'full') if review_input else 'full'}",
+            f"- 검토한 산출물: {review_input.get('artifact_count', len(artifacts)) if review_input else len(artifacts)}개",
+            f"- 검토한 문자 수: {review_input.get('total_characters', sum(len(artifact.content) for artifact in artifacts)) if review_input else sum(len(artifact.content) for artifact in artifacts)}",
+            "",
+            *_render_cache_report_lines(cache_info, report_language=report_language),
+        ])
 
     return "\n".join([
         "# SpecGuard Review Result",
@@ -3238,11 +3318,46 @@ def _build_report_summary(
     summary: dict[str, int],
     status: str,
     report_stem: str,
+    report_language: str = "en",
 ) -> list[str]:
     severity_order = ("Critical", "Major", "Minor") if status == "not_ready" else ("Major", "Minor", "Critical")
     top_issue = next((issue for severity in severity_order for issue in issues if issue.severity == severity), None)
     top_finding = f"[{top_issue.severity}] {top_issue.title}" if top_issue else "none"
     rerun_command = f"specguard run {feature_dir.as_posix()} --no-llm --no-follow-up"
+    if report_language == "ko":
+        top_finding = (
+            f"[{top_issue.severity}] {localized_issue_title(top_issue.title, report_language)}"
+            if top_issue
+            else "없음"
+        )
+        lines = [
+            "## 요약",
+            "",
+            f"- 상태: {status.upper()}",
+            f"- 집계: Critical={summary['critical']}, Major={summary['major']}, Minor={summary['minor']}",
+            f"- 최우선 검토 항목: {top_finding}",
+            f"- 보고서 안내: `{report_stem}.md`에는 사람이 읽는 상세 내용이 있으며 `{report_stem}.json`이 기계 판정의 기준입니다.",
+        ]
+        if status == "not_ready":
+            lines.extend([
+                "- 수정 대상: `spec.md`와 차단 항목에서 지목한 authored package 파일.",
+                "- 구현 인계: 차단 항목을 해결하고 전체 pipeline이 완료될 때까지 사용할 수 없습니다.",
+                f"- 재실행 명령: `{rerun_command}`",
+            ])
+        elif status == "ready_with_warnings":
+            lines.extend([
+                "- 수정 대상: 경고에서 지목한 authored package 파일을 선택적으로 보완할 수 있습니다.",
+                "- 구현 인계: 전체 pipeline에서 생성된 경우에만 `implementation-output.md`를 사용하세요.",
+                f"- 선택적 재실행 명령: `{rerun_command}`",
+            ])
+        else:
+            lines.extend([
+                "- 수정 대상: 현재 준비 상태에서 필수 수정은 없습니다.",
+                "- 구현 인계: 전체 pipeline에서 생성된 경우에만 `implementation-output.md`를 사용하세요.",
+                f"- 재실행 명령: authored spec 변경 후 `{rerun_command}`",
+            ])
+        return lines
+
     lines = [
         "## Summary",
         "",
@@ -3272,10 +3387,30 @@ def _build_report_summary(
     return lines
 
 
-def _render_cache_report_lines(cache_info: dict[str, object] | None) -> list[str]:
+def _render_cache_report_lines(
+    cache_info: dict[str, object] | None,
+    *,
+    report_language: str = "en",
+) -> list[str]:
     if not cache_info:
         return []
     status = "hit" if cache_info.get("hit") else "miss"
+    if report_language == "ko":
+        lines = [
+            "## 캐시",
+            "",
+            f"- 상태: {status}",
+            f"- 키: {cache_info.get('cache_key_prefix', '')}",
+        ]
+        if cache_info.get("miss_reason"):
+            lines.append(f"- 미사용 이유: {cache_info['miss_reason']}")
+        if cache_info.get("stored"):
+            lines.append("- 저장됨: true")
+        if cache_info.get("provider") or cache_info.get("model"):
+            lines.append(f"- 제공자: {cache_info.get('provider') or '<unknown>'}; 모델: {cache_info.get('model') or '<default>'}")
+        lines.append("")
+        return lines
+
     lines = [
         "## Cache",
         "",
@@ -3299,6 +3434,7 @@ def _build_json_report(
     review_level: str,
     review_input: dict[str, object] | None = None,
     cache_info: dict[str, object] | None = None,
+    language_resolution: ReportLanguageResolution | None = None,
 ) -> str:
     summary = _build_summary(issues)
     policy = _readiness_policy(review_level)
@@ -3327,6 +3463,8 @@ def _build_json_report(
         },
         "prompt_mode": _readiness_policy_prompt_line(policy.review_level),
     }
+    if language_resolution is not None:
+        payload["report_language"] = language_resolution.as_dict()
     if review_input is not None:
         payload["review_input"] = review_input
     if cache_info is not None:
@@ -3342,6 +3480,7 @@ def run_readiness_review(
     report_stem: str = "readiness-review",
     compact_low_input: bool = True,
     allow_partial: bool = False,
+    conversation_language: str | None = None,
 ) -> CheckResult:
     if review_mode not in READINESS_REVIEW_MODES:
         raise ValueError(f"Unsupported SpecGuard Review mode: {review_mode}")
@@ -3368,6 +3507,11 @@ def run_readiness_review(
         return result
 
     artifacts = _review_artifacts(path)
+    language_artifacts = [artifact for artifact in artifacts if artifact.path != "technical-design.md"]
+    language_resolution = resolve_report_language(
+        (artifact.content for artifact in language_artifacts),
+        conversation_language=conversation_language,
+    )
     total_input_characters = sum(len(artifact.content) for artifact in artifacts)
     previous_report = _load_previous_report(path) if review_mode == "verification" else None
     review_input: dict[str, object] | None = None
@@ -3387,6 +3531,7 @@ def run_readiness_review(
                 review_level=review_level,
                 previous_report=previous_report,
                 compact_low_input=compact_low_input,
+                report_language=language_resolution.code,
             )
             max_output_tokens = _review_max_output_tokens(review_level)
             review_input["max_output_tokens"] = max_output_tokens
@@ -3445,10 +3590,28 @@ def run_readiness_review(
     implementation_ready = _is_implementation_ready(summary, review_level)
 
     report_path.write_text(
-        _build_report(path, artifacts, issues, review_mode, review_level, report_stem, review_input, cache_info),
+        _build_report(
+            path,
+            artifacts,
+            issues,
+            review_mode,
+            review_level,
+            report_stem,
+            review_input,
+            cache_info,
+            language_resolution.code,
+        ),
         encoding="utf-8",
     )
-    report_json = _build_json_report(artifacts, issues, review_mode, review_level, review_input, cache_info)
+    report_json = _build_json_report(
+        artifacts,
+        issues,
+        review_mode,
+        review_level,
+        review_input,
+        cache_info,
+        language_resolution,
+    )
     report_json_path.write_text(report_json, encoding="utf-8")
     try:
         write_grill_outputs(path, json.loads(report_json))
@@ -3458,6 +3621,12 @@ def run_readiness_review(
         _store_cached_review(path, cache_key, cache_metadata, report_path, report_json_path)
     result.details.update(summary)
     result.details["review_level"] = review_level
+    result.details["report_language"] = language_resolution.code
+    result.details["report_language_source"] = language_resolution.source
+    result.add_info(
+        f"Human report language: {language_resolution.code} "
+        f"(source: {language_resolution.source}, fallback: {str(language_resolution.fallback_used).lower()})."
+    )
     if cache_hit:
         result.details["cache_hit"] = True
         result.details["cache_key"] = cache_key

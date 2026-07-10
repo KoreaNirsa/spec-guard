@@ -139,6 +139,26 @@ For `not_ready`, the primary Next Action block should show status, counts, top f
 
 The full Markdown and JSON reports remain the source for detailed finding prose, impacts, fixes, and evidence. Plugin tests should assert the summary fields and ordering rules, not full-prose snapshots of individual findings.
 
+### Human Report Language
+
+`readiness-review.json` includes additive language metadata:
+
+```json
+{
+  "report_language": {
+    "code": "ko",
+    "source": "conversation",
+    "fallback_used": false
+  }
+}
+```
+
+Supported `code` values are `ko` and `en`. Supported `source` values are `conversation`, `spec`, and `fallback`.
+
+The resolution order is active conversation language, authored spec package language, then English fallback. A plugin supplies only a clear Korean or English conversation hint through the process-only `SPECGUARD_CONVERSATION_LANGUAGE` environment variable. Mixed, empty, inconclusive, and unsupported conversation input must omit the hint so the CLI can inspect authored content. Mixed, empty, inconclusive, and unsupported authored content resolves to English with `fallback_used: true`.
+
+This metadata controls human-facing Markdown and guidance only. JSON keys, `readiness.status`, severity values, and other stable machine contracts remain language-neutral and backward compatible. Consumers must not infer language from translated Markdown when `report_language` is available.
+
 `readiness-review.md` starts with a concise `## Summary` block for human and plugin display. It includes status, Critical/Major/Minor counts, the top blocker or warning, report context, edit target, conditional handoff guidance, and a rerun command. Detailed finding sections remain below it. This Markdown block is presentation only: `readiness-review.json` remains the machine-readable source of truth, and consumers must not replace JSON parsing with Markdown parsing.
 
 Additional authored notes include paths such as `domain-rules.md`, `api-notes.md`, or nested authored Markdown that are not standard package files. Plugin summaries should report the total reviewed artifact count, list a bounded number of standard and additional paths, and show an overflow count when more files exist. Filter generated reports, handoff files, tests, contracts, cache paths, and generated directories even if an invalid payload lists them in `input.artifacts[]`.

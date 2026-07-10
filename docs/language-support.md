@@ -21,7 +21,8 @@ When Korean and English docs describe the same workflow, both versions must desc
 | Documentation policy | Supported by default | Supported |
 | User-facing workflow docs | Supported, prioritized for Korean users | Supported for contributors and open-source readers |
 | Benchmark support notes | Supported when backed by measured results | Supported when backed by measured results |
-| CLI output localization | Not in scope for v0.4.3 | Existing English output remains in place |
+| Human readiness artifacts | Automatic Korean when the active conversation or authored package resolves to Korean | English when resolved from conversation/spec or used as the safe fallback |
+| Full CLI localization | Not in scope for v0.4.3 | General command and help output remains English |
 | Historical benchmark artifact translation | Not required | Existing artifacts remain valid |
 
 ## Required Docs

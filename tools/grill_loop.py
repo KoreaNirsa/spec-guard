@@ -9,6 +9,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+from tools.report_language import localized_issue_title, report_language_from_payload
+
 
 GRILL_SCHEMA_VERSION = "0.1"
 GRILL_FINDINGS_PATH = Path("grill.json")
@@ -57,6 +59,7 @@ class GrillPatchResult:
 
 def build_grill_payload(feature_dir: Path, report: dict[str, Any] | None = None) -> dict[str, Any]:
     current_report = report if report is not None else _load_readiness_report(feature_dir)
+    language_resolution = report_language_from_payload(current_report)
     findings = _structured_findings(feature_dir, current_report)
     question_order = [finding["id"] for finding in findings]
     readiness = current_report.get("readiness", {})
@@ -66,6 +69,7 @@ def build_grill_payload(feature_dir: Path, report: dict[str, Any] | None = None)
         "decision_record_path": (feature_dir / DECISION_RECORDS_PATH).as_posix(),
         "review_mode": current_report.get("review_mode"),
         "review_level": current_report.get("review_level"),
+        "report_language": language_resolution.as_dict(),
         "readiness_status": readiness.get("status") if isinstance(readiness, dict) else None,
         "readiness_summary": _readiness_summary(current_report, findings),
         "resolution_prompts": RESOLUTION_PROMPTS,
@@ -84,6 +88,10 @@ def write_grill_outputs(feature_dir: Path, report: dict[str, Any] | None = None)
 
 
 def render_grill_markdown(payload: dict[str, Any]) -> str:
+    language_resolution = report_language_from_payload(payload)
+    if language_resolution.code == "ko":
+        return _render_grill_markdown_ko(payload)
+
     lines = [
         "# SpecGuard Grill Me Findings",
         "",
@@ -149,6 +157,72 @@ def render_grill_markdown(payload: dict[str, Any]) -> str:
             lines.extend(f"- {item}" for item in evidence_lines)
         else:
             lines.append("- None")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _render_grill_markdown_ko(payload: dict[str, Any]) -> str:
+    lines = [
+        "# SpecGuard 검토 질문",
+        "",
+        f"- 스키마 버전: {payload.get('schema_version')}",
+        f"- 원본 보고서: {payload.get('source_report')}",
+        f"- 결정 기록: {payload.get('decision_record_path')}",
+        f"- 준비 상태: {payload.get('readiness_status')}",
+        "",
+        "## 준비 상태 요약",
+        "",
+    ]
+    summary = payload.get("readiness_summary", {})
+    if isinstance(summary, dict):
+        lines.extend([
+            f"- 문제: {summary.get('problem', '준비 상태 요약을 사용할 수 없습니다.')}",
+            f"- 집계: Critical {summary.get('critical', 0)}, Major {summary.get('major', 0)}, Minor {summary.get('minor', 0)}",
+            "",
+        ])
+    lines.extend([
+        "## 응답 형식",
+        "",
+        "- `update-spec`: 요구사항을 확정하고 지원되는 스펙 수정을 허용합니다.",
+        "- `mark-intentional`: 현재 동작이 의도된 것임을 기록하고 스펙은 변경하지 않습니다.",
+        "- `defer`: 이후 제품 결정까지 검토 항목을 유지합니다.",
+        "- `reject`: 적용되지 않는 검토 항목과 그 이유를 기록합니다.",
+        "",
+        "## 질문",
+        "",
+    ])
+    findings = _findings_by_id(payload)
+    question_order = payload.get("question_order", [])
+    ordered_ids = question_order if isinstance(question_order, list) else []
+    if not ordered_ids:
+        lines.append("- 확인할 준비 상태 항목이 없습니다.")
+        return "\n".join(lines).rstrip() + "\n"
+
+    for review_id in ordered_ids:
+        finding = findings.get(str(review_id))
+        if not finding:
+            continue
+        location = finding.get("source_location", {})
+        location_text = location.get("path", "unknown") if isinstance(location, dict) else "unknown"
+        if isinstance(location, dict) and location.get("line") is not None:
+            location_text = f"{location_text}:{location['line']}"
+        evidence = finding.get("evidence", [])
+        evidence_lines = [str(item) for item in evidence] if isinstance(evidence, list) else []
+        lines.extend([
+            f"### {finding.get('id')} - {localized_issue_title(str(finding.get('title')), 'ko')}",
+            "",
+            f"- 심각도: {finding.get('severity')}",
+            f"- 원본 위치: {location_text}",
+            f"- 질문: {finding.get('question')}",
+            f"- 허용되는 응답: {', '.join(str(item) for item in finding.get('allowed_resolution', []))}",
+            "",
+            "근거:",
+            "",
+        ])
+        if evidence_lines:
+            lines.extend(f"- {item}" for item in evidence_lines)
+        else:
+            lines.append("- 없음")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 

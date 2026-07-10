@@ -1005,3 +1005,26 @@ def test_specguard_plugin_docs_explain_additional_authored_markdown_summary() ->
             "generated reports, handoff, tests, contracts, or cache paths",
         ),
     )
+
+
+def test_specguard_plugin_docs_define_automatic_report_language_resolution() -> None:
+    contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+    combined = "\n".join((contract, guide, readme, skill))
+
+    _assert_contains_all(
+        combined,
+        (
+            "SPECGUARD_CONVERSATION_LANGUAGE",
+            "active conversation",
+            "authored spec package",
+            "English fallback",
+            "mixed, empty, inconclusive",
+            "report_language",
+            "fallback_used",
+            "Stable JSON keys",
+            "long-term user history",
+        ),
+    )
