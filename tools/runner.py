@@ -12,6 +12,7 @@ from tools.artifact_generator import ensure_contract, generate_implementation_ou
 from tools.contract_checker import check_contracts
 from tools.generation.verification_checker import check_verification_artifacts
 from tools.llm_client import LLMConfigError, build_llm_client
+from tools.post_run import write_pre_review_failure_run_state
 from tools.progress import progress_activity
 from tools.readiness_engine import (
     DEFAULT_REVIEW_LEVEL,
@@ -111,6 +112,14 @@ def run_pipeline(
             result.details[f"{feature_dir.name}.failed_stage"] = "validation"
             result.details["failed_before_readiness_review"] = True
             result.add_next_step("Fix discovery.md or spec.md before running the pipeline again.")
+            state_path = write_pre_review_failure_run_state(
+                feature_dir,
+                command=f"specguard run {feature_dir.as_posix()}",
+                failed_stage="validation",
+                messages=validation.messages,
+                next_steps=result.next_steps,
+            )
+            result.add_info(f"Wrote plugin run state: {state_path}")
             _record_timings(result, feature_dir, timings)
             continue
 
@@ -154,6 +163,14 @@ def run_pipeline(
             result.details[f"{feature_dir.name}.failed_stage"] = "technical_validation"
             result.details["failed_before_readiness_review"] = True
             result.add_next_step(f"Fix technical design: {technical_design.path}")
+            state_path = write_pre_review_failure_run_state(
+                feature_dir,
+                command=f"specguard run {feature_dir.as_posix()}",
+                failed_stage="technical_validation",
+                messages=technical_validation.messages,
+                next_steps=result.next_steps,
+            )
+            result.add_info(f"Wrote plugin run state: {state_path}")
             _record_timings(result, feature_dir, timings)
             continue
 
