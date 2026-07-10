@@ -441,6 +441,26 @@ def test_specguard_plugin_skill_defines_result_summary_prompt_contract() -> None
     )
 
 
+def test_specguard_plugin_docs_define_normalized_next_action_fields() -> None:
+    contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+    combined = "\n".join((contract, guide, readme, skill))
+
+    _assert_contains_all(
+        combined,
+        (
+            "`report_path`, `handoff_path`, `edit_target`, and `rerun_command`",
+            "exactly once",
+            "secondary next-steps block",
+            "handoff as unavailable",
+            "pre-review failures",
+            "no fresh report path or handoff path",
+        ),
+    )
+
+
 def test_specguard_plugin_docs_cover_guided_rerun_loop() -> None:
     contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
     guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")

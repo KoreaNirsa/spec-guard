@@ -78,6 +78,10 @@ class PluginReadinessSummary:
     handoff_available: bool
     top_findings: tuple[str, ...] = ()
     report_files: tuple[str, ...] = ()
+    report_path: str | None = None
+    handoff_path: str | None = None
+    edit_target: str | None = None
+    rerun_command: str = ""
     next_action: str = ""
 
 
@@ -203,6 +207,10 @@ def build_plugin_readiness_summary(
         handoff_available=handoff_available,
         top_findings=_plugin_top_findings(report, status=status, limit=limit),
         report_files=_plugin_summary_report_files(feature_dir, handoff_available=handoff_available),
+        report_path=_plugin_human_report_path(feature_dir),
+        handoff_path=(feature_dir / "implementation-output.md").as_posix() if handoff_available else None,
+        edit_target=(feature_dir / "spec.md").as_posix() if status in {"not_ready", "ready_with_warnings"} else None,
+        rerun_command=_default_plugin_rerun_command(feature_dir),
         next_action=_plugin_next_action(feature_dir, status, report),
     )
 
@@ -227,6 +235,12 @@ def render_plugin_readiness_summary(feature_dir: Path, report: dict[str, Any], *
         lines.extend(f"  - {path}" for path in summary.report_files)
     else:
         lines.append("  - none")
+    lines.extend([
+        f"- report path: {summary.report_path or 'unavailable'}",
+        f"- handoff path: {summary.handoff_path or 'unavailable'}",
+        f"- edit target: {summary.edit_target or 'none'}",
+        f"- rerun command: {summary.rerun_command}",
+    ])
     lines.append(f"- next action: {summary.next_action}")
     return "\n".join(lines)
 
@@ -795,6 +809,11 @@ def _plugin_summary_report_files(feature_dir: Path, *, handoff_available: bool) 
     if handoff_available:
         files.append(feature_dir / "implementation-output.md")
     return tuple(path.as_posix() for path in files if path.exists())
+
+
+def _plugin_human_report_path(feature_dir: Path) -> str | None:
+    path = feature_dir / "readiness-review.md"
+    return path.as_posix() if path.exists() else None
 
 
 def _relevant_plugin_files(feature_dir: Path, report: dict[str, Any]) -> tuple[str, ...]:

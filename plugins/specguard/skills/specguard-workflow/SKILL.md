@@ -87,6 +87,7 @@ Every normal readiness summary must include this stable shape:
 - `findings`: top `issues[]` entries by `severity` and `title`; for `not_ready`, list Critical findings first before Major or Minor findings.
 - `reports`: `readiness-review.json` and `readiness-review.md` when present.
 - `handoff`: report yes only when `readiness.status` is `ready` or `ready_with_warnings`, `readiness.implementation_ready` is true, and `implementation-output.md` exists.
+- `report_path`, `handoff_path`, `edit_target`, and `rerun_command`: keep each value separate and print it once in the primary Next Action block; use `unavailable` when no fresh report or handoff exists.
 - `next_action`: derive from the resolved state, not from terminal logs or generated Markdown prose.
 
 Keep `SpecGuard evidence` separate from `Codex interpretation`: evidence comes from `issues[].evidence`, stable issue fields, and report paths; interpretation is only the concise explanation and next step you write for the user. Do not turn Codex interpretation into implementation input.
