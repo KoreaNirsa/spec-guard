@@ -93,6 +93,7 @@ def run_pipeline(
     review_level: str = DEFAULT_REVIEW_LEVEL,
     strict_verification: bool = False,
     refresh_technical_design: bool | None = None,
+    allow_partial: bool = False,
 ) -> CheckResult:
     review_level = normalize_review_level(review_level)
     result = CheckResult("SpecGuard pipeline")
@@ -104,6 +105,28 @@ def run_pipeline(
 
     for feature_dir in feature_dirs:
         timings: dict[str, int] = {}
+        if allow_partial:
+            review = _time_stage(
+                timings,
+                "readiness_review",
+                lambda: run_readiness_review(
+                    feature_dir,
+                    llm_client=llm_client,
+                    review_mode=review_mode,
+                    review_level=review_level,
+                    allow_partial=True,
+                ),
+            )
+            result.messages.extend(review.messages)
+            result.next_steps.extend(review.next_steps)
+            result.details.update(review.details)
+            result.details["partial_package_review"] = True
+            if not review.ok:
+                result.ok = False
+            result.add_info("Partial-package mode produced review reports only; no implementation handoff was generated.")
+            _record_timings(result, feature_dir, timings)
+            continue
+
         validation = _time_stage(timings, "validation", lambda: validate_spec_basis(feature_dir))
         result.messages.extend(validation.messages)
         result.next_steps.extend(validation.next_steps)
@@ -237,6 +260,7 @@ def main() -> int:
     parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Override the configured LLM provider mode")
     parser.add_argument("--llm-model", help="Override the configured LLM model")
     parser.add_argument("--review-level", choices=sorted(READINESS_REVIEW_LEVELS), help="SpecGuard Review level")
+    parser.add_argument("--allow-partial", action="store_true", help="Review a non-empty spec.md without generating derived artifacts or implementation handoff")
     args = parser.parse_args()
     try:
         review_level = normalize_review_level(args.review_level or os.getenv("SPECGUARD_REVIEW_LEVEL") or DEFAULT_REVIEW_LEVEL)
@@ -259,7 +283,13 @@ def main() -> int:
             result.print()
             return 1
 
-    result = run_pipeline(Path(args.path), llm_client=llm_client, force=args.force, review_level=review_level)
+    result = run_pipeline(
+        Path(args.path),
+        llm_client=llm_client,
+        force=args.force,
+        review_level=review_level,
+        allow_partial=args.allow_partial,
+    )
     result.print()
     return 0 if result.ok else 1
 
