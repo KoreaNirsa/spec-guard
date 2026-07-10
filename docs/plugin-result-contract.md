@@ -39,7 +39,7 @@ Treat `ambiguous` as a prompt for an explicit package path. The plugin should sh
 
 ## Pre-Review Run State JSON
 
-When `specguard run <package>` stops before SpecGuard Review, it writes `<package>/.specguard/run-state.json`. This file is generated operational state, not an authored spec input, and it does not replace or migrate `readiness-review.json`.
+When spec-basis validation or technical-design validation stops `specguard run <package>` before SpecGuard Review, it writes `<package>/.specguard/run-state.json`. Missing CLI, preflight, timeout, and generic execution failures may also stop before review, but they are not guaranteed to write this file. This file is generated operational state, not an authored spec input, and it does not replace or migrate `readiness-review.json`.
 
 Plugin consumers may rely on these fields for `schema_version: "specguard.plugin_run_state.v1"`:
 
@@ -199,7 +199,8 @@ A readiness failure has a fresh `readiness-review.json` with `readiness.status: 
 
 A validation or pre-review pipeline failure occurs before SpecGuard Review can write a fresh readiness report. Examples include invalid `discovery.md`, invalid `spec.md`, or invalid `technical-design.md`. The plugin should identify this without terminal parsing:
 
-- if `.specguard/run-state.json` exists and is newer than any previous `readiness-review.json`, read it and report `validation_failed_before_review` with its `failure_category`, `failed_stage`, `messages[]`, `next_steps[]`, and `package_path`;
+- treat `.specguard/run-state.json` as current only when it is strictly newer than any previous `readiness-review.json`, at least as new as every current authored Markdown source artifact, and not older than the current invocation start time when that time is available; otherwise reject it as stale;
+- when the run-state file passes those freshness checks, report `validation_failed_before_review` with its `failure_category`, `failed_stage`, `messages[]`, `next_steps[]`, and `package_path`;
 - if no `readiness-review.json` exists after the run and no current run-state file is available, treat the package as `validation_failed_before_review`;
 - if `readiness-review.json` exists but is older than reviewed source artifacts, treat it as `stale_review`;
 - if the CLI exits non-zero and the report was not updated during the run, do not reuse the old readiness status as the current result.
