@@ -44,6 +44,12 @@ Plugin consumers may rely on these fields:
 
 Treat `ambiguous` as a prompt for an explicit package path. The plugin should show `candidates[]` in order, ask the user to choose one `candidates[].path`, and then run `specguard run <selected-path> --no-llm --no-follow-up`. It must not run every candidate automatically; `next_action.bulk_review_default` is `false` for ambiguous previews. Treat `missing_spec_package` as a preflight failure: show the supported root and nested package examples, ask the user to create or point to a package with `spec.md`, and make clear no SpecGuard readiness review has run yet. When `draft_sources[]` is non-empty, `next_action.type` is `offer_draft_package` and `requires_user_approval` is true. Show those files as source options only; do not review, copy, merge, or convert them automatically. Existing package candidates always take precedence, so draft sources are omitted whenever `candidates[]` is non-empty. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
 
+## Partial Package Review
+
+When a resolved package has a non-empty `spec.md` but lacks normal package structure, plugin workflows may run `specguard run <package> --allow-partial --no-llm --no-follow-up`. This explicit mode writes `readiness-review.json` and `readiness-review.md` without generating technical design, tests, contracts, or `implementation-output.md`.
+
+The readiness JSON remains the machine-readable source of truth. It sets `review_input.partial_package: true` and reports missing `discovery.md`, `plan.md`, `tasks.md`, `constitution.md`, `checklists/spec-readiness.md`, `technical-design.md`, and required spec sections through `issues[]`. Missing structure is a Critical blocker, so a partial package cannot be treated as implementation-ready. The default `specguard run` command remains strict and continues to use pre-review validation state for invalid generated packages.
+
 ## Pre-Review Run State JSON
 
 When spec-basis validation or technical-design validation stops `specguard run <package>` before SpecGuard Review, it writes `<package>/.specguard/run-state.json`. Missing CLI, preflight, timeout, and generic execution failures may also stop before review, but they are not guaranteed to write this file. This file is generated operational state, not an authored spec input, and it does not replace or migrate `readiness-review.json`.

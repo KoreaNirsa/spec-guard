@@ -149,9 +149,16 @@ def run(args: argparse.Namespace) -> int:
                 ),
             )
         else:
+            pipeline_options = {"allow_partial": True} if getattr(args, "allow_partial", False) else {}
             result = _run_with_progress(
                 "Running pipeline",
-                lambda: run_pipeline(Path(args.path), llm_client=llm_client, force=args.force, review_level=review_level),
+                lambda: run_pipeline(
+                    Path(args.path),
+                    llm_client=llm_client,
+                    force=args.force,
+                    review_level=review_level,
+                    **pipeline_options,
+                ),
             )
     except LLMRequestError as exc:
         _print_llm_failure(exc)
@@ -1511,6 +1518,11 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--force", action="store_true", help="Regenerate derived artifacts instead of reusing existing files")
     run_parser.add_argument("--llm", action="store_true", help="Run live LLM SpecGuard Review instead of the default fast heuristic low-mode review")
     run_parser.add_argument("--no-llm", action="store_true", help="Skip live LLM requests and use local generators plus heuristic SpecGuard Review")
+    run_parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="Review a non-empty spec.md as a partial package without generating derived artifacts or implementation handoff",
+    )
     run_parser.add_argument("--llm-mode", choices=["codex", "openai"], help="Use this provider for live review without changing saved config")
     run_parser.add_argument("--llm-model", help="Use this model for live review without changing saved config")
     run_parser.add_argument(
