@@ -60,6 +60,7 @@ The plugin workflow reports from structured files, not terminal log scraping. It
 - failure category when a normal readiness result is unavailable
 - `.specguard/run-state.json` for validation failures that stop before SpecGuard Review
 - attempted command, known generated files, and next safe action for timeout or CLI execution failures
+- reviewed authored Markdown from `input.artifacts[]`, with additional notes such as `domain-rules.md` or `api-notes.md` highlighted separately and long lists truncated with an overflow count
 
 Common failure categories are `missing_cli`, `missing_spec_package`, `validation_failed_before_review`, `stale_review`, `missing_provider_for_llm`, `timeout`, and `cli_execution_failed`.
 
