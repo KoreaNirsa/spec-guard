@@ -540,15 +540,21 @@ def test_plugin_run_state_reports_stale_review_without_relevant_files(tmp_path: 
     _write_review_sources(feature)
     feature.joinpath("readiness-review.json").write_text(json.dumps(_load_fixture("ready.json")), encoding="utf-8")
     feature.joinpath("readiness-review.md").write_text("# Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Old Handoff\n", encoding="utf-8")
     feature.joinpath("domain-rules.md").write_text("# Domain Rules\n", encoding="utf-8")
 
     state = derive_plugin_run_state(feature, command="specguard run feature --no-llm --no-follow-up", returncode=0)
+    rendered = render_plugin_rerun_result(feature, command="specguard run feature --no-llm --no-follow-up", returncode=0)
 
     assert state.state == "stale_review"
     assert state.relevant_files == ()
     assert any(path.endswith("readiness-review.json") for path in state.known_files)
+    assert any(path.endswith("readiness-review.md") for path in state.known_files)
+    assert not any(path.endswith("implementation-output.md") for path in state.known_files)
     assert state.stale_reason is not None
     assert "domain-rules.md" in state.stale_reason
+    assert "implementation-output.md" not in rendered
+    assert "Rerun" in state.next_action
 
 
 def test_plugin_run_state_validation_failure_does_not_reuse_old_ready_report(tmp_path: Path) -> None:
@@ -571,6 +577,53 @@ def test_plugin_run_state_validation_failure_does_not_reuse_old_ready_report(tmp
     assert state.state == "validation_failed_before_review"
     assert state.relevant_files == ()
     assert "older readiness report was not reused" in state.next_action
+
+
+def test_plugin_run_state_reports_stale_review_for_edited_authored_markdown(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    _write_review_sources(feature)
+    payload = _with_current_review_input(_load_fixture("ready.json"))
+    feature.joinpath("readiness-review.json").write_text(json.dumps(payload), encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Old Handoff\n", encoding="utf-8")
+
+    older = time.time() - 200
+    report_time = time.time() - 100
+    for name in ("discovery.md", "spec.md", "technical-design.md"):
+        os.utime(feature / name, (older, older))
+    os.utime(feature / "readiness-review.json", (report_time, report_time))
+    feature.joinpath("technical-design.md").write_text("# technical-design.md\n\nEdited by user.\n", encoding="utf-8")
+
+    state = derive_plugin_run_state(feature, command="specguard run feature --no-llm --no-follow-up", returncode=0)
+
+    assert state.state == "stale_review"
+    assert state.relevant_files == ()
+    assert state.stale_reason is not None
+    assert "technical-design.md" in state.stale_reason
+    assert not any(path.endswith("implementation-output.md") for path in state.known_files)
+
+
+def test_plugin_run_state_reports_stale_review_for_removed_authored_markdown(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    _write_review_sources(feature)
+    feature.joinpath("domain-rules.md").write_text("# Domain Rules\n", encoding="utf-8")
+    payload = _with_current_review_input(_load_fixture("ready.json"))
+    payload["input"]["artifacts"].append({"path": "domain-rules.md", "characters": 50})
+    payload["input"]["artifact_count"] = len(payload["input"]["artifacts"])
+    feature.joinpath("readiness-review.json").write_text(json.dumps(payload), encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Old Handoff\n", encoding="utf-8")
+    feature.joinpath("domain-rules.md").unlink()
+
+    state = derive_plugin_run_state(feature, command="specguard run feature --no-llm --no-follow-up", returncode=0)
+
+    assert state.state == "stale_review"
+    assert state.relevant_files == ()
+    assert state.stale_reason is not None
+    assert "removed source file(s): domain-rules.md" in state.stale_reason
+    assert not any(path.endswith("implementation-output.md") for path in state.known_files)
 
 
 @pytest.mark.parametrize(

@@ -505,7 +505,7 @@ def derive_plugin_run_state(
             command=command,
             package_path=feature_dir.as_posix(),
             failure_category="stale_review",
-            known_files=known_files,
+            known_files=_known_plugin_files(feature_dir, include_handoff=False),
             next_action="Rerun `specguard run <package> --no-llm --no-follow-up` so the readiness report matches the current source artifacts.",
             stale_reason=stale_reason,
         )
