@@ -413,7 +413,8 @@ def test_specguard_plugin_skill_defines_result_summary_prompt_contract() -> None
         skill,
         (
             "## Result Summary Prompt Contract",
-            "Use `readiness-review.json` as the only machine-readable source of readiness state.",
+            "Use `readiness-review.json` as the normal machine-readable source of readiness state",
+            ".specguard/run-state.json",
             "`status`: `readiness.status` plus `review_level`.",
             "`counts`: `summary.critical`, `summary.major`, and `summary.minor`.",
             "`findings`: top `issues[]` entries by `severity` and `title`; for `not_ready`, list Critical findings first",
@@ -424,6 +425,7 @@ def test_specguard_plugin_skill_defines_result_summary_prompt_contract() -> None
             "`ready_with_warnings`: implementation is allowed when handoff is available; warnings are optional cleanup, not blockers.",
             "`not_ready`: implementation is blocked; summarize Critical findings first",
             "`validation_failed_before_review`: report that no current readiness result exists",
+            "`failure_category`, `failed_stage`, `messages`, `next_steps`, and `package_path`",
             "`timeout` and `cli_execution_failed`: include the attempted command, known files for diagnostics, and the next safe action",
         ),
     )
@@ -831,6 +833,8 @@ def test_plugin_workflow_scenario_fixtures_cover_issue_212_examples() -> None:
     assert "readiness-review.json" in by_state["not_ready"]["stable_files"]
     assert "readiness-review.md" in by_state["not_ready"]["stable_files"]
     assert "implementation-output.md" not in by_state["not_ready"]["stable_files"]
+    assert ".specguard/run-state.json" in by_state["validation_failed_before_review"]["stable_files"]
+    assert "implementation-output.md" not in by_state["validation_failed_before_review"]["stable_files"]
 
     failure_categories = {
         scenario["failure_category"]

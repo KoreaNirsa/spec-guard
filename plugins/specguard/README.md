@@ -39,6 +39,7 @@ For the v0.4.x hardening backlog, see [Codex Plugin Hardening Roadmap](../../doc
 6. Read `readiness-review.json` and `readiness-review.md` when they are produced.
 7. If the package is `READY` or `READY_WITH_WARNINGS`, point the user to `implementation-output.md` when it exists.
 8. If the package is `NOT_READY`, summarize the blockers and propose scoped spec edits for user review.
+9. If the command stops before SpecGuard Review, read `.specguard/run-state.json` when present and report `validation_failed_before_review` from that structured state.
 
 For the stable JSON fields and file-based states that plugin workflows can rely on, see [Plugin Result Contract](../../docs/plugin-result-contract.md).
 
@@ -55,15 +56,16 @@ The plugin workflow reports from structured files, not terminal log scraping. It
 - whether implementation handoff is allowed
 - `implementation-output.md` path when available
 - failure category when a normal readiness result is unavailable
+- `.specguard/run-state.json` for validation failures that stop before SpecGuard Review
 - attempted command, known generated files, and next safe action for timeout or CLI execution failures
 
 Common failure categories are `missing_cli`, `missing_spec_package`, `validation_failed_before_review`, `stale_review`, `missing_provider_for_llm`, `timeout`, and `cli_execution_failed`.
 
-Report generated files in two groups: `known_files` are files that exist for diagnostics, while `relevant_files` are current files for the resolved state. Do not point to `implementation-output.md` as relevant unless `readiness-review.json` is fresh, implementation is allowed, and the handoff file exists.
+Report generated files in two groups: `known_files` are files that exist for diagnostics, while `relevant_files` are current files for the resolved state. For `validation_failed_before_review`, use `.specguard/run-state.json` as the relevant state file and do not point to `implementation-output.md`. Do not point to `implementation-output.md` as relevant unless `readiness-review.json` is fresh, implementation is allowed, and the handoff file exists.
 
 Keep the concise summary separate from full finding prose. Use the Markdown and JSON report paths for detailed descriptions, impacts, fixes, and evidence instead of coupling the plugin UX to exact finding text.
 
-When authored spec artifacts change after a report was generated, treat the report as `stale_review`. Restate previous findings and suggested clarifications as suggestions only, mark unclear product behavior as `Needs user decision`, and ask the user to rerun `specguard run <package> --no-llm --no-follow-up`. After rerun, report only the fresh readiness result as the current status, including finding counts, current report paths, handoff availability, and next action. When a stable comparison is possible, compare previous and fresh `issues[]` entries only by unique `(severity, title)` keys and report `resolved`, `remaining`, `deferred`, and `newly_introduced` findings. Do not rely on generated report prose, `fix` wording, evidence excerpts, or terminal output for that comparison. Report `deferred` only for findings the user explicitly deferred, and keep deferred decisions out of implementation input until the spec is updated and SpecGuard reruns.
+When authored spec artifacts change after a report was generated, treat the report as `stale_review`. Restate previous findings and suggested clarifications as suggestions only, mark unclear product behavior as `Needs user decision`, keep previous readiness reports as historical context only, do not expose `implementation-output.md` as a handoff, and ask the user to rerun `specguard run <package> --no-llm --no-follow-up`. After rerun, report only the fresh readiness result as the current status, including finding counts, current report paths, handoff availability, and next action. When a stable comparison is possible, compare previous and fresh `issues[]` entries only by unique `(severity, title)` keys and report `resolved`, `remaining`, `deferred`, and `newly_introduced` findings. Do not rely on generated report prose, `fix` wording, evidence excerpts, or terminal output for that comparison. Report `deferred` only for findings the user explicitly deferred, and keep deferred decisions out of implementation input until the spec is updated and SpecGuard reruns.
 
 Detail Review is opt-in. When the user asks for it, use the existing CLI follow-up menu path with `specguard run <package> --llm --follow-up`, choose the review-only Detail Review action, and read `readiness-review-detail.json` plus `readiness-review-detail.md`. Do not treat Detail Review as the default gate or as a replacement for `readiness-review.json`.
 
