@@ -33,12 +33,16 @@ Plugin consumers may rely on these fields:
 | `candidates[].spec_path` | Candidate `spec.md` path for diagnostics. |
 | `candidates[].review_command` | User-facing command for reviewing that specific candidate. |
 | `candidates[].review_args` | Tokenized command arguments for tools that avoid shell parsing. |
-| `next_action.type` | `run_review`, `choose_candidate`, or `create_or_select_package`. |
+| `draft_source_count` | Number of likely non-package requirement documents, populated only when no package candidate is available. |
+| `draft_sources[].path` | Read-only source option such as `docs/requirements.md`, `requirements.md`, or `product/spec.md`. |
+| `draft_sources[].kind` | Current value: `non_package_spec_document`. |
+| `next_action.type` | `run_review`, `choose_candidate`, `offer_draft_package`, or `create_or_select_package`. |
+| `next_action.requires_user_approval` | `true` when draft source documents were found and no package may be created without confirmation. |
 | `next_action.supported_package_paths[]` | Missing-package examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`. |
 | `next_action.manual_shape` | Missing-package manual shape with the required `spec.md` file and root/nested package examples. |
 | `next_action.review_status` | `not_reviewed` for missing-package guidance. |
 
-Treat `ambiguous` as a prompt for an explicit package path. The plugin should show `candidates[]` in order, ask the user to choose one `candidates[].path`, and then run `specguard run <selected-path> --no-llm --no-follow-up`. It must not run every candidate automatically; `next_action.bulk_review_default` is `false` for ambiguous previews. Treat `missing_spec_package` as a preflight failure: show the supported root and nested package examples, ask the user to create or point to a package with `spec.md`, and make clear no SpecGuard readiness review has run yet. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
+Treat `ambiguous` as a prompt for an explicit package path. The plugin should show `candidates[]` in order, ask the user to choose one `candidates[].path`, and then run `specguard run <selected-path> --no-llm --no-follow-up`. It must not run every candidate automatically; `next_action.bulk_review_default` is `false` for ambiguous previews. Treat `missing_spec_package` as a preflight failure: show the supported root and nested package examples, ask the user to create or point to a package with `spec.md`, and make clear no SpecGuard readiness review has run yet. When `draft_sources[]` is non-empty, `next_action.type` is `offer_draft_package` and `requires_user_approval` is true. Show those files as source options only; do not review, copy, merge, or convert them automatically. Existing package candidates always take precedence, so draft sources are omitted whenever `candidates[]` is non-empty. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
 
 ## Partial Package Review
 

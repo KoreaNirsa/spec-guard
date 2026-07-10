@@ -78,3 +78,20 @@ def test_discover_cli_reports_missing_package_guidance(tmp_path: Path, capsys) -
     ]
     assert next_action["manual_shape"]["required_file"] == "spec.md"
     assert next_action["review_status"] == "not_reviewed"
+
+
+def test_discover_cli_offers_draft_source_without_writing_files(tmp_path: Path, capsys) -> None:
+    source = tmp_path / "docs" / "requirements.md"
+    source.parent.mkdir(parents=True)
+    source.write_text("# Requirements\n", encoding="utf-8")
+    before = sorted(path.relative_to(tmp_path).as_posix() for path in tmp_path.rglob("*"))
+
+    exit_code = specguard_cli.discover(Namespace(path=str(tmp_path)))
+
+    payload = json.loads(capsys.readouterr().out)
+    after = sorted(path.relative_to(tmp_path).as_posix() for path in tmp_path.rglob("*"))
+    assert exit_code == 0
+    assert payload["draft_sources"][0]["path"].endswith("/docs/requirements.md")
+    assert payload["next_action"]["type"] == "offer_draft_package"
+    assert payload["next_action"]["requires_user_approval"] is True
+    assert before == after
