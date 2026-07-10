@@ -60,10 +60,12 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
    - when multiple candidate packages exist, list `candidates[]` in preview order and ask the user to choose one package path;
    - do not run all candidates automatically; keep one selected package as the current review target for the conversation;
    - after the user chooses a candidate, rerun only that candidate with `specguard run <selected-path> --no-llm --no-follow-up`;
-   - when no candidate package exists, report `missing_spec_package`, show supported package examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`, and say no SpecGuard readiness review has run yet.
+   - when no candidate package exists, report `missing_spec_package`, show supported package examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`, and say no SpecGuard readiness review has run yet;
+   - when `draft_sources[]` lists non-package requirement documents, show them as read-only source options and ask whether the user wants to create a draft package; require `next_action.requires_user_approval: true` and do not create, copy, merge, or review files automatically;
+   - when `candidates[]` is non-empty, prefer those packages and do not offer general documents as automatic imports.
    - exclude hidden, dependency, build, and generated directories during candidate discovery, including `.git`, `.venv`, `node_modules`, `vendor`, `build`, `dist`, `target`, `out`, `coverage`, `htmlcov`, `generated`, `__generated__`, and `__pycache__`.
 5. Record the current time before invoking the run command so stale or missing reports can be distinguished after execution.
-6. Run the default plugin command as `specguard run <path> --no-llm --no-follow-up`. This preserves the heuristic low-mode gate and avoids requiring a Codex or OpenAI provider.
+6. Run the default plugin command as `specguard run <path> --no-llm --no-follow-up`. If the selected package has a non-empty `spec.md` but lacks normal package files or required spec sections, use `specguard run <path> --allow-partial --no-llm --no-follow-up` instead. Partial mode is review-only and must not produce or imply implementation handoff.
 7. If the user explicitly asks for provider-backed initial review, run `specguard run <path> --llm --no-follow-up` after confirming provider availability with `specguard auth status`.
 8. If the user explicitly asks for Detail Review, use the CLI follow-up menu path: run `specguard run <path> --llm --follow-up`, choose the review-only Detail Review action, then read `readiness-review-detail.json` and `readiness-review-detail.md`. Detail Review is advisory and must not replace the default fast readiness report.
 9. If an interactive follow-up menu cannot be driven in the current environment, report that Detail Review currently requires the CLI follow-up menu instead of pretending it ran.

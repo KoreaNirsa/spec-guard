@@ -963,6 +963,93 @@ def test_pipeline_writes_plugin_state_for_invalid_technical_design(tmp_path: Pat
     assert not any(path.endswith("implementation-output.md") for path in payload["relevant_files"])
 
 
+def test_pipeline_partial_package_review_writes_reports_for_spec_only(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "loose-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text(
+        """# Loose Feature
+
+## Requirements
+
+- Users can submit a scoped request.
+
+## Acceptance Criteria
+
+- Valid requests return a recorded result.
+
+## Error Cases
+
+- Invalid requests are rejected without persistence.
+""",
+        encoding="utf-8",
+    )
+
+    result = run_pipeline(feature, allow_partial=True)
+    report_path = feature / "readiness-review.json"
+    payload = json.loads(report_path.read_text(encoding="utf-8"))
+
+    assert not result.ok
+    assert result.details["partial_package_review"] is True
+    assert payload["readiness"]["status"] == "not_ready"
+    assert payload["review_input"]["partial_package"] is True
+    assert payload["input"]["artifacts"] == [{"path": "spec.md", "characters": len((feature / "spec.md").read_text(encoding="utf-8"))}]
+    assert "Spec package structure is incomplete" in {issue["title"] for issue in payload["issues"]}
+    assert (feature / "readiness-review.md").exists()
+    assert not (feature / "implementation-output.md").exists()
+    assert not plugin_run_state_path(feature).exists()
+
+
+def test_pipeline_partial_package_review_reports_missing_spec_sections(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "partial-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text("# Partial Feature\n\nUsers need a safe export flow.\n", encoding="utf-8")
+
+    result = run_pipeline(feature, allow_partial=True)
+    payload = json.loads((feature / "readiness-review.json").read_text(encoding="utf-8"))
+
+    assert not result.ok
+    section_issue = next(issue for issue in payload["issues"] if issue["title"] == "Spec required sections are incomplete")
+    assert "Requirements" in section_issue["description"]
+    assert "Acceptance Criteria" in section_issue["description"]
+    assert "Error Cases" in section_issue["description"]
+
+
+def test_pipeline_default_mode_keeps_spec_only_package_strict(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "strict-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text("# Strict Feature\n\n## Requirements\n\n- Define the behavior.\n", encoding="utf-8")
+
+    result = run_pipeline(feature)
+
+    assert not result.ok
+    assert plugin_run_state_path(feature).exists()
+    assert not (feature / "readiness-review.json").exists()
+
+
+def test_cli_partial_package_review_writes_structured_reports(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "cli-partial-feature"
+    feature.mkdir(parents=True)
+    (feature / "spec.md").write_text(
+        "# CLI Partial Feature\n\n## Requirements\n\n- Review this source safely.\n",
+        encoding="utf-8",
+    )
+
+    completed = run_cli_smoke(
+        tmp_path,
+        "run",
+        str(feature),
+        "--allow-partial",
+        "--no-llm",
+        "--no-follow-up",
+    )
+
+    assert completed.returncode == 1
+    assert "Partial-package mode produced review reports only" in completed.stdout
+    assert (feature / "readiness-review.json").exists()
+    assert (feature / "readiness-review.md").exists()
+    assert not (feature / "implementation-output.md").exists()
+
+
 def test_cli_init_smoke_generates_spec_package(tmp_path: Path) -> None:
     completed = run_cli_smoke(
         tmp_path,
