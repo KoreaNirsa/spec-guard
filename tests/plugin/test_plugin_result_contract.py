@@ -8,9 +8,11 @@ from pathlib import Path
 import pytest
 
 from tools.post_run import (
+    PLUGIN_RUN_STATE_SCHEMA_VERSION,
     build_plugin_readiness_summary,
     build_plugin_rerun_guidance,
     derive_plugin_run_state,
+    plugin_run_state_path,
     readiness_report_stale_reason,
     render_plugin_readiness_summary,
     render_plugin_rerun_guidance,
@@ -419,6 +421,32 @@ def test_plugin_result_contract_validation_failure_has_no_fresh_readiness_report
     assert not result.ok
     assert result.details["failed_before_readiness_review"] is True
     assert not feature.joinpath("readiness-review.json").exists()
+    state_path = plugin_run_state_path(feature)
+    payload = json.loads(state_path.read_text(encoding="utf-8"))
+
+    assert payload["schema_version"] == PLUGIN_RUN_STATE_SCHEMA_VERSION
+    assert payload["state"] == "validation_failed_before_review"
+    assert payload["failure_category"] == "validation_failed_before_review"
+    assert payload["failed_stage"] == "validation"
+    assert payload["package_path"] == feature.as_posix()
+    assert payload["messages"]
+    assert payload["next_steps"]
+    assert state_path.as_posix() in payload["relevant_files"]
+    assert not any(path.endswith("implementation-output.md") for path in payload["known_files"])
+    assert not any(path.endswith("implementation-output.md") for path in payload["relevant_files"])
+
+    state = derive_plugin_run_state(
+        feature,
+        command="specguard run feature --no-llm --no-follow-up",
+        returncode=1,
+    )
+
+    assert state.state == "validation_failed_before_review"
+    assert state.failure_category == "validation_failed_before_review"
+    assert state.failed_stage == "validation"
+    assert state.messages
+    assert state.next_steps
+    assert state_path.as_posix() in state.relevant_files
 
 
 def test_plugin_run_state_derives_ready_with_current_handoff(tmp_path: Path) -> None:
@@ -441,6 +469,53 @@ def test_plugin_run_state_derives_ready_with_current_handoff(tmp_path: Path) -> 
     assert any(path.endswith("readiness-review.md") for path in state.relevant_files)
     assert any(path.endswith("implementation-output.md") for path in state.relevant_files)
     assert "implementation-output.md" in state.next_action
+
+
+def test_plugin_run_state_prefers_fresh_readiness_report_over_old_pre_review_state(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    _write_review_sources(feature)
+    state_path = plugin_run_state_path(feature)
+    state_path.parent.mkdir()
+    state_path.write_text(
+        json.dumps({
+            "schema_version": PLUGIN_RUN_STATE_SCHEMA_VERSION,
+            "state": "validation_failed_before_review",
+            "failure_category": "validation_failed_before_review",
+            "failed_stage": "validation",
+            "package_path": feature.as_posix(),
+            "command": "specguard run feature",
+            "messages": ["old validation error"],
+            "next_steps": ["old recovery step"],
+            "known_files": [],
+            "relevant_files": [state_path.as_posix()],
+            "next_action": "old next action",
+        }),
+        encoding="utf-8",
+    )
+    payload = _with_current_review_input(_load_fixture("ready.json"))
+    feature.joinpath("readiness-review.json").write_text(json.dumps(payload), encoding="utf-8")
+    feature.joinpath("readiness-review.md").write_text("# Fresh Review\n", encoding="utf-8")
+    feature.joinpath("implementation-output.md").write_text("# Fresh Handoff\n", encoding="utf-8")
+    older = time.time() - 200
+    middle = time.time() - 100
+    fresh = time.time()
+    for name in ("discovery.md", "spec.md", "technical-design.md"):
+        os.utime(feature / name, (older, older))
+    os.utime(state_path, (middle, middle))
+    os.utime(feature / "readiness-review.json", (fresh, fresh))
+
+    state = derive_plugin_run_state(
+        feature,
+        command="specguard run feature --no-llm --no-follow-up",
+        returncode=0,
+    )
+
+    assert state.state == "ready"
+    assert state.messages == ()
+    assert state.next_steps == ()
+    assert any(path.endswith("readiness-review.json") for path in state.relevant_files)
+    assert any(path.endswith("implementation-output.md") for path in state.relevant_files)
 
 
 def test_plugin_run_state_omits_handoff_for_not_ready(tmp_path: Path) -> None:

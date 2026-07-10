@@ -165,10 +165,13 @@
         "specguard discover <path>",
         "specguard run <package> --no-llm --no-follow-up"
       ],
-      "stable_files": [],
+      "stable_files": [
+        ".specguard/run-state.json"
+      ],
       "failure_category": "validation_failed_before_review",
       "safety_boundaries": [
         "known_files_are_diagnostics_only",
+        "run_state_has_failure_category_and_next_steps",
         "do_not_reuse_old_readiness_report"
       ]
     }

@@ -68,7 +68,7 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 8. If the user explicitly asks for Detail Review, use the CLI follow-up menu path: run `specguard run <path> --llm --follow-up`, choose the review-only Detail Review action, then read `readiness-review-detail.json` and `readiness-review-detail.md`. Detail Review is advisory and must not replace the default fast readiness report.
 9. If an interactive follow-up menu cannot be driven in the current environment, report that Detail Review currently requires the CLI follow-up menu instead of pretending it ran.
 10. Do not add `--llm`, run detail review, or install PR Review workflows unless the user explicitly asks for that behavior.
-11. Read the result from structured files only. Use `readiness-review.json` as the machine result, `readiness-review.md` as the human report, and `implementation-output.md` as the handoff file when allowed.
+11. Read the result from structured files only. Use `readiness-review.json` as the normal machine result, `readiness-review.md` as the human report, `.specguard/run-state.json` for pre-review validation failures, and `implementation-output.md` as the handoff file when allowed.
 12. Derive stale, validation-failure, and handoff states from the Plugin Result Contract. Do not scrape terminal logs for readiness state.
 13. Report readiness status, review level, Critical/Major/Minor finding counts, top findings by severity and title, report paths, handoff availability, and next action.
 14. For `not_ready`, summarize Critical findings first and propose scoped edits using the suggestion-only spec refinement format. Do not apply the edits automatically.
@@ -78,7 +78,7 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 
 ## Result Summary Prompt Contract
 
-Use `readiness-review.json` as the only machine-readable source of readiness state. The terminal output can explain command execution, but it must not determine readiness status, finding counts, or handoff availability.
+Use `readiness-review.json` as the normal machine-readable source of readiness state, and use `.specguard/run-state.json` only when the run stops before SpecGuard Review. The terminal output can explain command execution, but it must not determine readiness status, finding counts, failure category, or handoff availability.
 
 Every normal readiness summary must include this stable shape:
 
@@ -97,14 +97,14 @@ State-specific guidance:
 - `ready_with_warnings`: implementation is allowed when handoff is available; warnings are optional cleanup, not blockers.
 - `not_ready`: implementation is blocked; summarize Critical findings first and provide suggestion-only spec refinement proposals.
 - `stale_review`: do not present old files as the current result; report the stale reason, previous findings as suggestions only, and the rerun command.
-- `validation_failed_before_review`: report that no current readiness result exists, list known files only, and ask the user to fix validation before rerunning.
+- `validation_failed_before_review`: report that no current readiness result exists, read `.specguard/run-state.json` when present for `failure_category`, `failed_stage`, `messages`, `next_steps`, and `package_path`, and ask the user to fix validation before rerunning.
 - `timeout` and `cli_execution_failed`: include the attempted command, known files for diagnostics, and the next safe action; do not point to `implementation-output.md` as relevant handoff.
 
 ## Failure Categories
 
 - `missing_cli`: `specguard --help` and the source checkout fallback both fail. Tell the user to install SpecGuard or run from a checkout that supports `python -m cli.specguard`.
 - `missing_spec_package`: no usable package path with `spec.md` was provided or discovered.
-- `validation_failed_before_review`: the CLI exits before writing a fresh `readiness-review.json`.
+- `validation_failed_before_review`: the CLI exits before writing a fresh `readiness-review.json`; read `.specguard/run-state.json` when present instead of parsing terminal output.
 - `stale_review`: the readiness JSON is older than current source artifacts or its reviewed artifact set differs from current authored Markdown.
 - `missing_provider_for_llm`: the user requested `--llm`, but `specguard auth status` shows no usable provider.
 - `timeout`: the CLI run exceeds the active command timeout. Report the command, whether it was heuristic or provider-backed, and the files that exist.
