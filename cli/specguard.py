@@ -58,6 +58,7 @@ from tools.readiness_engine import (
     run_readiness_review,
     review_level_gate_text,
 )
+from tools.report_language import localized_issue_title, report_language_from_payload, resolve_report_language
 from tools.runner import run_pipeline
 from tools.spec_packages import spec_package_discovery_preview_payload
 from tools.strict_e2e import run_strict_e2e_pipeline
@@ -872,6 +873,18 @@ def _failed_before_readiness_review(result: object) -> bool:
 
 
 def _print_pre_review_failure_guidance(args: argparse.Namespace) -> None:
+    if _pre_review_guidance_language(Path(args.path)) == "ko":
+        print_section("다음 작업")
+        print_hint("요약: SpecGuard 검토 전에 스펙 패키지 검증이 실패했습니다.")
+        print("- 상태: VALIDATION_FAILED_BEFORE_REVIEW")
+        print("- 보고서 경로: 사용할 수 없음. 새 준비 상태 보고서가 생성되지 않았습니다.")
+        print("- 구현 인계 경로: 사용할 수 없음.")
+        print("- 수정 대상: discovery.md, spec.md 또는 technical-design.md")
+        print("- 위에 표시된 검증 오류를 수정하세요.")
+        print(f"- 재실행 명령: specguard run {args.path}")
+        print("- 기존 readiness-review.md/json은 오래된 결과일 수 있으며 현재 판정에 사용하지 않았습니다.")
+        return
+
     print_section("Next Action")
     print_hint("Summary: Spec package validation failed before SpecGuard Review.")
     print("- Status: VALIDATION_FAILED_BEFORE_REVIEW")
@@ -905,6 +918,20 @@ def _readiness_status_from_report(report: dict) -> str:
 def _print_not_ready_guidance(args: argparse.Namespace, reports: list[tuple[Path, dict]]) -> None:
     summary = _readiness_counts(reports)
     issue = _top_readiness_issue(reports, ("Critical", "Major", "Minor"))
+    if _report_guidance_language(reports) == "ko":
+        print_section("다음 작업")
+        print_hint("요약: 스펙에 구현을 차단하는 준비 상태 공백이 있습니다.")
+        print("- 상태: NOT_READY")
+        print(f"- 집계: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+        print(f"- 최우선 검토 항목: {_issue_title(issue, report_language='ko')}")
+        print(f"- 보고서 경로: {_review_detail_target(reports)}")
+        print("- 수정 대상: spec.md")
+        print("- 보완 지침: 현재 기능 의도, 인수 조건, 명시적 비목표를 유지하면서 보고서 항목을 해결하는 데 필요한 범위만 보완하세요.")
+        print(f"- 재실행 명령: specguard run {args.path}")
+        if not _experimental_auto_revise_enabled(args):
+            print_hint("SpecGuard는 spec.md를 자동으로 수정하지 않았습니다. 실험적 자동 수정에는 --experimental-auto-revise가 필요합니다.")
+        return
+
     print_section("Next Action")
     print_hint("Summary: Spec has blocking readiness gaps.")
     print("- Status: NOT_READY")
@@ -921,6 +948,24 @@ def _print_not_ready_guidance(args: argparse.Namespace, reports: list[tuple[Path
 def _print_ready_with_warnings_guidance(args: argparse.Namespace, reports: list[tuple[Path, dict]]) -> None:
     summary = _readiness_counts(reports)
     issue = _top_readiness_issue(reports, ("Major", "Minor"))
+    if _report_guidance_language(reports) == "ko":
+        print_section("다음 작업")
+        handoff = _implementation_handoff_target(reports)
+        print_hint("요약: 스펙은 경고가 있지만 구현할 수 있습니다.")
+        print("- 상태: READY_WITH_WARNINGS")
+        print(f"- 집계: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+        print(f"- 최우선 검토 항목: {_issue_title(issue, report_language='ko')}")
+        print(f"- 보고서 경로: {_review_detail_target(reports)}")
+        print("- 수정 대상: spec.md (선택적 경고 보완)")
+        if handoff:
+            print(f"- 구현 인계 경로: {handoff}")
+            print("- 다음 단계: 구현 인계와 승인된 스펙 패키지를 외부 코딩 에이전트에 전달하세요.")
+        else:
+            print("- 구현 인계 경로: 사용할 수 없음.")
+            print(f"- 다음 단계: 전체 pipeline을 다시 실행해 구현 인계를 생성하세요: specguard run {args.path}")
+        print(f"- 재실행 명령: specguard run {args.path}")
+        return
+
     print_section("Next Action")
     handoff = _implementation_handoff_target(reports)
     print_hint("Summary: Spec is implementation-ready with warnings.")
@@ -941,6 +986,23 @@ def _print_ready_with_warnings_guidance(args: argparse.Namespace, reports: list[
 def _print_ready_guidance(reports: list[tuple[Path, dict]]) -> None:
     summary = _readiness_counts(reports)
     handoff = _implementation_handoff_target(reports)
+    if _report_guidance_language(reports) == "ko":
+        print_section("다음 작업")
+        print_hint("요약: 스펙을 구현할 준비가 되었습니다.")
+        print("- 상태: READY")
+        print(f"- 집계: Critical {summary['critical']}, Major {summary['major']}, Minor {summary['minor']}.")
+        print("- 최우선 검토 항목: 없음")
+        print(f"- 보고서 경로: {_review_detail_target(reports)}")
+        print("- 수정 대상: 없음")
+        if handoff:
+            print(f"- 구현 인계 경로: {handoff}")
+            print("- 다음 단계: 구현 인계와 승인된 스펙 패키지를 외부 코딩 에이전트에 전달하세요.")
+        else:
+            print("- 구현 인계 경로: 사용할 수 없음.")
+        rerun_target = _display_path(reports[0][0]) if len(reports) == 1 else "<package>"
+        print(f"- 재실행 명령: specguard run {rerun_target}")
+        return
+
     print_section("Next Action")
     print_hint("Summary: Spec is ready for implementation.")
     print("- Status: READY")
@@ -968,6 +1030,25 @@ def _readiness_counts(reports: list[tuple[Path, dict]]) -> dict[str, int]:
     return counts
 
 
+def _report_guidance_language(reports: list[tuple[Path, dict]]) -> str:
+    if not reports:
+        return "en"
+    return report_language_from_payload(reports[0][1]).code
+
+
+def _pre_review_guidance_language(path: Path) -> str:
+    texts: list[str] = []
+    if path.is_dir():
+        for name in ("discovery.md", "spec.md", "technical-design.md"):
+            candidate = path / name
+            if candidate.is_file():
+                try:
+                    texts.append(candidate.read_text(encoding="utf-8"))
+                except OSError:
+                    continue
+    return resolve_report_language(texts).code
+
+
 def _int_count(value: object) -> int:
     try:
         return int(value)
@@ -987,10 +1068,11 @@ def _top_readiness_issue(reports: list[tuple[Path, dict]], severities: tuple[str
     return None
 
 
-def _issue_title(issue: dict | None) -> str:
+def _issue_title(issue: dict | None, *, report_language: str = "en") -> str:
     if not issue:
-        return "none"
-    return _short_text(str(issue.get("title") or "Untitled finding"))
+        return "없음" if report_language == "ko" else "none"
+    title = str(issue.get("title") or "Untitled finding")
+    return _short_text(localized_issue_title(title, report_language))
 
 
 def _short_text(text: str, limit: int = 84) -> str:

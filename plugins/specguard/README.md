@@ -68,6 +68,8 @@ Report generated files in two groups: `known_files` are files that exist for dia
 
 Keep the concise summary separate from full finding prose. Use the Markdown and JSON report paths for detailed descriptions, impacts, fixes, and evidence instead of coupling the plugin UX to exact finding text.
 
+Human-facing report language is automatic. The plugin passes `ko` or `en` through the process-only `SPECGUARD_CONVERSATION_LANGUAGE` environment variable only when that language clearly dominates the active conversation. Without a clear hint, SpecGuard inspects authored package content; mixed or inconclusive content falls back to English. The resolved code and source are recorded under `report_language` in `readiness-review.json`. Stable JSON keys and enums are never translated.
+
 The human `readiness-review.md` report begins with a concise `## Summary` block containing status, counts, top finding, report context, edit target, conditional handoff guidance, and rerun command. It is safe to display, but `readiness-review.json` remains authoritative for machine decisions.
 
 Render one primary Next Action block with separate status, counts, top finding, report path, handoff path, edit target, and rerun command fields. Do not repeat report or rerun lines through secondary guidance. A handoff path is valid only when the readiness JSON allows implementation and `implementation-output.md` actually exists; pre-review failures have no fresh report or handoff path.

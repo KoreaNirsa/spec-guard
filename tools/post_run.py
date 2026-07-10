@@ -10,6 +10,7 @@ from typing import Any
 
 from tools.progress import progress_activity
 from tools.readiness_engine import is_review_source_artifact, review_artifact_paths
+from tools.report_language import localized_issue_title, report_language_from_payload
 from tools.result import CheckResult
 from tools.spec_packages import SUPPORTED_PACKAGE_PATH_EXAMPLES, discover_spec_packages
 
@@ -86,6 +87,8 @@ class PluginReadinessSummary:
     handoff_path: str | None = None
     edit_target: str | None = None
     rerun_command: str = ""
+    report_language: str = "en"
+    report_language_source: str = "fallback"
     next_action: str = ""
 
 
@@ -201,6 +204,7 @@ def build_plugin_readiness_summary(
         summary = {}
 
     status = _readiness_status(report)
+    language_resolution = report_language_from_payload(report)
     handoff_available = _implementation_handoff_available(feature_dir, report)
     reviewed_artifacts = _plugin_reviewed_artifacts(report)
     standard_artifacts = tuple(path for path in reviewed_artifacts if _is_standard_review_artifact(path))
@@ -213,7 +217,12 @@ def build_plugin_readiness_summary(
         major=_summary_count(summary, "major"),
         minor=_summary_count(summary, "minor"),
         handoff_available=handoff_available,
-        top_findings=_plugin_top_findings(report, status=status, limit=limit),
+        top_findings=_plugin_top_findings(
+            report,
+            status=status,
+            limit=limit,
+            report_language=language_resolution.code,
+        ),
         report_files=_plugin_summary_report_files(feature_dir, handoff_available=handoff_available),
         reviewed_artifact_count=len(reviewed_artifacts),
         standard_reviewed_artifacts=standard_artifacts[:artifact_limit],
@@ -223,7 +232,9 @@ def build_plugin_readiness_summary(
         handoff_path=(feature_dir / "implementation-output.md").as_posix() if handoff_available else None,
         edit_target=(feature_dir / "spec.md").as_posix() if status in {"not_ready", "ready_with_warnings"} else None,
         rerun_command=_default_plugin_rerun_command(feature_dir),
-        next_action=_plugin_next_action(feature_dir, status, report),
+        report_language=language_resolution.code,
+        report_language_source=language_resolution.source,
+        next_action=_plugin_next_action(feature_dir, status, report, report_language=language_resolution.code),
     )
 
 
@@ -235,12 +246,43 @@ def render_plugin_readiness_summary(
     artifact_limit: int = 6,
 ) -> str:
     summary = build_plugin_readiness_summary(feature_dir, report, limit=limit, artifact_limit=artifact_limit)
+    if summary.report_language == "ko":
+        lines = [
+            summary.feature_dir,
+            f"- 상태: {summary.status}",
+            f"- 검토 수준: {summary.review_level}",
+            f"- 검토 항목: Critical {summary.critical}, Major {summary.major}, Minor {summary.minor}",
+            f"- 구현 인계 가능: {'예' if summary.handoff_available else '아니요'}",
+            f"- 보고서 언어: {summary.report_language} ({summary.report_language_source})",
+        ]
+        if summary.top_findings:
+            lines.append("- 주요 검토 항목:")
+            lines.extend(f"  - {finding}" for finding in summary.top_findings)
+        else:
+            lines.append("- 주요 검토 항목: 없음")
+
+        lines.append("- 보고서:")
+        if summary.report_files:
+            lines.extend(f"  - {path}" for path in summary.report_files)
+        else:
+            lines.append("  - 없음")
+        lines.extend(_render_plugin_artifact_summary(summary, report_language=summary.report_language))
+        lines.extend([
+            f"- 사람용 보고서 경로: {summary.report_path or '사용할 수 없음'}",
+            f"- 구현 인계 경로: {summary.handoff_path or '사용할 수 없음'}",
+            f"- 수정 대상: {summary.edit_target or '없음'}",
+            f"- 재실행 명령: {summary.rerun_command}",
+            f"- 다음 작업: {summary.next_action}",
+        ])
+        return "\n".join(lines)
+
     lines = [
         summary.feature_dir,
         f"- status: {summary.status}",
         f"- review level: {summary.review_level}",
         f"- findings: Critical {summary.critical}, Major {summary.major}, Minor {summary.minor}",
         f"- handoff available: {'yes' if summary.handoff_available else 'no'}",
+        f"- report language: {summary.report_language} ({summary.report_language_source})",
     ]
     if summary.top_findings:
         lines.append("- top findings:")
@@ -786,7 +828,13 @@ def _plugin_fresh_result_label(status: str) -> str:
     return status
 
 
-def _plugin_top_findings(report: dict[str, Any], *, status: str, limit: int) -> tuple[str, ...]:
+def _plugin_top_findings(
+    report: dict[str, Any],
+    *,
+    status: str,
+    limit: int,
+    report_language: str = "en",
+) -> tuple[str, ...]:
     raw_issues = report.get("issues", [])
     if not isinstance(raw_issues, list) or limit <= 0:
         return ()
@@ -802,13 +850,13 @@ def _plugin_top_findings(report: dict[str, Any], *, status: str, limit: int) -> 
             issues,
             key=lambda item: (severity_rank.get(str(item[1].get("severity")), 9), item[0]),
         )
-    return tuple(_plugin_finding_title(issue) for _, issue in ordered[:limit])
+    return tuple(_plugin_finding_title(issue, report_language=report_language) for _, issue in ordered[:limit])
 
 
-def _plugin_finding_title(issue: dict[str, Any]) -> str:
+def _plugin_finding_title(issue: dict[str, Any], *, report_language: str = "en") -> str:
     severity = str(issue.get("severity") or "Unknown")
     title = str(issue.get("title") or "Untitled issue")
-    return f"[{severity}] {title}"
+    return f"[{severity}] {localized_issue_title(title, report_language)}"
 
 
 def _implementation_handoff_available(feature_dir: Path, report: dict[str, Any]) -> bool:
@@ -866,7 +914,33 @@ def _is_standard_review_artifact(path: str) -> bool:
     } or path.startswith("checklists/")
 
 
-def _render_plugin_artifact_summary(summary: PluginReadinessSummary) -> list[str]:
+def _render_plugin_artifact_summary(
+    summary: PluginReadinessSummary,
+    *,
+    report_language: str = "en",
+) -> list[str]:
+    if report_language == "ko":
+        lines = [f"- 검토한 authored Markdown: {summary.reviewed_artifact_count}개"]
+        if summary.standard_reviewed_artifacts:
+            lines.append("  - 표준 파일:")
+            lines.extend(f"    - {path}" for path in summary.standard_reviewed_artifacts)
+            hidden_standard = (
+                summary.reviewed_artifact_count
+                - summary.additional_authored_count
+                - len(summary.standard_reviewed_artifacts)
+            )
+            if hidden_standard > 0:
+                lines.append(f"    - ... 표준 파일 {hidden_standard}개 더 있음")
+        if summary.additional_authored_artifacts:
+            lines.append(f"  - 추가 파일: {summary.additional_authored_count}개")
+            lines.extend(f"    - {path}" for path in summary.additional_authored_artifacts)
+            hidden = summary.additional_authored_count - len(summary.additional_authored_artifacts)
+            if hidden > 0:
+                lines.append(f"    - ... authored Markdown {hidden}개 더 있음")
+        else:
+            lines.append("  - 추가 파일: 없음")
+        return lines
+
     lines = [f"- reviewed authored Markdown: {summary.reviewed_artifact_count}"]
     if summary.standard_reviewed_artifacts:
         lines.append("  - standard:")
@@ -904,7 +978,26 @@ def _relevant_plugin_files(feature_dir: Path, report: dict[str, Any]) -> tuple[s
     return tuple(path.as_posix() for path in files if path.exists())
 
 
-def _plugin_next_action(feature_dir: Path, state: str, report: dict[str, Any]) -> str:
+def _plugin_next_action(
+    feature_dir: Path,
+    state: str,
+    report: dict[str, Any],
+    *,
+    report_language: str = "en",
+) -> str:
+    if report_language == "ko":
+        if state == "not_ready":
+            return "스펙 패키지의 Critical 준비 상태 항목을 수정한 뒤 SpecGuard를 다시 실행하세요."
+        if state == "ready_with_warnings":
+            if _implementation_handoff_available(feature_dir, report):
+                return "경고를 확인한 뒤 구현을 진행할 수 있으며 implementation-output.md를 구현 인계로 사용하세요."
+            return "구현을 시작하기 전에 전체 SpecGuard pipeline을 다시 실행하여 implementation-output.md를 생성하세요."
+        if state == "ready":
+            if _implementation_handoff_available(feature_dir, report):
+                return "implementation-output.md를 구현 인계로 사용하세요."
+            return "구현을 시작하기 전에 전체 SpecGuard pipeline을 다시 실행하여 implementation-output.md를 생성하세요."
+        return "보고된 복구 상태를 수정한 뒤 SpecGuard를 다시 실행하세요."
+
     if state == "not_ready":
         return "Fix the Critical readiness findings in the spec package, then rerun SpecGuard."
     if state == "ready_with_warnings":

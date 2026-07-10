@@ -15,7 +15,7 @@ It is not a prompt-to-code generator. SpecGuard helps you prepare an approved sp
 
 This README remains the primary package README for distribution. A Korean entry point is available at [README.ko.md](README.ko.md), and both README entry points link back to the same setup, workflow, plugin, benchmark, and policy documents.
 
-The language split is documentation-only. It does not claim full CLI localization, expanded runtime behavior, or full Korean production support. Korean benchmark claims stay limited to the recorded deterministic low-mode evidence described in [Language Support](docs/language-support.md) and [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
+The documentation entry points do not imply full CLI localization or full Korean production support. Human readiness artifacts can resolve automatically to Korean or English from the active conversation and authored package, with English as the safe fallback. Korean benchmark claims stay limited to the recorded deterministic low-mode evidence described in [Language Support](docs/language-support.md) and [Spec-Driven Benchmark](docs/spec-driven-benchmark.md).
 
 ## Demo Video
 
