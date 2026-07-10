@@ -32,8 +32,6 @@ def generate_tests(path: Path, force: bool = False) -> Path:
     tests_dir = path / "tests"
     tests_dir.mkdir(parents=True, exist_ok=True)
     output = tests_dir / f"{path.name}.test.md"
-    if output.exists() and not force:
-        return output
 
     spec = spec_path.read_text(encoding="utf-8")
     acceptance = _bullets_for_section(spec, "Acceptance Criteria", "인수 조건", "인수 기준")
@@ -51,6 +49,16 @@ def generate_tests(path: Path, force: bool = False) -> Path:
             language_resolution = resolve_report_language([spec])
     else:
         language_resolution = resolve_report_language([spec])
+
+    expected_heading = "# TDD 시나리오:" if language_resolution.code == "ko" else "# TDD Scenarios:"
+    if output.exists() and not force:
+        try:
+            current_heading = output.read_text(encoding="utf-8").splitlines()[0]
+        except (OSError, IndexError):
+            current_heading = ""
+        generated_headings = ("# TDD 시나리오:", "# TDD Scenarios:")
+        if not current_heading.startswith(generated_headings) or current_heading.startswith(expected_heading):
+            return output
 
     if language_resolution.code == "ko":
         success_cases = acceptance or ["주요 정상 경로가 모든 인수 조건을 충족합니다."]

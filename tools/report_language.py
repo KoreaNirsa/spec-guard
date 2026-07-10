@@ -107,8 +107,7 @@ def detect_supported_language(text: str, *, allow_language_code: bool = False) -
             "korean": "ko",
             "한국어": "ko",
         }
-        if normalized in aliases:
-            return aliases[normalized]
+        return aliases.get(normalized)
 
     korean_count = len(_KOREAN_TOKEN.findall(text))
     english_count = len(_ENGLISH_TOKEN.findall(text))

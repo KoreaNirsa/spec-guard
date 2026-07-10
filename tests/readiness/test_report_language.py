@@ -9,6 +9,7 @@ from tools.readiness_engine import run_readiness_review
 from tools.report_language import detect_supported_language, resolve_report_language
 from tools.runner import run_pipeline
 from tools.post_run import render_plugin_readiness_summary
+from tools.tdd_generator import generate_tests
 
 
 def _write_package(path: Path, *, language: str = "en") -> None:
@@ -104,6 +105,16 @@ def test_mixed_or_unsupported_language_falls_back_to_english() -> None:
     assert detect_supported_language("") is None
 
 
+def test_unsupported_conversation_hint_defers_to_spec_language() -> None:
+    resolution = resolve_report_language(
+        ["사용자는 자신의 결제 내역만 안전하게 조회할 수 있어야 합니다."],
+        conversation_language="ja",
+    )
+
+    assert resolution.code == "ko"
+    assert resolution.source == "spec"
+
+
 def test_readiness_report_records_conversation_language_and_renders_korean(tmp_path: Path) -> None:
     feature = tmp_path / "specs" / "tasks"
     _write_package(feature)
@@ -178,3 +189,22 @@ def test_cli_next_action_uses_resolved_report_language(tmp_path: Path, capsys) -
     assert "스펙은 경고가 있지만 구현할 수 있습니다" in rendered
     assert "구현 인계 경로" in rendered
     assert "재실행 명령" in rendered
+
+
+def test_tdd_output_regenerates_when_only_resolved_language_changes(tmp_path: Path) -> None:
+    feature = tmp_path / "specs" / "tasks"
+    _write_package(feature)
+    feature.joinpath("readiness-review.json").write_text(
+        json.dumps({"report_language": {"code": "en", "source": "conversation", "fallback_used": False}}),
+        encoding="utf-8",
+    )
+    output = generate_tests(feature)
+    assert output.read_text(encoding="utf-8").startswith("# TDD Scenarios:")
+
+    feature.joinpath("readiness-review.json").write_text(
+        json.dumps({"report_language": {"code": "ko", "source": "conversation", "fallback_used": False}}),
+        encoding="utf-8",
+    )
+    regenerated = generate_tests(feature)
+
+    assert regenerated.read_text(encoding="utf-8").startswith("# TDD 시나리오:")
