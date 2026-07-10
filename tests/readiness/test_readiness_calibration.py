@@ -572,6 +572,41 @@ def test_korean_phrasing_variant_pairs_keep_blocker_and_ready_guard_shape(
     assert expected_title not in {issue["title"] for issue in ready_payload["issues"]}
 
 
+def test_english_payment_reconciliation_pair_blocks_only_unsafe_retry_contract(
+    tmp_path: Path,
+) -> None:
+    weak_case = _benchmark_case("weak_payment_idempotency_post_settlement")
+    ready_case = _benchmark_case("ready_payment_retry_reconciliation_contract")
+
+    assert weak_case["language"] == "en"
+    assert ready_case["language"] == "en"
+    assert weak_case["domain"] == ready_case["domain"] == "payments"
+    assert weak_case["expectation"] == "weak"
+    assert ready_case["expectation"] == "good"
+
+    weak_package = make_specguard_package(tmp_path, weak_case)
+    weak_result = run_readiness_review(weak_package)
+    weak_payload = json.loads(
+        weak_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert not weak_result.ok
+    assert weak_payload["readiness"]["status"] == "not_ready"
+    issue = _issue_by_title(weak_payload, "Payment idempotency contract is ambiguous")
+    assert "idempotency_key is absent" in " ".join(issue.get("evidence", []))
+    _assert_critical_issue_shape(issue, weak_package)
+
+    ready_package = make_specguard_package(tmp_path, ready_case)
+    ready_result = run_readiness_review(ready_package)
+    ready_payload = json.loads(
+        ready_package.joinpath("readiness-review.json").read_text(encoding="utf-8"),
+    )
+
+    assert ready_result.ok
+    assert ready_payload["readiness"]["status"] in {"ready", "ready_with_warnings"}
+    assert ready_payload["summary"]["critical"] == 0
+
+
 @pytest.mark.parametrize(
     ("spec_lines", "design_lines", "unexpected_title"),
     [
