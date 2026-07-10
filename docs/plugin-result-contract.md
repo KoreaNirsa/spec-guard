@@ -139,6 +139,8 @@ For `not_ready`, the primary Next Action block should show status, counts, top f
 
 The full Markdown and JSON reports remain the source for detailed finding prose, impacts, fixes, and evidence. Plugin tests should assert the summary fields and ordering rules, not full-prose snapshots of individual findings.
 
+`readiness-review.md` starts with a concise `## Summary` block for human and plugin display. It includes status, Critical/Major/Minor counts, the top blocker or warning, report context, edit target, conditional handoff guidance, and a rerun command. Detailed finding sections remain below it. This Markdown block is presentation only: `readiness-review.json` remains the machine-readable source of truth, and consumers must not replace JSON parsing with Markdown parsing.
+
 Additional authored notes include paths such as `domain-rules.md`, `api-notes.md`, or nested authored Markdown that are not standard package files. Plugin summaries should report the total reviewed artifact count, list a bounded number of standard and additional paths, and show an overflow count when more files exist. Filter generated reports, handoff files, tests, contracts, cache paths, and generated directories even if an invalid payload lists them in `input.artifacts[]`.
 
 ## Guided Plugin Rerun Loop

@@ -3280,6 +3280,63 @@ def test_readiness_reports_ready_with_warnings_for_two_major_findings(tmp_path: 
     assert payload["summary"]["major"] == 2
 
 
+@pytest.mark.parametrize(
+    ("llm_client", "review_level", "status", "top_finding", "edit_target", "handoff_text"),
+    (
+        (
+            CriticalReadinessLLM(),
+            "low",
+            "NOT_READY",
+            "[Critical] Authorization contradiction",
+            "Edit target: `spec.md`",
+            "Handoff: unavailable until blockers are resolved",
+        ),
+        (
+            TwoMajorReadinessLLM(),
+            "low",
+            "READY_WITH_WARNINGS",
+            "[Major] Implementation decision 0",
+            "Edit target: optional warning cleanup",
+            "Handoff: use `implementation-output.md` only when the full pipeline has generated it.",
+        ),
+        (
+            CaptureReadinessInputLLM(),
+            "medium",
+            "READY",
+            "[Minor] No LLM readiness findings returned",
+            "Edit target: none required",
+            "Handoff: use `implementation-output.md` only when the full pipeline has generated it.",
+        ),
+    ),
+)
+def test_readiness_markdown_starts_with_plugin_summary(
+    tmp_path: Path,
+    llm_client,
+    review_level: str,
+    status: str,
+    top_finding: str,
+    edit_target: str,
+    handoff_text: str,
+) -> None:
+    feature = write_feature(tmp_path)
+
+    run_readiness_review(feature, llm_client=llm_client, review_level=review_level)
+
+    report = feature.joinpath("readiness-review.md").read_text(encoding="utf-8")
+    assert report.startswith("# SpecGuard Review Result\n\n## Summary\n")
+    assert report.index("## Summary") < report.index("## Readiness")
+    assert f"- Status: {status}" in report
+    assert "- Counts: Critical=" in report
+    assert f"- Top finding: {top_finding}" in report
+    assert "`readiness-review.json` remains the machine-readable source of truth" in report
+    assert edit_target in report
+    assert handoff_text in report
+    assert f"specguard run {feature.as_posix()} --no-llm --no-follow-up" in report
+    assert "## Critical Issues" in report
+    assert "## Major Issues" in report
+    assert "## Minor Issues" in report
+
+
 def test_readiness_defaults_to_low_review_level(tmp_path: Path) -> None:
     feature = write_feature(tmp_path)
 

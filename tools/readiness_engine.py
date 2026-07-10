@@ -3157,10 +3157,12 @@ def _readiness_criteria(policy: ReadinessPolicy) -> dict[str, object]:
 
 
 def _build_report(
+    feature_dir: Path,
     artifacts: list[ReviewArtifact],
     issues: list[ReadinessIssue],
     review_mode: str,
     review_level: str,
+    report_stem: str,
     review_input: dict[str, object] | None = None,
     cache_info: dict[str, object] | None = None,
 ) -> str:
@@ -3178,6 +3180,8 @@ def _build_report(
 
     return "\n".join([
         "# SpecGuard Review Result",
+        "",
+        *_build_report_summary(feature_dir, issues, summary, status, report_stem),
         "",
         f"- Review mode: {review_mode}",
         f"- Review level: {policy.review_level}",
@@ -3226,6 +3230,46 @@ def _build_report(
         "",
         *_render_cache_report_lines(cache_info),
     ])
+
+
+def _build_report_summary(
+    feature_dir: Path,
+    issues: list[ReadinessIssue],
+    summary: dict[str, int],
+    status: str,
+    report_stem: str,
+) -> list[str]:
+    severity_order = ("Critical", "Major", "Minor") if status == "not_ready" else ("Major", "Minor", "Critical")
+    top_issue = next((issue for severity in severity_order for issue in issues if issue.severity == severity), None)
+    top_finding = f"[{top_issue.severity}] {top_issue.title}" if top_issue else "none"
+    rerun_command = f"specguard run {feature_dir.as_posix()} --no-llm --no-follow-up"
+    lines = [
+        "## Summary",
+        "",
+        f"- Status: {status.upper()}",
+        f"- Counts: Critical={summary['critical']}, Major={summary['major']}, Minor={summary['minor']}",
+        f"- Top finding: {top_finding}",
+        f"- Report context: `{report_stem}.md` contains human details; `{report_stem}.json` remains the machine-readable source of truth.",
+    ]
+    if status == "not_ready":
+        lines.extend([
+            "- Edit target: `spec.md` and any authored package file named by the blocking finding.",
+            "- Handoff: unavailable until blockers are resolved and the full pipeline completes.",
+            f"- Rerun command: `{rerun_command}`",
+        ])
+    elif status == "ready_with_warnings":
+        lines.extend([
+            "- Edit target: optional warning cleanup in the authored package files named by the findings.",
+            "- Handoff: use `implementation-output.md` only when the full pipeline has generated it.",
+            f"- Optional rerun command: `{rerun_command}`",
+        ])
+    else:
+        lines.extend([
+            "- Edit target: none required by the current readiness result.",
+            "- Handoff: use `implementation-output.md` only when the full pipeline has generated it.",
+            f"- Rerun command: `{rerun_command}` after any authored spec change.",
+        ])
+    return lines
 
 
 def _render_cache_report_lines(cache_info: dict[str, object] | None) -> list[str]:
@@ -3400,7 +3444,10 @@ def run_readiness_review(
     minor_count = summary["minor"]
     implementation_ready = _is_implementation_ready(summary, review_level)
 
-    report_path.write_text(_build_report(artifacts, issues, review_mode, review_level, review_input, cache_info), encoding="utf-8")
+    report_path.write_text(
+        _build_report(path, artifacts, issues, review_mode, review_level, report_stem, review_input, cache_info),
+        encoding="utf-8",
+    )
     report_json = _build_json_report(artifacts, issues, review_mode, review_level, review_input, cache_info)
     report_json_path.write_text(report_json, encoding="utf-8")
     try:
