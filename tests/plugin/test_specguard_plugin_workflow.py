@@ -144,6 +144,26 @@ def test_specguard_plugin_readme_points_to_structured_result_handling() -> None:
     )
 
 
+def test_specguard_plugin_docs_require_approval_for_draft_sources() -> None:
+    contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+    combined = "\n".join((contract, guide, readme, skill))
+
+    _assert_contains_all(
+        combined,
+        (
+            "draft_sources[]",
+            "offer_draft_package",
+            "requires_user_approval",
+            "explicit user approval",
+            "Existing package candidates always take precedence",
+            "do not create, copy, merge, or review files automatically",
+        ),
+    )
+
+
 def test_specguard_plugin_documents_human_readable_spec_report_skill() -> None:
     skill = SPEC_REPORT_SKILL_PATH.read_text(encoding="utf-8")
     readme = README_PATH.read_text(encoding="utf-8")
@@ -382,7 +402,7 @@ def test_specguard_plugin_docs_cover_readiness_summary_ux() -> None:
             "`candidates[].index` | Stable 1-based selection number in deterministic display order.",
             "`candidates[].path` | Candidate package path for user-facing selection prompts.",
             "`candidates[].review_command` | User-facing command for reviewing that specific candidate.",
-            "`next_action.type` | `run_review`, `choose_candidate`, or `create_or_select_package`.",
+            "`next_action.type` | `run_review`, `choose_candidate`, `offer_draft_package`, or `create_or_select_package`.",
             "`next_action.supported_package_paths[]`",
             "`next_action.review_status` | `not_reviewed`",
             "It must not run every candidate automatically",
