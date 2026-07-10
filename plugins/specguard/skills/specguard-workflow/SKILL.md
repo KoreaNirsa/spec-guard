@@ -80,6 +80,8 @@ Do not emit an applied patch, call an edit tool, or invoke SpecGuard's experimen
 
 Use `readiness-review.json` as the normal machine-readable source of readiness state, and use `.specguard/run-state.json` only when the run stops before SpecGuard Review. The terminal output can explain command execution, but it must not determine readiness status, finding counts, failure category, or handoff availability.
 
+`readiness-review.md` begins with a display-oriented `## Summary` block containing status, counts, top finding, report context, edit target, conditional handoff guidance, and rerun command. It may be shown to the user, but never parse it instead of the readiness JSON.
+
 Every normal readiness summary must include this stable shape:
 
 - `status`: `readiness.status` plus `review_level`.

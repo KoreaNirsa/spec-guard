@@ -127,6 +127,8 @@ For `not_ready`, show Critical findings first even when the JSON issue order inc
 
 The full Markdown and JSON reports remain the source for detailed finding prose, impacts, fixes, and evidence. Plugin tests should assert the summary fields and ordering rules, not full-prose snapshots of individual findings.
 
+`readiness-review.md` starts with a concise `## Summary` block for human and plugin display. It includes status, Critical/Major/Minor counts, the top blocker or warning, report context, edit target, conditional handoff guidance, and a rerun command. Detailed finding sections remain below it. This Markdown block is presentation only: `readiness-review.json` remains the machine-readable source of truth, and consumers must not replace JSON parsing with Markdown parsing.
+
 ## Guided Plugin Rerun Loop
 
 When a user edits authored spec artifacts after a readiness report was generated, the plugin must treat the old report as stale until SpecGuard runs again. The plugin may restate previous findings and `fix` text from `issues[]`, but only as suggestions for the user's next spec edit.
