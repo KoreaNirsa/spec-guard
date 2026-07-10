@@ -1720,7 +1720,10 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
                 r"idempotency\s+.*\b(optional|not required|out of scope)\b",
                 r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+.*\b(allowed|accepted|possible|created|sent)\b",
                 r"duplicate\s+(charge|charges|refund|refunds|payment|payments)\s+behavior\s+.*\b(undefined|not defined|ambiguous)\b",
-                r"(charge|refund|capture).*\b(twice|duplicate)\b",
+                # Match a concrete repeated side effect, not safe explanatory text such as
+                # "capture defines ... duplicate retry behavior."
+                r"\b(calls?|submits?|sends?)\b[^.]*\b(gateway|charge|refund|capture|payment)\b[^.]*\b(twice|again)\b",
+                r"\bcreates?\b[^.]*\b(second|duplicate)\s+(gateway\s+)?(charge|refund|capture|payment)\b",
             ),
         ) or (
             _context_matches_any(context, (r"settles?\s+duplicates?\s+after\s+reconciliation\b",))
@@ -1733,7 +1736,7 @@ def _non_task_domain_semantic_blocker(contexts: list[str]) -> ReadinessIssue | N
             unsafe_payment_phrase
             or (
                 "idempotency" in context
-                and _context_has_any(context, ("different amount", "different payload", "conflict", "same key"))
+                and _context_has_any(context, ("different amount", "different payload", "same key"))
                 and not _context_has_any(context, ("reject", "raise", "error", "409", "conflict response"))
             )
             or (
