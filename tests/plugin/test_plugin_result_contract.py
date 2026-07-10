@@ -264,6 +264,43 @@ def test_plugin_readiness_summary_covers_ready_state_with_report_paths(tmp_path:
     assert "implementation-output.md" in rendered
 
 
+def test_plugin_readiness_summary_surfaces_additional_authored_markdown(tmp_path: Path) -> None:
+    feature = tmp_path / "feature"
+    feature.mkdir()
+    payload = _summary_payload("not_ready", implementation_ready=False)
+    payload["input"] = {
+        "artifacts": [
+            {"path": "discovery.md", "characters": 20},
+            {"path": "spec.md", "characters": 20},
+            {"path": "checklists/spec-readiness.md", "characters": 20},
+            {"path": "domain-rules.md", "characters": 20},
+            {"path": "api-notes.md", "characters": 20},
+            {"path": "notes/operations.md", "characters": 20},
+            {"path": "readiness-review.md", "characters": 20},
+            {"path": "implementation-output.md", "characters": 20},
+            {"path": "tests/generated.md", "characters": 20},
+            {"path": "contracts/contract.md", "characters": 20},
+            {"path": ".specguard/cache.md", "characters": 20},
+        ]
+    }
+
+    summary = build_plugin_readiness_summary(feature, payload, artifact_limit=2)
+    rendered = render_plugin_readiness_summary(feature, payload, artifact_limit=2)
+
+    assert summary.reviewed_artifact_count == 6
+    assert summary.standard_reviewed_artifacts == ("discovery.md", "spec.md")
+    assert summary.additional_authored_count == 3
+    assert summary.additional_authored_artifacts == ("domain-rules.md", "api-notes.md")
+    assert "domain-rules.md" in rendered
+    assert "api-notes.md" in rendered
+    assert "... 1 more authored Markdown file(s)" in rendered
+    assert "readiness-review.md" not in rendered
+    assert "implementation-output.md" not in rendered
+    assert "tests/generated.md" not in rendered
+    assert "contracts/contract.md" not in rendered
+    assert ".specguard/cache.md" not in rendered
+
+
 def test_plugin_rerun_guidance_marks_edited_source_report_as_suggestions_only(tmp_path: Path) -> None:
     feature = tmp_path / "feature"
     feature.mkdir()

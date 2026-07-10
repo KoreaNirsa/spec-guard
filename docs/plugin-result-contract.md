@@ -119,6 +119,7 @@ A summary should include:
 - Critical, Major, and Minor counts from `summary`
 - handoff availability from the derived rule above
 - top findings using each issue's `severity` and `title`
+- reviewed authored Markdown paths from `input.artifacts[]`, grouped into standard package files and additional authored notes
 - report references for `readiness-review.json` and `readiness-review.md` when present
 - `implementation-output.md` only when handoff is available
 - a next action derived from the resolved readiness state
@@ -126,6 +127,8 @@ A summary should include:
 For `not_ready`, show Critical findings first even when the JSON issue order includes other severities first. For `ready_with_warnings`, explain that implementation may proceed only when `implementation-output.md` exists and the JSON has `readiness.implementation_ready: true`; otherwise tell the user to rerun the full pipeline before implementation starts.
 
 The full Markdown and JSON reports remain the source for detailed finding prose, impacts, fixes, and evidence. Plugin tests should assert the summary fields and ordering rules, not full-prose snapshots of individual findings.
+
+Additional authored notes include paths such as `domain-rules.md`, `api-notes.md`, or nested authored Markdown that are not standard package files. Plugin summaries should report the total reviewed artifact count, list a bounded number of standard and additional paths, and show an overflow count when more files exist. Filter generated reports, handoff files, tests, contracts, cache paths, and generated directories even if an invalid payload lists them in `input.artifacts[]`.
 
 ## Guided Plugin Rerun Loop
 

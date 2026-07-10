@@ -85,6 +85,7 @@ Every normal readiness summary must include this stable shape:
 - `status`: `readiness.status` plus `review_level`.
 - `counts`: `summary.critical`, `summary.major`, and `summary.minor`.
 - `findings`: top `issues[]` entries by `severity` and `title`; for `not_ready`, list Critical findings first before Major or Minor findings.
+- `reviewed_artifacts`: read paths from `input.artifacts[]`, group standard package files separately from additional authored Markdown, and use a bounded list plus overflow count; never include generated reports, handoff, tests, contracts, or cache paths.
 - `reports`: `readiness-review.json` and `readiness-review.md` when present.
 - `handoff`: report yes only when `readiness.status` is `ready` or `ready_with_warnings`, `readiness.implementation_ready` is true, and `implementation-output.md` exists.
 - `next_action`: derive from the resolved state, not from terminal logs or generated Markdown prose.

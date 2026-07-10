@@ -903,3 +903,24 @@ def test_specguard_plugin_marketplace_metadata_points_to_plugin() -> None:
     }
     assert plugin["category"] == "Developer Tools"
     assert (ROOT / "plugins" / "specguard" / ".codex-plugin" / "plugin.json").is_file()
+
+
+def test_specguard_plugin_docs_explain_additional_authored_markdown_summary() -> None:
+    contract = (ROOT / "docs" / "plugin-result-contract.md").read_text(encoding="utf-8")
+    guide = CODEX_PLUGIN_DOC_PATH.read_text(encoding="utf-8")
+    readme = README_PATH.read_text(encoding="utf-8")
+    skill = SKILL_PATH.read_text(encoding="utf-8")
+    combined = "\n".join((contract, guide, readme, skill))
+
+    _assert_contains_all(
+        combined,
+        (
+            "input.artifacts[]",
+            "domain-rules.md",
+            "api-notes.md",
+            "standard package files",
+            "additional authored Markdown",
+            "overflow count",
+            "generated reports, handoff, tests, contracts, or cache paths",
+        ),
+    )
