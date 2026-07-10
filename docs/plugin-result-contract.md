@@ -131,9 +131,10 @@ A summary should include:
 - top findings using each issue's `severity` and `title`
 - report references for `readiness-review.json` and `readiness-review.md` when present
 - `implementation-output.md` only when handoff is available
+- `report_path`, `handoff_path`, `edit_target`, and `rerun_command` as separate stable fields
 - a next action derived from the resolved readiness state
 
-For `not_ready`, show Critical findings first even when the JSON issue order includes other severities first. For `ready_with_warnings`, explain that implementation may proceed only when `implementation-output.md` exists and the JSON has `readiness.implementation_ready: true`; otherwise tell the user to rerun the full pipeline before implementation starts.
+For `not_ready`, the primary Next Action block should show status, counts, top finding, report path, edit target, and rerun command exactly once, with Critical findings first even when the JSON issue order includes other severities first. Do not repeat those values through a secondary next-steps block. For `ready` and `ready_with_warnings`, expose `handoff_path` only when `implementation-output.md` exists and the JSON has `readiness.implementation_ready: true`; otherwise report the handoff as unavailable and tell the user to rerun the full pipeline. For pre-review failures, report that no fresh report path or handoff path is available.
 
 The full Markdown and JSON reports remain the source for detailed finding prose, impacts, fixes, and evidence. Plugin tests should assert the summary fields and ordering rules, not full-prose snapshots of individual findings.
 
