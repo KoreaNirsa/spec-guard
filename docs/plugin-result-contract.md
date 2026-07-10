@@ -34,8 +34,11 @@ Plugin consumers may rely on these fields:
 | `candidates[].review_command` | User-facing command for reviewing that specific candidate. |
 | `candidates[].review_args` | Tokenized command arguments for tools that avoid shell parsing. |
 | `next_action.type` | `run_review`, `choose_candidate`, or `create_or_select_package`. |
+| `next_action.supported_package_paths[]` | Missing-package examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`. |
+| `next_action.manual_shape` | Missing-package manual shape with the required `spec.md` file and root/nested package examples. |
+| `next_action.review_status` | `not_reviewed` for missing-package guidance. |
 
-Treat `ambiguous` as a prompt for an explicit package path. The plugin should show `candidates[]` in order, ask the user to choose one `candidates[].path`, and then run `specguard run <selected-path> --no-llm --no-follow-up`. It must not run every candidate automatically; `next_action.bulk_review_default` is `false` for ambiguous previews. Treat `missing_spec_package` as a preflight failure. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
+Treat `ambiguous` as a prompt for an explicit package path. The plugin should show `candidates[]` in order, ask the user to choose one `candidates[].path`, and then run `specguard run <selected-path> --no-llm --no-follow-up`. It must not run every candidate automatically; `next_action.bulk_review_default` is `false` for ambiguous previews. Treat `missing_spec_package` as a preflight failure: show the supported root and nested package examples, ask the user to create or point to a package with `spec.md`, and make clear no SpecGuard readiness review has run yet. The preview does not replace `readiness-review.json`; it only selects the package that a later review command will use.
 
 ## Pre-Review Run State JSON
 
@@ -312,7 +315,7 @@ For `timeout` and `cli_execution_failed`, include the attempted command, known g
 | `stale_review` | Current authored source files differ from `input.artifacts[]`, or a current source file is newer than the JSON report. | No current result files. Previous `readiness-review.json` and `readiness-review.md` are historical context only. Never use `implementation-output.md`. |
 | `validation_failed_before_review` | The CLI exits before a fresh readiness JSON exists or updates. | `.specguard/run-state.json` when present. Existing readiness reports are known files only. Never use `implementation-output.md`. |
 | `missing_cli` | Neither `specguard --help` nor the source checkout fallback works. | None. |
-| `missing_spec_package` | No package directory with `spec.md` is available. | Existing generated files are known files only, if any. |
+| `missing_spec_package` | No package directory with `spec.md` is available. | Existing generated files are known files only, if any. Show supported examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`; do not imply SpecGuard reviewed anything. |
 | `missing_provider_for_llm` | Provider-backed review was explicitly requested but `specguard auth status` is not usable. | Existing generated files are known files only, if any. |
 | `timeout` | The active CLI command exceeds the configured timeout. | Existing generated files are known files only until a fresh run completes. |
 | `cli_execution_failed` | The CLI exits non-zero for a reason not covered by the states above. | Existing generated files are known files only until a fresh run completes. |

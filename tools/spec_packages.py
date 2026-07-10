@@ -6,6 +6,10 @@ from pathlib import Path, PurePosixPath
 
 SPEC_DIR_NAME = "specs"
 DEFAULT_SPEC_ROOTS = (SPEC_DIR_NAME,)
+SUPPORTED_PACKAGE_PATH_EXAMPLES = (
+    "specs/<feature>/spec.md",
+    "backend/specs/<feature>/spec.md",
+)
 EXCLUDED_SPEC_DISCOVERY_DIRS = frozenset({
     "__generated__",
     "__pycache__",
@@ -295,4 +299,16 @@ def _next_action(status: str, candidates: list[dict[str, object]]) -> dict[str, 
     return {
         "type": "create_or_select_package",
         "command_template": "specguard init <feature-name>",
+        "supported_package_paths": list(SUPPORTED_PACKAGE_PATH_EXAMPLES),
+        "manual_shape": {
+            "required_file": "spec.md",
+            "root_package": "specs/<feature>/",
+            "nested_package": "backend/specs/<feature>/",
+        },
+        "next_commands": [
+            "specguard init <feature-name>",
+            "specguard discover <path>",
+            "specguard run specs/<feature> --no-llm --no-follow-up",
+        ],
+        "review_status": "not_reviewed",
     }

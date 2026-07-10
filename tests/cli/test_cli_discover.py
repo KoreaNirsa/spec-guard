@@ -60,3 +60,21 @@ def test_discover_cli_reports_ambiguous_candidates_for_selection(tmp_path: Path,
     assert payload["candidates"][1]["review_command"].endswith(
         "/services/billing/specs/nested-feature --no-llm --no-follow-up"
     )
+
+
+def test_discover_cli_reports_missing_package_guidance(tmp_path: Path, capsys) -> None:
+    exit_code = specguard_cli.discover(Namespace(path=str(tmp_path)))
+
+    payload = json.loads(capsys.readouterr().out)
+    next_action = payload["next_action"]
+
+    assert exit_code == 0
+    assert payload["status"] == "missing_spec_package"
+    assert payload["review_allowed"] is False
+    assert next_action["type"] == "create_or_select_package"
+    assert next_action["supported_package_paths"] == [
+        "specs/<feature>/spec.md",
+        "backend/specs/<feature>/spec.md",
+    ]
+    assert next_action["manual_shape"]["required_file"] == "spec.md"
+    assert next_action["review_status"] == "not_reviewed"

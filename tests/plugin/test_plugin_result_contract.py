@@ -654,6 +654,10 @@ def test_plugin_run_state_reports_preflight_and_timeout_categories(
     assert state.state == expected_state
     assert state.command == "specguard run feature --no-llm --no-follow-up"
     assert state.next_action
+    if expected_state == "missing_spec_package":
+        assert "specs/<feature>/spec.md" in state.next_action
+        assert "backend/specs/<feature>/spec.md" in state.next_action
+        assert "no SpecGuard readiness review has run yet" in state.next_action
 
 
 def test_plugin_run_state_reports_cli_execution_failed_after_fresh_ready_review(tmp_path: Path) -> None:

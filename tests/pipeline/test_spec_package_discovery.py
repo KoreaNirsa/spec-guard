@@ -141,6 +141,21 @@ def test_discovery_preview_payload_marks_missing_package_states(tmp_path: Path) 
     assert empty_payload["next_action"] == {
         "type": "create_or_select_package",
         "command_template": "specguard init <feature-name>",
+        "supported_package_paths": [
+            "specs/<feature>/spec.md",
+            "backend/specs/<feature>/spec.md",
+        ],
+        "manual_shape": {
+            "required_file": "spec.md",
+            "root_package": "specs/<feature>/",
+            "nested_package": "backend/specs/<feature>/",
+        },
+        "next_commands": [
+            "specguard init <feature-name>",
+            "specguard discover <path>",
+            "specguard run specs/<feature> --no-llm --no-follow-up",
+        ],
+        "review_status": "not_reviewed",
     }
     assert missing_payload["status"] == "missing_spec_package"
     assert missing_payload["reason"] == "path_not_found"
