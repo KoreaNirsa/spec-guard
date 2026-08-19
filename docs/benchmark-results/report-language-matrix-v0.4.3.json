@@ -1,0 +1,487 @@
+{
+  "schema": "specguard-report-language-benchmark/v1",
+  "scenario_count": 12,
+  "resolution_rows": [
+    {
+      "id": "korean_conversation_english_spec",
+      "authored_language": "en",
+      "conversation_language": "ko",
+      "expected_resolution": {
+        "code": "ko",
+        "source": "conversation",
+        "fallback_used": false
+      },
+      "actual_resolution": {
+        "code": "ko",
+        "source": "conversation",
+        "fallback_used": false
+      },
+      "resolution_matches": true,
+      "baseline": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "result": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "machine_contract_invariant": true,
+      "authored_files_unchanged": true,
+      "human_checks": {
+        "heading_localized": true,
+        "guidance_localized": true,
+        "known_title_localized": true
+      },
+      "passed": true
+    },
+    {
+      "id": "english_conversation_korean_spec",
+      "authored_language": "ko",
+      "conversation_language": "en",
+      "expected_resolution": {
+        "code": "en",
+        "source": "conversation",
+        "fallback_used": false
+      },
+      "actual_resolution": {
+        "code": "en",
+        "source": "conversation",
+        "fallback_used": false
+      },
+      "resolution_matches": true,
+      "baseline": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "result": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "machine_contract_invariant": true,
+      "authored_files_unchanged": true,
+      "human_checks": {
+        "heading_localized": true,
+        "guidance_localized": true,
+        "known_title_localized": true
+      },
+      "passed": true
+    },
+    {
+      "id": "no_conversation_korean_spec",
+      "authored_language": "ko",
+      "conversation_language": null,
+      "expected_resolution": {
+        "code": "ko",
+        "source": "spec",
+        "fallback_used": false
+      },
+      "actual_resolution": {
+        "code": "ko",
+        "source": "spec",
+        "fallback_used": false
+      },
+      "resolution_matches": true,
+      "baseline": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "result": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "machine_contract_invariant": true,
+      "authored_files_unchanged": true,
+      "human_checks": {
+        "heading_localized": true,
+        "guidance_localized": true,
+        "known_title_localized": true
+      },
+      "passed": true
+    },
+    {
+      "id": "no_conversation_english_spec",
+      "authored_language": "en",
+      "conversation_language": null,
+      "expected_resolution": {
+        "code": "en",
+        "source": "spec",
+        "fallback_used": false
+      },
+      "actual_resolution": {
+        "code": "en",
+        "source": "spec",
+        "fallback_used": false
+      },
+      "resolution_matches": true,
+      "baseline": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "result": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "machine_contract_invariant": true,
+      "authored_files_unchanged": true,
+      "human_checks": {
+        "heading_localized": true,
+        "guidance_localized": true,
+        "known_title_localized": true
+      },
+      "passed": true
+    },
+    {
+      "id": "mixed_conversation_decisive_korean_spec",
+      "authored_language": "ko",
+      "conversation_language": "hello 안녕",
+      "expected_resolution": {
+        "code": "ko",
+        "source": "spec",
+        "fallback_used": false
+      },
+      "actual_resolution": {
+        "code": "ko",
+        "source": "spec",
+        "fallback_used": false
+      },
+      "resolution_matches": true,
+      "baseline": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "result": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "machine_contract_invariant": true,
+      "authored_files_unchanged": true,
+      "human_checks": {
+        "heading_localized": true,
+        "guidance_localized": true,
+        "known_title_localized": true
+      },
+      "passed": true
+    },
+    {
+      "id": "mixed_conversation_inconclusive_spec",
+      "authored_language": "inconclusive",
+      "conversation_language": "hello 안녕",
+      "expected_resolution": {
+        "code": "en",
+        "source": "fallback",
+        "fallback_used": true
+      },
+      "actual_resolution": {
+        "code": "en",
+        "source": "fallback",
+        "fallback_used": true
+      },
+      "resolution_matches": true,
+      "baseline": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "result": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "machine_contract_invariant": true,
+      "authored_files_unchanged": true,
+      "human_checks": {
+        "heading_localized": true,
+        "guidance_localized": true,
+        "known_title_localized": true
+      },
+      "passed": true
+    },
+    {
+      "id": "unsupported_short_code_inconclusive_spec",
+      "authored_language": "inconclusive",
+      "conversation_language": "ja",
+      "expected_resolution": {
+        "code": "en",
+        "source": "fallback",
+        "fallback_used": true
+      },
+      "actual_resolution": {
+        "code": "en",
+        "source": "fallback",
+        "fallback_used": true
+      },
+      "resolution_matches": true,
+      "baseline": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "result": {
+        "status": "not_ready",
+        "implementation_ready": false,
+        "severity_counts": {
+          "critical": 1,
+          "major": 2,
+          "minor": 1
+        },
+        "issue_severities": [
+          "Critical",
+          "Major",
+          "Major",
+          "Minor"
+        ]
+      },
+      "machine_contract_invariant": true,
+      "authored_files_unchanged": true,
+      "human_checks": {
+        "heading_localized": true,
+        "guidance_localized": true,
+        "known_title_localized": true
+      },
+      "passed": true
+    }
+  ],
+  "artifact_refresh_rows": [
+    {
+      "id": "language_only_rerun_after_english_output",
+      "initial_language": "en",
+      "rerun_language": "ko",
+      "handwritten": false,
+      "expected_changes": {
+        "readiness_report": true,
+        "grill_report": true,
+        "tdd_report": true
+      },
+      "artifact_changes": {
+        "readiness_report": true,
+        "grill_report": true,
+        "tdd_report": true
+      },
+      "changed_as_expected": true,
+      "heading_matches": true,
+      "authored_files_unchanged": true,
+      "passed": true
+    },
+    {
+      "id": "language_only_rerun_after_korean_output",
+      "initial_language": "ko",
+      "rerun_language": "en",
+      "handwritten": false,
+      "expected_changes": {
+        "readiness_report": true,
+        "grill_report": true,
+        "tdd_report": true
+      },
+      "artifact_changes": {
+        "readiness_report": true,
+        "grill_report": true,
+        "tdd_report": true
+      },
+      "changed_as_expected": true,
+      "heading_matches": true,
+      "authored_files_unchanged": true,
+      "passed": true
+    },
+    {
+      "id": "same_language_rerun",
+      "initial_language": "en",
+      "rerun_language": "en",
+      "handwritten": false,
+      "expected_changes": {
+        "readiness_report": false,
+        "grill_report": false,
+        "tdd_report": false
+      },
+      "artifact_changes": {
+        "readiness_report": false,
+        "grill_report": false,
+        "tdd_report": false
+      },
+      "changed_as_expected": true,
+      "heading_matches": true,
+      "authored_files_unchanged": true,
+      "passed": true
+    },
+    {
+      "id": "handwritten_tdd_language_rerun",
+      "initial_language": "en",
+      "rerun_language": "ko",
+      "handwritten": true,
+      "expected_changes": {
+        "readiness_report": true,
+        "grill_report": true,
+        "tdd_report": false
+      },
+      "artifact_changes": {
+        "readiness_report": true,
+        "grill_report": true,
+        "tdd_report": false
+      },
+      "changed_as_expected": true,
+      "heading_matches": true,
+      "authored_files_unchanged": true,
+      "passed": true
+    }
+  ],
+  "legacy_rows": [
+    {
+      "id": "legacy_json_without_report_language",
+      "expected_resolution": {
+        "code": "en",
+        "source": "fallback",
+        "fallback_used": true
+      },
+      "actual_resolution": {
+        "code": "en",
+        "source": "fallback",
+        "fallback_used": true
+      },
+      "passed": true
+    }
+  ],
+  "summary": {
+    "passed": 12,
+    "failed": 0,
+    "all_passed": true
+  }
+}

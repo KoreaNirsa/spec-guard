@@ -65,6 +65,7 @@ The recorded v0.4.3 English/Korean layer reports language metrics separately. In
 | v0.4.0 #172 calibration JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.0.json`](benchmark-results/specguard-gate-only-v0.4.0.json) |
 | v0.4.1 #186 stabilization JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.1.json`](benchmark-results/specguard-gate-only-v0.4.1.json) |
 | v0.4.3 #241 refresh JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.3.json`](benchmark-results/specguard-gate-only-v0.4.3.json) |
+| v0.4.3 report language matrix | [`docs/benchmark-results/report-language-matrix-v0.4.3.json`](benchmark-results/report-language-matrix-v0.4.3.json) |
 | Result schema | `specguard-impact-benchmark/v2` |
 | Benchmark script | `tools/spec_driven_ai_benchmark.py` version `7` |
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
@@ -103,6 +104,7 @@ The recorded v0.4.3 English/Korean layer reports language metrics separately. In
 | #186 stabilization run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.1.json` |
 | #241 refresh run command | `python -m tools.spec_driven_ai_benchmark --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.3.json` |
 | Readiness coverage matrix command | `python -m tools.spec_driven_ai_benchmark --coverage-matrix --coverage-matrix-results docs/benchmark-results/specguard-gate-only-v0.4.3.json --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/readiness-coverage-matrix.json` |
+| Report language matrix command | `python -m tools.spec_driven_ai_benchmark --report-language-matrix --output docs/benchmark-results/report-language-matrix-v0.4.3.json` |
 
 The v0.3.1, v0.3.2, v0.4.0, and v0.4.1 gate-only runs are intentionally recorded as working-tree runs because their benchmark result artifacts and benchmark case expansion are part of their PR updates. The v0.4.3 #241 refresh was run from a clean source checkout state (`git_dirty=false`) before writing the new artifact. A separate release-quality validation can still rerun from a clean tag or fresh clone before release claims are finalized.
 
@@ -155,6 +157,13 @@ The supplemental 51-case suite and refreshed extended 41-case suite add practica
 The recorded v0.4.3 Korean layer adds corresponding gate-only fixtures for the same 110 evaluated English source cases. The Korean cases keep the benchmark domains and expected ready/weak classification, but rewrite the implementation-risk prose in realistic Korean wording. The #213 source expansion adds explicit Korean phrasing variants for inbound webhook URL-secret trust and payment idempotency post-settlement cleanup, each paired with a ready/reference guard. The #242 source expansion adds ready/reference guards for the former weak-only `device_trust`, `ledger`, `promotions`, `rate_limits`, `sso`, and `todo` domains. The benchmark output carries `language`, `source_case_id`, `suite_counts`, `language_counts`, `gate_by_suite`, and `gate_by_language` so English and Korean results can be compared without merging their claims.
 
 For stabilization triage, the `--coverage-matrix` command emits deterministic fixture metadata without running SpecGuard, Codex, or any LLM provider. The matrix includes domain, language, case id, expectation, source case mapping, nullable readiness-result fields, and coverage gap categories for English-only, Korean-only, weak-only, and ready-only coverage gaps. The current English/Korean coverage audit is recorded in [`readiness-coverage-audit.md`](readiness-coverage-audit.md).
+
+The `--report-language-matrix` command runs the local readiness engine against
+conversation, authored-spec, mixed-language, unsupported-language, and legacy
+report scenarios. It verifies resolution metadata, machine-contract invariance,
+localized human output, generated TDD refresh, hand-written TDD preservation,
+and authored-package byte stability. Every row in the checked-in result must
+pass before publishing.
 
 Use the [Readiness Calibration Triage Protocol](readiness-calibration-triage.md)
 before tuning deterministic readiness rules. It defines the required baseline

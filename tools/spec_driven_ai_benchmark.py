@@ -20,6 +20,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.report_language_benchmark import build_report_language_benchmark
+
 
 REPO = Path(__file__).resolve().parents[1]
 CODEX_PACKAGE = "@openai/codex@0.128.0"
@@ -5849,6 +5854,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         type=Path,
         help="Benchmark JSON or result-list JSON used to enrich --coverage-matrix with gate results.",
     )
+    parser.add_argument(
+        "--report-language-matrix",
+        action="store_true",
+        help="Run the deterministic human report language resolution matrix.",
+    )
     parser.add_argument("--max-workers", type=int, default=3, help="Concurrent SpecGuard/Codex jobs.")
     parser.add_argument("--skip-codex", action="store_true", help="Run only the SpecGuard gate phase.")
     parser.add_argument(
@@ -5873,7 +5883,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
-    if args.coverage_matrix:
+    if args.coverage_matrix and args.report_language_matrix:
+        raise ValueError("Choose either --coverage-matrix or --report-language-matrix.")
+    if args.report_language_matrix:
+        with tempfile.TemporaryDirectory(prefix="specguard-report-language-") as temp_dir:
+            result = build_report_language_benchmark(Path(temp_dir))
+    elif args.coverage_matrix:
         coverage_results = load_readiness_coverage_results(args.coverage_matrix_results)
         result = build_readiness_coverage_matrix(
             results=coverage_results,
