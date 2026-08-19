@@ -30,10 +30,26 @@ jobs:
       - name: Run pytest
         run: python -m pytest --ignore=tests/packaging/test_packaging.py
 
+  tests-required:
+    name: Tests
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: tests
+
+    steps:
+      - name: Fail when the test matrix did not pass
+        if: ${{ needs.tests.result != 'success' }}
+        run: |
+          echo "The test matrix completed with '${{ needs.tests.result }}'."
+          exit 1
+
+      - name: Confirm test matrix passed
+        run: echo "All supported Python test jobs passed."
+
   package-validation:
     name: Wheel and sdist validation
     runs-on: ubuntu-latest
-    needs: tests
+    needs: tests-required
 
     steps:
       - uses: actions/checkout@v4

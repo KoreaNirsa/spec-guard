@@ -46,7 +46,15 @@ def test_pull_request_workflow_covers_supported_python_and_windows() -> None:
 
     assert 'python-version: ["3.11", "3.12", "3.13"]' in workflow
     assert "windows-latest" in workflow
+    assert (
+        "tests-required:\n"
+        "    name: Tests\n"
+        "    runs-on: ubuntu-latest\n"
+        "    if: ${{ always() }}\n"
+        "    needs: tests"
+    ) in workflow
     assert "package-validation:" in workflow
+    assert "needs: tests-required" in workflow
     assert "--artifact-kind wheel" in workflow
     assert "--artifact-kind sdist" in workflow
 
