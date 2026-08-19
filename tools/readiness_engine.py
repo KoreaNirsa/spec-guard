@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools.llm_client import describe_llm_client
 from tools.grill_loop import write_grill_outputs
 from tools.progress import progress_activity
+from tools.atomic import atomic_write_text
 from tools.report_language import ReportLanguageResolution, localized_issue_title, resolve_report_language
 from tools.result import CheckResult
 from tools.ux import green, red, yellow
@@ -2629,7 +2630,7 @@ def _store_cached_review(
     cache_dir.mkdir(parents=True, exist_ok=True)
     metadata = dict(metadata)
     metadata["created_at"] = datetime.now(timezone.utc).isoformat()
-    (cache_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+    atomic_write_text(cache_dir / "metadata.json", json.dumps(metadata, indent=2) + "\n")
     shutil.copyfile(report_path, cache_dir / "readiness-review.md")
     shutil.copyfile(report_json_path, cache_dir / "readiness-review.json")
     return cache_dir
@@ -3594,7 +3595,8 @@ def run_readiness_review(
     minor_count = summary["minor"]
     implementation_ready = _is_implementation_ready(summary, review_level)
 
-    report_path.write_text(
+    atomic_write_text(
+        report_path,
         _build_report(
             path,
             artifacts,
@@ -3606,7 +3608,6 @@ def run_readiness_review(
             cache_info,
             language_resolution.code,
         ),
-        encoding="utf-8",
     )
     report_json = _build_json_report(
         artifacts,
@@ -3617,7 +3618,7 @@ def run_readiness_review(
         cache_info,
         language_resolution,
     )
-    report_json_path.write_text(report_json, encoding="utf-8")
+    atomic_write_text(report_json_path, report_json)
     try:
         write_grill_outputs(path, json.loads(report_json))
     except (OSError, ValueError, json.JSONDecodeError) as exc:

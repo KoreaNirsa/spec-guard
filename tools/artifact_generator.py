@@ -11,6 +11,7 @@ from tools.llm_client import describe_llm_client
 from tools.progress import progress_activity
 from tools.readiness_engine import review_artifact_paths
 from tools.report_language import report_language_from_payload
+from tools.atomic import atomic_write_text
 
 LOW_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 1800
 DEFAULT_TECHNICAL_DESIGN_MAX_OUTPUT_TOKENS = 3000
@@ -157,7 +158,7 @@ def generate_technical_design(path: Path, force: bool = False) -> ArtifactWrite:
         "- NOT_READY SpecGuard Review findings block implementation handoff.",
         "",
     ])
-    output.write_text(content, encoding="utf-8")
+    atomic_write_text(output, content)
     return ArtifactWrite(output, created=True)
 
 
@@ -228,7 +229,7 @@ def generate_llm_technical_design(
     )
     with progress_activity(activity):
         content = llm_client.generate_text(instructions, input_text, max_output_tokens=max_output_tokens)
-    output.write_text(content, encoding="utf-8")
+    atomic_write_text(output, content)
     return ArtifactWrite(output, created=True)
 
 
@@ -246,7 +247,7 @@ def ensure_contract(path: Path, force: bool = False) -> ArtifactWrite:
     spec = (path / "spec.md").read_text(encoding="utf-8")
     title = _title(path, spec)
     content = _spec_derived_openapi(path, spec, title)
-    output.write_text(content, encoding="utf-8")
+    atomic_write_text(output, content)
     return ArtifactWrite(output, created=True)
 
 
@@ -377,7 +378,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
     report_language = handoff_metadata.get("report_language", {})
     if isinstance(report_language, dict) and report_language.get("code") == "ko":
         lines = _korean_implementation_output_lines(path, approved_artifacts, handoff_metadata)
-        output.write_text("\n".join(lines), encoding="utf-8")
+        atomic_write_text(output, "\n".join(lines))
         return ArtifactWrite(output, created=True)
 
     lines = [
@@ -445,7 +446,7 @@ def generate_implementation_output(path: Path, force: bool = True) -> ArtifactWr
         "- Do not ask the coding agent to resolve blocking readiness findings or warning items by assumption.",
         "",
     ])
-    output.write_text("\n".join(lines), encoding="utf-8")
+    atomic_write_text(output, "\n".join(lines))
     return ArtifactWrite(output, created=True)
 
 

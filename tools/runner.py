@@ -12,8 +12,9 @@ from tools.artifact_generator import ensure_contract, generate_implementation_ou
 from tools.contract_checker import check_contracts
 from tools.generation.verification_checker import check_verification_artifacts
 from tools.llm_client import LLMConfigError, build_llm_client
-from tools.post_run import write_pre_review_failure_run_state
+from tools.post_run import write_pipeline_failure_run_state, write_pre_review_failure_run_state
 from tools.progress import progress_activity
+from tools.run_lock import package_run_lock
 from tools.readiness_engine import (
     DEFAULT_REVIEW_LEVEL,
     READINESS_REVIEW_LEVELS,
@@ -25,6 +26,13 @@ from tools.spec_packages import SpecPackageResolution, resolve_spec_packages
 from tools.spec_validator import validate_spec_basis, validate_technical_design
 from tools.tdd_generator import generate_tests
 from tools.ux import green
+
+
+class _PipelineStageError(RuntimeError):
+    def __init__(self, stage: str, cause: Exception) -> None:
+        super().__init__(str(cause))
+        self.stage = stage
+        self.cause = cause
 
 
 def _add_resolution_error(result: CheckResult, resolution: SpecPackageResolution) -> None:
@@ -71,6 +79,8 @@ def _time_stage(timings: dict[str, int], name: str, operation, *, activity: str 
     try:
         with progress_activity(activity or _stage_activity(name)):
             return operation()
+    except Exception as exc:
+        raise _PipelineStageError(name, exc) from exc
     finally:
         timings[name] = int((time.perf_counter() - started) * 1000)
 
@@ -85,7 +95,7 @@ def _record_timings(result: CheckResult, feature_dir: Path, timings: dict[str, i
     result.add_info(f"Performance timings for {feature_dir}: {rendered}")
 
 
-def run_pipeline(
+def _run_pipeline_unlocked(
     path: Path,
     llm_client: object | None = None,
     force: bool = False,
@@ -250,6 +260,85 @@ def run_pipeline(
         _record_timings(result, feature_dir, timings)
 
     return result
+
+
+def _safe_failure_detail(cause: Exception) -> str:
+    lowered = str(cause).lower()
+    if "timeout" in lowered or "timed out" in lowered:
+        return "The stage timed out; retry after checking the provider or local filesystem state."
+    if "retry" in lowered:
+        return "The stage exhausted its retry budget; inspect the provider or generated artifact state before rerunning."
+    return f"The stage raised {type(cause).__name__}; inspect the failed stage and rerun after correcting it."
+
+
+def _pipeline_failure_result(feature_dir: Path, *, stage: str, cause: Exception) -> CheckResult:
+    result = CheckResult("SpecGuard pipeline")
+    result.add_error(f"SpecGuard pipeline failed at stage: {stage}.")
+    result.add_info(_safe_failure_detail(cause))
+    result.details[f"{feature_dir.name}.failed_stage"] = stage
+    result.details["pipeline_failure"] = True
+    next_action = (
+        f"Fix the failed {stage} stage and rerun SpecGuard; "
+        "do not use a previous readiness report or implementation handoff as current input."
+    )
+    result.add_next_step(next_action)
+    try:
+        state_path = write_pipeline_failure_run_state(
+            feature_dir,
+            command=f"specguard run {feature_dir.as_posix()}",
+            failed_stage=stage,
+            messages=result.messages,
+            next_steps=result.next_steps,
+            failure_category=("timeout" if "timeout" in str(cause).lower() or "timed out" in str(cause).lower() else "pipeline_failed"),
+            next_action=next_action,
+        )
+    except OSError as state_error:
+        result.add_error(f"Could not persist pipeline recovery state: {type(state_error).__name__}.")
+    else:
+        result.add_info(f"Wrote plugin run state: {state_path}")
+    return result
+
+
+def run_pipeline(
+    path: Path,
+    llm_client: object | None = None,
+    force: bool = False,
+    review_mode: str = "initial",
+    review_level: str = DEFAULT_REVIEW_LEVEL,
+    strict_verification: bool = False,
+    refresh_technical_design: bool | None = None,
+    allow_partial: bool = False,
+) -> CheckResult:
+    resolution = resolve_spec_packages(path)
+    if not resolution.packages or resolution.ambiguous:
+        return _run_pipeline_unlocked(
+            path,
+            llm_client=llm_client,
+            force=force,
+            review_mode=review_mode,
+            review_level=review_level,
+            strict_verification=strict_verification,
+            refresh_technical_design=refresh_technical_design,
+            allow_partial=allow_partial,
+        )
+
+    feature_dir = resolution.packages[0]
+    with package_run_lock(feature_dir):
+        try:
+            return _run_pipeline_unlocked(
+                path,
+                llm_client=llm_client,
+                force=force,
+                review_mode=review_mode,
+                review_level=review_level,
+                strict_verification=strict_verification,
+                refresh_technical_design=refresh_technical_design,
+                allow_partial=allow_partial,
+            )
+        except _PipelineStageError as exc:
+            return _pipeline_failure_result(feature_dir, stage=exc.stage, cause=exc.cause)
+        except Exception as exc:
+            return _pipeline_failure_result(feature_dir, stage="pipeline", cause=exc)
 
 
 def main() -> int:

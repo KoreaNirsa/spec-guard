@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+from tools.atomic import atomic_write_text
 from tools.report_language import localized_issue_title, report_language_from_payload
 
 
@@ -82,8 +83,8 @@ def write_grill_outputs(feature_dir: Path, report: dict[str, Any] | None = None)
     payload = build_grill_payload(feature_dir, report)
     json_path = feature_dir / GRILL_FINDINGS_PATH
     markdown_path = feature_dir / GRILL_MARKDOWN_PATH
-    json_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-    markdown_path.write_text(render_grill_markdown(payload), encoding="utf-8")
+    atomic_write_text(json_path, json.dumps(payload, indent=2) + "\n")
+    atomic_write_text(markdown_path, render_grill_markdown(payload))
     return GrillOutput(payload=payload, json_path=json_path, markdown_path=markdown_path)
 
 
@@ -338,7 +339,7 @@ def build_grill_patch_plan(feature_dir: Path, decisions: tuple[dict[str, Any], .
     }
     plan_path = feature_dir / PATCH_PLAN_PATH
     plan_path.parent.mkdir(parents=True, exist_ok=True)
-    plan_path.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
+    atomic_write_text(plan_path, json.dumps(plan, indent=2) + "\n")
     return plan
 
 
@@ -428,7 +429,7 @@ def write_grill_rerun_comparison(
     comparison = compare_grill_rerun(previous_payload, current_payload, load_decision_records(feature_dir))
     path = feature_dir / RERUN_COMPARISON_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(comparison, indent=2) + "\n", encoding="utf-8")
+    atomic_write_text(path, json.dumps(comparison, indent=2) + "\n")
     return comparison
 
 

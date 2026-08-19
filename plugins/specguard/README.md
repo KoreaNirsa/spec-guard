@@ -62,9 +62,9 @@ The plugin workflow reports from structured files, not terminal log scraping. It
 - attempted command, known generated files, and next safe action for timeout or CLI execution failures
 - reviewed authored Markdown from `input.artifacts[]`, with additional notes such as `domain-rules.md` or `api-notes.md` highlighted separately and long lists truncated with an overflow count
 
-Common failure categories are `missing_cli`, `missing_spec_package`, `validation_failed_before_review`, `stale_review`, `missing_provider_for_llm`, `timeout`, and `cli_execution_failed`.
+Common failure categories are `missing_cli`, `missing_spec_package`, `validation_failed_before_review`, `pipeline_failed`, `stale_review`, `missing_provider_for_llm`, `timeout`, and `cli_execution_failed`.
 
-Report generated files in two groups: `known_files` are files that exist for diagnostics, while `relevant_files` are current files for the resolved state. For `validation_failed_before_review`, use `.specguard/run-state.json` as the relevant state file and do not point to `implementation-output.md`. Do not point to `implementation-output.md` as relevant unless `readiness-review.json` is fresh, implementation is allowed, and the handoff file exists.
+Report generated files in two groups: `known_files` are files that exist for diagnostics, while `relevant_files` are current files for the resolved state. For `validation_failed_before_review` and `pipeline_failed`, use `.specguard/run-state.json` as the relevant state file and do not point to `implementation-output.md`. Do not point to `implementation-output.md` as relevant unless `readiness-review.json` is fresh, implementation is allowed, and the handoff file exists.
 
 Keep the concise summary separate from full finding prose. Use the Markdown and JSON report paths for detailed descriptions, impacts, fixes, and evidence instead of coupling the plugin UX to exact finding text.
 

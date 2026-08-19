@@ -104,6 +104,7 @@ State-specific guidance:
 - `not_ready`: implementation is blocked; summarize Critical findings first and provide suggestion-only spec refinement proposals.
 - `stale_review`: do not present old files as the current result; report the stale reason, previous readiness reports as historical context only, previous findings as suggestions only, and the rerun command. Do not expose `implementation-output.md` as a handoff or current stale-state file.
 - `validation_failed_before_review`: report that no current readiness result exists, read `.specguard/run-state.json` when present for `failure_category`, `failed_stage`, `messages`, `next_steps`, and `package_path`, and ask the user to fix validation before rerunning.
+- `pipeline_failed`: report the failed stage from `.specguard/run-state.json`, keep previous reports and handoffs as diagnostics only, and provide the safe rerun command.
 - `timeout` and `cli_execution_failed`: include the attempted command, known files for diagnostics, and the next safe action; do not point to `implementation-output.md` as relevant handoff.
 
 ## Human Report Language
@@ -124,6 +125,7 @@ Language selection applies to human-facing artifacts. Keep JSON keys, readiness 
 - `missing_cli`: `specguard --help` and the source checkout fallback both fail. Tell the user to install SpecGuard or run from a checkout that supports `python -m cli.specguard`.
 - `missing_spec_package`: no usable package path with `spec.md` was provided or discovered. Show supported root and nested package examples such as `specs/<feature>/spec.md` and `backend/specs/<feature>/spec.md`, then ask the user to create or point to a package before review.
 - `validation_failed_before_review`: the CLI exits before writing a fresh `readiness-review.json`; read `.specguard/run-state.json` when present instead of parsing terminal output.
+- `pipeline_failed`: a later pipeline stage or generated-artifact write fails; read `.specguard/run-state.json`, use `failed_stage`, and never treat an older handoff as current input.
 - `stale_review`: the readiness JSON is older than current source artifacts or its reviewed artifact set differs from current authored Markdown.
 - `missing_provider_for_llm`: the user requested `--llm`, but `specguard auth status` shows no usable provider.
 - `timeout`: the CLI run exceeds the active command timeout. Report the command, whether it was heuristic or provider-backed, and the files that exist.
