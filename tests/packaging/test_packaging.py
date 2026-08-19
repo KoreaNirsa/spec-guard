@@ -8,6 +8,10 @@ import tomllib
 import venv
 from pathlib import Path
 
+import pytest
+
+from tools.release_package_smoke import run_package_smoke
+
 
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE_VERSION = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
@@ -36,9 +40,9 @@ def _venv_script(venv_dir: Path, name: str) -> Path:
     return venv_dir / "bin" / name
 
 
-def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
-    dist_dir = tmp_path / "dist"
-
+@pytest.fixture(scope="module")
+def built_distributions(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    dist_dir = tmp_path_factory.mktemp("distributions") / "dist"
     _run(
         [
             sys.executable,
@@ -51,6 +55,14 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
         ],
         cwd=ROOT,
     )
+    return dist_dir
+
+
+def test_built_wheel_installs_specguard_console_script(
+    tmp_path: Path,
+    built_distributions: Path,
+) -> None:
+    dist_dir = built_distributions
 
     wheels = sorted(dist_dir.glob(f"spec_guard-{PACKAGE_VERSION}-py3-none-any.whl"))
     assert len(wheels) == 1
@@ -120,6 +132,13 @@ def test_built_wheel_installs_specguard_console_script(tmp_path: Path) -> None:
     assert not (tmp_path / "specs" / "pip-smoke" / "implementation-output.md").exists()
 
 
+def test_built_sdist_passes_clean_install_smoke(built_distributions: Path) -> None:
+    sdists = sorted(built_distributions.glob(f"spec_guard-{PACKAGE_VERSION}.tar.gz"))
+
+    assert len(sdists) == 1
+    run_package_smoke(sdists[0])
+
+
 def test_package_metadata_supports_uvx_from_invocation() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
@@ -157,6 +176,8 @@ def test_tools_public_import_contracts_remain_available() -> None:
         "tools.pr_review",
         "tools.progress",
         "tools.readiness_engine",
+        "tools.release_package_smoke",
+        "tools.release_validation",
         "tools.result",
         "tools.runner",
         "tools.spec_driven_ai_benchmark",
