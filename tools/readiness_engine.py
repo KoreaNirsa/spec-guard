@@ -249,12 +249,14 @@ def _context_fragments(context: str) -> list[str]:
     candidates = [] if has_multiple_list_items else [context]
     candidates.extend(re.split(r"\s+-\s+|\s+\d+\.\s+|\.\s+", context))
 
-    fragments = set()
+    fragments: list[str] = []
+    seen: set[str] = set()
     for fragment in candidates:
         normalized = fragment.strip(" -*")
-        if normalized and not normalized.startswith("#"):
-            fragments.add(normalized)
-    return list(fragments)
+        if normalized and not normalized.startswith("#") and normalized not in seen:
+            seen.add(normalized)
+            fragments.append(normalized)
+    return fragments
 
 
 def _evidence_excerpt(context: str) -> tuple[str, ...]:

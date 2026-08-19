@@ -310,7 +310,7 @@ def test_checked_in_gate_only_benchmark_records_refresh_metadata() -> None:
     metadata = payload["metadata"]
 
     assert metadata["benchmark_script"]["version"] == payload["benchmark_script_version"]
-    assert metadata["benchmark_script"]["version"] == "7"
+    assert metadata["benchmark_script"]["version"] == "8"
     assert metadata["run_config"] == payload["run_config"]
     assert metadata["run_config"]["max_workers"] == 6
     assert metadata["run_config"]["skip_codex"] is True

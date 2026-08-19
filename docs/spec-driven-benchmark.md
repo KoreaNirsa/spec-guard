@@ -66,7 +66,7 @@ The recorded v0.4.3 English/Korean layer reports language metrics separately. In
 | v0.4.1 #186 stabilization JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.1.json`](benchmark-results/specguard-gate-only-v0.4.1.json) |
 | v0.4.3 #241 refresh JSON | [`docs/benchmark-results/specguard-gate-only-v0.4.3.json`](benchmark-results/specguard-gate-only-v0.4.3.json) |
 | Result schema | `specguard-impact-benchmark/v2` |
-| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `7` |
+| Benchmark script | `tools/spec_driven_ai_benchmark.py` version `8` |
 | Original full run timestamp | `2026-05-09T13:02:31Z` to `2026-05-09T13:13:42Z` |
 | v0.3.1 gate-only timestamp | `2026-05-11T14:18:22.699591+00:00` to `2026-05-11T14:18:28.946457+00:00` |
 | v0.3.2 English/Korean gate-only timestamp | `2026-05-15T09:07:50.369407+00:00` to `2026-05-15T09:07:57.964756+00:00` |
@@ -102,9 +102,18 @@ The recorded v0.4.3 English/Korean layer reports language metrics separately. In
 | #172 calibration run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.0.json` |
 | #186 stabilization run command | `python tools/spec_driven_ai_benchmark.py --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.1.json` |
 | #241 refresh run command | `python -m tools.spec_driven_ai_benchmark --skip-codex --include-gate-only-extra-cases --include-korean-cases --max-workers 6 --output docs/benchmark-results/specguard-gate-only-v0.4.3.json` |
+| Determinism check command | `python -m tools.spec_driven_ai_benchmark --determinism-check --determinism-repeats 3 --determinism-workers 1,6 --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/specguard-gate-only-v0.4.3.json` |
 | Readiness coverage matrix command | `python -m tools.spec_driven_ai_benchmark --coverage-matrix --coverage-matrix-results docs/benchmark-results/specguard-gate-only-v0.4.3.json --include-gate-only-extra-cases --include-korean-cases --output docs/benchmark-results/readiness-coverage-matrix.json` |
 
 The v0.3.1, v0.3.2, v0.4.0, and v0.4.1 gate-only runs are intentionally recorded as working-tree runs because their benchmark result artifacts and benchmark case expansion are part of their PR updates. The v0.4.3 #241 refresh was run from a clean source checkout state (`git_dirty=false`) before writing the new artifact. A separate release-quality validation can still rerun from a clean tag or fresh clone before release claims are finalized.
+
+## Determinism Verification
+
+The benchmark can run the same gate-only fixture set at least three times with each configured worker count. The release command uses worker counts `1` and `6`, then records the result under the top-level `determinism` object in the benchmark artifact using schema `specguard-benchmark-determinism/v1`.
+
+Determinism comparisons retain semantic fields for readiness status, blocked state, finding severity, title, stable finding identifier, and evidence. The comparison removes only documented execution metadata: timestamps, durations, temporary roots, diagnostic stdout/stderr tails, traceback text, environment identity, cleanup status, and the intentionally different worker-count setting. Result lists are sorted by workflow and case before comparison.
+
+Each reported difference contains `case_id`, `field_path`, `prior_value`, and `new_value`. The command exits non-zero when repeat counts are insufficient, normalized semantics drift, Critical finding evidence is missing without an explicit exception, or gate metrics differ between worker counts. The artifact also records `critical_finding_evidence`, including the count of evidence-backed Critical findings and any documented exceptions.
 
 ## Modes
 
