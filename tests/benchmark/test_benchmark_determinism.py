@@ -9,6 +9,7 @@ from tools.spec_driven_ai_benchmark import (
     build_determinism_summary,
     compare_benchmark_runs,
     normalize_benchmark_payload,
+    run_determinism_check,
     validate_critical_finding_evidence,
 )
 
@@ -127,6 +128,22 @@ def test_determinism_summary_requires_three_repeats_and_compares_worker_counts()
     assert summary["semantic_agreement"] is True
     assert summary["gate_metrics_match"] is True
     assert len(summary["comparisons"]) == 5
+
+
+def test_determinism_check_propagates_keep_temp(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict] = []
+
+    def fake_run_benchmark(**kwargs: object) -> dict:
+        calls.append(kwargs)
+        return _payload(int(kwargs["max_workers"]))
+
+    monkeypatch.setattr("tools.spec_driven_ai_benchmark.run_benchmark", fake_run_benchmark)
+
+    result = run_determinism_check(worker_counts=(1,), repeats=3, keep_temp=True)
+
+    assert result["determinism"]["passed"] is True
+    assert len(calls) == 3
+    assert all(call["keep_temp"] is True for call in calls)
 
 
 def test_critical_finding_evidence_is_required_or_explicitly_exempted() -> None:

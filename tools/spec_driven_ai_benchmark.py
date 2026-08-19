@@ -6201,6 +6201,7 @@ def run_determinism_check(
     *,
     worker_counts: tuple[int, ...] = DEFAULT_DETERMINISM_WORKER_COUNTS,
     repeats: int = DETERMINISM_MIN_REPEATS,
+    keep_temp: bool = False,
     include_gate_only_extra_cases: bool = False,
     include_korean_cases: bool = False,
 ) -> dict[str, Any]:
@@ -6219,6 +6220,7 @@ def run_determinism_check(
                 "payload": run_benchmark(
                     max_workers=worker_count,
                     skip_codex=True,
+                    keep_temp=keep_temp,
                     include_gate_only_extra_cases=include_gate_only_extra_cases,
                     include_korean_cases=include_korean_cases,
                 ),
@@ -6423,6 +6425,7 @@ def main(argv: list[str] | None = None) -> int:
         result = run_determinism_check(
             worker_counts=worker_counts,
             repeats=args.determinism_repeats,
+            keep_temp=args.keep_temp,
             include_gate_only_extra_cases=args.include_gate_only_extra_cases,
             include_korean_cases=args.include_korean_cases,
         )
