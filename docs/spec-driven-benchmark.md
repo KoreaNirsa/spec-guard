@@ -15,7 +15,7 @@ The calibrated benchmark now has six evidence layers:
 - A v0.3.2 Korean gate-only layer with 98 corresponding Korean cases: `impact_v2_ko`, `gate_only_supplemental_v1_ko`, and `gate_only_extended_v2_ko`. These are realistic Korean product-prose fixtures, not code-generation runs.
 - A v0.4.0 gate-only calibration run for #172 with the same English/Korean 196-case matrix. This run resolves the two previously documented English false negatives while preserving zero ready-reference false positives.
 - A v0.4.1 stabilization refresh for #186 with the recorded 198-case English/Korean result after #181-#185 stabilization work.
-- A v0.4.3 benchmark refresh for #241 with the current 220-case English/Korean fixture set. This run blocks all 134 evaluated weak cases, records one English ready-reference false positive, and reports English and Korean metrics separately.
+- A v0.4.3 benchmark refresh for #241 and #280 with the current 220-case English/Korean fixture set. This run blocks all 134 evaluated weak cases, records no ready-reference false positives, persists Critical evidence, and reports English and Korean metrics separately.
 
 The original #136 full generation run found that raw AI implementation from weak specs exposed contract defects in 11 of 12 weak cases. Before #129, SpecGuard blocked 3 of those weak specs. In the calibrated v0.4.3 local `--no-llm` gate, the same original suite blocks 12 of 12 weak specs.
 
@@ -48,12 +48,12 @@ The supplemental and extended gate-only suites are intentionally broader than th
 | Weak extended cases | 20 |
 | Weak extended cases blocked | 20/20 |
 | Extended weak block rate | 100.0% |
-| Extended false positive rate | 4.8% |
+| Extended false positive rate | 0.0% |
 | Extended false negative rate | 0.0% |
 
-The reproduced 69-case run confirms the improved local gate is strong on the deterministic patterns added through #172 and #182: it blocks 47 of 47 weak cases with no ready-reference false positives. The refreshed extended calibration blocks all 20 weak practical-domain cases and records one ready-reference false positive across the 21 extended ready-reference cases.
+The reproduced 69-case run confirms the improved local gate is strong on the deterministic patterns added through #172 and #182: it blocks 47 of 47 weak cases with no ready-reference false positives. The refreshed extended calibration blocks all 20 weak practical-domain cases with no ready-reference false positives across the 21 extended ready-reference cases.
 
-The recorded v0.4.3 English/Korean layer reports language metrics separately. In this run, both the English and Korean 110-case layers block 67/67 weak specs. The English layer records one ready-reference false positive; the Korean layer records none.
+The recorded v0.4.3 English/Korean layer reports language metrics separately. In this run, both the English and Korean 110-case layers block 67/67 weak specs, and neither language layer records a ready-reference false positive.
 
 ## Benchmark Metadata
 
@@ -202,7 +202,7 @@ artifact refresh.
 | Original 18-case impact suite | 18 | 12/12 | 0/6 | 100.0% | 0.0% | 0.0% |
 | Supplemental 51-case gate suite | 51 | 35/35 | 0/16 | 100.0% | 0.0% | 0.0% |
 | Reproduced 69-case subtotal | 69 | 47/47 | 0/22 | 100.0% | 0.0% | 0.0% |
-| Extended 41-case gate suite | 41 | 20/20 | 1/21 | 100.0% | 4.8% | 0.0% |
+| Extended 41-case gate suite | 41 | 20/20 | 0/21 | 100.0% | 0.0% | 0.0% |
 | Combined English gate-only run | 110 | 67/67 | 1/43 | 100.0% | 2.3% | 0.0% |
 
 ### v0.4.3 English/Korean Gate-Only Calibration
@@ -264,8 +264,7 @@ Remaining false negatives:
 
 False positives:
 
-- One English ready-reference false positive in the recorded v0.4.3 English 110-case gate-only layer: `ready_payment_retry_reconciliation_contract`.
-- None in the recorded v0.4.3 Korean 110-case gate-only layer.
+- None in the recorded v0.4.3 English or Korean 110-case gate-only layers.
 
 The previously documented false negatives, `fault_title_no_trim` and `weak_document_share_client_enforced`, are now blocked by deterministic heuristic findings with source evidence excerpts.
 
@@ -273,7 +272,7 @@ The previously documented false negatives, `fault_title_no_trim` and `weak_docum
 
 The #129, #138, #140/#141, #142, #172, and #181-#185 stabilization work materially improves the original benchmark target. Against the #136 raw AI exposure baseline, the local low gate now prevents 11 of 11 observed weak-spec exposure paths, up from 3 of 11. The original ready-reference cases still produce no false positives.
 
-The reproduced 69-case run changes the interpretation from "the gate is conservative" to "the gate is precise for the currently calibrated deterministic patterns." The refreshed extended 41-case run still blocks every weak practical-domain case, but it also records the current English payment retry reconciliation ready/reference false positive. The benchmark limitations still apply because supplemental and extended suites are gate-only.
+The reproduced 69-case run changes the interpretation from "the gate is conservative" to "the gate is precise for the currently calibrated deterministic patterns." The refreshed extended 41-case run blocks every weak practical-domain case without blocking a ready/reference case. The benchmark limitations still apply because supplemental and extended suites are gate-only.
 
 The Korean layer supports a narrower claim: deterministic low-mode checks now recognize explicit Korean unsafe wording for ownership and tenant scope, idempotency and replay, expiry and revocation, client-side delegation, external side effects, state transitions, audit mutability, privacy retention, webhook signature/retry policy, cache scope, rate limits, coupons, background job retries, and mixed Korean prose with common English identifiers in the recorded v0.4.3 110-case Korean result layer. This measured fixture behavior does not imply that every Korean phrasing of these risks is covered.
 
@@ -281,7 +280,7 @@ The Korean layer supports a narrower claim: deterministic low-mode checks now re
 
 | Spec Language | Current Support Claim |
 | --- | --- |
-| English specs | Calibrated against the recorded v0.4.3 110-case gate-only suite and the original 18-case impact history. The current artifact blocks 67/67 English weak cases and records one English ready-reference false positive. |
+| English specs | Calibrated against the recorded v0.4.3 110-case gate-only suite and the original 18-case impact history. The current artifact blocks 67/67 English weak cases with no ready-reference false positives. |
 | Mixed Korean/English specs | Supported when Korean product prose is paired with common contract identifiers such as `tenant_id`, `idempotency_key`, `expires_at`, `revoked_at`, `event_id`, or service names. |
 | Korean-only product prose | Initial deterministic low-mode support for explicit unsafe wording in the recorded v0.4.3 Korean 110-case layer. Product prose is Korean, while benchmark section headings remain compatible with the current spec parser. The current artifact blocks 67/67 Korean weak cases with no known Korean false positives. |
 | Korean production completeness | Not claimed. The benchmark covers explicit unsafe wording, not all idioms, subtle legal/privacy variants, or model-backed Korean review quality. |
@@ -312,7 +311,7 @@ The supplemental and extended ready-reference cases are gate-only. They are usef
 - The SpecGuard gate is local `--no-llm` low mode. It does not measure LLM-backed SpecGuard Review.
 - The Korean layer is gate-only and deterministic. It does not measure raw AI generation, LLM-backed Korean review, or full Korean production support.
 - The v0.4.3 artifact covers the current 220-case fixture matrix, but it is still a local provider-free gate-only run rather than a broad production-support or statistical benchmark.
-- The refreshed artifact records one English ready-reference false positive: `ready_payment_retry_reconciliation_contract`.
+- The deterministic v0.4.3 refresh records no English or Korean ready-reference false positives.
 - `READY_WITH_WARNINGS` is treated as implementation-allowed because that is the current low-mode contract.
 - Hidden checks cover the original benchmark contract, not all possible production risks.
 - The v0.3.1, v0.3.2, v0.4.0, and v0.4.1 gate-only runs were executed from working trees containing benchmark changes, so `git_dirty=true` is expected in those result JSON files. The v0.4.3 refresh records `git_dirty=false` before the new artifact is written.
@@ -329,6 +328,6 @@ The supplemental and extended ready-reference cases are gate-only. They are usef
 | Strict E2E | Measure whether blocked specs can be revised into safer ready specs. |
 | PR drift | Measure SpecGuard PR Review against implementation diffs. |
 | False negatives | Keep known FN/FP examples documented before future rule changes and promote justified gaps into deterministic Critical checks. |
-| False positives | Triage `ready_payment_retry_reconciliation_contract` before claiming zero ready-reference false positives across the full gate-only suite. |
+| False positives | Preserve paired ready/weak guards and rerun the deterministic check before claiming zero ready-reference false positives for a future fixture set. |
 | Korean coverage | Add more Korean phrasing variants and rerun from a clean tag before making broader Korean support claims. |
 | Reference tools | Keep Spec Kit/OpenSpec as secondary context with clearly separated layer claims. |

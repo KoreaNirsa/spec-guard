@@ -41,7 +41,7 @@ The deterministic low-mode gate is calibrated primarily on English specs. The re
 
 Current support levels:
 
-- English specs: calibrated against the recorded v0.4.3 110-case gate-only benchmark. It blocks 67/67 English weak cases and currently records one English ready-reference false positive, `ready_payment_retry_reconciliation_contract`.
+- English specs: calibrated against the recorded v0.4.3 110-case gate-only benchmark. It blocks 67/67 English weak cases with no ready-reference false positives in the deterministic refresh.
 - Mixed Korean/English specs: supported when Korean product prose includes common contract identifiers such as `tenant_id`, `idempotency_key`, `expires_at`, `revoked_at`, or `event_id`.
 - Korean-only product prose: initial deterministic support for explicit unsafe wording in the recorded v0.4.3 Korean 110-case layer. It blocks 67/67 Korean weak cases with no known Korean false positives. This is not a full Korean production-support claim.
 

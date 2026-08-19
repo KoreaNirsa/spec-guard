@@ -92,7 +92,7 @@ def test_normalized_payload_removes_only_documented_execution_variance() -> None
 
 
 def test_readiness_evidence_fragments_preserve_source_order() -> None:
-    context = "alpha. beta. alpha. gamma."
+    context = "alpha - beta - alpha - gamma"
 
     assert _context_fragments(context) == ["alpha", "beta", "gamma"]
 
