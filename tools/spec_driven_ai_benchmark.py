@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import hashlib
 import importlib.util
 import inspect
 import json
@@ -31,7 +32,10 @@ CODEX_PACKAGE = "@openai/codex@0.128.0"
 MODEL = "gpt-5.5"
 MODEL_REASONING_EFFORT = "low"
 BENCHMARK_RESULT_SCHEMA = "specguard-impact-benchmark/v2"
-BENCHMARK_SCRIPT_VERSION = "7"
+BENCHMARK_SCRIPT_VERSION = "8"
+DETERMINISM_SCHEMA = "specguard-benchmark-determinism/v1"
+DETERMINISM_MIN_REPEATS = 3
+DEFAULT_DETERMINISM_WORKER_COUNTS = (1, 6)
 READINESS_COVERAGE_MATRIX_SCHEMA = "specguard-readiness-coverage-matrix/v1"
 READINESS_COVERAGE_GAP_TYPES = (
     "english_only_source",
@@ -40,6 +44,27 @@ READINESS_COVERAGE_GAP_TYPES = (
     "ready_only_domain_language",
 )
 CODEX_TIMEOUT_SECONDS = 420
+
+# These fields describe execution metadata rather than benchmark semantics. They are
+# removed only by normalize_benchmark_payload before comparing repeated runs.
+BENCHMARK_VOLATILE_FIELDS = frozenset({
+    "started_at",
+    "finished_at",
+    "run_started_at",
+    "run_finished_at",
+    "elapsed_seconds",
+    "temp_root",
+    "stdout_tail",
+    "stderr_tail",
+    "traceback",
+    "temp_removed",
+    "max_workers",
+    "python_version",
+    "python_implementation",
+    "platform",
+    "os_name",
+    "determinism",
+})
 
 BASE_API = """
 Implement a single Python file named task_service.py.
@@ -4488,6 +4513,64 @@ def _tail(text: str, limit: int = 4000) -> str:
     return text[-limit:]
 
 
+def _stable_finding_identifier(finding: dict[str, Any]) -> str:
+    """Return an identifier that does not depend on execution order or paths."""
+    for key in ("stable_id", "identifier", "id"):
+        value = finding.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    title = " ".join(str(finding.get("title", "Untitled finding")).split()).casefold()
+    digest = hashlib.sha256(title.encode("utf-8")).hexdigest()[:16]
+    return f"readiness-{digest}"
+
+
+def _finding_evidence(finding: dict[str, Any]) -> list[str]:
+    evidence = finding.get("evidence")
+    if isinstance(evidence, str):
+        return [evidence] if evidence.strip() else []
+    if isinstance(evidence, list):
+        return [str(item) for item in evidence if str(item).strip()]
+    for key in ("evidence_excerpt", "source_excerpt", "source_evidence", "excerpt"):
+        value = finding.get(key)
+        if isinstance(value, str) and value.strip():
+            return [value]
+        if isinstance(value, list):
+            return [str(item) for item in value if str(item).strip()]
+    source = finding.get("source")
+    if isinstance(source, dict):
+        return [str(value) for value in source.values() if str(value).strip()]
+    return []
+
+
+def _serialize_readiness_findings(report: dict[str, Any]) -> list[dict[str, Any]]:
+    issues = report.get("issues", [])
+    if not isinstance(issues, list):
+        return []
+    findings = []
+    for issue in issues:
+        if not isinstance(issue, dict):
+            continue
+        finding = {
+            "stable_id": _stable_finding_identifier(issue),
+            "severity": str(issue.get("severity", "Unknown")),
+            "title": str(issue.get("title", "Untitled finding")),
+            "evidence": _finding_evidence(issue),
+        }
+        exception = issue.get("evidence_exception")
+        if isinstance(exception, str) and exception.strip():
+            finding["evidence_exception"] = exception.strip()
+        findings.append(finding)
+    return sorted(
+        findings,
+        key=lambda finding: (
+            finding["stable_id"],
+            finding["severity"],
+            finding["title"],
+            finding["evidence"],
+        ),
+    )
+
+
 def benchmark_cases(
     *,
     include_gate_only_extra_cases: bool = False,
@@ -4697,6 +4780,7 @@ def run_specguard(root: Path, case: dict[str, str]) -> dict[str, Any]:
         readiness = str(readiness_value)
         implementation_ready = readiness.lower() in {"ready", "ready_with_warnings"}
     issue_summary = report.get("summary", {})
+    findings = _serialize_readiness_findings(report)
     return {
         "workflow": "specguard_gate",
         "case": case["id"],
@@ -4706,9 +4790,14 @@ def run_specguard(root: Path, case: dict[str, str]) -> dict[str, Any]:
         "expectation": case["expectation"],
         "category": case["category"],
         "status": "passed" if implementation_ready else "blocked",
+        "blocked": not implementation_ready,
         "implementation_ready": implementation_ready,
         "readiness": readiness,
         "issue_summary": issue_summary,
+        "findings": findings,
+        "critical_findings": [
+            finding for finding in findings if finding["severity"] == "Critical"
+        ],
         "returncode": completed.returncode,
         "elapsed_seconds": elapsed,
         "package_path": str(package.relative_to(root)),
@@ -5156,6 +5245,76 @@ def _finding_has_evidence(finding: dict[str, Any]) -> bool:
     return False
 
 
+def build_critical_finding_evidence_summary(
+    results: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Summarize whether every recorded Critical gate finding is evidence-backed."""
+    critical_finding_count = 0
+    evidence_backed_count = 0
+    documented_exception_count = 0
+    missing_evidence: list[dict[str, str]] = []
+    documented_exceptions: list[dict[str, str]] = []
+
+    for result in _workflow_results(results, "specguard_gate"):
+        case_id = str(result.get("case", ""))
+        findings = result.get("critical_findings")
+        if findings is None:
+            findings = result.get("findings")
+        critical_findings = [
+            finding
+            for finding in findings or []
+            if isinstance(finding, dict) and finding.get("severity") == "Critical"
+        ]
+        reported_count = _critical_count(result)
+        if reported_count is not None and reported_count > len(critical_findings):
+            missing_evidence.append({
+                "case_id": case_id,
+                "stable_id": "unserialized-critical-finding",
+                "reason": "Critical finding count exceeds serialized finding count.",
+            })
+            critical_finding_count += reported_count - len(critical_findings)
+
+        critical_finding_count += len(critical_findings)
+        for finding in critical_findings:
+            stable_id = str(finding.get("stable_id") or _stable_finding_identifier(finding))
+            if _finding_has_evidence(finding):
+                evidence_backed_count += 1
+                continue
+            exception = finding.get("evidence_exception")
+            if isinstance(exception, str) and exception.strip():
+                documented_exception_count += 1
+                documented_exceptions.append({
+                    "case_id": case_id,
+                    "stable_id": stable_id,
+                    "reason": exception.strip(),
+                })
+                continue
+            missing_evidence.append({
+                "case_id": case_id,
+                "stable_id": stable_id,
+                "reason": "Critical finding has no actionable evidence.",
+            })
+
+    return {
+        "valid": not missing_evidence,
+        "critical_finding_count": critical_finding_count,
+        "evidence_backed_count": evidence_backed_count,
+        "documented_exception_count": documented_exception_count,
+        "missing_evidence": missing_evidence,
+        "documented_exceptions": documented_exceptions,
+    }
+
+
+def validate_critical_finding_evidence(results: list[dict[str, Any]]) -> dict[str, Any]:
+    summary = build_critical_finding_evidence_summary(results)
+    if not summary["valid"]:
+        missing = ", ".join(
+            f"{item['case_id']}:{item['stable_id']}" for item in summary["missing_evidence"]
+        )
+        raise ValueError(f"Critical benchmark findings require actionable evidence: {missing}")
+    return summary
+
+
 def _evidence_present(result: dict[str, Any] | None) -> bool | None:
     if not result:
         return None
@@ -5435,7 +5594,10 @@ def _gate_metrics_for_cases(
     case_ids = {case["id"] for case in cases}
     good_ids = {case["id"] for case in cases if case["expectation"] == "good"}
     weak_ids = {case["id"] for case in cases if case["expectation"] == "weak"}
-    scoped_gate = [result for result in gate if result["case"] in case_ids]
+    scoped_gate = sorted(
+        (result for result in gate if result["case"] in case_ids),
+        key=lambda result: (str(result.get("case", "")), str(result.get("workflow", ""))),
+    )
     blocked = [result for result in scoped_gate if not bool(result.get("implementation_ready"))]
     blocked_good = [result for result in blocked if result["case"] in good_ids]
     blocked_weak = [result for result in blocked if result["case"] in weak_ids]
@@ -5453,9 +5615,9 @@ def _gate_metrics_for_cases(
         "blocked_weak_rate": _pct(len(blocked_weak), len(weak_ids)),
         "block_rate": _pct(len(blocked), len(scoped_gate)),
         "false_positive_rate": _pct(len(blocked_good), len(good_ids)),
-        "false_positive_cases": [result["case"] for result in blocked_good],
+        "false_positive_cases": sorted(result["case"] for result in blocked_good),
         "false_negative_rate": _pct(len(passed_weak), len(weak_ids)),
-        "false_negative_cases": [result["case"] for result in passed_weak],
+        "false_negative_cases": sorted(result["case"] for result in passed_weak),
     }
 
 
@@ -5663,8 +5825,18 @@ def build_benchmark_payload(
     include_gate_only_extra_cases: bool = False,
     include_korean_cases: bool = False,
     temp_removed: bool,
+    determinism_summary: dict[str, Any] | None = None,
+    validate_critical_evidence: bool = False,
 ) -> dict[str, Any]:
     cases = CASES if cases is None else cases
+    results = sorted(
+        results,
+        key=lambda item: (
+            str(item.get("workflow", "")),
+            str(item.get("case", "")),
+            str(item.get("stable_id", "")),
+        ),
+    )
     suite_counts = _suite_counts(cases)
     language_counts = _language_counts(cases)
     fixture_counts = {
@@ -5682,7 +5854,10 @@ def build_benchmark_payload(
         "codex_timeout_seconds": CODEX_TIMEOUT_SECONDS,
         "temp_root": str(root),
     }
-    return {
+    critical_finding_evidence = build_critical_finding_evidence_summary(results)
+    if validate_critical_evidence and not critical_finding_evidence["valid"]:
+        validate_critical_finding_evidence(results)
+    payload = {
         "schema": BENCHMARK_RESULT_SCHEMA,
         "metadata": build_benchmark_metadata(
             started_at,
@@ -5731,8 +5906,344 @@ def build_benchmark_payload(
         ],
         "results": results,
         "aggregates": build_aggregates(results, cases),
+        "critical_finding_evidence": critical_finding_evidence,
         "temp_removed": temp_removed,
     }
+    if determinism_summary is not None:
+        payload["determinism"] = determinism_summary
+    return payload
+
+
+def _normalize_benchmark_value(value: Any, path: tuple[str, ...] = ()) -> Any:
+    if path and path[-1] in BENCHMARK_VOLATILE_FIELDS:
+        return None
+    if isinstance(value, dict):
+        normalized = {}
+        for key in sorted(value):
+            child_path = (*path, str(key))
+            if child_path[-1] in BENCHMARK_VOLATILE_FIELDS:
+                continue
+            normalized[str(key)] = _normalize_benchmark_value(value[key], child_path)
+        return normalized
+    if isinstance(value, list):
+        normalized_items = [
+            _normalize_benchmark_value(item, (*path, str(index)))
+            for index, item in enumerate(value)
+        ]
+        field = path[-1] if path else ""
+        if field == "results":
+            normalized_items.sort(
+                key=lambda item: (
+                    str(item.get("workflow", "")) if isinstance(item, dict) else "",
+                    str(item.get("case", "")) if isinstance(item, dict) else "",
+                )
+            )
+        elif field in {"findings", "critical_findings"}:
+            normalized_items.sort(
+                key=lambda item: (
+                    str(item.get("stable_id", "")) if isinstance(item, dict) else "",
+                    str(item.get("severity", "")) if isinstance(item, dict) else "",
+                    str(item.get("title", "")) if isinstance(item, dict) else "",
+                )
+            )
+        elif field == "case_matrix":
+            normalized_items.sort(
+                key=lambda item: str(item.get("case", "")) if isinstance(item, dict) else ""
+            )
+        elif field in {"false_positive_cases", "false_negative_cases"}:
+            normalized_items.sort(key=str)
+        return normalized_items
+    if isinstance(value, str) and path and path[-1] in {"package_path", "results_path"}:
+        return value.replace("\\", "/")
+    return value
+
+
+def normalize_benchmark_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Remove only documented volatile metadata from a benchmark payload."""
+    normalized = _normalize_benchmark_value(payload)
+    if not isinstance(normalized, dict):
+        raise TypeError("Benchmark payload must normalize to an object.")
+    return normalized
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def _normalized_payload_digest(payload: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        _canonical_json(normalize_benchmark_payload(payload)).encode("utf-8")
+    ).hexdigest()
+
+
+_MISSING_VALUE = object()
+
+
+def _diff_value(value: Any) -> Any:
+    return "<missing>" if value is _MISSING_VALUE else value
+
+
+def _semantic_differences(
+    previous: Any,
+    current: Any,
+    *,
+    path: str = "",
+    case_id: str | None = None,
+) -> list[dict[str, Any]]:
+    differences: list[dict[str, Any]] = []
+    if isinstance(previous, dict) and isinstance(current, dict):
+        for key in sorted(set(previous) | set(current)):
+            child_path = f"{path}.{key}" if path else str(key)
+            differences.extend(_semantic_differences(
+                previous.get(key, _MISSING_VALUE),
+                current.get(key, _MISSING_VALUE),
+                path=child_path,
+                case_id=case_id,
+            ))
+        return differences
+
+    if isinstance(previous, list) and isinstance(current, list):
+        if path == "results":
+            previous_by_case = {
+                (
+                    str(item.get("workflow", "")),
+                    str(item.get("case", "")),
+                ): item
+                for item in previous
+                if isinstance(item, dict)
+            }
+            current_by_case = {
+                (
+                    str(item.get("workflow", "")),
+                    str(item.get("case", "")),
+                ): item
+                for item in current
+                if isinstance(item, dict)
+            }
+            for result_key in sorted(set(previous_by_case) | set(current_by_case)):
+                workflow, result_case_id = result_key
+                child_path = f"{path}[{workflow}:{result_case_id}]"
+                differences.extend(_semantic_differences(
+                    previous_by_case.get(result_key, _MISSING_VALUE),
+                    current_by_case.get(result_key, _MISSING_VALUE),
+                    path=child_path,
+                    case_id=result_case_id,
+                ))
+            return differences
+        for index in range(max(len(previous), len(current))):
+            child_path = f"{path}[{index}]"
+            differences.extend(_semantic_differences(
+                previous[index] if index < len(previous) else _MISSING_VALUE,
+                current[index] if index < len(current) else _MISSING_VALUE,
+                path=child_path,
+                case_id=case_id,
+            ))
+        return differences
+
+    if previous != current:
+        differences.append({
+            "case_id": case_id,
+            "field_path": path,
+            "prior_value": _diff_value(previous),
+            "new_value": _diff_value(current),
+        })
+    return differences
+
+
+def compare_benchmark_runs(
+    previous: dict[str, Any],
+    current: dict[str, Any],
+    *,
+    previous_label: str = "previous",
+    current_label: str = "current",
+) -> dict[str, Any]:
+    previous_normalized = normalize_benchmark_payload(previous)
+    current_normalized = normalize_benchmark_payload(current)
+    differences = _semantic_differences(previous_normalized, current_normalized)
+    return {
+        "previous": previous_label,
+        "current": current_label,
+        "identical": not differences,
+        "previous_semantic_sha256": hashlib.sha256(
+            _canonical_json(previous_normalized).encode("utf-8")
+        ).hexdigest(),
+        "current_semantic_sha256": hashlib.sha256(
+            _canonical_json(current_normalized).encode("utf-8")
+        ).hexdigest(),
+        "differences": differences,
+    }
+
+
+def _run_identity(record: dict[str, Any], index: int) -> dict[str, Any]:
+    payload = record["payload"]
+    return {
+        "run_index": index,
+        "worker_count": int(record["worker_count"]),
+        "repeat": int(record["repeat"]),
+        "semantic_sha256": _normalized_payload_digest(payload),
+        "case_count": payload.get("case_count"),
+    }
+
+
+def build_determinism_summary(
+    runs: list[dict[str, Any]],
+    *,
+    minimum_repeats: int = DETERMINISM_MIN_REPEATS,
+) -> dict[str, Any]:
+    """Compare repeated benchmark payloads and report case-level semantic drift."""
+    records: list[dict[str, Any]] = []
+    for index, run in enumerate(runs, start=1):
+        if "payload" in run:
+            payload = run["payload"]
+            worker_count = run.get("worker_count")
+            repeat = run.get("repeat", index)
+        else:
+            payload = run
+            config = payload.get("run_config", {})
+            worker_count = config.get("max_workers", 0)
+            repeat = index
+        if not isinstance(payload, dict):
+            raise TypeError("Each determinism run must contain a benchmark payload.")
+        records.append({
+            "payload": payload,
+            "worker_count": int(worker_count or 0),
+            "repeat": int(repeat),
+        })
+
+    groups: dict[int, list[tuple[int, dict[str, Any]]]] = {}
+    for index, record in enumerate(records, start=1):
+        groups.setdefault(record["worker_count"], []).append((index, record))
+    worker_counts = sorted(groups)
+    repeat_counts = {str(worker): len(groups[worker]) for worker in worker_counts}
+    comparisons: list[dict[str, Any]] = []
+    errors: list[str] = []
+
+    if not records:
+        errors.append("No benchmark runs were provided.")
+    if any(count < minimum_repeats for count in repeat_counts.values()):
+        errors.append(
+            f"Each worker count requires at least {minimum_repeats} runs; observed {repeat_counts}."
+        )
+
+    first_by_worker: dict[int, tuple[int, dict[str, Any]]] = {}
+    for worker_count in worker_counts:
+        group = groups[worker_count]
+        first_by_worker[worker_count] = group[0]
+        baseline_index, baseline = group[0]
+        for candidate_index, candidate in group[1:]:
+            comparison = compare_benchmark_runs(
+                baseline["payload"],
+                candidate["payload"],
+                previous_label=f"worker={worker_count},repeat={baseline['repeat']}",
+                current_label=f"worker={worker_count},repeat={candidate['repeat']}",
+            )
+            comparison["baseline_run"] = _run_identity(baseline, baseline_index)
+            comparison["candidate_run"] = _run_identity(candidate, candidate_index)
+            comparisons.append(comparison)
+
+    first_workers = sorted(first_by_worker)
+    for offset, previous_worker in enumerate(first_workers):
+        for current_worker in first_workers[offset + 1:]:
+            previous_index, previous = first_by_worker[previous_worker]
+            current_index, current = first_by_worker[current_worker]
+            comparison = compare_benchmark_runs(
+                previous["payload"],
+                current["payload"],
+                previous_label=f"worker={previous_worker},repeat={previous['repeat']}",
+                current_label=f"worker={current_worker},repeat={current['repeat']}",
+            )
+            comparison["baseline_run"] = _run_identity(previous, previous_index)
+            comparison["candidate_run"] = _run_identity(current, current_index)
+            comparisons.append(comparison)
+
+    gate_metrics_by_worker_count: dict[str, Any] = {}
+    for worker_count, (_, record) in sorted(first_by_worker.items()):
+        aggregates = record["payload"].get("aggregates", {})
+        gate_metrics_by_worker_count[str(worker_count)] = aggregates.get("gate_only")
+    gate_metric_values = list(gate_metrics_by_worker_count.values())
+    gate_metrics_match = bool(gate_metric_values) and all(
+        value == gate_metric_values[0] for value in gate_metric_values[1:]
+    )
+    evidence_summaries = [
+        build_critical_finding_evidence_summary(record["payload"].get("results", []))
+        for record in records
+    ]
+    critical_evidence_valid = all(summary["valid"] for summary in evidence_summaries)
+    semantic_agreement = all(comparison["identical"] for comparison in comparisons)
+    repeat_counts_valid = bool(worker_counts) and all(
+        count >= minimum_repeats for count in repeat_counts.values()
+    )
+    run_summaries = [
+        _run_identity(record, index)
+        for index, record in enumerate(records, start=1)
+    ]
+    return {
+        "schema": DETERMINISM_SCHEMA,
+        "passed": bool(
+            repeat_counts_valid
+            and semantic_agreement
+            and gate_metrics_match
+            and critical_evidence_valid
+            and not errors
+        ),
+        "minimum_repeats": minimum_repeats,
+        "worker_counts": worker_counts,
+        "repeat_counts": repeat_counts,
+        "run_count": len(records),
+        "repeat_counts_valid": repeat_counts_valid,
+        "semantic_agreement": semantic_agreement,
+        "gate_metrics_match": gate_metrics_match,
+        "gate_metrics_by_worker_count": gate_metrics_by_worker_count,
+        "critical_evidence_valid": critical_evidence_valid,
+        "critical_evidence": evidence_summaries,
+        "runs": run_summaries,
+        "comparisons": comparisons,
+        "errors": errors,
+    }
+
+
+def run_determinism_check(
+    *,
+    worker_counts: tuple[int, ...] = DEFAULT_DETERMINISM_WORKER_COUNTS,
+    repeats: int = DETERMINISM_MIN_REPEATS,
+    keep_temp: bool = False,
+    include_gate_only_extra_cases: bool = False,
+    include_korean_cases: bool = False,
+) -> dict[str, Any]:
+    if repeats < DETERMINISM_MIN_REPEATS:
+        raise ValueError(f"Determinism checks require at least {DETERMINISM_MIN_REPEATS} repeats.")
+    normalized_workers = tuple(dict.fromkeys(max(1, int(worker)) for worker in worker_counts))
+    if not normalized_workers:
+        raise ValueError("At least one worker count is required for a determinism check.")
+
+    runs: list[dict[str, Any]] = []
+    for worker_count in normalized_workers:
+        for repeat in range(1, repeats + 1):
+            runs.append({
+                "worker_count": worker_count,
+                "repeat": repeat,
+                "payload": run_benchmark(
+                    max_workers=worker_count,
+                    skip_codex=True,
+                    keep_temp=keep_temp,
+                    include_gate_only_extra_cases=include_gate_only_extra_cases,
+                    include_korean_cases=include_korean_cases,
+                ),
+            })
+    summary = build_determinism_summary(runs)
+    primary_record = max(runs, key=lambda run: int(run["worker_count"]))
+    primary = json.loads(json.dumps(primary_record["payload"], ensure_ascii=False))
+    primary_run_config = dict(primary.get("run_config", {}))
+    primary_run_config.update({
+        "determinism_check": True,
+        "determinism_repeats": repeats,
+        "determinism_worker_counts": list(normalized_workers),
+    })
+    primary["run_config"] = primary_run_config
+    if isinstance(primary.get("metadata"), dict):
+        primary["metadata"]["run_config"] = primary_run_config
+    primary["determinism"] = summary
+    return primary
 
 
 def run_benchmark(
@@ -5772,7 +6283,10 @@ def run_benchmark(
                         "expectation": case["expectation"],
                         "category": case["category"],
                         "status": "error",
+                        "blocked": True,
                         "implementation_ready": False,
+                        "findings": [],
+                        "critical_findings": [],
                         "traceback": traceback.format_exc(),
                     })
 
@@ -5811,6 +6325,7 @@ def run_benchmark(
                             "expectation": case["expectation"],
                             "category": case["category"],
                             "status": "error",
+                            "blocked": True,
                             "traceback": traceback.format_exc(),
                         })
 
@@ -5826,6 +6341,7 @@ def run_benchmark(
             include_gate_only_extra_cases=include_gate_only_extra_cases,
             include_korean_cases=include_korean_cases,
             temp_removed=False,
+            validate_critical_evidence=True,
         )
     finally:
         if not keep_temp:
@@ -5877,6 +6393,22 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
             "Requires --skip-codex for benchmark runs; also valid with --coverage-matrix."
         ),
     )
+    parser.add_argument(
+        "--determinism-check",
+        action="store_true",
+        help="Run repeated gate-only checks with the configured worker counts and record a semantic summary.",
+    )
+    parser.add_argument(
+        "--determinism-repeats",
+        type=int,
+        default=DETERMINISM_MIN_REPEATS,
+        help=f"Number of runs per worker count for --determinism-check (minimum {DETERMINISM_MIN_REPEATS}).",
+    )
+    parser.add_argument(
+        "--determinism-workers",
+        default=",".join(str(worker) for worker in DEFAULT_DETERMINISM_WORKER_COUNTS),
+        help="Comma-separated worker counts for --determinism-check.",
+    )
     parser.add_argument("--keep-temp", action="store_true", help="Keep the temporary benchmark workspace.")
     return parser.parse_args(argv)
 
@@ -5899,6 +6431,19 @@ def main(argv: list[str] | None = None) -> int:
             include_gate_only_extra_cases=args.include_gate_only_extra_cases,
             include_korean_cases=args.include_korean_cases,
         )
+    elif args.determinism_check:
+        worker_counts = tuple(
+            int(value.strip())
+            for value in args.determinism_workers.split(",")
+            if value.strip()
+        )
+        result = run_determinism_check(
+            worker_counts=worker_counts,
+            repeats=args.determinism_repeats,
+            keep_temp=args.keep_temp,
+            include_gate_only_extra_cases=args.include_gate_only_extra_cases,
+            include_korean_cases=args.include_korean_cases,
+        )
     else:
         result = run_benchmark(
             max_workers=max(1, args.max_workers),
@@ -5911,8 +6456,11 @@ def main(argv: list[str] | None = None) -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
-    print(rendered)
-    return 0
+    try:
+        print(rendered)
+    except UnicodeEncodeError:
+        print(json.dumps(result, ensure_ascii=True, indent=2))
+    return 1 if args.determinism_check and not result.get("determinism", {}).get("passed", False) else 0
 
 
 if __name__ == "__main__":

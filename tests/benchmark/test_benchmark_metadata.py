@@ -310,7 +310,7 @@ def test_checked_in_gate_only_benchmark_records_refresh_metadata() -> None:
     metadata = payload["metadata"]
 
     assert metadata["benchmark_script"]["version"] == payload["benchmark_script_version"]
-    assert metadata["benchmark_script"]["version"] == "7"
+    assert metadata["benchmark_script"]["version"] == "8"
     assert metadata["run_config"] == payload["run_config"]
     assert metadata["run_config"]["max_workers"] == 6
     assert metadata["run_config"]["skip_codex"] is True
@@ -322,10 +322,12 @@ def test_checked_in_gate_only_benchmark_records_refresh_metadata() -> None:
         "en": 110,
         "ko": 110,
     }
-    assert payload["aggregates"]["gate_only"]["false_positive_cases"] == [
-        "ready_payment_retry_reconciliation_contract"
-    ]
+    assert payload["aggregates"]["gate_only"]["false_positive_cases"] == []
     assert payload["aggregates"]["gate_only"]["false_negative_cases"] == []
+    assert payload["determinism"]["passed"] is True
+    assert payload["determinism"]["repeat_counts"] == {"1": 3, "6": 3}
+    assert payload["determinism"]["gate_metrics_match"] is True
+    assert payload["critical_finding_evidence"]["valid"] is True
     assert metadata["environment"]["python_version"]
     assert metadata["environment"]["notes"]
 

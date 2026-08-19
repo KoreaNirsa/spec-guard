@@ -27,20 +27,19 @@ The v0.4.3 gate-only result used for this audit reports 220 evaluated cases:
 
 | Scope | Evaluated | Weak Blocked | Ready Blocked | False Positive Rate | False Negative Rate |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Combined | 220 | 134/134 | 1/86 | 1.2% | 0.0% |
-| English | 110 | 67/67 | 1/43 | 2.3% | 0.0% |
+| Combined | 220 | 134/134 | 0/86 | 0.0% | 0.0% |
+| English | 110 | 67/67 | 0/43 | 0.0% | 0.0% |
 | Korean | 110 | 67/67 | 0/43 | 0.0% | 0.0% |
 
 The current matrix contains 220 selected fixture-source cases. The supplied
 v0.4.3 gate result covers all of them, so the matrix records
 `missing_cases=0` and `is_complete=true`.
 
-In the v0.4.3 result artifact, 85 ready/reference rows have actual readiness
-status `ready_with_warnings`, and one English ready/reference row,
-`ready_payment_retry_reconciliation_contract`, has actual readiness status
-`not_ready`. All 134 weak rows have actual readiness status `not_ready`.
-Critical counts are present in the recorded benchmark artifact: 85 rows have 0
-Critical findings, 128 rows have 1 Critical finding, and 7 rows have 2 Critical
+In the v0.4.3 result artifact, all 86 ready/reference rows have actual readiness
+status `ready_with_warnings`, and all 134 weak rows have actual readiness status
+`not_ready`.
+Critical counts are present in the recorded benchmark artifact: 86 rows have 0
+Critical findings, 127 rows have 1 Critical finding, and 7 rows have 2 Critical
 findings.
 
 The matrix also records domain/language summary fields so future fixture and
@@ -57,11 +56,11 @@ heuristic work can triage gaps without scanning every case row:
 - `source_counterpart_gap_count` shows missing English/Korean source-case
   counterparts.
 
-The v0.4.3 aggregate benchmark JSON does not persist full finding evidence
-payloads, so the matrix keeps `evidence_present` as `null` for every row.
-Detailed Critical evidence shape is tracked separately in #185. The
-domain/language summaries therefore report those evidence counts as `unknown`
-for this baseline.
+The v0.4.3 deterministic benchmark JSON persists stable Critical finding
+identifiers, severity, titles, and actionable evidence. The matrix reports
+`evidence_present=true` for the 134 weak rows with Critical findings and
+`evidence_present=false` for the 86 ready/reference rows without Critical
+findings.
 
 ## Coverage Gaps
 
@@ -97,11 +96,10 @@ fixture-metadata and result-coverage levels.
   issues, documentation gaps, and Korean counterpart gaps before changing rules.
 - Use #242 as the fixture-balance baseline for former weak-only domains before
   changing heuristics in those areas.
-- Use #183 to triage the current English ready/reference false positive
-  `ready_payment_retry_reconciliation_contract`, or any future ready/reference
-  row blocked by SpecGuard.
+- Use #183 to triage any future ready/reference row blocked by SpecGuard.
 - Use #184 only if a future matrix or benchmark run reports weak rows allowed by
   SpecGuard.
-- Use #185 to make detailed Critical evidence presence machine-checkable.
+- Use the benchmark `critical_finding_evidence` summary and deterministic
+  comparison output to keep Critical evidence machine-checkable.
 - Use #241 as the refreshed 220-case benchmark baseline before publishing
   updated gate-only metrics.

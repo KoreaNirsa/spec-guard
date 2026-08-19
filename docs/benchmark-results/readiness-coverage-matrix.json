@@ -1,6 +1,6 @@
 {
   "schema": "specguard-readiness-coverage-matrix/v1",
-  "benchmark_script_version": "7",
+  "benchmark_script_version": "8",
   "source": {
     "path": "tools/spec_driven_ai_benchmark.py",
     "case_source": "benchmark_cases",
@@ -25,8 +25,8 @@
   },
   "domain_count": 36,
   "actual_readiness_status_counts": {
-    "not_ready": 135,
-    "ready_with_warnings": 85
+    "not_ready": 134,
+    "ready_with_warnings": 86
   },
   "readiness_result_coverage": {
     "expected_cases": 220,
@@ -39,15 +39,13 @@
     "evaluated_cases": 220,
     "good_cases": 86,
     "weak_cases": 134,
-    "blocked_before_codegen": 135,
+    "blocked_before_codegen": 134,
     "blocked_weak_cases": 134,
-    "blocked_good_cases": 1,
+    "blocked_good_cases": 0,
     "blocked_weak_rate": 100.0,
-    "block_rate": 61.4,
-    "false_positive_rate": 1.2,
-    "false_positive_cases": [
-      "ready_payment_retry_reconciliation_contract"
-    ],
+    "block_rate": 60.9,
+    "false_positive_rate": 0.0,
+    "false_positive_cases": [],
     "false_negative_rate": 0.0,
     "false_negative_cases": []
   },
@@ -56,15 +54,13 @@
       "evaluated_cases": 110,
       "good_cases": 43,
       "weak_cases": 67,
-      "blocked_before_codegen": 68,
+      "blocked_before_codegen": 67,
       "blocked_weak_cases": 67,
-      "blocked_good_cases": 1,
+      "blocked_good_cases": 0,
       "blocked_weak_rate": 100.0,
-      "block_rate": 61.8,
-      "false_positive_rate": 2.3,
-      "false_positive_cases": [
-        "ready_payment_retry_reconciliation_contract"
-      ],
+      "block_rate": 60.9,
+      "false_positive_rate": 0.0,
+      "false_positive_cases": [],
       "false_negative_rate": 0.0,
       "false_negative_cases": []
     },
@@ -108,9 +104,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -126,9 +122,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -144,9 +140,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -162,9 +158,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -180,9 +176,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -198,9 +194,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -216,9 +212,9 @@
       },
       "critical_case_count": 5,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 6
+        "true": 5,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -234,9 +230,9 @@
       },
       "critical_case_count": 5,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 6
+        "true": 5,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -252,9 +248,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -270,9 +266,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -288,9 +284,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -306,9 +302,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -324,9 +320,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -342,9 +338,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -360,9 +356,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -378,9 +374,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -396,9 +392,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -414,9 +410,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -432,9 +428,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -450,9 +446,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -468,9 +464,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -486,9 +482,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -504,9 +500,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -522,9 +518,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -540,9 +536,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -558,9 +554,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -576,9 +572,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 4
+        "true": 2,
+        "false": 2,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -594,9 +590,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 4
+        "true": 2,
+        "false": 2,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -612,9 +608,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -630,9 +626,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -648,9 +644,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -666,9 +662,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -684,9 +680,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -702,9 +698,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -720,9 +716,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -738,9 +734,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -756,9 +752,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -774,9 +770,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -792,9 +788,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -810,9 +806,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -823,14 +819,14 @@
       "ready_case_count": 2,
       "weak_case_count": 3,
       "actual_readiness_status_counts": {
-        "not_ready": 4,
-        "ready_with_warnings": 1
+        "not_ready": 3,
+        "ready_with_warnings": 2
       },
-      "critical_case_count": 4,
+      "critical_case_count": 3,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 5
+        "true": 3,
+        "false": 2,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -846,9 +842,9 @@
       },
       "critical_case_count": 3,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 5
+        "true": 3,
+        "false": 2,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -864,9 +860,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -882,9 +878,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -900,9 +896,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -918,9 +914,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -936,9 +932,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -954,9 +950,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -972,9 +968,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -990,9 +986,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1008,9 +1004,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1026,9 +1022,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1044,9 +1040,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1062,9 +1058,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1080,9 +1076,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1098,9 +1094,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1116,9 +1112,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1134,9 +1130,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1152,9 +1148,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1170,9 +1166,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1188,9 +1184,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1206,9 +1202,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1224,9 +1220,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1242,9 +1238,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1260,9 +1256,9 @@
       },
       "critical_case_count": 20,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 26
+        "true": 20,
+        "false": 6,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1278,9 +1274,9 @@
       },
       "critical_case_count": 20,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 26
+        "true": 20,
+        "false": 6,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1296,9 +1292,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1314,9 +1310,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1332,9 +1328,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1350,9 +1346,9 @@
       },
       "critical_case_count": 2,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 3
+        "true": 2,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1368,9 +1364,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1386,9 +1382,9 @@
       },
       "critical_case_count": 1,
       "evidence_present_counts": {
-        "true": 0,
-        "false": 0,
-        "unknown": 2
+        "true": 1,
+        "false": 1,
+        "unknown": 0
       },
       "source_counterpart_gap_count": 0,
       "gap_type": "coverage_complete"
@@ -1409,7 +1405,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1431,7 +1427,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1453,7 +1449,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1475,7 +1471,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1497,7 +1493,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1519,7 +1515,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1541,7 +1537,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1563,7 +1559,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1585,7 +1581,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1607,7 +1603,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1629,7 +1625,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1651,7 +1647,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1673,7 +1669,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1695,7 +1691,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1717,7 +1713,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1739,7 +1735,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1761,7 +1757,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1783,7 +1779,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1805,7 +1801,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1827,7 +1823,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1849,7 +1845,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1871,7 +1867,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1893,7 +1889,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1915,7 +1911,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1937,7 +1933,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1959,7 +1955,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -1981,7 +1977,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2003,7 +1999,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2025,7 +2021,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2047,7 +2043,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2069,7 +2065,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2091,7 +2087,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2113,7 +2109,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2135,7 +2131,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2157,7 +2153,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2179,7 +2175,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2201,7 +2197,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2223,7 +2219,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2245,7 +2241,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2267,7 +2263,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2289,7 +2285,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2311,7 +2307,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2333,7 +2329,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2355,7 +2351,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2377,7 +2373,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2399,7 +2395,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2421,7 +2417,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2443,7 +2439,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2465,7 +2461,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2487,7 +2483,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2509,7 +2505,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2531,7 +2527,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2553,7 +2549,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2575,7 +2571,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2597,7 +2593,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2619,7 +2615,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2641,7 +2637,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2663,7 +2659,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2685,7 +2681,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2707,7 +2703,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2729,7 +2725,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2751,7 +2747,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2773,7 +2769,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2795,7 +2791,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2817,7 +2813,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2839,7 +2835,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2861,7 +2857,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2883,7 +2879,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2905,7 +2901,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2927,7 +2923,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2949,7 +2945,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2971,7 +2967,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -2993,7 +2989,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3015,7 +3011,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3037,7 +3033,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3059,7 +3055,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 2,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3081,7 +3077,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3103,7 +3099,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3125,7 +3121,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3147,7 +3143,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3169,7 +3165,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3191,7 +3187,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3213,7 +3209,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3235,7 +3231,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3257,7 +3253,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3279,7 +3275,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3301,7 +3297,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3323,7 +3319,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3345,7 +3341,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3367,7 +3363,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3389,7 +3385,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3411,7 +3407,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3433,7 +3429,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3455,7 +3451,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3477,7 +3473,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3499,7 +3495,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3521,7 +3517,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3543,7 +3539,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3565,7 +3561,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3587,7 +3583,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3606,18 +3602,16 @@
       "title": "ready payment retry reconciliation contract",
       "risk": "duplicate financial side effects",
       "expected_readiness": "implementation_ready",
-      "actual_readiness_status": "not_ready",
-      "actual_implementation_ready": false,
-      "critical_count": 1,
-      "evidence_present": null,
+      "actual_readiness_status": "ready_with_warnings",
+      "actual_implementation_ready": true,
+      "critical_count": 0,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
       ],
-      "follow_up_issue": "#183",
-      "follow_up_issues": [
-        "#183"
-      ]
+      "follow_up_issue": null,
+      "follow_up_issues": []
     },
     {
       "case_id": "ready_payment_retry_reconciliation_contract_ko",
@@ -3633,7 +3627,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3655,7 +3649,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3677,7 +3671,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3699,7 +3693,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3721,7 +3715,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3743,7 +3737,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3765,7 +3759,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 2,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3787,7 +3781,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3809,7 +3803,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3831,7 +3825,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3853,7 +3847,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3875,7 +3869,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3897,7 +3891,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3919,7 +3913,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3941,7 +3935,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3963,7 +3957,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -3985,7 +3979,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4007,7 +4001,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4029,7 +4023,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4051,7 +4045,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4073,7 +4067,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4095,7 +4089,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4117,7 +4111,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4139,7 +4133,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4161,7 +4155,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4183,7 +4177,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4205,7 +4199,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4227,7 +4221,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4249,7 +4243,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4271,7 +4265,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4293,7 +4287,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 2,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4315,7 +4309,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4337,7 +4331,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4359,7 +4353,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4381,7 +4375,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4403,7 +4397,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4425,7 +4419,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4447,7 +4441,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4469,7 +4463,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4491,7 +4485,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4513,7 +4507,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4535,7 +4529,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4557,7 +4551,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4579,7 +4573,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4601,7 +4595,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4623,7 +4617,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4645,7 +4639,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4667,7 +4661,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4689,7 +4683,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4711,7 +4705,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4733,7 +4727,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4755,7 +4749,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4777,7 +4771,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4799,7 +4793,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4821,7 +4815,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4843,7 +4837,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4865,7 +4859,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4887,7 +4881,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4909,7 +4903,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4931,7 +4925,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4953,7 +4947,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4975,7 +4969,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -4997,7 +4991,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5019,7 +5013,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5041,7 +5035,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5063,7 +5057,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5085,7 +5079,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5107,7 +5101,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5129,7 +5123,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5151,7 +5145,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5173,7 +5167,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5195,7 +5189,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5217,7 +5211,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5239,7 +5233,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5261,7 +5255,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 2,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5283,7 +5277,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5305,7 +5299,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5327,7 +5321,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5349,7 +5343,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5371,7 +5365,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5393,7 +5387,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5415,7 +5409,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5437,7 +5431,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5459,7 +5453,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5481,7 +5475,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5503,7 +5497,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5525,7 +5519,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5547,7 +5541,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5569,7 +5563,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5591,7 +5585,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5613,7 +5607,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5635,7 +5629,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5657,7 +5651,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5679,7 +5673,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5701,7 +5695,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5723,7 +5717,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5745,7 +5739,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5767,7 +5761,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5789,7 +5783,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5811,7 +5805,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5833,7 +5827,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5855,7 +5849,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5877,7 +5871,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5899,7 +5893,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5921,7 +5915,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5943,7 +5937,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5965,7 +5959,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -5987,7 +5981,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6009,7 +6003,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 2,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6031,7 +6025,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6053,7 +6047,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6075,7 +6069,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6097,7 +6091,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 2,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6119,7 +6113,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6141,7 +6135,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 2,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6163,7 +6157,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6185,7 +6179,7 @@
       "actual_readiness_status": "ready_with_warnings",
       "actual_implementation_ready": true,
       "critical_count": 0,
-      "evidence_present": null,
+      "evidence_present": false,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6207,7 +6201,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"
@@ -6229,7 +6223,7 @@
       "actual_readiness_status": "not_ready",
       "actual_implementation_ready": false,
       "critical_count": 1,
-      "evidence_present": null,
+      "evidence_present": true,
       "gap_type": "coverage_complete",
       "gap_types": [
         "coverage_complete"

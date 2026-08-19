@@ -1,6 +1,6 @@
 {
   "schema": "specguard-readiness-fixture-drift-summary/v1",
-  "benchmark_script_version": "7",
+  "benchmark_script_version": "8",
   "case_source": "tools/spec_driven_ai_benchmark.py::benchmark_cases",
   "include_gate_only_extra_cases": true,
   "include_korean_cases": true,
