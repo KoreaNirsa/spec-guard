@@ -110,6 +110,7 @@ def test_specguard_plugin_skill_documents_common_failure_categories() -> None:
         "missing_cli",
         "missing_spec_package",
         "validation_failed_before_review",
+        "pipeline_failed",
         "stale_review",
         "missing_provider_for_llm",
         "timeout",

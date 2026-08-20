@@ -9,6 +9,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from tools.progress import progress_activity
+from tools.atomic import atomic_write_text
 from tools.readiness_engine import is_review_source_artifact, review_artifact_paths
 from tools.report_language import localized_issue_title, report_language_from_payload
 from tools.result import CheckResult
@@ -316,13 +317,20 @@ def build_plugin_rerun_guidance(
     current_report = report if report is not None else _load_readiness_report_safely(feature_dir)
     rerun_command = command or _default_plugin_rerun_command(feature_dir)
     stale_reason = readiness_report_stale_reason(feature_dir)
-    state = "stale_review"
-    if not stale_reason:
+    current_run_state = _current_pre_review_run_state(
+        feature_dir,
+        command=rerun_command,
+        started_at=None,
+    )
+    state = current_run_state.state if current_run_state is not None else "stale_review"
+    if current_run_state is None and not stale_reason:
         state = _readiness_status(current_report) if current_report else "validation_failed_before_review"
         if state not in {"ready", "ready_with_warnings", "not_ready"}:
             state = "validation_failed_before_review"
     suggestions = _plugin_rerun_suggestions(current_report, limit=limit) if current_report else ()
-    if stale_reason:
+    if current_run_state is not None:
+        next_action = current_run_state.next_action
+    elif stale_reason:
         next_action = (
             "Treat previous findings as suggestions only. User updates the spec package, "
             f"then reruns `{rerun_command}` before implementation starts."
@@ -471,7 +479,40 @@ def write_pre_review_failure_run_state(
         next_action="Fix validation errors in the spec package, then rerun SpecGuard before using any old readiness report.",
     )
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(_plugin_run_state_payload(state), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    atomic_write_text(path, json.dumps(_plugin_run_state_payload(state), indent=2, sort_keys=True) + "\n")
+    return path
+
+
+def write_pipeline_failure_run_state(
+    feature_dir: Path,
+    *,
+    command: str,
+    failed_stage: str,
+    messages: list[str] | tuple[str, ...],
+    next_steps: list[str] | tuple[str, ...],
+    failure_category: str = "pipeline_failed",
+    next_action: str | None = None,
+) -> Path:
+    """Record a current mid-pipeline failure without exposing old handoff files."""
+
+    path = plugin_run_state_path(feature_dir)
+    state = PluginRunState(
+        state="pipeline_failed",
+        command=command,
+        package_path=feature_dir.as_posix(),
+        failure_category=failure_category,
+        failed_stage=failed_stage,
+        messages=tuple(messages),
+        next_steps=tuple(next_steps),
+        known_files=_known_plugin_files(feature_dir),
+        relevant_files=(path.as_posix(),),
+        next_action=next_action
+        or (
+            f"Fix the failed {failed_stage} stage and rerun SpecGuard; "
+            "do not use a previous readiness report or implementation handoff as current input."
+        ),
+    )
+    atomic_write_text(path, json.dumps(_plugin_run_state_payload(state), indent=2, sort_keys=True) + "\n")
     return path
 
 
@@ -680,7 +721,7 @@ def _current_pre_review_run_state(
         return None
 
     state = _load_plugin_run_state(path, command=command, feature_dir=feature_dir)
-    if state is None or state.state != "validation_failed_before_review":
+    if state is None or state.state not in {"validation_failed_before_review", "pipeline_failed"}:
         return None
 
     state_mtime = path.stat().st_mtime

@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from tools.report_language import report_language_from_payload, resolve_report_language
+from tools.atomic import atomic_write_text
 
 
 def _bullets_for_section(content: str, *headings: str) -> list[str]:
@@ -88,7 +89,7 @@ def generate_tests(path: Path, force: bool = False) -> Path:
             f"{len(spec)}자의 스펙에서 생성했습니다. 구현 전에 실행 가능한 테스트로 교체하세요.",
             "",
         ])
-        output.write_text(content, encoding="utf-8")
+        atomic_write_text(output, content)
         return output
 
     success_cases = acceptance or ["Primary happy path satisfies all acceptance criteria."]
@@ -119,7 +120,7 @@ def generate_tests(path: Path, force: bool = False) -> Path:
         f"Generated from a spec with {len(spec)} characters. Replace these scenarios with executable tests before implementation.",
         "",
     ])
-    output.write_text(content, encoding="utf-8")
+    atomic_write_text(output, content)
     return output
 
 
