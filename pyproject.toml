@@ -59,6 +59,7 @@ packages = [
   "tools.generation",
   "tools.resources",
   "tools.resources.example",
+  "tools.resources.holdout",
   "tools.resources.example.checklists",
   "tools.resources.example.contracts",
   "tools.resources.example.tests",
@@ -72,6 +73,7 @@ tools = [
   "resources/example/contracts/*.yaml",
   "resources/example/tests/*.md",
   "resources/workflows/*.yml",
+  "resources/holdout/*.json",
 ]
 
 [tool.pytest.ini_options]
