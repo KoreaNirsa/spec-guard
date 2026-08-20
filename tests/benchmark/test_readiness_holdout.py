@@ -27,6 +27,16 @@ def test_checked_in_holdout_is_frozen_and_separate() -> None:
     )
 
 
+def test_holdout_validation_requires_non_empty_version() -> None:
+    missing_version = load_holdout()
+    missing_version.pop("version")
+    blank_version = load_holdout()
+    blank_version["version"] = " "
+
+    for payload in (missing_version, blank_version):
+        assert "version must be a non-empty string" in validate_holdout(payload)
+
+
 def test_holdout_records_resolved_label_disagreement() -> None:
     payload = load_holdout()
     resolved = [

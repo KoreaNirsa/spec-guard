@@ -46,6 +46,9 @@ def validate_holdout(payload: dict[str, Any]) -> list[str]:
         errors.append("status must be frozen")
     if payload.get("corpus_scope") != "holdout":
         errors.append("corpus_scope must be holdout")
+    version = payload.get("version")
+    if not isinstance(version, str) or not version.strip():
+        errors.append("version must be a non-empty string")
     freeze_policy = payload.get("freeze_policy")
     if not isinstance(freeze_policy, dict):
         errors.append("freeze_policy must be an object")
