@@ -1,0 +1,3823 @@
+{
+  "schema": "specguard-readiness-holdout-result/v1",
+  "corpus": {
+    "schema": "specguard-readiness-holdout/v1",
+    "version": "1.0.0",
+    "status": "frozen",
+    "pair_count": 57,
+    "case_count": 114,
+    "source": "tools/resources/holdout/readiness-holdout-v1.json",
+    "calibrated_suite_source": "excluded: tools/spec_driven_ai_benchmark.py::benchmark_cases",
+    "freeze_policy": {
+      "expectation_changes_require_explicit_review": true,
+      "heuristic_tuning_uses_holdout_failures": false,
+      "unexpected_results_are_reported_without_mutating_the_corpus": true
+    }
+  },
+  "execution": {
+    "provider": "none",
+    "review_level": "low",
+    "max_workers": 6,
+    "results_are_separate_from_calibrated_suite": true
+  },
+  "risk_statement": "This frozen holdout estimates deterministic readiness behavior on scenarios that were not used to tune the calibrated regression suite. Zero observed failures do not imply zero production risk.",
+  "metamorphic": {
+    "pair_count": 57,
+    "passed_pairs": 7,
+    "failed_pairs": [
+      "holdout-cache-ko-01",
+      "holdout-cache-ko-02",
+      "holdout-cache-mixed-01",
+      "holdout-cache-mixed-02",
+      "holdout-delete-en-01",
+      "holdout-delete-en-02",
+      "holdout-delete-mixed-01",
+      "holdout-delete-mixed-03",
+      "holdout-ownership-en-01",
+      "holdout-ownership-en-02",
+      "holdout-ownership-en-03",
+      "holdout-ownership-ko-01",
+      "holdout-ownership-ko-02",
+      "holdout-ownership-mixed-01",
+      "holdout-ownership-mixed-02",
+      "holdout-ownership-mixed-03",
+      "holdout-payment-en-01",
+      "holdout-payment-ko-01",
+      "holdout-payment-ko-02",
+      "holdout-payment-mixed-01",
+      "holdout-payment-mixed-02",
+      "holdout-payment-mixed-03",
+      "holdout-retry-en-01",
+      "holdout-retry-ko-02",
+      "holdout-retry-mixed-01",
+      "holdout-retry-mixed-02",
+      "holdout-terminal-en-01",
+      "holdout-terminal-en-02",
+      "holdout-terminal-ko-01",
+      "holdout-terminal-ko-02",
+      "holdout-terminal-mixed-01",
+      "holdout-terminal-mixed-02",
+      "holdout-terminal-mixed-03",
+      "holdout-terminal-mixed-04",
+      "holdout-terminal-mixed-05",
+      "holdout-token-en-01",
+      "holdout-token-ko-01",
+      "holdout-token-ko-02",
+      "holdout-token-mixed-01",
+      "holdout-token-mixed-02",
+      "holdout-token-mixed-03",
+      "holdout-token-mixed-04",
+      "holdout-webhook-en-01",
+      "holdout-webhook-en-02",
+      "holdout-webhook-ko-02",
+      "holdout-webhook-mixed-01",
+      "holdout-webhook-mixed-02",
+      "holdout-webhook-mixed-03",
+      "holdout-webhook-mixed-04",
+      "holdout-webhook-mixed-05"
+    ],
+    "all_pairs_passed": false,
+    "pairs": [
+      {
+        "pair_id": "holdout-cache-en-01",
+        "domain": "tenant_scoped_cache_keys",
+        "language": "en",
+        "safe_case_id": "holdout-cache-en-01-safe",
+        "unsafe_case_id": "holdout-cache-en-01-unsafe",
+        "minimum_semantic_statement": "Search cache keys and invalidation must include tenant_id so one tenant cannot read or flush another tenant's entries.",
+        "unsafe_mutation": "Use a shared query key without tenant_id and allow a tenant request to flush the namespace globally.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": false,
+        "passed": true
+      },
+      {
+        "pair_id": "holdout-cache-ko-01",
+        "domain": "tenant_scoped_cache_keys",
+        "language": "ko",
+        "safe_case_id": "holdout-cache-ko-01-safe",
+        "unsafe_case_id": "holdout-cache-ko-01-unsafe",
+        "minimum_semantic_statement": "기능 플래그 캐시 키는 tenant_id를 포함하고 다른 테넌트의 값은 조회와 삭제 대상에서 제외해야 한다.",
+        "unsafe_mutation": "공유 flag_name만으로 캐시를 만들고 한 테넌트 변경이 전역 값을 덮어쓴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-cache-ko-02",
+        "domain": "tenant_scoped_cache_keys",
+        "language": "ko",
+        "safe_case_id": "holdout-cache-ko-02-safe",
+        "unsafe_case_id": "holdout-cache-ko-02-unsafe",
+        "minimum_semantic_statement": "가격표 cache key와 invalidation은 tenant_id와 price_list_id를 모두 포함해야 한다.",
+        "unsafe_mutation": "price_list_id만 사용해 한 테넌트 가격 변경이 모든 테넌트 cache를 덮어쓴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-cache-mixed-01",
+        "domain": "tenant_scoped_cache_keys",
+        "language": "mixed",
+        "safe_case_id": "holdout-cache-mixed-01-safe",
+        "unsafe_case_id": "holdout-cache-mixed-01-unsafe",
+        "minimum_semantic_statement": "Dashboard cache keys must contain tenant_id and user-visible invalidation must not flush a shared namespace.",
+        "unsafe_mutation": "shared dashboard key를 사용하고 tenant request에서 global flush를 허용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-cache-mixed-02",
+        "domain": "tenant_scoped_cache_keys",
+        "language": "mixed",
+        "safe_case_id": "holdout-cache-mixed-02-safe",
+        "unsafe_case_id": "holdout-cache-mixed-02-unsafe",
+        "minimum_semantic_statement": "Notification preference cache entries must include tenant_id and user_id so one tenant cannot invalidate another user's preferences.",
+        "unsafe_mutation": "user_id만으로 shared preference key를 만들고 global invalidate를 허용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-delete-en-01",
+        "domain": "delete_audit_restore_policy",
+        "language": "en",
+        "safe_case_id": "holdout-delete-en-01-safe",
+        "unsafe_case_id": "holdout-delete-en-01-unsafe",
+        "minimum_semantic_statement": "Account deletion must hide personal data while retaining only explicitly approved audit evidence under a documented retention policy.",
+        "unsafe_mutation": "Delete all rows immediately without an audit record or retention boundary.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-delete-en-02",
+        "domain": "delete_audit_restore_policy",
+        "language": "en",
+        "safe_case_id": "holdout-delete-en-02-safe",
+        "unsafe_case_id": "holdout-delete-en-02-unsafe",
+        "minimum_semantic_statement": "A document purge must define which versions are removed, who can restore, and how the purge is audited.",
+        "unsafe_mutation": "Allow an administrator to restore any deleted document without recording the action or checking ownership.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-delete-ko-01",
+        "domain": "delete_audit_restore_policy",
+        "language": "ko",
+        "safe_case_id": "holdout-delete-ko-01-safe",
+        "unsafe_case_id": "holdout-delete-ko-01-unsafe",
+        "minimum_semantic_statement": "의료 기록 삭제는 접근을 차단하되 법적으로 필요한 audit event만 보존하는 retention 경계를 가져야 한다.",
+        "unsafe_mutation": "환자 기록과 audit log를 구분하지 않고 모두 즉시 삭제한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": false,
+        "passed": true
+      },
+      {
+        "pair_id": "holdout-delete-mixed-01",
+        "domain": "delete_audit_restore_policy",
+        "language": "mixed",
+        "safe_case_id": "holdout-delete-mixed-01-safe",
+        "unsafe_case_id": "holdout-delete-mixed-01-unsafe",
+        "minimum_semantic_statement": "Workspace member deletion must hide access, preserve an append-only audit event, and allow owner-only restore only inside a defined window.",
+        "unsafe_mutation": "삭제된 member를 누구나 restore하고 audit row도 update/delete할 수 있게 한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-delete-mixed-02",
+        "domain": "delete_audit_restore_policy",
+        "language": "mixed",
+        "safe_case_id": "holdout-delete-mixed-02-safe",
+        "unsafe_case_id": "holdout-delete-mixed-02-unsafe",
+        "minimum_semantic_statement": "Deleting an analytics export must remove downloadable data, preserve an immutable audit event, and define whether restore is allowed.",
+        "unsafe_mutation": "download file만 지우고 audit와 restore policy를 정의하지 않는다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": false,
+        "passed": true
+      },
+      {
+        "pair_id": "holdout-delete-mixed-03",
+        "domain": "delete_audit_restore_policy",
+        "language": "mixed",
+        "safe_case_id": "holdout-delete-mixed-03-safe",
+        "unsafe_case_id": "holdout-delete-mixed-03-unsafe",
+        "minimum_semantic_statement": "Deleting a saved payment method must revoke its use, keep an immutable security audit event, and define restoration as prohibited.",
+        "unsafe_mutation": "payment method를 soft-delete만 하고 active authorization과 audit row를 유지한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-delete-mixed-04",
+        "domain": "delete_audit_restore_policy",
+        "language": "mixed",
+        "safe_case_id": "holdout-delete-mixed-04-safe",
+        "unsafe_case_id": "holdout-delete-mixed-04-unsafe",
+        "minimum_semantic_statement": "Deleting a user's audit-visible profile must not erase the immutable evidence needed to explain the deletion.",
+        "unsafe_mutation": "profile과 audit evidence를 모두 지우고 deletion reason을 보존하지 않는다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": false,
+        "passed": true
+      },
+      {
+        "pair_id": "holdout-ownership-en-01",
+        "domain": "server_side_ownership",
+        "language": "en",
+        "safe_case_id": "holdout-ownership-en-01-safe",
+        "unsafe_case_id": "holdout-ownership-en-01-unsafe",
+        "minimum_semantic_statement": "The server must scope every invoice export query to the authenticated tenant before rows leave the repository.",
+        "unsafe_mutation": "Remove the repository tenant predicate and let the UI hide invoices from other tenants.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-ownership-en-02",
+        "domain": "server_side_ownership",
+        "language": "en",
+        "safe_case_id": "holdout-ownership-en-02-safe",
+        "unsafe_case_id": "holdout-ownership-en-02-unsafe",
+        "minimum_semantic_statement": "The download service must verify project ownership before issuing a private media URL.",
+        "unsafe_mutation": "Treat possession of a media_id or an opaque URL as sufficient authorization.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-ownership-en-03",
+        "domain": "server_side_ownership",
+        "language": "en",
+        "safe_case_id": "holdout-ownership-en-03-safe",
+        "unsafe_case_id": "holdout-ownership-en-03-unsafe",
+        "minimum_semantic_statement": "Support ticket reads must be filtered by the authenticated organization before pagination and response serialization.",
+        "unsafe_mutation": "Return a global ticket search and rely on the dashboard to hide other organizations.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-ownership-ko-01",
+        "domain": "server_side_ownership",
+        "language": "ko",
+        "safe_case_id": "holdout-ownership-ko-01-safe",
+        "unsafe_case_id": "holdout-ownership-ko-01-unsafe",
+        "minimum_semantic_statement": "배송지 변경은 인증된 판매자 계정의 주문 소유권을 서버에서 확인한 뒤 허용해야 한다.",
+        "unsafe_mutation": "주문 번호만 알면 다른 판매자의 배송지를 변경할 수 있도록 소유자 검사를 제거한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-ownership-ko-02",
+        "domain": "server_side_ownership",
+        "language": "ko",
+        "safe_case_id": "holdout-ownership-ko-02-safe",
+        "unsafe_case_id": "holdout-ownership-ko-02-unsafe",
+        "minimum_semantic_statement": "문서 검색은 인증된 organization_id를 repository query에 적용한 뒤 결과를 반환해야 한다.",
+        "unsafe_mutation": "전체 조직 문서를 반환하고 프론트엔드에서 조직이 아닌 결과를 제거한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-ownership-mixed-01",
+        "domain": "server_side_ownership",
+        "language": "mixed",
+        "safe_case_id": "holdout-ownership-mixed-01-safe",
+        "unsafe_case_id": "holdout-ownership-mixed-01-unsafe",
+        "minimum_semantic_statement": "The export endpoint must enforce team_id on the server before returning members' private rows.",
+        "unsafe_mutation": "UI가 team_id를 비교하도록 하고 API는 모든 team rows를 반환한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-ownership-mixed-02",
+        "domain": "server_side_ownership",
+        "language": "mixed",
+        "safe_case_id": "holdout-ownership-mixed-02-safe",
+        "unsafe_case_id": "holdout-ownership-mixed-02-unsafe",
+        "minimum_semantic_statement": "Support attachments must be checked against the current ticket organization before a download is authorized.",
+        "unsafe_mutation": "attachment_id만 알면 download URL을 발급하고 organization check를 browser에 맡긴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-ownership-mixed-03",
+        "domain": "server_side_ownership",
+        "language": "mixed",
+        "safe_case_id": "holdout-ownership-mixed-03-safe",
+        "unsafe_case_id": "holdout-ownership-mixed-03-unsafe",
+        "minimum_semantic_statement": "Project secret rotation must verify project membership on the server before returning or replacing a secret.",
+        "unsafe_mutation": "project_id만 알면 secret을 rotate할 수 있고 membership check는 UI에 둔다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-payment-en-01",
+        "domain": "payment_idempotency_timeout_reconciliation",
+        "language": "en",
+        "safe_case_id": "holdout-payment-en-01-safe",
+        "unsafe_case_id": "holdout-payment-en-01-unsafe",
+        "minimum_semantic_statement": "A timed-out charge must remain reconciliable under one merchant idempotency key without a second financial side effect.",
+        "unsafe_mutation": "Let the caller retry a timed-out gateway request without a server-owned idempotency record.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-payment-en-02",
+        "domain": "payment_idempotency_timeout_reconciliation",
+        "language": "en",
+        "safe_case_id": "holdout-payment-en-02-safe",
+        "unsafe_case_id": "holdout-payment-en-02-unsafe",
+        "minimum_semantic_statement": "A refund request must reserve a merchant-scoped key and reconcile an unknown provider result before another refund attempt.",
+        "unsafe_mutation": "Retry the refund as a fresh provider call whenever the first response is unknown.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": false,
+        "passed": true
+      },
+      {
+        "pair_id": "holdout-payment-ko-01",
+        "domain": "payment_idempotency_timeout_reconciliation",
+        "language": "ko",
+        "safe_case_id": "holdout-payment-ko-01-safe",
+        "unsafe_case_id": "holdout-payment-ko-01-unsafe",
+        "minimum_semantic_statement": "지갑 출금은 서버가 요청 키를 먼저 저장하고 timeout 이후 외부 승인 결과를 reconciliation해야 한다.",
+        "unsafe_mutation": "timeout이면 호출자가 동일 출금 요청을 새로운 외부 승인으로 무제한 재전송한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-payment-ko-02",
+        "domain": "payment_idempotency_timeout_reconciliation",
+        "language": "ko",
+        "safe_case_id": "holdout-payment-ko-02-safe",
+        "unsafe_case_id": "holdout-payment-ko-02-unsafe",
+        "minimum_semantic_statement": "구독 변경의 proration 청구는 subscription_id와 idempotency_key로 한 번만 생성되고 timeout 결과를 reconciliation해야 한다.",
+        "unsafe_mutation": "요금제 변경 요청마다 새 proration charge를 만들고 timeout 재시도를 호출자에게 맡긴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-payment-mixed-01",
+        "domain": "payment_idempotency_timeout_reconciliation",
+        "language": "mixed",
+        "safe_case_id": "holdout-payment-mixed-01-safe",
+        "unsafe_case_id": "holdout-payment-mixed-01-unsafe",
+        "minimum_semantic_statement": "Seller payout은 payout_idempotency_key와 timeout reconciliation을 통해 one financial side effect만 만들어야 한다.",
+        "unsafe_mutation": "Retry를 fresh payout으로 처리하고 duplicate transfer를 caller에게 맡긴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-payment-mixed-02",
+        "domain": "payment_idempotency_timeout_reconciliation",
+        "language": "mixed",
+        "safe_case_id": "holdout-payment-mixed-02-safe",
+        "unsafe_case_id": "holdout-payment-mixed-02-unsafe",
+        "minimum_semantic_statement": "Coupon credit reversal must use one idempotency key and reconcile unknown provider results before another credit mutation.",
+        "unsafe_mutation": "provider timeout마다 fresh reversal을 실행하고 duplicate credit를 허용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-payment-mixed-03",
+        "domain": "payment_idempotency_timeout_reconciliation",
+        "language": "mixed",
+        "safe_case_id": "holdout-payment-mixed-03-safe",
+        "unsafe_case_id": "holdout-payment-mixed-03-unsafe",
+        "minimum_semantic_statement": "Commission capture must reserve one idempotency key and reconcile an uncertain acquirer response before retrying.",
+        "unsafe_mutation": "acquirer timeout 후 new capture를 실행해 duplicate commission을 만들 수 있게 한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-retry-en-01",
+        "domain": "bounded_retry_backoff",
+        "language": "en",
+        "safe_case_id": "holdout-retry-en-01-safe",
+        "unsafe_case_id": "holdout-retry-en-01-unsafe",
+        "minimum_semantic_statement": "Email delivery retries must be bounded, backoff-based, and idempotent with a dead-letter outcome.",
+        "unsafe_mutation": "Retry failed email sends forever and invoke the provider immediately on every failure.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-retry-ko-01",
+        "domain": "bounded_retry_backoff",
+        "language": "ko",
+        "safe_case_id": "holdout-retry-ko-01-safe",
+        "unsafe_case_id": "holdout-retry-ko-01-unsafe",
+        "minimum_semantic_statement": "정산 파일 동기화는 제한된 retry와 exponential backoff를 사용하고 소진 시 dead-letter로 종료해야 한다.",
+        "unsafe_mutation": "실패한 동기화를 성공할 때까지 즉시 무제한 재시도한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": false,
+        "passed": true
+      },
+      {
+        "pair_id": "holdout-retry-ko-02",
+        "domain": "bounded_retry_backoff",
+        "language": "ko",
+        "safe_case_id": "holdout-retry-ko-02-safe",
+        "unsafe_case_id": "holdout-retry-ko-02-unsafe",
+        "minimum_semantic_statement": "알림 발송은 delivery_id를 유지하면서 제한된 횟수와 backoff를 적용하고 소진 시 dead-letter로 끝나야 한다.",
+        "unsafe_mutation": "provider가 복구할 때까지 새 delivery를 무제한 즉시 발송한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-retry-mixed-01",
+        "domain": "bounded_retry_backoff",
+        "language": "mixed",
+        "safe_case_id": "holdout-retry-mixed-01-safe",
+        "unsafe_case_id": "holdout-retry-mixed-01-unsafe",
+        "minimum_semantic_statement": "The notification worker must cap retries and preserve one delivery id across provider failover.",
+        "unsafe_mutation": "Failover를 새로운 delivery로 보고 backoff 없이 무한히 전송한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-retry-mixed-02",
+        "domain": "bounded_retry_backoff",
+        "language": "mixed",
+        "safe_case_id": "holdout-retry-mixed-02-safe",
+        "unsafe_case_id": "holdout-retry-mixed-02-unsafe",
+        "minimum_semantic_statement": "Invoice PDF generation must use a bounded retry budget, backoff, and idempotent artifact key.",
+        "unsafe_mutation": "PDF generation을 성공할 때까지 무제한 retry하고 each attempt가 새 artifact를 만든다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-en-01",
+        "domain": "terminal_state_transitions",
+        "language": "en",
+        "safe_case_id": "holdout-terminal-en-01-safe",
+        "unsafe_case_id": "holdout-terminal-en-01-unsafe",
+        "minimum_semantic_statement": "A shipped order is terminal for cancellation and cannot create a refund through the pending-order transition.",
+        "unsafe_mutation": "Allow cancellation after shipment whenever the caller supplies an order_id.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-en-02",
+        "domain": "terminal_state_transitions",
+        "language": "en",
+        "safe_case_id": "holdout-terminal-en-02-safe",
+        "unsafe_case_id": "holdout-terminal-en-02-unsafe",
+        "minimum_semantic_statement": "A legally terminated subscription cannot be reactivated through the normal active-state transition.",
+        "unsafe_mutation": "Treat terminated as an ordinary inactive state and permit reactivation without a new contract.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-ko-01",
+        "domain": "terminal_state_transitions",
+        "language": "ko",
+        "safe_case_id": "holdout-terminal-ko-01-safe",
+        "unsafe_case_id": "holdout-terminal-ko-01-unsafe",
+        "minimum_semantic_statement": "환불이 완료된 주문은 반품 접수의 terminal 상태이며 새로운 환불 부작용을 만들 수 없어야 한다.",
+        "unsafe_mutation": "order_id만 있으면 환불 완료 주문도 다시 반품과 환불 대상으로 허용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-ko-02",
+        "domain": "terminal_state_transitions",
+        "language": "ko",
+        "safe_case_id": "holdout-terminal-ko-02-safe",
+        "unsafe_case_id": "holdout-terminal-ko-02-unsafe",
+        "minimum_semantic_statement": "reversed 상태의 원장 entry는 terminal이며 일반 update가 아닌 별도 correction event로만 조정할 수 있어야 한다.",
+        "unsafe_mutation": "관리자가 reversed entry의 amount를 직접 수정해 원래 transaction을 덮어쓴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-mixed-01",
+        "domain": "terminal_state_transitions",
+        "language": "mixed",
+        "safe_case_id": "holdout-terminal-mixed-01-safe",
+        "unsafe_case_id": "holdout-terminal-mixed-01-unsafe",
+        "minimum_semantic_statement": "A settled payout is terminal for ordinary edits and any correction must create a linked adjustment event.",
+        "unsafe_mutation": "settled 상태를 pending으로 되돌려 payout amount를 직접 수정한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-mixed-02",
+        "domain": "terminal_state_transitions",
+        "language": "mixed",
+        "safe_case_id": "holdout-terminal-mixed-02-safe",
+        "unsafe_case_id": "holdout-terminal-mixed-02-unsafe",
+        "minimum_semantic_statement": "A final moderation decision is terminal for ordinary edits and appeals must create a linked review event.",
+        "unsafe_mutation": "final decision을 pending으로 바꿔서 moderator가 original row를 직접 수정한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-mixed-03",
+        "domain": "terminal_state_transitions",
+        "language": "mixed",
+        "safe_case_id": "holdout-terminal-mixed-03-safe",
+        "unsafe_case_id": "holdout-terminal-mixed-03-unsafe",
+        "minimum_semantic_statement": "An expired reservation is terminal for fulfillment and cannot be shipped without a new reservation.",
+        "unsafe_mutation": "expired reservation을 active로 되돌려 재고를 출고한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-mixed-04",
+        "domain": "terminal_state_transitions",
+        "language": "mixed",
+        "safe_case_id": "holdout-terminal-mixed-04-safe",
+        "unsafe_case_id": "holdout-terminal-mixed-04-unsafe",
+        "minimum_semantic_statement": "A completed export is terminal for regeneration of the same export_id and must use a new request for changed parameters.",
+        "unsafe_mutation": "completed export를 pending으로 바꿔 기존 export_id에 다른 filters를 덮어쓴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-terminal-mixed-05",
+        "domain": "terminal_state_transitions",
+        "language": "mixed",
+        "safe_case_id": "holdout-terminal-mixed-05-safe",
+        "unsafe_case_id": "holdout-terminal-mixed-05-unsafe",
+        "minimum_semantic_statement": "A closed chargeback case is terminal and a later dispute requires a linked case rather than reopening the closed record.",
+        "unsafe_mutation": "closed case를 open으로 되돌려 같은 case_id에 새 evidence를 덮어쓴다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-token-en-01",
+        "domain": "token_expiry_revocation",
+        "language": "en",
+        "safe_case_id": "holdout-token-en-01-safe",
+        "unsafe_case_id": "holdout-token-en-01-unsafe",
+        "minimum_semantic_statement": "A password reset token must expire, be single-use, and be revoked when the password changes.",
+        "unsafe_mutation": "Allow a reset token to remain valid indefinitely until a later manual logout.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-token-ko-01",
+        "domain": "token_expiry_revocation",
+        "language": "ko",
+        "safe_case_id": "holdout-token-ko-01-safe",
+        "unsafe_case_id": "holdout-token-ko-01-unsafe",
+        "minimum_semantic_statement": "휴대폰 인증 코드는 짧은 만료 시간과 1회 사용 규칙을 가지며 성공 후 폐기되어야 한다.",
+        "unsafe_mutation": "인증 코드에 expires_at과 사용 기록을 두지 않고 계속 재사용할 수 있게 한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-token-ko-02",
+        "domain": "token_expiry_revocation",
+        "language": "ko",
+        "safe_case_id": "holdout-token-ko-02-safe",
+        "unsafe_case_id": "holdout-token-ko-02-unsafe",
+        "minimum_semantic_statement": "관리자 access token은 짧은 expires_at과 revoked_at을 검사하고 계정 compromise 시 즉시 폐기되어야 한다.",
+        "unsafe_mutation": "서명만 맞으면 access token을 만료 없이 계속 허용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-token-mixed-01",
+        "domain": "token_expiry_revocation",
+        "language": "mixed",
+        "safe_case_id": "holdout-token-mixed-01-safe",
+        "unsafe_case_id": "holdout-token-mixed-01-unsafe",
+        "minimum_semantic_statement": "Employee API tokens must have expires_at and be rejected after revoked_at is set during offboarding.",
+        "unsafe_mutation": "API key는 long-lived로 두고 offboarding 후에도 signature만 맞으면 허용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-token-mixed-02",
+        "domain": "token_expiry_revocation",
+        "language": "mixed",
+        "safe_case_id": "holdout-token-mixed-02-safe",
+        "unsafe_case_id": "holdout-token-mixed-02-unsafe",
+        "minimum_semantic_statement": "Device trust tokens must expire and be revocable when a device is reported lost.",
+        "unsafe_mutation": "분실 신고 후에도 device token을 만료 없이 계속 신뢰한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-token-mixed-03",
+        "domain": "token_expiry_revocation",
+        "language": "mixed",
+        "safe_case_id": "holdout-token-mixed-03-safe",
+        "unsafe_case_id": "holdout-token-mixed-03-unsafe",
+        "minimum_semantic_statement": "Workspace invite tokens must expire and be revoked when the invite is withdrawn or the recipient is removed.",
+        "unsafe_mutation": "invite token을 만료 없이 유지하고 withdrawn 상태를 authorization에서 무시한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-token-mixed-04",
+        "domain": "token_expiry_revocation",
+        "language": "mixed",
+        "safe_case_id": "holdout-token-mixed-04-safe",
+        "unsafe_case_id": "holdout-token-mixed-04-unsafe",
+        "minimum_semantic_statement": "Passwordless login links must expire, be single-use, and be revoked when the account recovery state changes.",
+        "unsafe_mutation": "login link을 indefinite로 유지하고 이미 사용한 token을 다시 허용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-en-01",
+        "domain": "webhook_signature_replay",
+        "language": "en",
+        "safe_case_id": "holdout-webhook-en-01-safe",
+        "unsafe_case_id": "holdout-webhook-en-01-unsafe",
+        "minimum_semantic_statement": "The receiver must verify the provider signature and persist event_id before applying a payment state change.",
+        "unsafe_mutation": "Trust the webhook URL as a secret and process the same event more than once.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-en-02",
+        "domain": "webhook_signature_replay",
+        "language": "en",
+        "safe_case_id": "holdout-webhook-en-02-safe",
+        "unsafe_case_id": "holdout-webhook-en-02-unsafe",
+        "minimum_semantic_statement": "Shipment events must be authenticated and idempotently recorded before notifying the fulfillment system.",
+        "unsafe_mutation": "Notify fulfillment on every delivery attempt without signature verification or an inbox record.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-ko-01",
+        "domain": "webhook_signature_replay",
+        "language": "ko",
+        "safe_case_id": "holdout-webhook-ko-01-safe",
+        "unsafe_case_id": "holdout-webhook-ko-01-unsafe",
+        "minimum_semantic_statement": "재고 조정 webhook은 원문 payload의 서명을 검증하고 event_id를 먼저 기록한 뒤 한 번만 반영해야 한다.",
+        "unsafe_mutation": "endpoint URL을 비밀값으로 간주하고 같은 event를 반복 처리한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": false,
+        "passed": true
+      },
+      {
+        "pair_id": "holdout-webhook-ko-02",
+        "domain": "webhook_signature_replay",
+        "language": "ko",
+        "safe_case_id": "holdout-webhook-ko-02-safe",
+        "unsafe_case_id": "holdout-webhook-ko-02-unsafe",
+        "minimum_semantic_statement": "배송 상태 변경 webhook은 signature와 timestamp를 검증하고 event_id별로 한 번만 상태를 전이해야 한다.",
+        "unsafe_mutation": "배송 provider가 보내는 JSON이면 서명 없이 상태를 바꾸고 중복 event도 다시 처리한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-mixed-01",
+        "domain": "webhook_signature_replay",
+        "language": "mixed",
+        "safe_case_id": "holdout-webhook-mixed-01-safe",
+        "unsafe_case_id": "holdout-webhook-mixed-01-unsafe",
+        "minimum_semantic_statement": "Partner catalog updates must verify signature and deduplicate event_id before changing the tenant catalog.",
+        "unsafe_mutation": "signature 없이 partner payload를 적용하고 duplicate event마다 catalog side effect를 실행한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-mixed-02",
+        "domain": "webhook_signature_replay",
+        "language": "mixed",
+        "safe_case_id": "holdout-webhook-mixed-02-safe",
+        "unsafe_case_id": "holdout-webhook-mixed-02-unsafe",
+        "minimum_semantic_statement": "Identity provider login events must verify signature and replay freshness before linking the account.",
+        "unsafe_mutation": "event payload의 email만 믿고 signature와 timestamp 없이 account link를 수행한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-mixed-03",
+        "domain": "webhook_signature_replay",
+        "language": "mixed",
+        "safe_case_id": "holdout-webhook-mixed-03-safe",
+        "unsafe_case_id": "holdout-webhook-mixed-03-unsafe",
+        "minimum_semantic_statement": "Tax receipt webhook events must verify authenticity and process each receipt_id once before marking a payment settled.",
+        "unsafe_mutation": "receipt_id만 보고 settled 처리하며 duplicate event마다 tax side effect를 반복한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-mixed-04",
+        "domain": "webhook_signature_replay",
+        "language": "mixed",
+        "safe_case_id": "holdout-webhook-mixed-04-safe",
+        "unsafe_case_id": "holdout-webhook-mixed-04-unsafe",
+        "minimum_semantic_statement": "Fraud alert events must verify signature and event freshness before placing an account hold, with replay deduplication.",
+        "unsafe_mutation": "fraud alert의 account_id만 믿고 signature 없이 hold를 반복 적용한다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": true,
+        "unsafe_implementation_ready": true,
+        "passed": false
+      },
+      {
+        "pair_id": "holdout-webhook-mixed-05",
+        "domain": "webhook_signature_replay",
+        "language": "mixed",
+        "safe_case_id": "holdout-webhook-mixed-05-safe",
+        "unsafe_case_id": "holdout-webhook-mixed-05-unsafe",
+        "minimum_semantic_statement": "Returns webhook must authenticate and deduplicate refund signals before changing the order state.",
+        "unsafe_mutation": "refund signal을 signature 없이 처리하고 replay마다 refund state를 다시 만든다.",
+        "minimum_statement_changed": true,
+        "safe_implementation_ready": false,
+        "unsafe_implementation_ready": false,
+        "passed": false
+      }
+    ]
+  },
+  "metrics": {
+    "overall": {
+      "case_count": 114,
+      "ready_case_count": 57,
+      "weak_case_count": 57,
+      "confusion_matrix": {
+        "true_positive_blocked_weak": 16,
+        "true_negative_allowed_ready": 46,
+        "false_positive_blocked_ready": 11,
+        "false_negative_allowed_weak": 41
+      },
+      "weak_recall": {
+        "successes": 16,
+        "trials": 57,
+        "rate": 0.2807017543859649,
+        "percent": 28.07017543859649,
+        "confidence_interval_95": {
+          "lower": 0.18079399343823543,
+          "upper": 0.4083019867604394,
+          "lower_percent": 18.079399343823543,
+          "upper_percent": 40.830198676043935
+        }
+      },
+      "ready_specificity": {
+        "successes": 46,
+        "trials": 57,
+        "rate": 0.8070175438596491,
+        "percent": 80.7017543859649,
+        "confidence_interval_95": {
+          "lower": 0.6865930975223603,
+          "upper": 0.8886725301994945,
+          "lower_percent": 68.65930975223603,
+          "upper_percent": 88.86725301994946
+        }
+      },
+      "false_positive_rate": {
+        "successes": 11,
+        "trials": 57,
+        "rate": 0.19298245614035087,
+        "percent": 19.298245614035086,
+        "confidence_interval_95": {
+          "lower": 0.11132746980050533,
+          "upper": 0.3134069024776395,
+          "lower_percent": 11.132746980050532,
+          "upper_percent": 31.340690247763952
+        }
+      },
+      "false_negative_rate": {
+        "successes": 41,
+        "trials": 57,
+        "rate": 0.7192982456140351,
+        "percent": 71.9298245614035,
+        "confidence_interval_95": {
+          "lower": 0.5916980132395605,
+          "upper": 0.8192060065617645,
+          "lower_percent": 59.16980132395605,
+          "upper_percent": 81.92060065617645
+        }
+      }
+    },
+    "by_domain": {
+      "bounded_retry_backoff": {
+        "case_count": 10,
+        "ready_case_count": 5,
+        "weak_case_count": 5,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 1,
+          "true_negative_allowed_ready": 5,
+          "false_positive_blocked_ready": 0,
+          "false_negative_allowed_weak": 4
+        },
+        "weak_recall": {
+          "successes": 1,
+          "trials": 5,
+          "rate": 0.2,
+          "percent": 20.0,
+          "confidence_interval_95": {
+            "lower": 0.03622410863243014,
+            "upper": 0.6244653702374747,
+            "lower_percent": 3.6224108632430143,
+            "upper_percent": 62.446537023747474
+          }
+        },
+        "ready_specificity": {
+          "successes": 5,
+          "trials": 5,
+          "rate": 1.0,
+          "percent": 100.0,
+          "confidence_interval_95": {
+            "lower": 0.5655175352168251,
+            "upper": 1.0,
+            "lower_percent": 56.551753521682514,
+            "upper_percent": 100.0
+          }
+        },
+        "false_positive_rate": {
+          "successes": 0,
+          "trials": 5,
+          "rate": 0.0,
+          "percent": 0.0,
+          "confidence_interval_95": {
+            "lower": 0.0,
+            "upper": 0.43448246478317476,
+            "lower_percent": 0.0,
+            "upper_percent": 43.44824647831748
+          }
+        },
+        "false_negative_rate": {
+          "successes": 4,
+          "trials": 5,
+          "rate": 0.8,
+          "percent": 80.0,
+          "confidence_interval_95": {
+            "lower": 0.37553462976252533,
+            "upper": 0.9637758913675698,
+            "lower_percent": 37.55346297625253,
+            "upper_percent": 96.37758913675698
+          }
+        }
+      },
+      "delete_audit_restore_policy": {
+        "case_count": 14,
+        "ready_case_count": 7,
+        "weak_case_count": 7,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 3,
+          "true_negative_allowed_ready": 6,
+          "false_positive_blocked_ready": 1,
+          "false_negative_allowed_weak": 4
+        },
+        "weak_recall": {
+          "successes": 3,
+          "trials": 7,
+          "rate": 0.42857142857142855,
+          "percent": 42.857142857142854,
+          "confidence_interval_95": {
+            "lower": 0.15821985525146975,
+            "upper": 0.7495416354723428,
+            "lower_percent": 15.821985525146975,
+            "upper_percent": 74.95416354723427
+          }
+        },
+        "ready_specificity": {
+          "successes": 6,
+          "trials": 7,
+          "rate": 0.8571428571428571,
+          "percent": 85.71428571428571,
+          "confidence_interval_95": {
+            "lower": 0.4868721707256811,
+            "upper": 0.9743203756552565,
+            "lower_percent": 48.68721707256811,
+            "upper_percent": 97.43203756552565
+          }
+        },
+        "false_positive_rate": {
+          "successes": 1,
+          "trials": 7,
+          "rate": 0.14285714285714285,
+          "percent": 14.285714285714285,
+          "confidence_interval_95": {
+            "lower": 0.02567962434474355,
+            "upper": 0.5131278292743189,
+            "lower_percent": 2.5679624344743552,
+            "upper_percent": 51.31278292743189
+          }
+        },
+        "false_negative_rate": {
+          "successes": 4,
+          "trials": 7,
+          "rate": 0.5714285714285714,
+          "percent": 57.14285714285714,
+          "confidence_interval_95": {
+            "lower": 0.2504583645276572,
+            "upper": 0.8417801447485302,
+            "lower_percent": 25.04583645276572,
+            "upper_percent": 84.17801447485303
+          }
+        }
+      },
+      "payment_idempotency_timeout_reconciliation": {
+        "case_count": 14,
+        "ready_case_count": 7,
+        "weak_case_count": 7,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 3,
+          "true_negative_allowed_ready": 5,
+          "false_positive_blocked_ready": 2,
+          "false_negative_allowed_weak": 4
+        },
+        "weak_recall": {
+          "successes": 3,
+          "trials": 7,
+          "rate": 0.42857142857142855,
+          "percent": 42.857142857142854,
+          "confidence_interval_95": {
+            "lower": 0.15821985525146975,
+            "upper": 0.7495416354723428,
+            "lower_percent": 15.821985525146975,
+            "upper_percent": 74.95416354723427
+          }
+        },
+        "ready_specificity": {
+          "successes": 5,
+          "trials": 7,
+          "rate": 0.7142857142857143,
+          "percent": 71.42857142857143,
+          "confidence_interval_95": {
+            "lower": 0.35893445183261935,
+            "upper": 0.9177810759959433,
+            "lower_percent": 35.89344518326193,
+            "upper_percent": 91.77810759959432
+          }
+        },
+        "false_positive_rate": {
+          "successes": 2,
+          "trials": 7,
+          "rate": 0.2857142857142857,
+          "percent": 28.57142857142857,
+          "confidence_interval_95": {
+            "lower": 0.08221892400405678,
+            "upper": 0.6410655481673808,
+            "lower_percent": 8.221892400405679,
+            "upper_percent": 64.10655481673808
+          }
+        },
+        "false_negative_rate": {
+          "successes": 4,
+          "trials": 7,
+          "rate": 0.5714285714285714,
+          "percent": 57.14285714285714,
+          "confidence_interval_95": {
+            "lower": 0.2504583645276572,
+            "upper": 0.8417801447485302,
+            "lower_percent": 25.04583645276572,
+            "upper_percent": 84.17801447485303
+          }
+        }
+      },
+      "server_side_ownership": {
+        "case_count": 16,
+        "ready_case_count": 8,
+        "weak_case_count": 8,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 1,
+          "true_negative_allowed_ready": 7,
+          "false_positive_blocked_ready": 1,
+          "false_negative_allowed_weak": 7
+        },
+        "weak_recall": {
+          "successes": 1,
+          "trials": 8,
+          "rate": 0.125,
+          "percent": 12.5,
+          "confidence_interval_95": {
+            "lower": 0.02241749145005667,
+            "upper": 0.4708881822128535,
+            "lower_percent": 2.241749145005667,
+            "upper_percent": 47.08881822128535
+          }
+        },
+        "ready_specificity": {
+          "successes": 7,
+          "trials": 8,
+          "rate": 0.875,
+          "percent": 87.5,
+          "confidence_interval_95": {
+            "lower": 0.5291118177871464,
+            "upper": 0.9775825085499433,
+            "lower_percent": 52.91118177871464,
+            "upper_percent": 97.75825085499433
+          }
+        },
+        "false_positive_rate": {
+          "successes": 1,
+          "trials": 8,
+          "rate": 0.125,
+          "percent": 12.5,
+          "confidence_interval_95": {
+            "lower": 0.02241749145005667,
+            "upper": 0.4708881822128535,
+            "lower_percent": 2.241749145005667,
+            "upper_percent": 47.08881822128535
+          }
+        },
+        "false_negative_rate": {
+          "successes": 7,
+          "trials": 8,
+          "rate": 0.875,
+          "percent": 87.5,
+          "confidence_interval_95": {
+            "lower": 0.5291118177871464,
+            "upper": 0.9775825085499433,
+            "lower_percent": 52.91118177871464,
+            "upper_percent": 97.75825085499433
+          }
+        }
+      },
+      "tenant_scoped_cache_keys": {
+        "case_count": 10,
+        "ready_case_count": 5,
+        "weak_case_count": 5,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 2,
+          "true_negative_allowed_ready": 3,
+          "false_positive_blocked_ready": 2,
+          "false_negative_allowed_weak": 3
+        },
+        "weak_recall": {
+          "successes": 2,
+          "trials": 5,
+          "rate": 0.4,
+          "percent": 40.0,
+          "confidence_interval_95": {
+            "lower": 0.11762077423264783,
+            "upper": 0.769275718723987,
+            "lower_percent": 11.762077423264783,
+            "upper_percent": 76.9275718723987
+          }
+        },
+        "ready_specificity": {
+          "successes": 3,
+          "trials": 5,
+          "rate": 0.6,
+          "percent": 60.0,
+          "confidence_interval_95": {
+            "lower": 0.2307242812760128,
+            "upper": 0.882379225767352,
+            "lower_percent": 23.07242812760128,
+            "upper_percent": 88.2379225767352
+          }
+        },
+        "false_positive_rate": {
+          "successes": 2,
+          "trials": 5,
+          "rate": 0.4,
+          "percent": 40.0,
+          "confidence_interval_95": {
+            "lower": 0.11762077423264783,
+            "upper": 0.769275718723987,
+            "lower_percent": 11.762077423264783,
+            "upper_percent": 76.9275718723987
+          }
+        },
+        "false_negative_rate": {
+          "successes": 3,
+          "trials": 5,
+          "rate": 0.6,
+          "percent": 60.0,
+          "confidence_interval_95": {
+            "lower": 0.2307242812760128,
+            "upper": 0.882379225767352,
+            "lower_percent": 23.07242812760128,
+            "upper_percent": 88.2379225767352
+          }
+        }
+      },
+      "terminal_state_transitions": {
+        "case_count": 18,
+        "ready_case_count": 9,
+        "weak_case_count": 9,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 3,
+          "true_negative_allowed_ready": 6,
+          "false_positive_blocked_ready": 3,
+          "false_negative_allowed_weak": 6
+        },
+        "weak_recall": {
+          "successes": 3,
+          "trials": 9,
+          "rate": 0.3333333333333333,
+          "percent": 33.33333333333333,
+          "confidence_interval_95": {
+            "lower": 0.1205838183869109,
+            "upper": 0.6457978644196036,
+            "lower_percent": 12.05838183869109,
+            "upper_percent": 64.57978644196037
+          }
+        },
+        "ready_specificity": {
+          "successes": 6,
+          "trials": 9,
+          "rate": 0.6666666666666666,
+          "percent": 66.66666666666666,
+          "confidence_interval_95": {
+            "lower": 0.3542021355803963,
+            "upper": 0.879416181613089,
+            "lower_percent": 35.420213558039634,
+            "upper_percent": 87.9416181613089
+          }
+        },
+        "false_positive_rate": {
+          "successes": 3,
+          "trials": 9,
+          "rate": 0.3333333333333333,
+          "percent": 33.33333333333333,
+          "confidence_interval_95": {
+            "lower": 0.1205838183869109,
+            "upper": 0.6457978644196036,
+            "lower_percent": 12.05838183869109,
+            "upper_percent": 64.57978644196037
+          }
+        },
+        "false_negative_rate": {
+          "successes": 6,
+          "trials": 9,
+          "rate": 0.6666666666666666,
+          "percent": 66.66666666666666,
+          "confidence_interval_95": {
+            "lower": 0.3542021355803963,
+            "upper": 0.879416181613089,
+            "lower_percent": 35.420213558039634,
+            "upper_percent": 87.9416181613089
+          }
+        }
+      },
+      "token_expiry_revocation": {
+        "case_count": 14,
+        "ready_case_count": 7,
+        "weak_case_count": 7,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 0,
+          "true_negative_allowed_ready": 7,
+          "false_positive_blocked_ready": 0,
+          "false_negative_allowed_weak": 7
+        },
+        "weak_recall": {
+          "successes": 0,
+          "trials": 7,
+          "rate": 0.0,
+          "percent": 0.0,
+          "confidence_interval_95": {
+            "lower": 5.551115123125783e-17,
+            "upper": 0.35433043506668743,
+            "lower_percent": 5.551115123125783e-15,
+            "upper_percent": 35.433043506668746
+          }
+        },
+        "ready_specificity": {
+          "successes": 7,
+          "trials": 7,
+          "rate": 1.0,
+          "percent": 100.0,
+          "confidence_interval_95": {
+            "lower": 0.6456695649333126,
+            "upper": 1.0,
+            "lower_percent": 64.56695649333126,
+            "upper_percent": 100.0
+          }
+        },
+        "false_positive_rate": {
+          "successes": 0,
+          "trials": 7,
+          "rate": 0.0,
+          "percent": 0.0,
+          "confidence_interval_95": {
+            "lower": 5.551115123125783e-17,
+            "upper": 0.35433043506668743,
+            "lower_percent": 5.551115123125783e-15,
+            "upper_percent": 35.433043506668746
+          }
+        },
+        "false_negative_rate": {
+          "successes": 7,
+          "trials": 7,
+          "rate": 1.0,
+          "percent": 100.0,
+          "confidence_interval_95": {
+            "lower": 0.6456695649333126,
+            "upper": 1.0,
+            "lower_percent": 64.56695649333126,
+            "upper_percent": 100.0
+          }
+        }
+      },
+      "webhook_signature_replay": {
+        "case_count": 18,
+        "ready_case_count": 9,
+        "weak_case_count": 9,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 3,
+          "true_negative_allowed_ready": 7,
+          "false_positive_blocked_ready": 2,
+          "false_negative_allowed_weak": 6
+        },
+        "weak_recall": {
+          "successes": 3,
+          "trials": 9,
+          "rate": 0.3333333333333333,
+          "percent": 33.33333333333333,
+          "confidence_interval_95": {
+            "lower": 0.1205838183869109,
+            "upper": 0.6457978644196036,
+            "lower_percent": 12.05838183869109,
+            "upper_percent": 64.57978644196037
+          }
+        },
+        "ready_specificity": {
+          "successes": 7,
+          "trials": 9,
+          "rate": 0.7777777777777778,
+          "percent": 77.77777777777779,
+          "confidence_interval_95": {
+            "lower": 0.45258896910698887,
+            "upper": 0.9367748928821533,
+            "lower_percent": 45.25889691069889,
+            "upper_percent": 93.67748928821533
+          }
+        },
+        "false_positive_rate": {
+          "successes": 2,
+          "trials": 9,
+          "rate": 0.2222222222222222,
+          "percent": 22.22222222222222,
+          "confidence_interval_95": {
+            "lower": 0.06322510711784671,
+            "upper": 0.5474110308930111,
+            "lower_percent": 6.322510711784671,
+            "upper_percent": 54.74110308930111
+          }
+        },
+        "false_negative_rate": {
+          "successes": 6,
+          "trials": 9,
+          "rate": 0.6666666666666666,
+          "percent": 66.66666666666666,
+          "confidence_interval_95": {
+            "lower": 0.3542021355803963,
+            "upper": 0.879416181613089,
+            "lower_percent": 35.420213558039634,
+            "upper_percent": 87.9416181613089
+          }
+        }
+      }
+    },
+    "by_language": {
+      "en": {
+        "case_count": 28,
+        "ready_case_count": 14,
+        "weak_case_count": 14,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 5,
+          "true_negative_allowed_ready": 11,
+          "false_positive_blocked_ready": 3,
+          "false_negative_allowed_weak": 9
+        },
+        "weak_recall": {
+          "successes": 5,
+          "trials": 14,
+          "rate": 0.35714285714285715,
+          "percent": 35.714285714285715,
+          "confidence_interval_95": {
+            "lower": 0.1634473175355414,
+            "upper": 0.612355768960926,
+            "lower_percent": 16.34473175355414,
+            "upper_percent": 61.2355768960926
+          }
+        },
+        "ready_specificity": {
+          "successes": 11,
+          "trials": 14,
+          "rate": 0.7857142857142857,
+          "percent": 78.57142857142857,
+          "confidence_interval_95": {
+            "lower": 0.524107694133997,
+            "upper": 0.9242861328730683,
+            "lower_percent": 52.410769413399706,
+            "upper_percent": 92.42861328730683
+          }
+        },
+        "false_positive_rate": {
+          "successes": 3,
+          "trials": 14,
+          "rate": 0.21428571428571427,
+          "percent": 21.428571428571427,
+          "confidence_interval_95": {
+            "lower": 0.07571386712693184,
+            "upper": 0.47589230586600295,
+            "lower_percent": 7.571386712693185,
+            "upper_percent": 47.589230586600294
+          }
+        },
+        "false_negative_rate": {
+          "successes": 9,
+          "trials": 14,
+          "rate": 0.6428571428571429,
+          "percent": 64.28571428571429,
+          "confidence_interval_95": {
+            "lower": 0.38764423103907397,
+            "upper": 0.8365526824644587,
+            "lower_percent": 38.7644231039074,
+            "upper_percent": 83.65526824644587
+          }
+        }
+      },
+      "ko": {
+        "case_count": 30,
+        "ready_case_count": 15,
+        "weak_case_count": 15,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 6,
+          "true_negative_allowed_ready": 11,
+          "false_positive_blocked_ready": 4,
+          "false_negative_allowed_weak": 9
+        },
+        "weak_recall": {
+          "successes": 6,
+          "trials": 15,
+          "rate": 0.4,
+          "percent": 40.0,
+          "confidence_interval_95": {
+            "lower": 0.1982449614134158,
+            "upper": 0.6425316987937539,
+            "lower_percent": 19.82449614134158,
+            "upper_percent": 64.25316987937539
+          }
+        },
+        "ready_specificity": {
+          "successes": 11,
+          "trials": 15,
+          "rate": 0.7333333333333333,
+          "percent": 73.33333333333333,
+          "confidence_interval_95": {
+            "lower": 0.4804956594401943,
+            "upper": 0.8910254667430761,
+            "lower_percent": 48.04956594401943,
+            "upper_percent": 89.10254667430762
+          }
+        },
+        "false_positive_rate": {
+          "successes": 4,
+          "trials": 15,
+          "rate": 0.26666666666666666,
+          "percent": 26.666666666666668,
+          "confidence_interval_95": {
+            "lower": 0.10897453325692374,
+            "upper": 0.5195043405598057,
+            "lower_percent": 10.897453325692375,
+            "upper_percent": 51.950434055980566
+          }
+        },
+        "false_negative_rate": {
+          "successes": 9,
+          "trials": 15,
+          "rate": 0.6,
+          "percent": 60.0,
+          "confidence_interval_95": {
+            "lower": 0.357468301206246,
+            "upper": 0.8017550385865841,
+            "lower_percent": 35.7468301206246,
+            "upper_percent": 80.17550385865842
+          }
+        }
+      },
+      "mixed": {
+        "case_count": 56,
+        "ready_case_count": 28,
+        "weak_case_count": 28,
+        "confusion_matrix": {
+          "true_positive_blocked_weak": 5,
+          "true_negative_allowed_ready": 24,
+          "false_positive_blocked_ready": 4,
+          "false_negative_allowed_weak": 23
+        },
+        "weak_recall": {
+          "successes": 5,
+          "trials": 28,
+          "rate": 0.17857142857142858,
+          "percent": 17.857142857142858,
+          "confidence_interval_95": {
+            "lower": 0.07878501945604277,
+            "upper": 0.35591424789342946,
+            "lower_percent": 7.8785019456042775,
+            "upper_percent": 35.591424789342945
+          }
+        },
+        "ready_specificity": {
+          "successes": 24,
+          "trials": 28,
+          "rate": 0.8571428571428571,
+          "percent": 85.71428571428571,
+          "confidence_interval_95": {
+            "lower": 0.685101978364747,
+            "upper": 0.9430099468025059,
+            "lower_percent": 68.5101978364747,
+            "upper_percent": 94.3009946802506
+          }
+        },
+        "false_positive_rate": {
+          "successes": 4,
+          "trials": 28,
+          "rate": 0.14285714285714285,
+          "percent": 14.285714285714285,
+          "confidence_interval_95": {
+            "lower": 0.05699005319749392,
+            "upper": 0.31489802163525293,
+            "lower_percent": 5.699005319749392,
+            "upper_percent": 31.489802163525294
+          }
+        },
+        "false_negative_rate": {
+          "successes": 23,
+          "trials": 28,
+          "rate": 0.8214285714285714,
+          "percent": 82.14285714285714,
+          "confidence_interval_95": {
+            "lower": 0.6440857521065705,
+            "upper": 0.9212149805439572,
+            "lower_percent": 64.40857521065705,
+            "upper_percent": 92.12149805439573
+          }
+        }
+      }
+    }
+  },
+  "cases": [
+    {
+      "case_id": "holdout-cache-en-01-safe",
+      "pair_id": "holdout-cache-en-01",
+      "variant": "safe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-cache-en-01-unsafe",
+      "pair_id": "holdout-cache-en-01",
+      "variant": "unsafe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "en",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Cache invalidation boundary is unsafe"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-cache-ko-01-safe",
+      "pair_id": "holdout-cache-ko-01",
+      "variant": "safe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Cache invalidation boundary is unsafe"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-cache-ko-01-unsafe",
+      "pair_id": "holdout-cache-ko-01",
+      "variant": "unsafe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-cache-ko-02-safe",
+      "pair_id": "holdout-cache-ko-02",
+      "variant": "safe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-cache-ko-02-unsafe",
+      "pair_id": "holdout-cache-ko-02",
+      "variant": "unsafe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-cache-mixed-01-safe",
+      "pair_id": "holdout-cache-mixed-01",
+      "variant": "safe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Cache invalidation boundary is unsafe"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-cache-mixed-01-unsafe",
+      "pair_id": "holdout-cache-mixed-01",
+      "variant": "unsafe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 2,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Cache invalidation boundary is unsafe",
+        "Cache invalidation boundary is unsafe"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-cache-mixed-02-safe",
+      "pair_id": "holdout-cache-mixed-02",
+      "variant": "safe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-cache-mixed-02-unsafe",
+      "pair_id": "holdout-cache-mixed-02",
+      "variant": "unsafe",
+      "domain": "tenant_scoped_cache_keys",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-en-01-safe",
+      "pair_id": "holdout-delete-en-01",
+      "variant": "safe",
+      "domain": "delete_audit_restore_policy",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-en-01-unsafe",
+      "pair_id": "holdout-delete-en-01",
+      "variant": "unsafe",
+      "domain": "delete_audit_restore_policy",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-en-02-safe",
+      "pair_id": "holdout-delete-en-02",
+      "variant": "safe",
+      "domain": "delete_audit_restore_policy",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-en-02-unsafe",
+      "pair_id": "holdout-delete-en-02",
+      "variant": "unsafe",
+      "domain": "delete_audit_restore_policy",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-ko-01-safe",
+      "pair_id": "holdout-delete-ko-01",
+      "variant": "safe",
+      "domain": "delete_audit_restore_policy",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-ko-01-unsafe",
+      "pair_id": "holdout-delete-ko-01",
+      "variant": "unsafe",
+      "domain": "delete_audit_restore_policy",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Privacy deletion contract is incomplete"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-delete-mixed-01-safe",
+      "pair_id": "holdout-delete-mixed-01",
+      "variant": "safe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-mixed-01-unsafe",
+      "pair_id": "holdout-delete-mixed-01",
+      "variant": "unsafe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-mixed-02-safe",
+      "pair_id": "holdout-delete-mixed-02",
+      "variant": "safe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-mixed-02-unsafe",
+      "pair_id": "holdout-delete-mixed-02",
+      "variant": "unsafe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Privacy deletion contract is incomplete"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-delete-mixed-03-safe",
+      "pair_id": "holdout-delete-mixed-03",
+      "variant": "safe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-delete-mixed-03-unsafe",
+      "pair_id": "holdout-delete-mixed-03",
+      "variant": "unsafe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-mixed-04-safe",
+      "pair_id": "holdout-delete-mixed-04",
+      "variant": "safe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-delete-mixed-04-unsafe",
+      "pair_id": "holdout-delete-mixed-04",
+      "variant": "unsafe",
+      "domain": "delete_audit_restore_policy",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Privacy deletion contract is incomplete"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-ownership-en-01-safe",
+      "pair_id": "holdout-ownership-en-01",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "en",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Tenant boundary is unsafe"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-ownership-en-01-unsafe",
+      "pair_id": "holdout-ownership-en-01",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "en",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Tenant boundary is unsafe"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-ownership-en-02-safe",
+      "pair_id": "holdout-ownership-en-02",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-en-02-unsafe",
+      "pair_id": "holdout-ownership-en-02",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-en-03-safe",
+      "pair_id": "holdout-ownership-en-03",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-en-03-unsafe",
+      "pair_id": "holdout-ownership-en-03",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-ko-01-safe",
+      "pair_id": "holdout-ownership-ko-01",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-ko-01-unsafe",
+      "pair_id": "holdout-ownership-ko-01",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-ko-02-safe",
+      "pair_id": "holdout-ownership-ko-02",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-ko-02-unsafe",
+      "pair_id": "holdout-ownership-ko-02",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-mixed-01-safe",
+      "pair_id": "holdout-ownership-mixed-01",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-mixed-01-unsafe",
+      "pair_id": "holdout-ownership-mixed-01",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-mixed-02-safe",
+      "pair_id": "holdout-ownership-mixed-02",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-mixed-02-unsafe",
+      "pair_id": "holdout-ownership-mixed-02",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-mixed-03-safe",
+      "pair_id": "holdout-ownership-mixed-03",
+      "variant": "safe",
+      "domain": "server_side_ownership",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-ownership-mixed-03-unsafe",
+      "pair_id": "holdout-ownership-mixed-03",
+      "variant": "unsafe",
+      "domain": "server_side_ownership",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-en-01-safe",
+      "pair_id": "holdout-payment-en-01",
+      "variant": "safe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "en",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-payment-en-01-unsafe",
+      "pair_id": "holdout-payment-en-01",
+      "variant": "unsafe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "en",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-payment-en-02-safe",
+      "pair_id": "holdout-payment-en-02",
+      "variant": "safe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-en-02-unsafe",
+      "pair_id": "holdout-payment-en-02",
+      "variant": "unsafe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "en",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-payment-ko-01-safe",
+      "pair_id": "holdout-payment-ko-01",
+      "variant": "safe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-ko-01-unsafe",
+      "pair_id": "holdout-payment-ko-01",
+      "variant": "unsafe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-ko-02-safe",
+      "pair_id": "holdout-payment-ko-02",
+      "variant": "safe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-payment-ko-02-unsafe",
+      "pair_id": "holdout-payment-ko-02",
+      "variant": "unsafe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-payment-mixed-01-safe",
+      "pair_id": "holdout-payment-mixed-01",
+      "variant": "safe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-mixed-01-unsafe",
+      "pair_id": "holdout-payment-mixed-01",
+      "variant": "unsafe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-mixed-02-safe",
+      "pair_id": "holdout-payment-mixed-02",
+      "variant": "safe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-mixed-02-unsafe",
+      "pair_id": "holdout-payment-mixed-02",
+      "variant": "unsafe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-mixed-03-safe",
+      "pair_id": "holdout-payment-mixed-03",
+      "variant": "safe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-payment-mixed-03-unsafe",
+      "pair_id": "holdout-payment-mixed-03",
+      "variant": "unsafe",
+      "domain": "payment_idempotency_timeout_reconciliation",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-en-01-safe",
+      "pair_id": "holdout-retry-en-01",
+      "variant": "safe",
+      "domain": "bounded_retry_backoff",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-en-01-unsafe",
+      "pair_id": "holdout-retry-en-01",
+      "variant": "unsafe",
+      "domain": "bounded_retry_backoff",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-ko-01-safe",
+      "pair_id": "holdout-retry-ko-01",
+      "variant": "safe",
+      "domain": "bounded_retry_backoff",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-ko-01-unsafe",
+      "pair_id": "holdout-retry-ko-01",
+      "variant": "unsafe",
+      "domain": "bounded_retry_backoff",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-retry-ko-02-safe",
+      "pair_id": "holdout-retry-ko-02",
+      "variant": "safe",
+      "domain": "bounded_retry_backoff",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-ko-02-unsafe",
+      "pair_id": "holdout-retry-ko-02",
+      "variant": "unsafe",
+      "domain": "bounded_retry_backoff",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-mixed-01-safe",
+      "pair_id": "holdout-retry-mixed-01",
+      "variant": "safe",
+      "domain": "bounded_retry_backoff",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-mixed-01-unsafe",
+      "pair_id": "holdout-retry-mixed-01",
+      "variant": "unsafe",
+      "domain": "bounded_retry_backoff",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-mixed-02-safe",
+      "pair_id": "holdout-retry-mixed-02",
+      "variant": "safe",
+      "domain": "bounded_retry_backoff",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-retry-mixed-02-unsafe",
+      "pair_id": "holdout-retry-mixed-02",
+      "variant": "unsafe",
+      "domain": "bounded_retry_backoff",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-en-01-safe",
+      "pair_id": "holdout-terminal-en-01",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "en",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-terminal-en-01-unsafe",
+      "pair_id": "holdout-terminal-en-01",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "en",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-terminal-en-02-safe",
+      "pair_id": "holdout-terminal-en-02",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-en-02-unsafe",
+      "pair_id": "holdout-terminal-en-02",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-ko-01-safe",
+      "pair_id": "holdout-terminal-ko-01",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-terminal-ko-01-unsafe",
+      "pair_id": "holdout-terminal-ko-01",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-terminal-ko-02-safe",
+      "pair_id": "holdout-terminal-ko-02",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-ko-02-unsafe",
+      "pair_id": "holdout-terminal-ko-02",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-01-safe",
+      "pair_id": "holdout-terminal-mixed-01",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-terminal-mixed-01-unsafe",
+      "pair_id": "holdout-terminal-mixed-01",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-terminal-mixed-02-safe",
+      "pair_id": "holdout-terminal-mixed-02",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-02-unsafe",
+      "pair_id": "holdout-terminal-mixed-02",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-03-safe",
+      "pair_id": "holdout-terminal-mixed-03",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-03-unsafe",
+      "pair_id": "holdout-terminal-mixed-03",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-04-safe",
+      "pair_id": "holdout-terminal-mixed-04",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-04-unsafe",
+      "pair_id": "holdout-terminal-mixed-04",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-05-safe",
+      "pair_id": "holdout-terminal-mixed-05",
+      "variant": "safe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-terminal-mixed-05-unsafe",
+      "pair_id": "holdout-terminal-mixed-05",
+      "variant": "unsafe",
+      "domain": "terminal_state_transitions",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-en-01-safe",
+      "pair_id": "holdout-token-en-01",
+      "variant": "safe",
+      "domain": "token_expiry_revocation",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 1,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Brute-force protection is missing"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-en-01-unsafe",
+      "pair_id": "holdout-token-en-01",
+      "variant": "unsafe",
+      "domain": "token_expiry_revocation",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 1,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Brute-force protection is missing"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-ko-01-safe",
+      "pair_id": "holdout-token-ko-01",
+      "variant": "safe",
+      "domain": "token_expiry_revocation",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-ko-01-unsafe",
+      "pair_id": "holdout-token-ko-01",
+      "variant": "unsafe",
+      "domain": "token_expiry_revocation",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-ko-02-safe",
+      "pair_id": "holdout-token-ko-02",
+      "variant": "safe",
+      "domain": "token_expiry_revocation",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-ko-02-unsafe",
+      "pair_id": "holdout-token-ko-02",
+      "variant": "unsafe",
+      "domain": "token_expiry_revocation",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-01-safe",
+      "pair_id": "holdout-token-mixed-01",
+      "variant": "safe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-01-unsafe",
+      "pair_id": "holdout-token-mixed-01",
+      "variant": "unsafe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-02-safe",
+      "pair_id": "holdout-token-mixed-02",
+      "variant": "safe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-02-unsafe",
+      "pair_id": "holdout-token-mixed-02",
+      "variant": "unsafe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-03-safe",
+      "pair_id": "holdout-token-mixed-03",
+      "variant": "safe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-03-unsafe",
+      "pair_id": "holdout-token-mixed-03",
+      "variant": "unsafe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-04-safe",
+      "pair_id": "holdout-token-mixed-04",
+      "variant": "safe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 1,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Brute-force protection is missing"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-token-mixed-04-unsafe",
+      "pair_id": "holdout-token-mixed-04",
+      "variant": "unsafe",
+      "domain": "token_expiry_revocation",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 1,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Brute-force protection is missing"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-en-01-safe",
+      "pair_id": "holdout-webhook-en-01",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-en-01-unsafe",
+      "pair_id": "holdout-webhook-en-01",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-en-02-safe",
+      "pair_id": "holdout-webhook-en-02",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "en",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-en-02-unsafe",
+      "pair_id": "holdout-webhook-en-02",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "en",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-ko-01-safe",
+      "pair_id": "holdout-webhook-ko-01",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-ko-01-unsafe",
+      "pair_id": "holdout-webhook-ko-01",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Webhook signature verification is missing"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-webhook-ko-02-safe",
+      "pair_id": "holdout-webhook-ko-02",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "ko",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Webhook side-effect contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-webhook-ko-02-unsafe",
+      "pair_id": "holdout-webhook-ko-02",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "ko",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Webhook side-effect contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-webhook-mixed-01-safe",
+      "pair_id": "holdout-webhook-mixed-01",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-01-unsafe",
+      "pair_id": "holdout-webhook-mixed-01",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-02-safe",
+      "pair_id": "holdout-webhook-mixed-02",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 2,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Brute-force protection is missing",
+        "External dependency failure path is absent"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-02-unsafe",
+      "pair_id": "holdout-webhook-mixed-02",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 2,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Brute-force protection is missing",
+        "External dependency failure path is absent"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-03-safe",
+      "pair_id": "holdout-webhook-mixed-03",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-03-unsafe",
+      "pair_id": "holdout-webhook-mixed-03",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-04-safe",
+      "pair_id": "holdout-webhook-mixed-04",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-04-unsafe",
+      "pair_id": "holdout-webhook-mixed-04",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": false,
+      "implementation_ready": true,
+      "readiness": "ready_with_warnings",
+      "issue_summary": {
+        "critical": 0,
+        "major": 0,
+        "minor": 1
+      },
+      "finding_titles": [
+        "No obvious readiness triggers found"
+      ],
+      "gate_ok": true
+    },
+    {
+      "case_id": "holdout-webhook-mixed-05-safe",
+      "pair_id": "holdout-webhook-mixed-05",
+      "variant": "safe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "ready",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    },
+    {
+      "case_id": "holdout-webhook-mixed-05-unsafe",
+      "pair_id": "holdout-webhook-mixed-05",
+      "variant": "unsafe",
+      "domain": "webhook_signature_replay",
+      "language": "mixed",
+      "expected": "weak",
+      "blocked": true,
+      "implementation_ready": false,
+      "readiness": "not_ready",
+      "issue_summary": {
+        "critical": 1,
+        "major": 0,
+        "minor": 0
+      },
+      "finding_titles": [
+        "Payment idempotency contract is ambiguous"
+      ],
+      "gate_ok": false
+    }
+  ]
+}
